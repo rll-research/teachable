@@ -131,8 +131,6 @@ class BaseAlgo(ABC):
         """
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-            if self.teacher is not None:
-                self.obs = self.teacher.give_feedback(self.obs)
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
 
             with torch.no_grad():
@@ -145,8 +143,6 @@ class BaseAlgo(ABC):
             action = dist.sample()
 
             obs, reward, done, env_info = self.env.step(action.cpu().numpy())
-            if self.teacher is not None:
-                self.teacher.step(action)
             if self.aux_info:
                 env_info = self.aux_info_collector.process(env_info)
                 # env_info = self.process_aux_info(env_info)

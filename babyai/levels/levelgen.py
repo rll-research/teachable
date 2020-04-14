@@ -48,7 +48,9 @@ class RoomGridLevel(RoomGrid):
 
     def step(self, action):
         obs, reward, done, info = super().step(action)
-
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            obs = self.teacher.give_feedback([obs])[0]
+            self.teacher.step([action])
         # If we drop an object, we need to update its position in the environment
         if action == self.actions.drop:
             self.update_objs_poss()

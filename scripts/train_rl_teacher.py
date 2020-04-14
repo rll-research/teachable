@@ -62,6 +62,7 @@ for i in range(args.procs):
     envs.append(env)
     teacher_list.append(ActionAdvice(Bot, env))
 teacher = BatchTeacher(teacher_list)
+env.teacher = teacher
 
 # Define model name
 suffix = datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
