@@ -10,13 +10,13 @@ class ActionAdvice(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return torch.FloatTensor([-1]).to(self.device)
+        return torch.FloatTensor([-1]).to(self.device).numpy()
 
     def compute_feedback(self):
         """
         Return the expert action from the previous timestep.
         """
-        return torch.FloatTensor([self.next_action])
+        return torch.FloatTensor([self.next_action]).numpy()
 
     def feedback_condition(self):
         """
