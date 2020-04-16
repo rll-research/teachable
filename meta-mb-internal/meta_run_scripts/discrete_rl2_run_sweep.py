@@ -20,7 +20,7 @@ from babyai.oracle.action_advice import ActionAdvice
 from babyai.bot import Bot
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'rubbish'
+EXP_NAME = 'rl2_sweep'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME
@@ -32,13 +32,12 @@ def run_experiment(**config):
     config_sess.gpu_options.per_process_gpu_memory_fraction = config.get('gpu_frac', 0.95)
     sess = tf.Session(config=config_sess)
     with sess.as_default() as sess:
-
         baseline = config['baseline']()
         e_new = Level_GoToIndexedObj()
         teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
         e_new.teacher = teacher
         env = rl2env(normalize(e_new))
-        obs_dim = 8
+        obs_dim = e_new.reset().shape[0]
         obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
         policy = DiscreteRNNPolicy(
                 name="meta-policy",
@@ -98,7 +97,7 @@ if __name__ == '__main__':
         "hidden_sizes": [(64,), (128,)],
         'backprop_steps': [50, 100, 200],
         "rollouts_per_meta_task": [2],
-        "parallel": [False],
+        "parallel": [True],
         "max_path_length": [200],
         "discount": [0.99],
         "gae_lambda": [1.0],

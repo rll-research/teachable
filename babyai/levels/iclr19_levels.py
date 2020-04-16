@@ -67,8 +67,10 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     Go to an object, inside a single room with no doors, no distractors
     """
 
-    def __init__(self, room_size=8, seed=None):
+    def __init__(self, room_size=8, num_dists=5, seed=None):
         self.task = ['box', 'red']
+        # Number of distractors
+        self.num_dists = num_dists
         super().__init__(
             num_rows=1,
             num_cols=1,
@@ -78,6 +80,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
 
     def sample_tasks(self, n_tasks):
         tasks = []
+        # Different tasks are picking up different objects
         for i in range(n_tasks):
             color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
             obj_type = np.random.choice(['key', 'ball', 'box'])
@@ -85,11 +88,13 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
             tasks.append(task)
         return np.asarray(tasks)
 
+    # Convert a task into a vecor
     def mission_to_index(self, task):
         c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
         t_idx = ['key', 'ball', 'box'].index(task[0])
         return np.array([t_idx, c_idx])
 
+    # Functions fo RL2
     def set_task(self, task):
         """
         Args:
@@ -97,6 +102,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         """
         self.task = task
 
+    # Functions for RL2
     def get_task(self):
         """
         Returns:
@@ -104,6 +110,24 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         """
         return self.task
 
+    def get_color_idx(self, color):
+        return ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(color)
+
+    def get_type_idx(self, obj_type):
+        return ['key', 'ball', 'box'].index(obj_type)
+
+    # Convert object positions, types, colors into a vector. Always order by the object positions to stay consistent and so it can't actually memorize.
+    def compute_obj_infos(self):
+        self.dist_pos_unwrapped = [d.cur_pos[0]*self.room_size + d.cur_pos[1] for d in self.dists] + \
+                                    [self.obj.cur_pos[0]*self.room_size + self.obj.cur_pos[1]]
+        idx = range(len(self.dist_pos_unwrapped) + 1)
+        self.idx = [x for _,x in sorted(zip(self.dist_pos_unwrapped, idx))]        
+        self.obj_infos = np.concatenate([np.array(self.dist_colors)[self.idx],
+                                         np.array(self.dist_types)[self.idx],
+                                         np.array(self.dist_pos_unwrapped)[self.idx]])
+        return 
+
+    # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset. 
     def gen_mission(self):
         self.place_agent()
 
@@ -111,15 +135,20 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         obj_type = self.task[0]
         color = self.task[1]
         obj, pos = self.add_object(0, 0, obj_type, color)
+        self.obj = obj
         self.obj_pos = pos
+        self.obj_color = self.get_color_idx(obj.color)
+        self.obj_type = self.get_type_idx(obj.type)
 
+        # Generate distractors and get their position, type and color
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
+        self.dists = dists
+        self.dist_colors = [self.get_color_idx(d.color) for d in dists] + [self.obj_color]
+        self.dist_types = [self.get_type_idx(d.type) for d in dists]+ [self.obj_type]
+        self.dist_pos = [d.cur_pos for d in dists]
+        self.compute_obj_infos()
         self.check_objs_reachable()
-
         self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
-
-    # @property
-    # def observation_space(self):
-    #     return Box(low=-np.inf, high=np.inf, shape=(7,))
 
     def gen_obs(self):
         """
@@ -143,15 +172,17 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         else:
             obj_pos = np.array([0, 0])
 
-        obs = {
+        obs_dict = {
             'direction': self.agent_dir,
             'mission': self.mission,
             'agent_pos': self.agent_pos,
             'obj_pos': obj_pos
         }
-        obs = np.concatenate([[obs['direction']], 
-                               obs['agent_pos'], 
-                               obs['obj_pos'],
+        # Compute the object infos
+        self.compute_obj_infos()
+        obs = np.concatenate([[obs_dict['direction']], 
+                               obs_dict['agent_pos'], 
+                               self.obj_infos,
                                self.mission_to_index(self.task)])
         return obs
 
