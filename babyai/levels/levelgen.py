@@ -4,7 +4,7 @@ from copy import deepcopy
 import gym
 from gym_minigrid.roomgrid import RoomGrid
 from .verifier import *
-
+import numpy as np
 
 class RejectSampling(Exception):
     """
@@ -43,7 +43,11 @@ class RoomGridLevel(RoomGrid):
         nav_time_maze = nav_time_room * self.num_rows * self.num_cols
         num_navs = self.num_navs_needed(self.instrs)
         self.max_steps = num_navs * nav_time_maze
-
+        
+        # TODO: Un-hardcode this
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            feedback = self.teacher.empty_feedback()[0]
+            obs = np.concatenate([obs, feedback])
         return obs
 
     def step(self, action):

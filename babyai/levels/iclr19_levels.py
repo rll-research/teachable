@@ -5,7 +5,7 @@ Levels described in the ICLR 2019 submission.
 import gym
 from .verifier import *
 from .levelgen import *
-
+from meta_mb.meta_envs.base import MetaEnv
 
 class Level_GoToRedBallGrey(RoomGridLevel):
     """
@@ -62,6 +62,98 @@ class Level_GoToRedBall(RoomGridLevel):
 
         self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
 
+class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
+    """
+    Go to an object, inside a single room with no doors, no distractors
+    """
+
+    def __init__(self, room_size=8, seed=None):
+        self.task = ['box', 'red']
+        super().__init__(
+            num_rows=1,
+            num_cols=1,
+            room_size=room_size,
+            seed=seed
+        )
+
+    def sample_tasks(self, n_tasks):
+        tasks = []
+        for i in range(n_tasks):
+            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
+            obj_type = np.random.choice(['key', 'ball', 'box'])
+            task = np.array([obj_type, color])
+            tasks.append(task)
+        return np.asarray(tasks)
+
+    def mission_to_index(self, task):
+        c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
+        t_idx = ['key', 'ball', 'box'].index(task[0])
+        return np.array([t_idx, c_idx])
+
+    def set_task(self, task):
+        """
+        Args:
+            task: task of the meta-learning environment
+        """
+        self.task = task
+
+    def get_task(self):
+        """
+        Returns:
+            task: task of the meta-learning environment
+        """
+        return self.task
+
+    def gen_mission(self):
+        self.place_agent()
+
+        # Extract the task
+        obj_type = self.task[0]
+        color = self.task[1]
+        obj, pos = self.add_object(0, 0, obj_type, color)
+        self.obj_pos = pos
+
+        self.check_objs_reachable()
+
+        self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+
+    # @property
+    # def observation_space(self):
+    #     return Box(low=-np.inf, high=np.inf, shape=(7,))
+
+    def gen_obs(self):
+        """
+        Generate the agent's view (partially observable, low-resolution encoding)
+        """
+
+        grid, vis_mask = self.gen_obs_grid()
+
+        # Encode the partially observable view into a numpy array
+        image = grid.encode(vis_mask)
+
+        assert hasattr(self, 'mission'), "environments must define a textual mission string"
+
+        # Observations are dictionaries containing:
+        # - an image (partially observable view of the environment)
+        # - the agent's direction/orientation (acting as a compass)
+        # - a textual mission string (instructions for the agent)
+
+        if hasattr(self, 'obj_pos'):
+            obj_pos = self.obj_pos
+        else:
+            obj_pos = np.array([0, 0])
+
+        obs = {
+            'direction': self.agent_dir,
+            'mission': self.mission,
+            'agent_pos': self.agent_pos,
+            'obj_pos': obj_pos
+        }
+        obs = np.concatenate([[obs['direction']], 
+                               obs['agent_pos'], 
+                               obs['obj_pos'],
+                               self.mission_to_index(self.task)])
+        return obs
 
 class Level_GoToRedBallNoDists(Level_GoToRedBall):
     """

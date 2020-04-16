@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 
 class Teacher:
     """
@@ -52,9 +52,10 @@ class Teacher:
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
         if self.feedback_condition():
-            state["feedback"] = self.compute_feedback()
+            feedback = self.compute_feedback()
         else:
-            state["feedback"] = self.empty_feedback()
+            feedback = self.empty_feedback()
+        state = np.concatenate([state, feedback])
         return state
 
     def empty_feedback(self):
