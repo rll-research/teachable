@@ -1,5 +1,6 @@
 model/glove50.txt
 trained_models
+meta-mb-internal/data
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
