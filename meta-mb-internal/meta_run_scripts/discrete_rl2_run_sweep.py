@@ -20,11 +20,11 @@ from babyai.oracle.action_advice import ActionAdvice
 from babyai.bot import Bot
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'rl2_sweep'
+EXP_NAME = 'teacher_v0'
 
 def run_experiment(**config):
-    exp_dir = os.getcwd() + '/data/' + EXP_NAME
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv'], snapshot_mode='last_gap', snapshot_gap=50)
+    exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
+    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='last_gap', snapshot_gap=50)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
     set_seed(config['seed'])
     config_sess = tf.ConfigProto()
