@@ -1,5 +1,4 @@
-import torch
-
+import numpy as np
 from babyai.oracle.teacher import Teacher
 
 
@@ -10,13 +9,13 @@ class ActionAdvice(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return torch.FloatTensor([-1]).to(self.device).numpy()
+        return np.array([-1])
 
     def compute_feedback(self):
         """
         Return the expert action from the previous timestep.
         """
-        return torch.FloatTensor([self.next_action]).numpy()
+        return np.array([self.next_action])
 
     def feedback_condition(self):
         """
