@@ -14,7 +14,7 @@ import tempfile
 import joblib
 from collections import defaultdict
 
-LOG_OUTPUT_FORMATS     = ['stdout', 'log', 'csv']
+LOG_OUTPUT_FORMATS     = ['stdout', 'log', 'csv', 'tensorboard']
 LOG_OUTPUT_FORMATS_MPI = ['log']
 # Also valid: json, tensorboard
 

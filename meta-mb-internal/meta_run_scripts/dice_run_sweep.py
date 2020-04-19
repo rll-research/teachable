@@ -9,8 +9,8 @@ from meta_mb.meta_envs.mujoco.half_cheetah_rand_direc import HalfCheetahRandDire
 from meta_mb.meta_envs.mujoco.ant_rand_direc import AntRandDirecEnv
 from meta_mb.meta_envs.mujoco.walker2d_rand_direc import Walker2DRandDirecEnv
 from meta_mb.meta_envs.mujoco.humanoid_rand_direc_2d import HumanoidRandDirec2DEnv
-from rand_param_envs.walker2d_rand_params import Walker2DRandParamsEnv
-from rand_param_envs.hopper_rand_params import HopperRandParamsEnv
+# from rand_param_envs.walker2d_rand_params import Walker2DRandParamsEnv
+# from rand_param_envs.hopper_rand_params import HopperRandParamsEnv
 from meta_mb.envs.normalized_env import normalize
 from meta_mb.meta_algos.dice_maml import DICEMAML
 from meta_mb.trainers.meta_trainer import Trainer
