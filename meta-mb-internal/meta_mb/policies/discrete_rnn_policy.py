@@ -89,8 +89,13 @@ class DiscreteRNNPolicy(Policy):
 
     def weighted_sample_n(self, prob_matrix, items):
         s = prob_matrix.cumsum(axis=1)
+        min_s = np.min(s[:, -1])
         r = np.random.rand(prob_matrix.shape[0])
+        max_r = np.max(r)
         k = (s < r.reshape((-1, 1))).sum(axis=1)
+        min_val = 0
+        max_val = s.shape[1] - 1
+        k = np.clip(k, min_val, max_val)
         return np.asarray(k)
 
     def get_actions(self, observations):
