@@ -1,7 +1,6 @@
 import numpy as np
 from meta_mb.utils.serializable import Serializable
 from gym.spaces import Box
-from rand_param_envs.gym.spaces import Box as OldBox
 
 """
 Normalizes the environment class.
