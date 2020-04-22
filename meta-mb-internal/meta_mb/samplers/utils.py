@@ -1,18 +1,15 @@
 import numpy as np
 import time
 import moviepy.editor as mpy
-from mujoco_py import MjViewer
+from matplotlib import pyplot as plt
 
 
-def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True,
+def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1):
-    ''' get wrapped env '''
-    wrapped_env = env
-    while hasattr(wrapped_env, '_wrapped_env'):
-        wrapped_env = wrapped_env._wrapped_env
-
-    assert hasattr(wrapped_env, 'dt'), 'environment must have dt attribute that specifies the timestep'
-    timestep = wrapped_env.dt
+    if hasattr(env, 'dt'):
+        timestep = env.dt
+    else:
+        timestep = 0.2
     images = []
     paths = []
     if animated:
@@ -29,13 +26,11 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         agent_infos = []
         env_infos = []
         o = env.reset()
-        agent.reset()
+        if i % reset_every == 0:
+            agent.reset()
         path_length = 0
         if render:
             _ = env.render(mode)
-            # env.viewer.cam.distance = wrapped_env.model.stat.extent * 0.5
-            # env.viewer.cam.trackbodyid = 0
-            # env.viewer.cam.type = 1
 
         while path_length < max_path_length:
             a, agent_info = agent.get_action(o)
@@ -48,8 +43,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             agent_infos.append(agent_info)
             env_infos.append(env_info)
             path_length += 1
-            if d and not ignore_done: # and not animated:
-                break
+
             o = next_o
 
             if animated:
@@ -57,8 +51,22 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 time.sleep(timestep/speedup)
 
             if save_video:
-                image = env.viewer._read_pixels_as_in_window()
+                image = env.render(mode='rgb_array')
+
+                fig = plt.figure()
+                fig.add_subplot(111)
+
+                plt.imshow(image)
+                plt.title(env.mission)
+                plt.xlabel("Teacher on: " + str(env.use_teacher) + "    Run: " + str(i % reset_every))
+                fig.canvas.draw()
+                data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+                image = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
                 images.append(image)
+                plt.close(fig)
+
+            if d and not ignore_done:
+                break
 
         paths.append(dict(
                 observations=observations,

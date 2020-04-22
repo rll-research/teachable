@@ -12,6 +12,7 @@ from experiment_utils.utils import load_exps_data
 
 
 def valid_experiment(params):
+    return True
     # values = {'max_path_length': [200],
     #           'dyanmics_hidden_nonlinearity': ['relu'],
     #           'dynamics_buffer_size': [10000],
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     parser.add_argument("path", type=str)
     parser.add_argument('--max_path_length', '-l', type=int, default=None,
                         help='Max length of rollout')
-    parser.add_argument('--num_rollouts', '-n', type=int, default=5,
+    parser.add_argument('--num_rollouts', '-n', type=int, default=6,
                         help='Max length of rollout')
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
@@ -51,6 +52,10 @@ if __name__ == "__main__":
     parser.add_argument('--ignore_done', action='store_true',
                         help='Whether stop animation when environment done or continue anyway')
     parser.add_argument('--stochastic', action='store_true', help='Apply stochastic action instead of deterministic')
+    parser.add_argument('--use_teacher', action='store_true', help='Give feedback')
+    parser.add_argument('--animated', action='store_true', help='Show video while generating it.')
+    parser.add_argument('--reset_every', type=int, default=2,
+                        help='How many runs between each rnn state reset.')
     args = parser.parse_args()
 
     # If the snapshot file use tensorflow, do:
@@ -58,8 +63,8 @@ if __name__ == "__main__":
     # with tf.Session():
     #     [rest of the code]
 
-    experimet_paths = load_exps_data(args.path, gap=args.gap_pkl, max=args.max_pkl)
-    for exp_path in experimet_paths:
+    experiment_paths = load_exps_data(args.path, gap=args.gap_pkl, max=args.max_pkl)
+    for exp_path in experiment_paths:
         max_path_length = exp_path['json']['max_path_length'] if args.max_path_length is None else args.max_path_length
         if valid_experiment(exp_path['json']):
             for pkl_path in exp_path['pkl']:
@@ -70,10 +75,11 @@ if __name__ == "__main__":
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
                     env = data['env']
+                    env.use_teacher = True
                     video_filename = pkl_path.split('.')[0] + '.mp4'
-                    paths = rollout(env, policy, max_path_length=max_path_length, animated=False, speedup=args.speedup,
+                    paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done,
-                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts)
+                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                 tf.reset_default_graph()
 

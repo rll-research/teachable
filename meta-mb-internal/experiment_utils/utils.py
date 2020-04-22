@@ -54,8 +54,9 @@ def load_exps_data(exp_path, gap=1, max=None):
             if gap > 0:
                 for pkl_path in glob.iglob(os.path.join(exp_path, '*.pkl')):
                     pkl_paths.append(pkl_path)
-                pkl_paths.sort(key=lambda x: int(x.split('_')[-1][:-4]))
-                pkl_paths = pkl_paths[:max:gap]
+                if len(pkl_paths) > 1:
+                    pkl_paths.sort(key=lambda x: int(x.split('_')[-1][:-4]))
+                    pkl_paths = pkl_paths[:max:gap]
             exps_data.append(dict(csv=progress_csv_path, json=params_json,
                 pkl=pkl_paths, exp_name=exp_path))
         except IOError as e:
