@@ -14,7 +14,6 @@ dependencies:
         - Cython==0.28.5
         - decorator==4.3.0
         - docutils==0.14
-        - enum34==1.1.6
         - Flask==1.0.2
         - future==0.16.0
         - glfw==1.7.0
@@ -32,8 +31,8 @@ dependencies:
         - matplotlib==2.2.3
         - moviepy==0.2.3.5
         - mpi4py==3.0.0
+        - mujoco_py==2.0.2.9
         - numpy==1.15.1
-        - mujoco-py==1.50.1.63
         - nbformat==4.4.0
         - nose==1.3.7
         - Pillow==5.2.0
@@ -62,4 +61,4 @@ dependencies:
         - Werkzeug==0.14.1
         - wheel==0.31.1
         - git+https://github.com/dennisl88/multiworld.git@russell
-        - git+https://github.com/dennisl88/rand_param_envs.git
+          - - git+https://github.com/dennisl88/rand_param_envs.git
