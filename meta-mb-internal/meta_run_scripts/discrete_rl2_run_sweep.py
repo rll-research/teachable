@@ -33,7 +33,7 @@ def run_experiment(**config):
     sess = tf.Session(config=config_sess)
     with sess.as_default() as sess:
         baseline = config['baseline']()
-        e_new = Level_GoToIndexedObj()
+        e_new = Level_GoToIndexedObj(start_loc='bottom')
         teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
         e_new.teacher = teacher
         env = rl2env(normalize(e_new))
@@ -41,8 +41,8 @@ def run_experiment(**config):
         obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
         policy = DiscreteRNNPolicy(
                 name="meta-policy",
-                obs_dim=obs_dim,
                 action_dim=np.prod(env.action_space.n),
+                obs_dim=obs_dim,
                 meta_batch_size=config['meta_batch_size'],
                 hidden_sizes=config['hidden_sizes'],
                 cell_type=config['cell_type']

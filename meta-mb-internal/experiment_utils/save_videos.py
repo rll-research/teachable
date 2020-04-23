@@ -75,6 +75,7 @@ if __name__ == "__main__":
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
                     env = data['env']
+                    env.set_start_loc('bottom')
                     env.use_teacher = True
                     video_filename = pkl_path.split('.')[0] + '.mp4'
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,

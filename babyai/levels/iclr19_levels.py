@@ -6,6 +6,7 @@ import gym
 from .verifier import *
 from .levelgen import *
 from meta_mb.meta_envs.base import MetaEnv
+from gym_minigrid.minigrid import MiniGridEnv
 
 class Level_GoToRedBallGrey(RoomGridLevel):
     """
@@ -67,16 +68,29 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     Go to an object, inside a single room with no doors, no distractors
     """
 
-    def __init__(self, room_size=8, num_dists=5, seed=None):
+    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all'):
+        """
+
+        :param room_size: room side length
+        :param num_dists: number of distractor objects
+        :param seed: random seed
+        :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
+        """
         self.task = ['box', 'red']
         # Number of distractors
         self.num_dists = num_dists
+        assert start_loc in ['top', 'bottom', 'all']
+        self.start_loc = start_loc
         super().__init__(
             num_rows=1,
             num_cols=1,
             room_size=room_size,
             seed=seed
         )
+
+    # Define what starting position to use (train set or hold-out set).  Currently ['top', 'bottom', 'all']
+    def set_start_loc(self, start_loc):
+        self.start_loc = start_loc
 
     def sample_tasks(self, n_tasks):
         tasks = []
@@ -129,7 +143,10 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
 
     # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset. 
     def gen_mission(self):
-        self.place_agent()
+        cutoff = int(self.room_size / 2)
+        top_index = (0, cutoff) if self.start_loc == 'bottom' else (0, 0)
+        bottom_index = (self.room_size, cutoff) if self.start_loc == 'top' else (self.room_size, self.room_size)
+        self.place_agent(top_index=top_index, bottom_index=bottom_index)
 
         # Extract the task
         obj_type = self.task[0]
@@ -149,6 +166,32 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.compute_obj_infos()
         self.check_objs_reachable()
         self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+
+    def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
+        """
+        Place the agent in a room
+        """
+
+        if i is None:
+            i = self._rand_int(0, self.num_cols)
+        if j is None:
+            j = self._rand_int(0, self.num_rows)
+
+        room = self.room_grid[j][i]
+
+        if top_index is None:
+            top_index = room.top
+        if bottom_index is None:
+            bottom_index = room.size
+
+        # Find a position that is not right in front of an object
+        while True:
+            MiniGridEnv.place_agent(self, top_index, bottom_index, rand_dir, max_tries=1000)
+            front_cell = self.grid.get(*self.front_pos)
+            if front_cell is None or front_cell.type is 'wall':
+                break
+
+        return self.agent_pos
 
     def gen_obs(self):
         """
