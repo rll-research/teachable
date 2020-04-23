@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument('--ignore_done', action='store_true',
                         help='Whether stop animation when environment done or continue anyway')
     parser.add_argument('--stochastic', action='store_true', help='Apply stochastic action instead of deterministic')
-    parser.add_argument('--use_teacher', action='store_true', help='Give feedback')
+    parser.add_argument('--feedback_type', type=str, choices=['none', 'random', 'oracle'], default='none', help='Give random feedback (not useful feedback)')
     parser.add_argument('--animated', action='store_true', help='Show video while generating it.')
     parser.add_argument('--reset_every', type=int, default=2,
                         help='How many runs between each rnn state reset.')
@@ -76,6 +76,7 @@ if __name__ == "__main__":
                         policy.switch_to_pre_update()
                     env = data['env']
                     env.set_start_loc('bottom')
+                    env.teacher.set_feedback_type(args.feedback_type)
                     env.use_teacher = True
                     video_filename = pkl_path.split('.')[0] + '.mp4'
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,

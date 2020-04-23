@@ -5,11 +5,12 @@ class Teacher:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
-    def __init__(self, botclass, env, device=None):
+    def __init__(self, botclass, env, device=None, feedback_type='oracle'):
         """
         :param botclass: Oracle class
         :param env: babyai env
         :param device: 'cuda' or 'cpu'
+        :param feedback_type: Specify what feedback type to give. Options: ['oracle', 'random', 'none']
         """
         # TODO: this is pretty sketchy.  To stop the bot from failing, we
         #  (a) reinitialize the oracle every timestep, and
@@ -22,6 +23,7 @@ class Teacher:
         self.next_action = None
         self.agent_actions = []
         self.oracle_actions = []
+        self.feedback_type = feedback_type
         if device is None:
             if torch.cuda.is_available():
                 self.device = 'cuda'
@@ -29,6 +31,15 @@ class Teacher:
                 self.device = 'cpu'
         else:
             self.device = device
+
+    def set_feedback_type(self, feedback_type):
+        """
+        Specify what feedback type to give.  Currently supported options:
+        'oracle' - oracle feedback
+        'random' - random actions
+        'none' - empty action
+        """
+        self.feedback_type = feedback_type
 
     def step(self, agent_action):
         """
@@ -51,10 +62,14 @@ class Teacher:
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
-        if self.feedback_condition():
+        if self.feedback_type == 'none' or not self.feedback_condition():
+            feedback = self.empty_feedback()
+        elif self.feedback_type == 'random':
+            feedback = self.random_feedback()
+        elif self.feedback_type == 'oracle':
             feedback = self.compute_feedback()
         else:
-            feedback = self.empty_feedback()
+            raise ValueError("Unsupported feedback type")
         state = np.concatenate([state, feedback])
         return state
 

@@ -2,7 +2,7 @@
 
 class BatchTeacher:
     """
-    Batched version of the Teacher class.
+    Batched version of the Teacher class.  # TODO: I think there's a way to make it call the func on each teacher by default.
     """
     def __init__(self, teachers):
         self.teachers = teachers
@@ -21,3 +21,6 @@ class BatchTeacher:
 
     def feedback_condition(self):
         return [teacher.feedback_condition() for teacher in self.teachers]
+
+    def set_feedback_type(self, feedback_type):
+        return [teacher.set_feedback_type(feedback_type) for teacher in self.teachers]

@@ -11,6 +11,12 @@ class ActionAdvice(Teacher):
         """
         return np.array([-1])
 
+    def random_feedback(self):
+        """
+        Return a tensor corresponding to no feedback.
+        """
+        return np.array([self.env.action_space.sample()])
+
     def compute_feedback(self):
         """
         Return the expert action from the previous timestep.
