@@ -68,6 +68,8 @@ class RoomGridLevel(RoomGrid):
         elif status is 'failure':
             done = True
             reward = 0
+        info['success'] = 1 if status is 'success' else 0
+        info['episode_length'] = self.step_count
 
         return obs, reward, done, info
 

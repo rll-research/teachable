@@ -54,6 +54,7 @@ if __name__ == "__main__":
     parser.add_argument('--stochastic', action='store_true', help='Apply stochastic action instead of deterministic')
     parser.add_argument('--feedback_type', type=str, choices=['none', 'random', 'oracle'], default='none', help='Give random feedback (not useful feedback)')
     parser.add_argument('--animated', action='store_true', help='Show video while generating it.')
+    parser.add_argument('--start_loc', type=str, choices=['top', 'bottom', 'all'], help='which set of starting points to use (top, bottom, all)')
     parser.add_argument('--reset_every', type=int, default=2,
                         help='How many runs between each rnn state reset.')
     args = parser.parse_args()
@@ -83,6 +84,8 @@ if __name__ == "__main__":
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done,
                                         stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
+                    print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                    print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
                 tf.reset_default_graph()
 
 

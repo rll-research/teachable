@@ -231,6 +231,8 @@ class SampleProcessor(object):
         # compute log stats
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
+        path_length = [path['env_infos']['episode_length'][-1] for path in paths]
+        success = [path['env_infos']['success'][-1] for path in paths]
 
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
@@ -242,6 +244,14 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'StdReturn', np.std(undiscounted_returns))
             logger.logkv(log_prefix + 'MaxReturn', np.max(undiscounted_returns))
             logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
+
+            logger.logkv(log_prefix + 'AverageSuccess', np.mean(success))
+
+            logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))
+            logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
+            logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
+            logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
+
 
         return np.mean(undiscounted_returns)
 
