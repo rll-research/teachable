@@ -18,9 +18,10 @@ from babyai.levels.iclr19_levels import Level_GoToIndexedObj
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
 from babyai.bot import Bot
+import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'teacher_v0'
+EXP_NAME = 'noteacher'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -32,21 +33,29 @@ def run_experiment(**config):
     config_sess.gpu_options.per_process_gpu_memory_fraction = config.get('gpu_frac', 0.95)
     sess = tf.Session(config=config_sess)
     with sess.as_default() as sess:
-        baseline = config['baseline']()
-        e_new = Level_GoToIndexedObj(start_loc='bottom')
-        teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
-        e_new.teacher = teacher
-        env = rl2env(normalize(e_new))
-        obs_dim = e_new.reset().shape[0]
-        obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
-        policy = DiscreteRNNPolicy(
-                name="meta-policy",
-                action_dim=np.prod(env.action_space.n),
-                obs_dim=obs_dim,
-                meta_batch_size=config['meta_batch_size'],
-                hidden_sizes=config['hidden_sizes'],
-                cell_type=config['cell_type']
-            )
+        if config['saved_path'] is not None:
+            saved_model = joblib.load(config['saved_path'])
+            policy = saved_model['policy']
+            baseline = saved_model['baseline']
+            env = saved_model['env']
+            start_itr = saved_model['itr']
+        else:
+            e_new = Level_GoToIndexedObj(start_loc='bottom')
+            teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+            e_new.teacher = teacher
+            env = rl2env(normalize(e_new))
+            obs_dim = env.reset().shape[0]
+            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1  # obs + act + rew + done1
+            policy = DiscreteRNNPolicy(
+                    name="meta-policy",
+                    action_dim=np.prod(env.action_space.n),
+                    obs_dim=obs_dim,
+                    meta_batch_size=config['meta_batch_size'],
+                    hidden_sizes=config['hidden_sizes'],
+                    cell_type=config['cell_type']
+                )
+            baseline = config['baseline']()
+            start_itr = 0
 
         sampler = MetaSampler(
             env=env,
@@ -81,6 +90,7 @@ def run_experiment(**config):
             sample_processor=sample_processor,
             n_itr=config['n_itr'],
             sess=sess,
+            start_itr=start_itr,
         )
         trainer.train()
 
@@ -88,6 +98,8 @@ def run_experiment(**config):
 if __name__ == '__main__':
 
     sweep_params = {
+        'saved_path': [],
+
         'algo': ['rl2'],
         'seed': [1, 2, 3],
 

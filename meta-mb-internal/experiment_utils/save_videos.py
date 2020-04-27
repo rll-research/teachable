@@ -54,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument('--stochastic', action='store_true', help='Apply stochastic action instead of deterministic')
     parser.add_argument('--feedback_type', type=str, choices=['none', 'random', 'oracle'], default='none', help='Give random feedback (not useful feedback)')
     parser.add_argument('--animated', action='store_true', help='Show video while generating it.')
-    parser.add_argument('--start_loc', type=str, choices=['top', 'bottom', 'all'], help='which set of starting points to use (top, bottom, all)')
+    parser.add_argument('--start_loc', type=str, choices=['top', 'bottom', 'all'], help='which set of starting points to use (top, bottom, all)', default='bottom')
     parser.add_argument('--reset_every', type=int, default=2,
                         help='How many runs between each rnn state reset.')
     args = parser.parse_args()
@@ -76,7 +76,7 @@ if __name__ == "__main__":
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
                     env = data['env']
-                    env.set_start_loc('bottom')
+                    env.set_start_loc(args.start_loc)
                     env.teacher.set_feedback_type(args.feedback_type)
                     env.use_teacher = True
                     video_filename = pkl_path.split('.')[0] + '.mp4'
