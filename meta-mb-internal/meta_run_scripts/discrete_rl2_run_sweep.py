@@ -21,7 +21,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'noteacher'
+EXP_NAME = 'teacher_v0'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -40,12 +40,13 @@ def run_experiment(**config):
             env = saved_model['env']
             start_itr = saved_model['itr']
         else:
+            baseline = config['baseline']()
             e_new = Level_GoToIndexedObj(start_loc='bottom')
             teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
             e_new.teacher = teacher
             env = rl2env(normalize(e_new))
-            obs_dim = env.reset().shape[0]
-            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1  # obs + act + rew + done1
+            obs_dim = e_new.reset().shape[0]
+            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
                     name="meta-policy",
                     action_dim=np.prod(env.action_space.n),
@@ -54,7 +55,6 @@ def run_experiment(**config):
                     hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type']
                 )
-            baseline = config['baseline']()
             start_itr = 0
 
         sampler = MetaSampler(
@@ -98,10 +98,9 @@ def run_experiment(**config):
 if __name__ == '__main__':
 
     sweep_params = {
-        'saved_path': [],
-
         'algo': ['rl2'],
         'seed': [1, 2, 3],
+        'saved_path': [None],
 
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
