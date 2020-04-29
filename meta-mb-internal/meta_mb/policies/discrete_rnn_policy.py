@@ -210,7 +210,7 @@ class DiscreteRNNPolicy(Policy):
     def get_zero_state(self, batch_size):
         sess = tf.get_default_session()
         _hidden_state = sess.run(self._zero_hidden)
-        if isinstance(self._hidden_state, tf.contrib.rnn.LSTMStateTuple):
+        if isinstance(_hidden_state, tf.contrib.rnn.LSTMStateTuple):
             hidden_c = np.concatenate([_hidden_state.c] * batch_size)
             hidden_h = np.concatenate([_hidden_state.h] * batch_size)
             hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)

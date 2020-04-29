@@ -94,6 +94,11 @@ class Algo(object):
         adv_ph = tf.placeholder(dtype=tf.float32, shape=adv_shape, name=prefix + '_advantage')
         all_phs_dict['%s_%s' % (prefix, 'advantages')] = adv_ph
 
+        # TODO: Add in the raw reward ph
+        r_shape = [None] if not recurrent else [None, None]
+        r_ph = tf.placeholder(dtype=tf.float32, shape=r_shape, name=prefix + '_rewards')
+        all_phs_dict['%s_%s' % (prefix, 'rewards')] = r_ph
+
         # distribution / agent info
         dist_info_ph_dict = {}
         for info_key, shape in dist_info_specs:
@@ -102,15 +107,20 @@ class Algo(object):
             all_phs_dict['%s_agent_infos/%s' % (prefix, info_key)] = ph
             dist_info_ph_dict[info_key] = ph
 
+
+        obs_r_shape = [None, self.policy.obs_dim - 1] if not recurrent else [None, None, self.policy.obs_dim - 1]
+        obs_r_ph = tf.placeholder(dtype=tf.float32, shape=obs_r_shape, name=prefix + '_env_infos/next_obs_rewardfree')
+        all_phs_dict['%s_%s' % (prefix, 'env_infos/next_obs_rewardfree')] = obs_r_ph
+
         if not next_obs:
-            return obs_ph, action_ph, adv_ph, dist_info_ph_dict, all_phs_dict
+            return obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict
 
         else:
             obs_shape = [None, self.policy.obs_dim] if not recurrent else [None, None, self.policy.obs_dim]
             next_obs_ph = tf.placeholder(dtype=tf.float32, shape=obs_shape, name=prefix + '_obs')
             all_phs_dict['%s_%s' % (prefix, 'next_observations')] = next_obs_ph
 
-        return obs_ph, action_ph, next_obs_ph, adv_ph, dist_info_ph_dict, all_phs_dict
+        return obs_ph, action_ph, next_obs_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict
 
     def _extract_input_dict(self, samples_data, keys, prefix=''):
         """

@@ -30,9 +30,14 @@ class PPO(Algo, Serializable):
             learning_rate=1e-3,
             clip_eps=0.2,
             max_epochs=5,
+            max_epochs_r = 100,
             entropy_bonus=0.,
+            reward_predictor=None,
             **kwargs
             ):
+
+        # TODO: Check to avoid duplicates of variables and scopes
+        self.reward_predictor = reward_predictor
         Serializable.quick_init(self, locals())
         super(PPO, self).__init__(policy)
 
@@ -41,9 +46,13 @@ class PPO(Algo, Serializable):
             backprop_steps = kwargs.get('backprop_steps', 32)
             self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs,
                                                     backprop_steps=backprop_steps)
+            if self.reward_predictor is not None:
+                self.optimizer_r = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs_r, backprop_steps=backprop_steps)
         else:
             self.optimizer = FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
-        self._optimization_keys = ['observations', 'actions', 'advantages', 'agent_infos']
+        # TODO figure out what this does
+        self._optimization_keys = ['observations', 'actions', 'advantages', 'rewards', 'agent_infos', 'env_infos']
+        self._optimization_r_keys = ['observations', 'actions', 'advantages', 'rewards', 'agent_infos', 'env_infos']
         self.name = name
         self._clip_eps = clip_eps
         self.entropy_bonus = entropy_bonus
@@ -74,13 +83,16 @@ class PPO(Algo, Serializable):
             discrete = True
         else:
             discrete = False
-        obs_ph, action_ph, adv_ph, dist_info_old_ph, all_phs_dict = self._make_input_placeholders('train',
+        obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_old_ph, all_phs_dict = self._make_input_placeholders('train',
                                                                                                   recurrent=self.recurrent, 
                                                                                                   discrete=discrete)
         self.op_phs_dict.update(all_phs_dict)
 
         if self.recurrent:
             distribution_info_vars, hidden_ph, next_hidden_var = self.policy.distribution_info_sym(obs_ph)
+            # TODO: Check if anything is problematic here, when obs is concatenating previous reward
+            if self.reward_predictor is not None:
+                distribution_info_vars_r, hidden_ph_r, next_hidden_var_r = self.reward_predictor.distribution_info_sym(obs_r_ph)
         else:
             distribution_info_vars = self.policy.distribution_info_sym(obs_ph)
             hidden_ph, next_hidden_var = None, None
@@ -97,6 +109,15 @@ class PPO(Algo, Serializable):
         # TODO: Check that the discrete entropy looks fine
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
+        if self.reward_predictor is not None:
+            r_obj =  -tf.reduce_mean(self.reward_predictor.distribution.log_likelihood_sym(tf.cast(r_ph, tf.int32), distribution_info_vars_r))
+            self.optimizer_r.build_graph(
+                loss=r_obj,
+                target=self.reward_predictor,
+                input_ph_dict=self.op_phs_dict, # TODO: Check this
+                hidden_ph=hidden_ph_r,
+                next_hidden_var=next_hidden_var_r
+            )
 
         self.optimizer.build_graph(
             loss=surr_obj,
@@ -129,6 +150,32 @@ class PPO(Algo, Serializable):
         if log:
             logger.logkv(prefix+'LossBefore', loss_before)
             logger.logkv(prefix+'LossAfter', loss_after)
+
+
+    def optimize_reward(self, samples_data, log=True, prefix='', verbose=False):
+        """
+        Performs MAML outer step
+
+        Args:
+            samples_data (list) : list of lists of lists of samples (each is a dict) split by gradient update and
+             meta task
+            log (bool) : whether to log statistics
+
+        Returns:
+            None
+        """
+        input_dict = self._extract_input_dict(samples_data, self._optimization_r_keys, prefix='train')
+
+        if verbose: logger.log("Optimizing")
+        loss_before = self.optimizer_r.optimize(input_val_dict=input_dict)
+
+        if verbose: logger.log("Computing statistics")
+        loss_after = self.optimizer_r.loss(input_val_dict=input_dict)
+
+        if log:
+            logger.logkv(prefix+'RewardLossBefore', loss_before)
+            logger.logkv(prefix+'RewardLossAfter', loss_after)
+
 
     def __getstate__(self):
         state = dict()

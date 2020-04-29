@@ -95,6 +95,8 @@ class Trainer(object):
                 # This needs to take all samples_data so that it can construct graph for meta-optimization.
                 time_optimization_step_start = time.time()
                 self.algo.optimize_policy(samples_data)
+                # TODO: Make sure we optimize this for more steps
+                self.algo.optimize_reward(samples_data)
 
                 """ ------------------- Logging Stuff --------------------------"""
                 logger.logkv('Itr', itr)

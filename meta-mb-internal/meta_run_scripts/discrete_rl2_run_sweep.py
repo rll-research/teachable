@@ -21,7 +21,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'teacher_v0'
+EXP_NAME = 'rubbish'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -41,10 +41,10 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            e_new = Level_GoToIndexedObj(start_loc='bottom')
+            e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=0)
             teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
             e_new.teacher = teacher
-            env = rl2env(normalize(e_new))
+            env = rl2env(normalize(e_new), ceil_reward=True)
             obs_dim = e_new.reset().shape[0]
             obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
@@ -55,6 +55,14 @@ def run_experiment(**config):
                     hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type']
                 )
+            reward_predictor = DiscreteRNNPolicy(
+                name="reward-predictor",
+                action_dim=2,
+                obs_dim=obs_dim - 1,
+                meta_batch_size=config['meta_batch_size'],
+                hidden_sizes=config['hidden_sizes'],
+                cell_type=config['cell_type']
+            )
             start_itr = 0
 
         sampler = MetaSampler(
@@ -80,6 +88,7 @@ def run_experiment(**config):
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
+            reward_predictor=reward_predictor
         )
 
         trainer = Trainer(
