@@ -5,6 +5,12 @@ import tensorflow as tf
 import argparse
 from meta_mb.samplers.utils import rollout
 from experiment_utils.utils import load_exps_data
+from babyai.levels.iclr19_levels import Level_GoToIndexedObj
+from babyai.oracle.batch_teacher import BatchTeacher
+from babyai.oracle.action_advice import ActionAdvice
+from babyai.bot import Bot
+from meta_mb.meta_envs.rl2_env import rl2env
+from meta_mb.envs.normalized_env import normalize
 
 """
  python /home/ignasi/GitRepos/meta-mb/experiment_utils/save_videos.py data/s3/mbmpo-pieter/ --speedup 4 -n 1 --max_path_length 300 --ignore_done
@@ -45,6 +51,11 @@ if __name__ == "__main__":
                         help='Speedup')
     parser.add_argument('--gap_pkl', type=int, default=1,
                         help='Gap between pkl policies')
+    parser.add_argument('--grid_size', type=int, default=None,
+                        help='Length of size of grid')
+    parser.add_argument('--holdout_obj', action='store_true')
+    parser.add_argument('--num_dists', type=int, default=None,
+                        help='Number of distractors')
     parser.add_argument('--max_pkl', type=int, default=None,
                         help='Maximum value of the pkl policies')
     parser.add_argument('--prompt', type=bool, default=False,
@@ -75,8 +86,18 @@ if __name__ == "__main__":
                     policy = data['policy']
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
-                    env = data['env']
-                    env.set_start_loc(args.start_loc)
+                    env_args = {
+                        'start_loc': args.start_loc,
+                        'include_holdout_obj': args.holdout_obj
+                    }
+                    if args.grid_size is not None:
+                        env_args['room_size'] = args.grid_size
+                    if args.num_dists is not None:
+                        env_args['num_dists'] = args.num_dists
+                    e_new = Level_GoToIndexedObj(**env_args)
+                    teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                    e_new.teacher = teacher
+                    env = rl2env(normalize(e_new))
                     env.teacher.set_feedback_type(args.feedback_type)
                     env.use_teacher = True
                     video_filename = pkl_path.split('.')[0] + '.mp4'
