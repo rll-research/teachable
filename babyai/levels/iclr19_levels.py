@@ -68,7 +68,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     Go to an object, inside a single room with no doors, no distractors
     """
 
-    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all'):
+    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all', include_holdout_obj=True):
         """
 
         :param room_size: room side length
@@ -87,6 +87,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
             room_size=room_size,
             seed=seed
         )
+        self.include_holdout_obj = include_holdout_obj
 
     # Define what starting position to use (train set or hold-out set).  Currently ['top', 'bottom', 'all']
     def set_start_loc(self, start_loc):
@@ -96,16 +97,20 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         tasks = []
         # Different tasks are picking up different objects
         for i in range(n_tasks):
-            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
-            obj_type = np.random.choice(['key', 'ball', 'box'])
+            if self.include_holdout_obj:
+                color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
+                obj_type = np.random.choice(['key', 'ball', 'box'])
+            else:
+                color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
+                obj_type = np.random.choice(['box', 'ball'])
             task = np.array([obj_type, color])
             tasks.append(task)
         return np.asarray(tasks)
 
-    # Convert a task into a vecor
+    # Convert a task into a vector
     def mission_to_index(self, task):
         c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
-        t_idx = ['key', 'ball', 'box'].index(task[0])
+        t_idx = ['box', 'key', 'ball', ].index(task[0])
         return np.array([t_idx, c_idx])
 
     # Functions fo RL2
