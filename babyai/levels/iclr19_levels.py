@@ -65,7 +65,7 @@ class Level_GoToRedBall(RoomGridLevel):
 
 class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     """
-    Go to an object, inside a single room with no doors, no distractors
+    Go to an object, inside a single room with no doors, some distractors
     """
 
     def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all', include_holdout_obj=True, obstacle_representation=False):
@@ -76,13 +76,13 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         :param seed: random seed
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         """
-        self.task = ['box', 'red']
-        # Number of distractors
+        assert start_loc in ['top', 'bottom', 'all']
+        self.start_loc = start_loc
         self.num_dists = num_dists
         self.include_holdout_obj = include_holdout_obj
         self.obstacle_representation = obstacle_representation
-        assert start_loc in ['top', 'bottom', 'all']
-        self.start_loc = start_loc
+        self.task = self.sample_tasks(1)[0]
+        # Number of distractors
         super().__init__(
             num_rows=1,
             num_cols=1,
@@ -111,7 +111,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     # Convert a task into a vector
     def mission_to_index(self, task):
         c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
-        t_idx = ['box', 'key', 'ball', ].index(task[0])
+        t_idx = ['box', 'ball', 'key'].index(task[0])
         return np.array([t_idx, c_idx])
 
     # Functions fo RL2

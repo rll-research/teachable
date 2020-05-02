@@ -56,6 +56,8 @@ if __name__ == "__main__":
     parser.add_argument('--holdout_obj', action='store_true')
     parser.add_argument('--num_dists', type=int, default=None,
                         help='Number of distractors')
+    parser.add_argument('--use-teacher', action='store_true',
+                        help='Whether to use a teacher')
     parser.add_argument('--obstacle_representation', action='store_true',
                         help='Whether to use the obstacle representation; default is partially-observable grid representation')
     parser.add_argument('--max_pkl', type=int, default=None,
@@ -98,11 +100,13 @@ if __name__ == "__main__":
                     if args.num_dists is not None:
                         env_args['num_dists'] = args.num_dists
                     e_new = Level_GoToIndexedObj(**env_args)
-                    teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
-                    e_new.teacher = teacher
+                    e_new.use_teacher = args.use_teacher
+                    if args.use_teacher:
+                        teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                        e_new.teacher = teacher
+                        e_new.teacher.set_feedback_type(args.feedback_type)
                     env = rl2env(normalize(e_new))
-                    env.teacher.set_feedback_type(args.feedback_type)
-                    env.use_teacher = True
+
                     video_filename = pkl_path.split('.')[0] + '.mp4'
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done,
