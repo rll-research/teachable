@@ -56,6 +56,8 @@ if __name__ == "__main__":
     parser.add_argument('--holdout_obj', action='store_true')
     parser.add_argument('--num_dists', type=int, default=None,
                         help='Number of distractors')
+    parser.add_argument('--obstacle_representation', action='store_true',
+                        help='Whether to use the obstacle representation; default is partially-observable grid representation')
     parser.add_argument('--max_pkl', type=int, default=None,
                         help='Maximum value of the pkl policies')
     parser.add_argument('--prompt', type=bool, default=False,
@@ -88,7 +90,8 @@ if __name__ == "__main__":
                         policy.switch_to_pre_update()
                     env_args = {
                         'start_loc': args.start_loc,
-                        'include_holdout_obj': args.holdout_obj
+                        'include_holdout_obj': args.holdout_obj,
+                        'obstacle_representation': args.obstacle_representation,
                     }
                     if args.grid_size is not None:
                         env_args['room_size'] = args.grid_size

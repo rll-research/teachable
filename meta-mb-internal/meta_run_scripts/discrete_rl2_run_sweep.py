@@ -21,7 +21,8 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'teacher_5dists_holdout_obj'
+EXP_NAME = 'noteacher_newstate_5dists_holdout_obj'
+# EXP_NAME = 'debug'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -41,7 +42,7 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=config['num_dists'], include_holdout_obj=False)
+            e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=config['num_dists'], include_holdout_obj=False, obstacle_representation=config['obstacle_representation'])
             if config["use_teacher"]:
                 teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
                 e_new.teacher = teacher
@@ -104,6 +105,7 @@ if __name__ == '__main__':
         'saved_path': [None],
         'num_dists': [5],
         'use_teacher': [True],
+        'obstacle_representation': [False],
 
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],

@@ -68,7 +68,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     Go to an object, inside a single room with no doors, no distractors
     """
 
-    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all', include_holdout_obj=True):
+    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all', include_holdout_obj=True, obstacle_representation=False):
         """
 
         :param room_size: room side length
@@ -79,6 +79,8 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.task = ['box', 'red']
         # Number of distractors
         self.num_dists = num_dists
+        self.include_holdout_obj = include_holdout_obj
+        self.obstacle_representation = obstacle_representation
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
         super().__init__(
@@ -87,7 +89,6 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
             room_size=room_size,
             seed=seed
         )
-        self.include_holdout_obj = include_holdout_obj
 
     # Define what starting position to use (train set or hold-out set).  Currently ['top', 'bottom', 'all']
     def set_start_loc(self, start_loc):
@@ -228,9 +229,10 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         }
         # Compute the object infos
         self.compute_obj_infos()
+        grid_representation = self.obj_infos if self.obstacle_representation else image.flatten()
         obs = np.concatenate([[obs_dict['direction']], 
-                               obs_dict['agent_pos'], 
-                               self.obj_infos,
+                               obs_dict['agent_pos'],
+                               grid_representation,
                                self.mission_to_index(self.task)])
         return obs
 
