@@ -44,7 +44,6 @@ class MetaSampler(BaseSampler):
         self.total_timesteps_sampled = 0
 
         # setup vectorized environment
-
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
         else:
@@ -54,13 +53,9 @@ class MetaSampler(BaseSampler):
         """
         Samples a new goal for each meta task
         """
-        tasks = self.env.sample_tasks(self.meta_batch_size)
-        assert len(tasks) == self.meta_batch_size
-        self.vec_env.set_tasks(tasks)
+        # We can reset tasks internally within the envs, so we don't need to sample them here.
+        self.vec_env.set_tasks([None] * self.meta_batch_size)
 
-    def set_tasks(self, tasks):
-        assert len(tasks) == self.meta_batch_size
-        self.vec_env.set_tasks(tasks)
 
     def obtain_samples(self, log=False, log_prefix='', random=False):
         """

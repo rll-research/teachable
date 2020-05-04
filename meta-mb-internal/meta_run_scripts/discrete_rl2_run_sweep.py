@@ -42,7 +42,14 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=config['num_dists'], include_holdout_obj=False, obstacle_representation=config['obstacle_representation'])
+            e_new = Level_GoToIndexedObj(start_loc='bottom',
+                                         num_dists=config['num_dists'],
+                                         include_holdout_obj=False,
+                                         obstacle_representation=config['obstacle_representation'],
+                                         persist_goal=config['persist_goal'],
+                                         persist_objs=config['persist_objs'],
+                                         persist_agent=config['persist_agent'],
+                                         )
             if config["use_teacher"]:
                 teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
                 e_new.teacher = teacher
@@ -106,6 +113,9 @@ if __name__ == '__main__':
         'num_dists': [5],
         'use_teacher': [True],
         'obstacle_representation': [False],
+        'persist_goal': [True],
+        'persist_objs': [True],
+        'persist_agent': [True],
 
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
