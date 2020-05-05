@@ -30,7 +30,7 @@ class PPO(Algo, Serializable):
             learning_rate=1e-3,
             clip_eps=0.2,
             max_epochs=5,
-            max_epochs_r = 100,
+            max_epochs_r = 20,
             entropy_bonus=0.,
             reward_predictor=None,
             **kwargs
@@ -110,7 +110,7 @@ class PPO(Algo, Serializable):
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
-            r_obj =  -tf.reduce_mean(self.reward_predictor.distribution.log_likelihood_sym(tf.cast(r_ph, tf.int32), distribution_info_vars_r))
+            r_obj =  -tf.reduce_mean(tf.exp(5*r_ph)*self.reward_predictor.distribution.log_likelihood_sym(tf.cast(r_ph, tf.int32), distribution_info_vars_r))
             self.optimizer_r.build_graph(
                 loss=r_obj,
                 target=self.reward_predictor,

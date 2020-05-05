@@ -46,6 +46,7 @@ class RoomGridLevel(RoomGrid):
         
         # TODO: Un-hardcode this
         if hasattr(self, 'teacher') and self.teacher is not None:
+            self.teacher.reset()
             feedback = self.teacher.empty_feedback()[0]
             obs = np.concatenate([obs, feedback])
         return obs

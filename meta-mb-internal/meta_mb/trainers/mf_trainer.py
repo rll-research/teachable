@@ -31,6 +31,8 @@ class Trainer(object):
             start_itr=0,
             task=None,
             sess=None,
+            use_rp_inner=False,
+            use_rp_outer=False,
             ):
         self.algo = algo
         self.env = env
@@ -44,6 +46,8 @@ class Trainer(object):
         if sess is None:
             sess = tf.Session()
         self.sess = sess
+        self.use_rp_inner = use_rp_inner
+        self.use_rp_outer = use_rp_outer
 
     def train(self):
         """
@@ -83,6 +87,17 @@ class Trainer(object):
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train-')
                 proc_samples_time = time.time() - time_proc_samples_start
+
+                """ ------------------ Reward Predictor Splicing ---------------------"""
+                r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                # Splice into the inference process
+                if self.use_rp_inner:
+                    samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
+                # Splice into the meta-learning process
+                if self.use_rp_outer:
+                    samples_data['rewards'] = logprobs[:, :, 1]   
+                
+                """ ------------------ End Reward Predictor Splicing ---------------------"""
 
                 if type(paths) is list:
                     self.log_diagnostics(paths, prefix='train-')
@@ -125,7 +140,10 @@ class Trainer(object):
         """
         Gets the current policy and env for storage
         """
-        return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline)
+        if self.algo.reward_predictor is not None:
+            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline)
+        else:
+            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline, reward_predictor=self.algo.reward_predictor)
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far

@@ -125,11 +125,19 @@ class DiscreteRNNPolicy(Policy):
         assert probs.ndim == 3 and probs.shape[-1] == self.action_dim
         
         action_idx = np.repeat(np.arange(self.action_dim)[None, :], probs.shape[0], axis=0)
-        actions = self.weighted_sample_n(np.squeeze(probs, axis=1), action_idx)[:, None, None]
-
-        probs = probs[:, 0, :]
-        assert actions.shape == (observations.shape[0], 1, 1)
-        agent_infos = [[dict(probs=prob)] for prob in probs]
+        if probs.shape[1] != 1:
+            actions = []
+            for idx in range(probs.shape[1]):  
+                actions_curr = self.weighted_sample_n(probs[:, idx, :], action_idx)[:, None, None]
+                actions.append(actions_curr)
+            actions = np.array(actions)[:, :, :, 0]
+            actions = np.transpose(actions, [1, 0, 2])
+            agent_infos = probs
+        else:
+            actions = self.weighted_sample_n(np.squeeze(probs, axis=1), action_idx)[:, None, None]
+            probs = probs[:, 0, :]
+            # assert actions.shape == (observations.shape[0], 1, 1)
+            agent_infos = [[dict(probs=prob)] for prob in probs]
         return actions, agent_infos
 
     def log_diagnostics(self, paths, prefix=''):

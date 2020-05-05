@@ -24,3 +24,6 @@ class BatchTeacher:
 
     def set_feedback_type(self, feedback_type):
         return [teacher.set_feedback_type(feedback_type) for teacher in self.teachers]
+
+    def reset(self):
+        [teacher.reset() for teacher in self.teachers]
