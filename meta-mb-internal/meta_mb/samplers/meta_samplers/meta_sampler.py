@@ -32,7 +32,7 @@ class MetaSampler(BaseSampler):
             max_path_length,
             envs_per_task=None,
             parallel=False,
-
+            reward_predictor=None,
             ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
@@ -42,7 +42,7 @@ class MetaSampler(BaseSampler):
         self.total_samples = meta_batch_size * rollouts_per_meta_task * max_path_length
         self.parallel = parallel
         self.total_timesteps_sampled = 0
-
+        self.reward_predictor = reward_predictor
         # setup vectorized environment
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
@@ -83,7 +83,8 @@ class MetaSampler(BaseSampler):
 
         policy = self.policy
         policy.reset(dones=[True] * self.meta_batch_size)
-
+        if self.reward_predictor is not None:
+            self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
         obses = self.vec_env.reset()
         

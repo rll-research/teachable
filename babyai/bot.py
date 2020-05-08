@@ -593,8 +593,14 @@ class Bot:
             suggested_action = self.mission.actions.done
 
         self._remember_current_state()
-
         return suggested_action
+
+    def shortest_path_obj(self):
+        target_pos = self.mission.obj_pos
+        path, _, _ = self._nonblind_shortest_path(
+            lambda pos, cell: pos == tuple(target_pos),
+        )
+        return path
 
     def _find_obj_pos(self, obj_desc, adjacent=False):
         """Find the position of the closest visible object matching a given description."""
@@ -707,6 +713,65 @@ class Bot:
                 return distance
             distance += 1
 
+    def _nonblind_breadth_first_search(self, initial_states, accept_fn, ignore_blockers):
+        """Performs breadth first search.
+
+        This is pretty much your textbook BFS. The state space is agent's locations,
+        but the current direction is also added to the queue to slightly prioritize
+        going straight over turning.
+
+        """
+        self.bfs_counter += 1
+
+        queue = [(state, None) for state in initial_states]
+        grid = self.mission.grid
+        previous_pos = dict()
+
+        while len(queue) > 0:
+            state, prev_pos = queue[0]
+            queue = queue[1:]
+            i, j, di, dj = state
+
+            if (i, j) in previous_pos:
+                continue
+
+            self.bfs_step_counter += 1
+
+            cell = grid.get(i, j)
+            previous_pos[(i, j)] = prev_pos
+
+            # If we reached a position satisfying the acceptance condition
+            if accept_fn((i, j), cell):
+                path = []
+                pos = (i, j)
+                while pos:
+                    path.append(pos)
+                    pos = previous_pos[pos]
+                return path, (i, j), previous_pos
+
+            if cell:
+                if cell.type == 'wall':
+                    continue
+                # If this is a door
+                elif cell.type == 'door':
+                    # If the door is closed, don't visit neighbors
+                    if not cell.is_open:
+                        continue
+                elif not ignore_blockers:
+                    continue
+
+            # Location to which the bot can get without turning
+            # are put in the queue first
+            for k, l in [(di, dj), (dj, di), (-dj, -di), (-di, -dj)]:
+                next_pos = (i + k, j + l)
+                next_dir_vec = (k, l)
+                next_state = (*next_pos, *next_dir_vec)
+                queue.append((next_state, (i, j)))
+
+        # Path not found
+        return None, None, previous_pos
+
+        
     def _breadth_first_search(self, initial_states, accept_fn, ignore_blockers):
         """Performs breadth first search.
 
@@ -768,6 +833,25 @@ class Bot:
 
         # Path not found
         return None, None, previous_pos
+
+    def _nonblind_shortest_path(self, accept_fn, try_with_blockers=False):
+        """
+        Finds the path to any of the locations that satisfy `accept_fn`.
+        Prefers the paths that avoid blockers for as long as possible.
+        """
+
+        # Initial states to visit (BFS)
+        initial_states = [(*self.mission.agent_pos, *self.mission.dir_vec)]
+        path = finish = None
+        with_blockers = False
+        path, finish, previous_pos = self._nonblind_breadth_first_search(
+            initial_states, accept_fn, ignore_blockers=True)
+        if path:
+            path = path[::-1]
+            path = path[1:]
+
+        return path, finish, with_blockers
+
 
     def _shortest_path(self, accept_fn, try_with_blockers=False):
         """

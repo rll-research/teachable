@@ -292,6 +292,18 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.teacher.step([action])
         return results
 
+    def reset(self):
+        if self.teacher is not None:
+            self.teacher.reset()
+        obs = super().reset()
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            if self.dropout_correction:
+                correction = self.teacher.give_feedback([obs])[0]
+            else:
+                correction = self.teacher.empty_feedback()[0]
+            obs = np.concatenate([obs, correction])
+        return obs
+
 class Level_GoToRedBallNoDists(Level_GoToRedBall):
     """
     Go to the red ball. No distractors present.

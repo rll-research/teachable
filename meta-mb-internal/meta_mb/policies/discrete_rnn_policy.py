@@ -125,11 +125,19 @@ class DiscreteRNNPolicy(Policy):
         assert probs.ndim == 3 and probs.shape[-1] == self.action_dim
         
         action_idx = np.repeat(np.arange(self.action_dim)[None, :], probs.shape[0], axis=0)
-        actions = self.weighted_sample_n(np.squeeze(probs, axis=1), action_idx)[:, None, None]
-
-        probs = probs[:, 0, :]
-        assert actions.shape == (observations.shape[0], 1, 1)
-        agent_infos = [[dict(probs=prob)] for prob in probs]
+        if probs.shape[1] != 1:
+            actions = []
+            for idx in range(probs.shape[1]):  
+                actions_curr = self.weighted_sample_n(probs[:, idx, :], action_idx)[:, None, None]
+                actions.append(actions_curr)
+            actions = np.array(actions)[:, :, :, 0]
+            actions = np.transpose(actions, [1, 0, 2])
+            agent_infos = probs
+        else:
+            actions = self.weighted_sample_n(np.squeeze(probs, axis=1), action_idx)[:, None, None]
+            probs = probs[:, 0, :]
+            # assert actions.shape == (observations.shape[0], 1, 1)
+            agent_infos = [[dict(probs=prob)] for prob in probs]
         return actions, agent_infos
 
     def log_diagnostics(self, paths, prefix=''):
@@ -210,7 +218,7 @@ class DiscreteRNNPolicy(Policy):
     def get_zero_state(self, batch_size):
         sess = tf.get_default_session()
         _hidden_state = sess.run(self._zero_hidden)
-        if isinstance(self._hidden_state, tf.contrib.rnn.LSTMStateTuple):
+        if isinstance(_hidden_state, tf.contrib.rnn.LSTMStateTuple):
             hidden_c = np.concatenate([_hidden_state.c] * batch_size)
             hidden_h = np.concatenate([_hidden_state.h] * batch_size)
             hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)

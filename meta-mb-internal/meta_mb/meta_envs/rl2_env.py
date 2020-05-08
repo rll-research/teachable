@@ -42,7 +42,9 @@ class RL2Env(Serializable):
                  obs_alpha=0.001,
                  reward_alpha=0.001,
                  normalization_scale=10.,
+                 ceil_reward=False,
                  ):
+        self.ceil_reward = ceil_reward
         Serializable.quick_init(self, locals())
 
         self._wrapped_env = env
@@ -89,11 +91,15 @@ class RL2Env(Serializable):
     def step(self, action):
         wrapped_step = self._wrapped_env.step(action)
         next_obs, reward, done, info = wrapped_step
+        if self.ceil_reward:
+            reward = np.ceil(reward) # Send it to 1
         if isinstance(self._wrapped_env.action_space, Discrete):
             ac_idx = action
             action = np.zeros((self._wrapped_env.action_space.n,))
             action[ac_idx] = 1.0
+        next_obs_rewardfree = np.concatenate([next_obs, action, [done]]).copy()
         next_obs = np.concatenate([next_obs, action, [reward], [done]]).copy()
+        info['next_obs_rewardfree'] = next_obs_rewardfree
         return next_obs, reward, done, info
 
 

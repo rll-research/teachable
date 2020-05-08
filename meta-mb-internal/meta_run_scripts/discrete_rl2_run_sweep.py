@@ -17,12 +17,16 @@ import tensorflow as tf
 from babyai.levels.iclr19_levels import Level_GoToIndexedObj 
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.cartesian_corrections import CartesianCorrections
+from babyai.oracle.physical_correction import PhysicalCorrections
+from babyai.oracle.landmark_correction import LandmarkCorrection
+from babyai.oracle.demo_corrections import DemoCorrections
+
 from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
-# EXP_NAME = 'debug'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -33,6 +37,7 @@ def run_experiment(**config):
     config_sess.gpu_options.allow_growth = True
     config_sess.gpu_options.per_process_gpu_memory_fraction = config.get('gpu_frac', 0.95)
     sess = tf.Session(config=config_sess)
+    reward_predictor = None
     with sess.as_default() as sess:
         if config['saved_path'] is not None:
             saved_model = joblib.load(config['saved_path'])
@@ -52,10 +57,23 @@ def run_experiment(**config):
                                          dropout_goal=config['dropout_goal'],
                                          dropout_correction=config['dropout_correction'],
                                          )
-            if config["use_teacher"]:
-                teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
-                e_new.teacher = teacher
-            env = rl2env(normalize(e_new))
+            feedback_class = None
+            if config["feedback_type"] is None:
+                teacher = None
+            else:
+                if config["feedback_type"] == 'ActionAdvice':
+                    teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                elif config["feedback_type"] == 'DemoCorrections':
+                    teacher = BatchTeacher([DemoCorrections(Bot, e_new)])
+                elif config["feedback_type"] == 'LandmarkCorrection':
+                    teacher = BatchTeacher([LandmarkCorrection(Bot, e_new)])
+                elif config["feedback_type"] == 'CartesianCorrections':
+                    teacher = BatchTeacher([CartesianCorrections(Bot, e_new)])
+                elif config["feedback_type"] == 'PhysicalCorrections':
+                    teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
+            e_new.teacher = teacher
+            # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
+            env = rl2env(normalize(e_new), ceil_reward=True)
             obs_dim = e_new.reset().shape[0]
             obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
@@ -66,6 +84,14 @@ def run_experiment(**config):
                     hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type']
                 )
+            reward_predictor = DiscreteRNNPolicy(
+                name="reward-predictor",
+                action_dim=2,
+                obs_dim=obs_dim - 1,
+                meta_batch_size=config['meta_batch_size'],
+                hidden_sizes=config['hidden_sizes'],
+                cell_type=config['cell_type']
+            )
             start_itr = 0
 
         sampler = MetaSampler(
@@ -76,6 +102,7 @@ def run_experiment(**config):
             max_path_length=config['max_path_length'],
             parallel=config['parallel'],
             envs_per_task=1,
+            reward_predictor=reward_predictor
         )
 
         sample_processor = RL2SampleProcessor(
@@ -91,6 +118,7 @@ def run_experiment(**config):
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
+            reward_predictor=reward_predictor
         )
 
         trainer = Trainer(
@@ -140,6 +168,7 @@ if __name__ == '__main__':
         "n_itr": [1000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
+        "feedback_type": ['ActionAdvice']
         #'timeskip': [1, 2, 3, 4]
     }
     run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)
