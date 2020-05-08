@@ -21,7 +21,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'noteacher_newstate_5dists_holdout_obj'
+EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
 # EXP_NAME = 'debug'
 
 def run_experiment(**config):
@@ -49,6 +49,8 @@ def run_experiment(**config):
                                          persist_goal=config['persist_goal'],
                                          persist_objs=config['persist_objs'],
                                          persist_agent=config['persist_agent'],
+                                         dropout_goal=config['dropout_goal'],
+                                         dropout_correction=config['dropout_correction'],
                                          )
             if config["use_teacher"]:
                 teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
@@ -116,6 +118,8 @@ if __name__ == '__main__':
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
+        'dropout_goal': [0.5],
+        'dropout_correction': [0.5],
 
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],

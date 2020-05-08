@@ -70,7 +70,8 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
 
     def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all',
                  include_holdout_obj=True, obstacle_representation=False,
-                 persist_agent=True, persist_goal=True, persist_objs=True):
+                 persist_agent=True, persist_goal=True, persist_objs=True,
+                 dropout_goal=0, dropout_correction=0):
         """
 
         :param room_size: room side length
@@ -86,6 +87,8 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
         self.persist_objs = persist_objs
+        self.dropout_goal = dropout_goal
+        self.dropout_correction = dropout_correction
         self.task = {}
         # Number of distractors
         super().__init__(
@@ -128,6 +131,8 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
             obj, pos = self.add_object(0, 0, obj_type, color)
             dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
             task['objs'] = {'obj': obj, 'pos': pos, 'dists': dists}
+        task['dropout_goal'] = np.random.uniform() < self.dropout_goal
+        task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
 
         return task
 
@@ -266,11 +271,26 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         # Compute the object infos
         self.compute_obj_infos()
         grid_representation = self.obj_infos if self.obstacle_representation else image.flatten()
+        goal = np.array([self.obj_color, self.obj_type])
+        if self.dropout_goal:
+            goal = -np.ones_like(goal)
         obs = np.concatenate([[obs_dict['direction']], 
                                obs_dict['agent_pos'],
                                grid_representation,
-                               np.array([self.obj_color, self.obj_type])])
-        return obs
+                               goal])
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            if self.dropout_correction:
+                correction = self.teacher.give_feedback([obs])[0]
+            else:
+                correction = self.teacher.empty_feedback()[0]
+            obs = np.concatenate([obs, correction])
+
+        return deepcopy(obs)
+
+    def step(self, action):
+        results = super().step(action)
+        self.teacher.step([action])
+        return results
 
 class Level_GoToRedBallNoDists(Level_GoToRedBall):
     """
