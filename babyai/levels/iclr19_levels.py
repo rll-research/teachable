@@ -5,7 +5,8 @@ Levels described in the ICLR 2019 submission.
 import gym
 from .verifier import *
 from .levelgen import *
-
+from meta_mb.meta_envs.base import MetaEnv
+from gym_minigrid.minigrid import MiniGridEnv
 
 class Level_GoToRedBallGrey(RoomGridLevel):
     """
@@ -62,6 +63,171 @@ class Level_GoToRedBall(RoomGridLevel):
 
         self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
 
+class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
+    """
+    Go to an object, inside a single room with no doors, no distractors
+    """
+
+    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all'):
+        """
+
+        :param room_size: room side length
+        :param num_dists: number of distractor objects
+        :param seed: random seed
+        :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
+        """
+        self.task = ['box', 'red']
+        # Number of distractors
+        self.num_dists = num_dists
+        assert start_loc in ['top', 'bottom', 'all']
+        self.start_loc = start_loc
+        super().__init__(
+            num_rows=1,
+            num_cols=1,
+            room_size=room_size,
+            seed=seed
+        )
+
+    # Define what starting position to use (train set or hold-out set).  Currently ['top', 'bottom', 'all']
+    def set_start_loc(self, start_loc):
+        self.start_loc = start_loc
+
+    def sample_tasks(self, n_tasks):
+        tasks = []
+        # Different tasks are picking up different objects
+        for i in range(n_tasks):
+            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
+            obj_type = np.random.choice(['key', 'ball', 'box'])
+            task = np.array([obj_type, color])
+            tasks.append(task)
+        return np.asarray(tasks)
+
+    # Convert a task into a vecor
+    def mission_to_index(self, task):
+        c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
+        t_idx = ['key', 'ball', 'box'].index(task[0])
+        return np.array([t_idx, c_idx])
+
+    # Functions fo RL2
+    def set_task(self, task):
+        """
+        Args:
+            task: task of the meta-learning environment
+        """
+        self.task = task
+
+    # Functions for RL2
+    def get_task(self):
+        """
+        Returns:
+            task: task of the meta-learning environment
+        """
+        return self.task
+
+    def get_color_idx(self, color):
+        return ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(color)
+
+    def get_type_idx(self, obj_type):
+        return ['key', 'ball', 'box'].index(obj_type)
+
+    # Convert object positions, types, colors into a vector. Always order by the object positions to stay consistent and so it can't actually memorize.
+    def compute_obj_infos(self):
+        self.dist_pos_unwrapped = [d.cur_pos[0]*self.room_size + d.cur_pos[1] for d in self.dists] + \
+                                    [self.obj.cur_pos[0]*self.room_size + self.obj.cur_pos[1]]
+        idx = range(len(self.dist_pos_unwrapped) + 1)
+        self.idx = [x for _,x in sorted(zip(self.dist_pos_unwrapped, idx))]        
+        self.obj_infos = np.concatenate([np.array(self.dist_colors)[self.idx],
+                                         np.array(self.dist_types)[self.idx],
+                                         np.array(self.dist_pos_unwrapped)[self.idx]])
+        return 
+
+    # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset. 
+    def gen_mission(self):
+        cutoff = int(self.room_size / 2)
+        top_index = (0, cutoff) if self.start_loc == 'bottom' else (0, 0)
+        bottom_index = (self.room_size, cutoff) if self.start_loc == 'top' else (self.room_size, self.room_size)
+        self.place_agent(top_index=top_index, bottom_index=bottom_index)
+
+        # Extract the task
+        obj_type = self.task[0]
+        color = self.task[1]
+        obj, pos = self.add_object(0, 0, obj_type, color)
+        self.obj = obj
+        self.obj_pos = pos
+        self.obj_color = self.get_color_idx(obj.color)
+        self.obj_type = self.get_type_idx(obj.type)
+
+        # Generate distractors and get their position, type and color
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
+        self.dists = dists
+        self.dist_colors = [self.get_color_idx(d.color) for d in dists] + [self.obj_color]
+        self.dist_types = [self.get_type_idx(d.type) for d in dists]+ [self.obj_type]
+        self.dist_pos = [d.cur_pos for d in dists]
+        self.compute_obj_infos()
+        self.check_objs_reachable()
+        self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+
+    def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
+        """
+        Place the agent in a room
+        """
+
+        if i is None:
+            i = self._rand_int(0, self.num_cols)
+        if j is None:
+            j = self._rand_int(0, self.num_rows)
+
+        room = self.room_grid[j][i]
+
+        if top_index is None:
+            top_index = room.top
+        if bottom_index is None:
+            bottom_index = room.size
+
+        # Find a position that is not right in front of an object
+        while True:
+            MiniGridEnv.place_agent(self, top_index, bottom_index, rand_dir, max_tries=1000)
+            front_cell = self.grid.get(*self.front_pos)
+            if front_cell is None or front_cell.type is 'wall':
+                break
+
+        return self.agent_pos
+
+    def gen_obs(self):
+        """
+        Generate the agent's view (partially observable, low-resolution encoding)
+        """
+
+        grid, vis_mask = self.gen_obs_grid()
+
+        # Encode the partially observable view into a numpy array
+        image = grid.encode(vis_mask)
+
+        assert hasattr(self, 'mission'), "environments must define a textual mission string"
+
+        # Observations are dictionaries containing:
+        # - an image (partially observable view of the environment)
+        # - the agent's direction/orientation (acting as a compass)
+        # - a textual mission string (instructions for the agent)
+
+        if hasattr(self, 'obj_pos'):
+            obj_pos = self.obj_pos
+        else:
+            obj_pos = np.array([0, 0])
+
+        obs_dict = {
+            'direction': self.agent_dir,
+            'mission': self.mission,
+            'agent_pos': self.agent_pos,
+            'obj_pos': obj_pos
+        }
+        # Compute the object infos
+        self.compute_obj_infos()
+        obs = np.concatenate([[obs_dict['direction']], 
+                               obs_dict['agent_pos'], 
+                               self.obj_infos,
+                               self.mission_to_index(self.task)])
+        return obs
 
 class Level_GoToRedBallNoDists(Level_GoToRedBall):
     """

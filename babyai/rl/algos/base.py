@@ -11,7 +11,7 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info):
+                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, teacher, aux_info):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -65,6 +65,7 @@ class BaseAlgo(ABC):
         self.preprocess_obss = preprocess_obss or default_preprocess_obss
         self.reshape_reward = reshape_reward
         self.aux_info = aux_info
+        self.teacher = teacher
 
         # Store helpers values
 
@@ -130,8 +131,8 @@ class BaseAlgo(ABC):
         """
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
+
             with torch.no_grad():
                 model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
                 dist = model_results['dist']
