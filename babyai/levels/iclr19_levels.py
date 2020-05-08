@@ -69,7 +69,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     """
 
     def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all',
-                 include_holdout_obj=True, obstacle_representation=False,
+                 include_holdout_obj=True,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0):
         """
@@ -83,7 +83,6 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.start_loc = start_loc
         self.num_dists = num_dists
         self.include_holdout_obj = include_holdout_obj
-        self.obstacle_representation = obstacle_representation
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
         self.persist_objs = persist_objs
@@ -270,7 +269,7 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         }
         # Compute the object infos
         self.compute_obj_infos()
-        grid_representation = self.obj_infos if self.obstacle_representation else image.flatten()
+        grid_representation = image.flatten()
         goal = np.array([self.obj_color, self.obj_type])
         if self.dropout_goal:
             goal = -np.ones_like(goal)
