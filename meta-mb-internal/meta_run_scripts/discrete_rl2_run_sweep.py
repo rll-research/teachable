@@ -14,7 +14,8 @@ import numpy as np
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
-from babyai.levels.iclr19_levels import Level_GoToIndexedObj 
+from babyai.levels.iclr19_levels import *
+from babyai.levels.teachable_robot_levels import Level_TeachableRobot
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
@@ -26,7 +27,9 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
+# EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
+EXP_NAME = 'test_working'
+EXP_NAME = 'test_no_instrs_persistgoa'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -47,8 +50,15 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            e_new = Level_GoToIndexedObj(start_loc='bottom',
-                                         num_dists=config['num_dists'],
+            # Level_GoToImpUnlock
+            # Level_Pickup
+            # Level_UnblockPickup
+            # Level_Open
+            # Level_Unlock
+            # Level_PutNext
+            # Level_PickupLoc
+            e_new = Level_GoToLocal(start_loc='bottom',
+                                         # num_dists=config['num_dists'],
                                          include_holdout_obj=False,
                                          persist_goal=config['persist_goal'],
                                          persist_objs=config['persist_objs'],
@@ -56,7 +66,6 @@ def run_experiment(**config):
                                          dropout_goal=config['dropout_goal'],
                                          dropout_correction=config['dropout_correction'],
                                          )
-            feedback_class = None
             if config["feedback_type"] is None:
                 teacher = None
             else:
@@ -72,7 +81,9 @@ def run_experiment(**config):
                     teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
             e_new.teacher = teacher
             # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
-            env = rl2env(normalize(e_new), ceil_reward=True)
+            env = rl2env(normalize(e_new), ceil_reward=False)
+            # env.reset()
+            # env.render(mode="human")
             obs_dim = e_new.reset().shape[0]
             obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
@@ -144,7 +155,7 @@ if __name__ == '__main__':
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
-        'dropout_goal': [0],
+        'dropout_goal': [1],
         'dropout_correction': [0],
 
         'baseline': [LinearFeatureBaseline],

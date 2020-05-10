@@ -18,7 +18,7 @@ class Teacher:
         #  figure out what situations it fails and not generate those.
         self.oracle = botclass(env)
         self.env = env
-        self.env.open_all_doors()
+        # self.env.open_all_doors()
         self.botclass = botclass
         self.next_action = None
         self.agent_actions = []
@@ -47,12 +47,12 @@ class Teacher:
         :param agent_action: The action the agent plans to take.
         """
         # TODO: Currently we open all doors to prevent planning errors. We should fix this.
-        self.env.open_all_doors()
+        # self.env.open_all_doors()
         self.agent_actions.append(agent_action)
         self.oracle_actions.append(self.next_action)
-        new_oracle = self.botclass(self.env)
-        new_oracle.vis_mask = self.oracle.vis_mask
-        self.oracle = new_oracle
+        # new_oracle = self.botclass(self.env)
+        # new_oracle.vis_mask = self.oracle.vis_mask
+        # self.oracle = new_oracle
         self.next_action = self.oracle.replan()
         self.path = self.oracle.shortest_path_obj()
 
@@ -92,4 +92,7 @@ class Teacher:
         raise NotImplementedError
 
     def reset(self):
-        pass
+        self.oracle = self.botclass(self.env)
+        self.next_action = None
+        self.agent_actions = []
+        self.oracle_actions = []
