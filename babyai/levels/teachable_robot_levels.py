@@ -140,47 +140,38 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
     # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset.
     def gen_mission(self):
-        self.place_agent()
-        objs = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
-        self.check_objs_reachable()
-        obj = self._rand_elem(objs)
-        self.objs = objs
-        self.obj_pos = obj.cur_pos
-        self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
 
-    # def gen_mission(self):
-    #
-    #     # First load anything provided in the task
-    #     if 'agent' in self.task:
-    #         self.agent_pos = self.task['agent']['agent_pos']
-    #         self.agent_dir = self.task['agent']['agent_dir']
-    #     if 'mission' in self.task:
-    #         mission = self.task['mission']
-    #     if 'objs' in self.task:
-    #         objs, goal_objs = self.task['objs']
-    #         self.objs = deepcopy(objs)
-    #         self.goal_objs = deepcopy(goal_objs)
-    #         self.place_in_grid(self.objs)
-    #
-    #     # Now randomly sample any required information not in the task
-    #     if not 'agent' in self.task:
-    #         self.add_agent()
-    #     if not 'mission' in self.task:
-    #         mission = self.make_mission()
-    #     if not 'objs' in self.task:
-    #         objs, goal_objs = self.add_objs(mission["task"])
-    #         self.objs = deepcopy(objs)
-    #         self.goal_objs = deepcopy(goal_objs)
-    #
-    #     self.compute_obj_infos()
-    #     self.instrs = mission['instrs']
-    #     if goal_objs is not None:
-    #         # Currently if there are multiple goal objects, we just pick the first one. # TODO: handle multiple goal objs
-    #         if isinstance(goal_objs, tuple):
-    #             goal_obj = goal_objs[0]
-    #         else:
-    #             goal_obj = goal_objs
-    #         self.obj_pos = goal_obj.cur_pos
+        # First load anything provided in the task
+        if 'agent' in self.task:
+            self.agent_pos = self.task['agent']['agent_pos']
+            self.agent_dir = self.task['agent']['agent_dir']
+        if 'mission' in self.task:
+            mission = self.task['mission']
+        if 'objs' in self.task:
+            objs, goal_objs = self.task['objs']
+            self.objs = deepcopy(objs)
+            self.goal_objs = deepcopy(goal_objs)
+            self.place_in_grid(self.objs)
+
+        # Now randomly sample any required information not in the task
+        if not 'agent' in self.task:
+            self.add_agent()
+        if not 'mission' in self.task:
+            mission = self.make_mission()
+        if not 'objs' in self.task:
+            objs, goal_objs = self.add_objs(mission["task"])
+            self.objs = deepcopy(objs)
+            self.goal_objs = deepcopy(goal_objs)
+
+        self.compute_obj_infos()
+        self.instrs = mission['instrs']
+        if goal_objs is not None:
+            # Currently if there are multiple goal objects, we just pick the first one. # TODO: handle multiple goal objs
+            if isinstance(goal_objs, tuple):
+                goal_obj = goal_objs[0]
+            else:
+                goal_obj = goal_objs
+            self.obj_pos = goal_obj.cur_pos
 
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):

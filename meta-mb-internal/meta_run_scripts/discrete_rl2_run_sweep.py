@@ -28,8 +28,9 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
-EXP_NAME = 'test_working'
-EXP_NAME = 'test_no_instrs_persistgoa'
+EXP_NAME = 'test_not_working'
+# EXP_NAME = 'test_no_instrs_persistgoa'
+
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
