@@ -539,18 +539,14 @@ class Level_Unlock(Level_TeachableRobot):
         else:
             self.connect_all()
 
-
-        locked_room = self.room_from_pos(*self.agent_pos)
-        door = random.choice(locked_room.doors)
+        id = self._rand_int(0, self.num_rows)
+        jd = self._rand_int(0, self.num_cols)
+        locked_room = self.get_room(id, jd)
+        # Choose a random door.  There's one for each side, but some are null so we have to filter them
+        door = random.choice([door for door in locked_room.doors if door])
         door.is_open = False
         door.is_locked = True
         door.color = obj_color
-
-        # Obtain the index of the locked room
-        for id in range(self.num_rows):
-            for jd in range(self.num_cols):
-                if self.room_from_pos(id, jd) is locked_room:
-                    break
 
 
         # Add the key to a different room
@@ -579,7 +575,7 @@ class Level_Unlock(Level_TeachableRobot):
                     all_dists += dists
 
         self.check_objs_reachable()
-        return all_dists + self.get_doors(), obj
+        return all_dists + self.get_doors(), door
 
 
 class Level_PutNext(Level_TeachableRobot):

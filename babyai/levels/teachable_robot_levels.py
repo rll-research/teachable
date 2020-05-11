@@ -1,7 +1,8 @@
 from .verifier import *
-from babyai.levels.levelgen import RoomGridLevel
+from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 from meta_mb.meta_envs.base import MetaEnv
 from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
+from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
 
@@ -51,23 +52,36 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
 
     def sample_task(self):
-        # Reset the grid first
-        self._gen_grid(self.width, self.height)
+        while True:
+            try:
+                # Reset the grid first
+                RoomGrid._gen_grid(self, self.width, self.height)
 
-        task = {}
-        if self.persist_goal:
-            mission = self.make_mission()
-            task['mission'] = mission
+                task = {}
+                if self.persist_goal:
+                    mission = self.make_mission()
+                    task['mission'] = mission
 
-        if self.persist_agent:
-            self.add_agent()
-            task['agent'] = {'agent_pos': self.agent_pos, 'agent_dir': self.agent_dir}
+                if self.persist_agent:
+                    self.add_agent()
+                    task['agent'] = {'agent_pos': self.agent_pos, 'agent_dir': self.agent_dir}
 
-        if self.persist_objs:
-            objs = self.add_objs(mission["task"])
-            task['objs'] = objs
-        task['dropout_goal'] = np.random.uniform() < self.dropout_goal
-        task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
+                if self.persist_objs:
+                    objs = self.add_objs(mission["task"])
+                    task['objs'] = objs
+                task['dropout_goal'] = np.random.uniform() < self.dropout_goal
+                task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
+
+            except RecursionError as error:
+                self.render(mode="human")
+                print('Timeout during mission generation:', error)
+                continue
+
+            except RejectSampling:
+                print("continuing")
+                continue
+
+            break
 
         return task
 
@@ -101,7 +115,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(color)
 
     def get_type_idx(self, obj_type):
-        return ['door', 'key', 'ball', 'box'].index(obj_type)
+        return ['door', 'key', 'ball', 'box', 'lava'].index(obj_type)  # TODO: no lava
 
     # Convert object positions, types, colors into a vector. Always order by the object positions to stay consistent and so it can't actually memorize.
     def compute_obj_infos(self):
@@ -203,7 +217,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def vocab(self):
         colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
         types = ['door', 'key', 'ball', 'box']
-        actions = ["go", "put", "pick", "up"]
+        actions = ["go", "pick", "up", "open", "put"]
         fillers = ["to", "next", "the", "a"]
         return colors + types + actions + fillers
 

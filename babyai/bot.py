@@ -250,12 +250,8 @@ class OpenSubgoal(Subgoal):
 class DropSubgoal(Subgoal):
 
     def replan_before_action(self):
-        try:
-            assert self.bot.mission.carrying
-            assert not self.fwd_cell
-        except Exception as e:
-            print(e)
-            self.bot.mission.render("human")
+        assert self.bot.mission.carrying
+        assert not self.fwd_cell
         return self.actions.drop
 
     def replan_after_action(self, action_taken):
@@ -586,6 +582,10 @@ class Bot:
 
         suggested_action = None
         while self.stack:
+
+            if len(self.stack) > 20:
+                self.mission.render(mode='human')
+
             subgoal = self.stack[-1]
             suggested_action = subgoal.replan_before_action()
             # If is not clear what can be done for the current subgoal

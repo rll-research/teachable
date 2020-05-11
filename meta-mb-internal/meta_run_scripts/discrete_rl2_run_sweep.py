@@ -51,14 +51,9 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            # Level_GoToImpUnlock
-            # Level_Pickup
-            # Level_UnblockPickup
-            # Level_Open
-            # Level_Unlock
-            # Level_PutNext
-            # Level_PickupLoc
-            e_new = Level_GoToLocal(start_loc='bottom',
+            # Success; GoToLocal
+            # LEVEL[ 'GoToLocal', 'GoTo', 'Level_GoToImpUnlock', 'Level_Pickup', 'Level_UnblockPickup', 'Level_Open', 'Level_Unlock', 'Level_PutNext']
+            e_new = Level_Pickup(start_loc='bottom',
                                          # num_dists=config['num_dists'],
                                          include_holdout_obj=False,
                                          persist_goal=config['persist_goal'],
@@ -83,8 +78,6 @@ def run_experiment(**config):
             e_new.teacher = teacher
             # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
             env = rl2env(normalize(e_new), ceil_reward=False)
-            # env.reset()
-            # env.render(mode="human")
             obs_dim = e_new.reset().shape[0]
             obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(

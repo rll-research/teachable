@@ -50,9 +50,9 @@ class Teacher:
         # self.env.open_all_doors()
         self.agent_actions.append(agent_action)
         self.oracle_actions.append(self.next_action)
-        # new_oracle = self.botclass(self.env)
-        # new_oracle.vis_mask = self.oracle.vis_mask
-        # self.oracle = new_oracle
+        new_oracle = self.botclass(self.env)
+        new_oracle.vis_mask = self.oracle.vis_mask
+        self.oracle = new_oracle
         self.next_action = self.oracle.replan()
         self.path = self.oracle.shortest_path_obj()
 
