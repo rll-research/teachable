@@ -28,9 +28,8 @@ from random import Random
 # MissBossLevel is the only level the bot currently can't always handle
 level_list = [name for name, level in level_dict.items()
               if (not getattr(level, 'is_bonus', False) and not name == 'MiniBossLevel')]
-# success:"GoToLocal", "GoTo", "Open",
-# failure: "GoToImpUnlock" (timeout I think) "Pickup", (occasional failure) "UnblockPickup", (all failure)
-# "Unlock", (timeout), "PutNext" (all failure)
+# success:"GoToLocal", "GoTo", "Open", "Unlock" (98.6%) "GoToImpUnlock"
+# failure: "UnblockPickup" "Pickup", "PutNext"
 # level_list = ["GoToLocal", "GoTo", "GoToImpUnlock", "Pickup", "UnblockPickup", "Open", "Unlock", "PutNext"]
 level_list = ["Unlock"]
 print("LEVEL", level_list)
@@ -130,10 +129,10 @@ for level_name in level_list:
             episode_steps = 0
             last_action = None
             while True:
-                vis_mask = expert.vis_mask
-                expert = Bot(mission)
-                expert.vis_mask = vis_mask
-                action = expert.replan()
+                # vis_mask = expert.vis_mask
+                # expert = Bot(mission)
+                # expert.vis_mask = vis_mask
+                action = expert.replan(last_action)
                 # action = expert.replan(last_action)
                 if options.advise_mode and episode_steps < non_optimal_steps:
                     if rng.random() < options.bad_action_proba:

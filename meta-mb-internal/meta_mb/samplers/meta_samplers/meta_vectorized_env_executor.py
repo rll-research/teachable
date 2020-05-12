@@ -74,6 +74,13 @@ class MetaIterativeEnvExecutor(object):
         self.ts[:] = 0
         return obses
 
+    def advance_curriculum(self):
+        """
+        Advances the curriculum
+        """
+        advances = [env.advance_curriculum() for env in self.envs]
+        return advances
+
     @property
     def num_envs(self):
         """
@@ -154,6 +161,14 @@ class MetaParallelEnvExecutor(object):
             remote.send(('reset', None))
         return sum([remote.recv() for remote in self.remotes], [])
 
+    def advance_curriculum(self):
+        """
+        Advances the curriculum of each worker
+        """
+        for remote in self.remotes:
+            remote.send(('advance_curriculum', None))
+        return sum([remote.recv() for remote in self.remotes], [])
+
     def set_tasks(self, tasks=None):
         """
         Sets a list of tasks to each worker
@@ -223,6 +238,11 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
         elif cmd == 'set_task':
             for env in envs:
                 env.set_task(data)
+            remote.send(None)
+
+        elif cmd == 'advance_curriculum':
+            for env in envs:
+                env.advance_curriculum()
             remote.send(None)
 
         # close the remote and stop the worker

@@ -33,6 +33,7 @@ class Trainer(object):
             sess=None,
             use_rp_inner=False,
             use_rp_outer=False,
+            advance_curriculum_every=50,
             ):
         self.algo = algo
         self.env = env
@@ -48,6 +49,7 @@ class Trainer(object):
         self.sess = sess
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
+        self.advance_curriculum_every = advance_curriculum_every
 
     def train(self):
         """
@@ -78,7 +80,7 @@ class Trainer(object):
 
                 logger.log("Obtaining samples...")
                 time_env_sampling_start = time.time()
-                paths = self.sampler.obtain_samples(log=True, log_prefix='train-')
+                paths = self.sampler.obtain_samples(log=True, log_prefix='train-', advance_curriculum=itr % self.advance_curriculum_every == self.advance_curriculum_every - 1)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""

@@ -15,6 +15,7 @@ from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
 from babyai.levels.iclr19_levels import *
+from babyai.levels.curriculum import Curriculum
 from babyai.levels.teachable_robot_levels import Level_TeachableRobot
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
@@ -53,15 +54,16 @@ def run_experiment(**config):
             baseline = config['baseline']()
             # Success; GoToLocal
             # LEVEL[ 'GoToLocal', 'GoTo', 'Level_GoToImpUnlock', 'Level_Pickup', 'Level_UnblockPickup', 'Level_Open', 'Level_Unlock', 'Level_PutNext']
-            e_new = Level_Pickup(start_loc='bottom',
-                                         # num_dists=config['num_dists'],
-                                         include_holdout_obj=False,
-                                         persist_goal=config['persist_goal'],
-                                         persist_objs=config['persist_objs'],
-                                         persist_agent=config['persist_agent'],
-                                         dropout_goal=config['dropout_goal'],
-                                         dropout_correction=config['dropout_correction'],
-                                         )
+            e_new = Level_GoToLocal(
+                # start_loc='bottom',
+                #  # num_dists=config['num_dists'],
+                #  include_holdout_obj=False,
+                #  persist_goal=config['persist_goal'],
+                #  persist_objs=config['persist_objs'],
+                #  persist_agent=config['persist_agent'],
+                #  dropout_goal=config['dropout_goal'],
+                #  dropout_correction=config['dropout_correction'],
+                 )
             if config["feedback_type"] is None:
                 teacher = None
             else:
@@ -77,9 +79,11 @@ def run_experiment(**config):
                     teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
             e_new.teacher = teacher
             # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
-            env = rl2env(normalize(e_new), ceil_reward=False)
-            obs_dim = e_new.reset().shape[0]
-            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
+            # env = rl2env(normalize(e_new), ceil_reward=False)
+            # env = rl2env(e_new, ceil_reward=False)
+            env = rl2env(normalize(Curriculum()))
+            obs_dim = env.reset().shape[0]
+            # obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
                     name="meta-policy",
                     action_dim=np.prod(env.action_space.n),
@@ -134,6 +138,7 @@ def run_experiment(**config):
             n_itr=config['n_itr'],
             sess=sess,
             start_itr=start_itr,
+            advance_curriculum_every=2
         )
         trainer.train()
 

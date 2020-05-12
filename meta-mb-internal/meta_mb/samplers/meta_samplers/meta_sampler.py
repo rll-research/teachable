@@ -57,7 +57,7 @@ class MetaSampler(BaseSampler):
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
 
-    def obtain_samples(self, log=False, log_prefix='', random=False):
+    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False):
         """
         Collect batch_size trajectories from each task
 
@@ -86,7 +86,10 @@ class MetaSampler(BaseSampler):
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
+        if advance_curriculum:
+            self.vec_env.advance_curriculum()
         obses = self.vec_env.reset()
+
         
         while n_samples < self.total_samples:
             
