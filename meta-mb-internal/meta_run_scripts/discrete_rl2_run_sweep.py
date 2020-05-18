@@ -52,38 +52,34 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
         else:
             baseline = config['baseline']()
-            # Success; GoToLocal
-            # LEVEL[ 'GoToLocal', 'GoTo', 'Level_GoToImpUnlock', 'Level_Pickup', 'Level_UnblockPickup', 'Level_Open', 'Level_Unlock', 'Level_PutNext']
-            e_new = Level_GoToLocal(
-                # start_loc='bottom',
-                #  # num_dists=config['num_dists'],
-                #  include_holdout_obj=False,
-                #  persist_goal=config['persist_goal'],
-                #  persist_objs=config['persist_objs'],
-                #  persist_agent=config['persist_agent'],
-                #  dropout_goal=config['dropout_goal'],
-                #  dropout_correction=config['dropout_correction'],
-                 )
+            arguments = {
+                 "start_loc": 'all',
+                 "include_holdout_obj": False,
+                 "persist_goal": config['persist_goal'],
+                 "persist_objs": config['persist_objs'],
+                 "persist_agent": config['persist_agent'],
+                 "dropout_goal": config['dropout_goal'],
+                 "dropout_correction": config['dropout_correction'],
+            }
+            # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
+            env = rl2env(Curriculum(**arguments),
+                         ceil_reward=config['ceil_reward'])
             if config["feedback_type"] is None:
                 teacher = None
             else:
                 if config["feedback_type"] == 'ActionAdvice':
-                    teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                    teacher = BatchTeacher([ActionAdvice(Bot, env)])
                 elif config["feedback_type"] == 'DemoCorrections':
-                    teacher = BatchTeacher([DemoCorrections(Bot, e_new)])
+                    teacher = BatchTeacher([DemoCorrections(Bot, env)])
                 elif config["feedback_type"] == 'LandmarkCorrection':
-                    teacher = BatchTeacher([LandmarkCorrection(Bot, e_new)])
+                    teacher = BatchTeacher([LandmarkCorrection(Bot, env)])
                 elif config["feedback_type"] == 'CartesianCorrections':
-                    teacher = BatchTeacher([CartesianCorrections(Bot, e_new)])
+                    teacher = BatchTeacher([CartesianCorrections(Bot, env)])
                 elif config["feedback_type"] == 'PhysicalCorrections':
-                    teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
-            e_new.teacher = teacher
-            # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
-            # env = rl2env(normalize(e_new), ceil_reward=False)
-            # env = rl2env(e_new, ceil_reward=False)
-            env = rl2env(normalize(Curriculum()))
+                    teacher = BatchTeacher([PhysicalCorrections(Bot, env)])
+            env.teacher = teacher
+
             obs_dim = env.reset().shape[0]
-            # obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
             policy = DiscreteRNNPolicy(
                     name="meta-policy",
                     action_dim=np.prod(env.action_space.n),
@@ -138,7 +134,7 @@ def run_experiment(**config):
             n_itr=config['n_itr'],
             sess=sess,
             start_itr=start_itr,
-            advance_curriculum_every=2
+            reward_threshold=config['reward_threshold'],
         )
         trainer.train()
 
@@ -146,23 +142,25 @@ def run_experiment(**config):
 if __name__ == '__main__':
 
     sweep_params = {
-        'algo': ['rl2'],
-        'seed': [1, 2, 3],
         'saved_path': [None],
-        'num_dists': [5],
         'use_teacher': [True],
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
         'dropout_goal': [1],
         'dropout_correction': [0],
+        'reward_threshold': [0.1],
+        "feedback_type": ['ActionAdvice'],
+        "rollouts_per_meta_task": [2],
+        'ceil_reward': [True],
 
+        'algo': ['rl2'],
+        'seed': [1, 2, 3],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
         "hidden_sizes": [(64,), (128,)],
         'backprop_steps': [50, 100, 200],
-        "rollouts_per_meta_task": [2],
         "parallel": [True],
         "max_path_length": [200],
         "discount": [0.99],
@@ -176,7 +174,6 @@ if __name__ == '__main__':
         "n_itr": [1000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
-        "feedback_type": ['ActionAdvice']
         #'timeskip': [1, 2, 3, 4]
     }
     run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)

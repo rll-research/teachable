@@ -94,7 +94,7 @@ class RoomGridLevel(RoomGrid):
                 continue
 
             except RejectSampling as error:
-                #print('Sampling rejected:', error)
+                # print('Sampling rejected:', error)
                 continue
 
             break

@@ -33,7 +33,7 @@ class Trainer(object):
             sess=None,
             use_rp_inner=False,
             use_rp_outer=False,
-            advance_curriculum_every=50,
+            reward_threshold=0.8,
             ):
         self.algo = algo
         self.env = env
@@ -49,7 +49,11 @@ class Trainer(object):
         self.sess = sess
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
-        self.advance_curriculum_every = advance_curriculum_every
+        self.reward_threshold = reward_threshold
+
+    def check_advance_curriculum(self, data):
+        rewards = data['avg_reward']
+        return rewards > self.reward_threshold
 
     def train(self):
         """
@@ -68,6 +72,7 @@ class Trainer(object):
             # initialize uninitialized vars  (only initialize vars that were not loaded)
             uninit_vars = [var for var in tf.global_variables() if not sess.run(tf.is_variable_initialized(var))]
             sess.run(tf.variables_initializer(uninit_vars))
+            advance_curriculum = False
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
@@ -80,7 +85,7 @@ class Trainer(object):
 
                 logger.log("Obtaining samples...")
                 time_env_sampling_start = time.time()
-                paths = self.sampler.obtain_samples(log=True, log_prefix='train-', advance_curriculum=itr % self.advance_curriculum_every == self.advance_curriculum_every - 1)
+                paths = self.sampler.obtain_samples(log=True, log_prefix='train-', advance_curriculum=advance_curriculum)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""
@@ -88,6 +93,7 @@ class Trainer(object):
                 logger.log("Processing samples...")
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train-')
+                advance_curriculum = self.check_advance_curriculum(samples_data)
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""

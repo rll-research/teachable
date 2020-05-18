@@ -11,7 +11,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     Go to an object, inside a single room with no doors, some distractors
     """
 
-    def __init__(self, start_loc='all', num_dists=5,
+    def __init__(self, start_loc='all', num_dists=0,
                  include_holdout_obj=True,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, **kwargs):
@@ -72,13 +72,18 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 task['dropout_goal'] = np.random.uniform() < self.dropout_goal
                 task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
 
+                # If we have placed all components in place, sanity check that the placement is valid.
+                if self.persist_goal and self.persist_agent and self.persist_objs:
+                    self.validate_instrs(mission['instrs'])
+
             except RecursionError as error:
                 self.render(mode="human")
+                self.validate_instrs(mission['instrs'])
                 print('Timeout during mission generation:', error)
                 continue
 
-            except RejectSampling:
-                print("continuing")
+            except RejectSampling as e:
+                print("Rejection error", e)
                 continue
 
             break
