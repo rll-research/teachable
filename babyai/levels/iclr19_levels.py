@@ -6,7 +6,7 @@ import gym
 from .verifier import *
 from .levelgen import *
 from meta_mb.meta_envs.base import MetaEnv
-from gym_minigrid.minigrid import MiniGridEnv
+from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
 
 class Level_GoToRedBallGrey(RoomGridLevel):
     """
@@ -65,10 +65,13 @@ class Level_GoToRedBall(RoomGridLevel):
 
 class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     """
-    Go to an object, inside a single room with no doors, no distractors
+    Go to an object, inside a single room with no doors, some distractors
     """
 
-    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all'):
+    def __init__(self, room_size=8, num_dists=5, seed=None, start_loc='all',
+                 include_holdout_obj=True,
+                 persist_agent=True, persist_goal=True, persist_objs=True,
+                 dropout_goal=0, dropout_correction=0):
         """
 
         :param room_size: room side length
@@ -76,11 +79,17 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         :param seed: random seed
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         """
-        self.task = ['box', 'red']
-        # Number of distractors
-        self.num_dists = num_dists
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
+        self.num_dists = num_dists
+        self.include_holdout_obj = include_holdout_obj
+        self.persist_agent = persist_agent
+        self.persist_goal = persist_goal
+        self.persist_objs = persist_objs
+        self.dropout_goal = dropout_goal
+        self.dropout_correction = dropout_correction
+        self.task = {}
+        # Number of distractors
         super().__init__(
             num_rows=1,
             num_cols=1,
@@ -92,29 +101,46 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
     def set_start_loc(self, start_loc):
         self.start_loc = start_loc
 
-    def sample_tasks(self, n_tasks):
-        tasks = []
-        # Different tasks are picking up different objects
-        for i in range(n_tasks):
+    def resample_task(self):
+        self.task = self.sample_tasks(1)[0]
+
+    def sample_goal(self):
+        if self.include_holdout_obj:
             color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
             obj_type = np.random.choice(['key', 'ball', 'box'])
-            task = np.array([obj_type, color])
-            tasks.append(task)
-        return np.asarray(tasks)
+        else:
+            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
+            obj_type = np.random.choice(['box', 'ball'])
+        return obj_type, color
 
-    # Convert a task into a vecor
-    def mission_to_index(self, task):
-        c_idx = ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(task[1])
-        t_idx = ['key', 'ball', 'box'].index(task[0])
-        return np.array([t_idx, c_idx])
+    def sample_task(self):
+        # Reset the grid first
+        self._gen_grid(self.width, self.height)
+
+        task = {}
+        if self.persist_goal:
+            obj_type, color = self.sample_goal()
+            task['goal'] = {'obj_type': obj_type, 'color': color}
+
+        if self.persist_agent:
+            self.add_agent()
+            task['agent'] = {'agent_pos': self.agent_pos, 'agent_dir': self.agent_dir}
+
+        if self.persist_objs:
+            obj, pos = self.add_object(0, 0, obj_type, color)
+            dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
+            task['objs'] = {'obj': obj, 'pos': pos, 'dists': dists}
+        task['dropout_goal'] = np.random.uniform() < self.dropout_goal
+        task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
+
+        return task
 
     # Functions fo RL2
-    def set_task(self, task):
+    def set_task(self, _):
         """
-        Args:
-            task: task of the meta-learning environment
+        Sets task dictionary.
         """
-        self.task = task
+        self.task = self.sample_task()
 
     # Functions for RL2
     def get_task(self):
@@ -135,30 +161,50 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         self.dist_pos_unwrapped = [d.cur_pos[0]*self.room_size + d.cur_pos[1] for d in self.dists] + \
                                     [self.obj.cur_pos[0]*self.room_size + self.obj.cur_pos[1]]
         idx = range(len(self.dist_pos_unwrapped) + 1)
-        self.idx = [x for _,x in sorted(zip(self.dist_pos_unwrapped, idx))]        
+        self.idx = [x for _,x in sorted(zip(self.dist_pos_unwrapped, idx))]
         self.obj_infos = np.concatenate([np.array(self.dist_colors)[self.idx],
                                          np.array(self.dist_types)[self.idx],
                                          np.array(self.dist_pos_unwrapped)[self.idx]])
-        return 
+        return
 
-    # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset. 
-    def gen_mission(self):
+
+    def add_agent(self):
         cutoff = int(self.room_size / 2)
         top_index = (0, cutoff) if self.start_loc == 'bottom' else (0, 0)
         bottom_index = (self.room_size, cutoff) if self.start_loc == 'top' else (self.room_size, self.room_size)
         self.place_agent(top_index=top_index, bottom_index=bottom_index)
 
-        # Extract the task
-        obj_type = self.task[0]
-        color = self.task[1]
-        obj, pos = self.add_object(0, 0, obj_type, color)
+    # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset.
+    def gen_mission(self):
+
+        # First load anything provided in the task
+        if 'agent' in self.task:
+            self.agent_pos = self.task['agent']['agent_pos']
+            self.agent_dir = self.task['agent']['agent_dir']
+        if 'goal' in self.task:
+            obj_type = self.task['goal']['obj_type']
+            color = self.task['goal']['color']
+        if 'objs' in self.task:
+            dists = self.task['objs']['dists']
+            pos = self.task['objs']['pos']
+            obj = self.task['objs']['obj']
+            self.grid.set(*pos, obj)
+
+        # Now randomly sample any required information not in the task
+        if not 'agent' in self.task:
+            self.add_agent()
+        if not 'goal' in self.task:
+            obj_type, color = self.sample_goal()
+        if not 'objs' in self.task:
+            obj, pos = self.add_object(0, 0, obj_type, color)
+            dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
+
+        # Continue processing
         self.obj = obj
         self.obj_pos = pos
         self.obj_color = self.get_color_idx(obj.color)
         self.obj_type = self.get_type_idx(obj.type)
 
-        # Generate distractors and get their position, type and color
-        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=True)
         self.dists = dists
         self.dist_colors = [self.get_color_idx(d.color) for d in dists] + [self.obj_color]
         self.dist_types = [self.get_type_idx(d.type) for d in dists]+ [self.obj_type]
@@ -223,10 +269,32 @@ class Level_GoToIndexedObj(RoomGridLevel, MetaEnv):
         }
         # Compute the object infos
         self.compute_obj_infos()
+        grid_representation = image.flatten()
+        goal = np.array([self.obj_color, self.obj_type])
+        if self.dropout_goal:
+            goal = -np.ones_like(goal)
         obs = np.concatenate([[obs_dict['direction']], 
-                               obs_dict['agent_pos'], 
-                               self.obj_infos,
-                               self.mission_to_index(self.task)])
+                               obs_dict['agent_pos'],
+                               grid_representation,
+                               goal])
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            if self.dropout_correction:
+                correction = self.teacher.give_feedback([obs])[0]
+            else:
+                correction = self.teacher.empty_feedback()[0]
+            obs = np.concatenate([obs, correction])
+
+        return deepcopy(obs)
+
+    def step(self, action):
+        results = super().step(action)
+        self.teacher.step([action])
+        return results
+
+    def reset(self):
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            self.teacher.reset()
+        obs = super().reset()
         return obs
 
 class Level_GoToRedBallNoDists(Level_GoToRedBall):

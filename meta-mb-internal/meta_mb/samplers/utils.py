@@ -25,6 +25,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         rewards = []
         agent_infos = []
         env_infos = []
+        env.resample_task()
         o = env.reset()
         if i % reset_every == 0:
             agent.reset()

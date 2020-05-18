@@ -71,8 +71,7 @@ class Teacher:
             feedback = self.compute_feedback()
         else:
             raise ValueError("Unsupported feedback type")
-        state = np.concatenate([state, feedback])
-        return state
+        return feedback
 
     def empty_feedback(self):
         """
