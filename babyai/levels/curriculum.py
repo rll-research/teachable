@@ -3,7 +3,7 @@ from babyai.levels.iclr19_levels import *
 
 
 class Curriculum(Serializable):
-    def __init__(self, **kwargs):
+    def __init__(self, advance_curriculum_func, **kwargs):
         Serializable.quick_init(self, locals())
         self.levels_list = [Level_GoToLocal(**kwargs),
                             Level_GoToRedBallGrey(**kwargs),
@@ -39,6 +39,7 @@ class Curriculum(Serializable):
         self.index = 1
         self.curr_score = 0
         self.past_scores = []
+        self.advance_curriculum = self.__getattr__(advance_curriculum_func)
 
 
     def __getattr__(self, attr):
@@ -69,32 +70,31 @@ class Curriculum(Serializable):
             else:
                 return orig_attr
 
-    # def advance_curriculum(self):
-    #     """Currently we just advance one-by-one when this function is called.
-    #     Later, it would be cool to advance dynamically when the agent has succeeded at a task.
-    #     Also it would be ideal if we kept the past tasks around.
-    #     """
-    #     curr_index = np.argmax(self.distribution)
-    #     self.distribution = np.zeros((len(self.levels_list)))
-    #     self.distribution[curr_index + 1] = 1
-    #     self._wrapped_env = self.levels_list[self.index]
-    #     self.index += 1
-    #     if self.index > len(self.levels_list):
-    #         print("LEARNED ALL THE LEVELS!!")
-    #     print("updated curriculum", type(self._wrapped_env))
+    def advance_curriculum_one_hot(self):
+        """Currently we just advance one-by-one when this function is called.
+        Later, it would be cool to advance dynamically when the agent has succeeded at a task.
+        Also it would be ideal if we kept the past tasks around.
+        """
+        curr_index = np.argmax(self.distribution)
+        self.distribution = np.zeros((len(self.levels_list)))
+        self.distribution[curr_index + 1] = 1
+        self._wrapped_env = self.levels_list[self.index]
+        self.index += 1
+        if self.index > len(self.levels_list):
+            print("LEARNED ALL THE LEVELS!!")
+        print("updated curriculum", type(self._wrapped_env))
 
-    def advance_curriculum(self):
+    def advance_curriculum_uniform_smooth(self):
         """Advance curriculum by assigning 0.5 probability to the new environment and 0.5 to all past environments."""
         curr_index = np.argmax(self.distribution)
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[curr_index + 1] = 0.5
         prev_env_prob = 0.5/(curr_index + 1)
         self.distribution[:curr_index + 1] = prev_env_prob
-        self._wrapped_env = self.levels_list[self.index]
+        print("updated curriculum", type(self.levels_list[self.index]))
         self.index += 1
         if self.index > len(self.levels_list):
             print("LEARNED ALL THE LEVELS!!")
-        print("updated curriculum", type(self._wrapped_env))
 
     def step(self, action):
         obs, reward, done, info = self._wrapped_env.step(action)

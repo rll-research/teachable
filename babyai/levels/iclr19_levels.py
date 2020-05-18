@@ -442,7 +442,7 @@ class Level_UnblockPickup(Level_TeachableRobot):
         obj_type, obj_color = task
         obj, _ = self.add_object(room_i, room_j, obj_type, obj_color)
         dists = self.add_distractors(num_distractors=19, all_unique=False)
-        if self.check_objs_reachable(raise_exc=False):  # TODO: is this okay, since we keep reshuffling the agent's start pos?
+        if self.check_objs_reachable(raise_exc=False):
             raise RejectSampling('all objects reachable')
         return dists + self.get_doors() + [obj], obj
 

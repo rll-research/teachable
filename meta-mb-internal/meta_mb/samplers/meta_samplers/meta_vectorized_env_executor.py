@@ -159,7 +159,8 @@ class MetaParallelEnvExecutor(object):
         """
         for remote in self.remotes:
             remote.send(('reset', None))
-        return sum([remote.recv() for remote in self.remotes], [])
+        results = [remote.recv() for remote in self.remotes]
+        return sum(results, [])
 
     def advance_curriculum(self):
         """
@@ -167,7 +168,8 @@ class MetaParallelEnvExecutor(object):
         """
         for remote in self.remotes:
             remote.send(('advance_curriculum', None))
-        return sum([remote.recv() for remote in self.remotes], [])
+        [remote.recv() for remote in self.remotes]
+        return None
 
     def set_tasks(self, tasks=None):
         """

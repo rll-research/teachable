@@ -50,10 +50,14 @@ class Trainer(object):
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
         self.reward_threshold = reward_threshold
+        self.curriculum_step = 0
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
-        return rewards > self.reward_threshold
+        should_advance = rewards > self.reward_threshold
+        if should_advance:
+            self.curriculum_step += 1
+        return self.curriculum_step
 
     def train(self):
         """
@@ -131,6 +135,9 @@ class Trainer(object):
 
                 logger.logkv('Time', time.time() - start_time)
                 logger.logkv('ItrTime', time.time() - itr_start_time)
+
+                logger.logkv('Curriculum Step', self.curriculum_step)
+                logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
 
                 logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)

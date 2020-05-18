@@ -29,12 +29,28 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
-EXP_NAME = 'test_not_working'
+PREFIX = 'testing_new_curriculum'
 # EXP_NAME = 'test_no_instrs_persistgoa'
 
 
 def run_experiment(**config):
-    exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
+
+
+    EXP_NAME = PREFIX
+    EXP_NAME += '_teacher' + str(config['feedback_type'])
+    EXP_NAME += '_persist'
+    if config['persist_goal']:
+        EXP_NAME += "g"
+    if config['persist_objs']:
+        EXP_NAME += "o"
+    if config['persist_agent']:
+        EXP_NAME += "a"
+    EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
+    EXP_NAME += '_dropcorr' + str(config['dropout_correction'])
+    EXP_NAME += '_currfn' + config['advance_curriculum_func'][19:]  # chop off beginning for space
+    print("EXPERIMENT NAME:", EXP_NAME)
+
+    exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
     logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='last_gap', snapshot_gap=50)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
     set_seed(config['seed'])
@@ -61,8 +77,7 @@ def run_experiment(**config):
                  "dropout_goal": config['dropout_goal'],
                  "dropout_correction": config['dropout_correction'],
             }
-            # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
-            env = rl2env(Curriculum(**arguments),
+            env = rl2env(Curriculum(config['advance_curriculum_func'], **arguments),
                          ceil_reward=config['ceil_reward'])
             if config["feedback_type"] is None:
                 teacher = None
@@ -143,16 +158,16 @@ if __name__ == '__main__':
 
     sweep_params = {
         'saved_path': [None],
-        'use_teacher': [True],
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
-        'dropout_goal': [1],
+        'dropout_goal': [0],
         'dropout_correction': [0],
-        'reward_threshold': [0.1],
-        "feedback_type": ['ActionAdvice'],
+        'reward_threshold': [0.95],
+        "feedback_type": [None],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
+        'advance_curriculum_func': ['advance_curriculum_one_hot'],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],
@@ -176,4 +191,4 @@ if __name__ == '__main__':
         'log_rand': [0, 1, 2, 3],
         #'timeskip': [1, 2, 3, 4]
     }
-    run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)
+    run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
