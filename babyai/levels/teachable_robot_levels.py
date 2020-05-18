@@ -192,6 +192,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 goal_obj = goal_objs
             self.obj_pos = goal_obj.cur_pos
 
+        if 'dropout_goal' in self.task:
+            self.dropout_current_goal = self.task['dropout_goal']
+        else:
+            self.dropout_current_goal = False
+        if 'dropout_correction' in self.task:
+            self.dropout_current_correction = self.task['dropout_correction']
+        else:
+            self.dropout_current_correction = False
+
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
         """
@@ -269,14 +278,14 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.compute_obj_infos()
         grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
-        if self.dropout_goal:
+        if self.dropout_current_goal:
             goal = -np.ones_like(goal)
         obs = np.concatenate([[obs_dict['direction']],
                                obs_dict['agent_pos'],
                                grid_representation,
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
-            if self.dropout_correction:
+            if self.dropout_current_correction:
                 correction = self.teacher.give_feedback([obs])[0]
             else:
                 correction = self.teacher.empty_feedback()[0]
