@@ -16,7 +16,6 @@ from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
-from babyai.levels.teachable_robot_levels import Level_TeachableRobot
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
@@ -28,9 +27,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# EXP_NAME = 'teacher_5dists_holdout_persistall_0_5dropout'
-PREFIX = 'testing_new_curriculum'
-# EXP_NAME = 'test_no_instrs_persistgoa'
+PREFIX = 'CURRICULUMv0'
 
 
 def run_experiment(**config):
@@ -46,7 +43,7 @@ def run_experiment(**config):
     if config['persist_agent']:
         EXP_NAME += "a"
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
-    EXP_NAME += '_dropcorr' + str(config['dropout_correction'])
+    EXP_NAME += 'corr' + str(config['dropout_correction'])
     EXP_NAME += '_currfn' + config['advance_curriculum_func'][19:]  # chop off beginning for space
     print("EXPERIMENT NAME:", EXP_NAME)
 
@@ -77,7 +74,7 @@ def run_experiment(**config):
                  "dropout_goal": config['dropout_goal'],
                  "dropout_correction": config['dropout_correction'],
             }
-            env = rl2env(Curriculum(config['advance_curriculum_func'], **arguments),
+            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             if config["feedback_type"] is None:
                 teacher = None
@@ -189,6 +186,5 @@ if __name__ == '__main__':
         "n_itr": [1000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
-        #'timeskip': [1, 2, 3, 4]
     }
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
