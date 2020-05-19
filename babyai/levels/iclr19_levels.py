@@ -21,7 +21,6 @@ class Level_GoToRedBallGrey(Level_TeachableRobot):
             num_rows=1,
             num_cols=1,
             room_size=room_size,
-            num_dists=num_dists,
             seed=seed,
             **kwargs
         )
