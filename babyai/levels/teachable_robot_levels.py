@@ -8,37 +8,45 @@ from copy import deepcopy
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     """
-    Go to an object, inside a single room with no doors, some distractors
+    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
+    Provides functions to use with meta-learning, including sampling a task and resetting the same task
+    multiple times for multiple runs within the same meta-task.
     """
 
-    def __init__(self, start_loc='all', num_dists=0,
+    def __init__(self, start_loc='all',
                  include_holdout_obj=True,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 dropout_goal=0, dropout_correction=0, **kwargs):
+                 dropout_goal=0, dropout_correction=0, dropout_independently=True, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
+        :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
+        :param persist_agent: Whether to keep agent position the same across runs within a meta-task
+        :param persist_goal: Whether to keep the goal (i.e. textual mission string) the same across runs in a meta-task
+        :param persist_objs: Whether to keep object positions the same across runs within a meta-task
+        :param dropout_goal: Proportion of the time to dropout the goal (i.e. textual mission string)
+        :param dropout_correction: Proportion of time to dropout corrections (chosen independently from goal dropout)
+        :param dropout_independently: Whether to sample instances of goal and correction dropout independently
+               If False, it drops out the goal normally, then only drops out the correction if the goal isn't dropped
+               out (so the probability that the correction is dropped out is actually (1 - goal_dropout) * corr_dropout
+        :param kwargs: Additional arguments passed to the parent class
         """
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
-        self.num_dists = num_dists
         self.include_holdout_obj = include_holdout_obj
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
         self.persist_objs = persist_objs
         self.dropout_goal = dropout_goal
         self.dropout_correction = dropout_correction
+        self.dropout_independently = dropout_independently
         self.task = {}
-        # Number of distractors
         super().__init__(**kwargs)
 
-    # Define what starting position to use (train set or hold-out set).  Currently ['top', 'bottom', 'all']
-    def set_start_loc(self, start_loc):
-        self.start_loc = start_loc
-
-    def resample_task(self):
-        self.task = self.sample_tasks(1)[0]
-
     def sample_object(self):
+        """
+        Choose a random object (not a door).  If specified, hold out the color grey and type box.
+        :return: (object type, object color).  Both are strings.
+        """
         if self.include_holdout_obj:
             color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
             obj_type = np.random.choice(['key', 'ball', 'box'])
@@ -48,10 +56,28 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return obj_type, color
 
     def make_mission(self):
+        """
+        Defines mission. Must be implemented in all child classes.
+        :return: {'instrs': Instructions object, 'task': arbitrary object containing data relevant for the task}
+        """
         raise NotImplementedError
 
+    def add_objs(self, task):
+        """
+        Defines the positions, types, and colors of objects in the grid (inc doors).
+        Must be implemented in all child classes.
+        :param task: the task object output by the class's make_mission function
+        :return: (list of all objects, goal object or tuple if multiple)
+        """
+        raise NotImplementedError
 
     def sample_task(self):
+        """
+        Sample a level-specific task
+        :return: Dictionary containing some subset of the keys: [mission (specifies the text instruction),
+                 agent (specifies the agent starting position and directino),
+                 objs (specifies all object locations, types, and colors)]
+        """
         while True:
             try:
                 # Reset the grid first
@@ -70,7 +96,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     objs = self.add_objs(mission["task"])
                     task['objs'] = objs
                 task['dropout_goal'] = np.random.uniform() < self.dropout_goal
-                task['dropout_correction'] = np.random.uniform() < self.dropout_correction  # TODO: consider making this per-timestep
+                task['dropout_correction'] = np.random.uniform() < self.dropout_correction
 
                 # If we have placed all components in place, sanity check that the placement is valid.
                 if self.persist_goal and self.persist_agent and self.persist_objs:
@@ -83,7 +109,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 continue
 
             except RejectSampling as e:
-                print("Rejection error", e)
+                # print("Rejection error", e)
                 continue
 
             break
@@ -93,20 +119,22 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     # Functions fo RL2
     def set_task(self, _):
         """
-        Sets task dictionary.
+        Sets task dictionary. The parameter is a dummy passed in for compatibility with the normal RL2 set task function
         """
         self.task = self.sample_task()
-        return
 
     # Functions for RL2
     def get_task(self):
         """
-        Returns:
-            task: task of the meta-learning environment
+        :return: task of the meta-learning environment. Dictionary.
         """
         return self.task
 
     def get_doors(self):
+        """
+        Get a list of all doors in the environment.
+        :return: List of Door objects
+        """
         doors = []
         for i in range(self.num_rows):
             for j in range(self.num_cols):
@@ -117,13 +145,27 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return doors
 
     def get_color_idx(self, color):
+        """
+        Get the index of a color
+        :param color: color string
+        :return: index (int)
+        """
         return ['red', 'green', 'blue', 'purple', 'yellow', 'grey'].index(color)
 
     def get_type_idx(self, obj_type):
-        return ['door', 'key', 'ball', 'box', 'lava'].index(obj_type)  # TODO: no lava
+        """
+        Get the index of an object type
+        :param obj_type: object type string
+        :return: index (int)
+        """
+        return ['door', 'key', 'ball', 'box', 'lava'].index(obj_type)
 
-    # Convert object positions, types, colors into a vector. Always order by the object positions to stay consistent and so it can't actually memorize.
     def compute_obj_infos(self):
+        """
+        Convert object positions, types, colors into a vector. Always order by the object positions to stay consistent
+        and so it can't actually memorize.
+        :return: 1D array with concatenated data on all the objects in the grid.
+        """
         dist_pos_unwrapped = []
         for obj in self.objs:
             i, j = obj.cur_pos
@@ -144,12 +186,19 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
 
     def add_agent(self):
+        """
+        Place the agent randomly into the grid.  Optionally place it into a specific half of the grid.
+        """
         cutoff = int(self.room_size / 2)
         top_index = (0, cutoff) if self.start_loc == 'bottom' else (0, 0)
         bottom_index = (self.room_size, cutoff) if self.start_loc == 'top' else (self.room_size, self.room_size)
         self.place_agent(top_index=top_index, bottom_index=bottom_index)
 
     def place_in_grid(self, objs):
+        """
+        Place objects in a grid.  The objects contain their own positions
+        :param objs: a list of objects
+        """
         for obj in objs:
             i, j = obj.cur_pos
             try:
@@ -157,8 +206,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             except Exception as e:
                 print(e)
 
-    # Generate a mission. Task remains fixed so that object is always spawned and is the goal, but other things can change every time we do a reset.
     def gen_mission(self):
+        """
+        Generate the mission for a single meta-task.  Any environment setup elements in the self.task dictionary
+        are loaded from there.  All others are randomly sampled. Also decides whether to dropout goal and/or
+        corrections for this meta-task.
+        """
 
         # First load anything provided in the task
         if 'agent' in self.task:
@@ -182,10 +235,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.objs = deepcopy(objs)
             self.goal_objs = deepcopy(goal_objs)
 
-        self.compute_obj_infos()
+        # self.compute_obj_infos()
         self.instrs = mission['instrs']
         if goal_objs is not None:
-            # Currently if there are multiple goal objects, we just pick the first one. # TODO: handle multiple goal objs
+            # Currently if there are multiple goal objects, we just pick the first one. # TODO: handle multiple goal objs. Some of the teachers need these.
             if isinstance(goal_objs, tuple):
                 goal_obj = goal_objs[0]
             else:
@@ -196,7 +249,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.dropout_current_goal = self.task['dropout_goal']
         else:
             self.dropout_current_goal = False
-        if 'dropout_correction' in self.task:
+        if self.dropout_independently and self.dropout_current_goal:
+            self.dropout_current_correction = False
+        elif 'dropout_correction' in self.task:
             self.dropout_current_correction = self.task['dropout_correction']
         else:
             self.dropout_current_correction = False
@@ -204,7 +259,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
         """
-        Place the agent in a room
+        Place the agent randomly into a room.  Optionally, initialize it in a particular part of the room.
+        :param i: x-index of the room the agent is in.  If not provided, it is sampled randomly.
+        :param j: y-index of the room the agent is in.  If not provided, it is sampled randomly.
+        :param rand_dir: boolean specifying whether the agent should face a random direction
+        :param top_index: Index of the highest square within a room the agent can be placed in.  If not provided,
+                          it can be placed arbitrarily high in the room.
+        :param bottom_index: Index of the lowest square within a room the agent can be placed in.  If not provided,
+                          it can be placed arbitrarily low in the room.
+        :return: agent position.  self.agent_pos and self.agent_dir are also set.
         """
 
         if i is None:
@@ -229,6 +292,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return self.agent_pos
 
     def vocab(self):
+        """
+        All possible words in instruction strings.
+        :return: List of word strings
+        """
         colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
         types = ['door', 'key', 'ball', 'box']
         actions = ["go", "pick", "up", "open", "put"]
@@ -236,11 +303,18 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return colors + types + actions + fillers
 
     def to_vocab_index(self, mission, pad_length=None):  # TODO: turn this into an embedding
+        """
+        Take a mission string, and return a fixed-length vector where each index is the index of the nth word in the
+        mission.  The end is padded with -1
+        :param mission: mission text as a string
+        :param pad_length: length to pad the mission string to
+        :return: list of integer indices of length pad_length (or len(mission.split(" ")) if pad_length is not provided)
+        """
         words = mission.split(" ")
         vocab = self.vocab()
         mission_list = [vocab.index(word) for word in words]
         if pad_length is not None:
-            mission_list = mission_list + [0] * (pad_length - len(mission_list))
+            mission_list = mission_list + [-1] * (pad_length - len(mission_list))
         if len(mission_list) > pad_length:
             raise ValueError("Mission is too long: " + mission + str(pad_length))
         return mission_list
@@ -248,9 +322,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
     def gen_obs(self):
         """
-        Generate the agent's view (partially observable, low-resolution encoding)
+        Generate the agent's view (partially observable). It's a concatenation of the agent's direction and position,
+        the flattened partially observable view in front of it, the encoded mission string, and the teacher's feedback,
+        if available.
+        :return: np array of the agent's observation
         """
-
         grid, vis_mask = self.gen_obs_grid()
 
         # Encode the partially observable view into a numpy array
@@ -258,30 +334,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        # Observations are dictionaries containing:
-        # - an image (partially observable view of the environment)
-        # - the agent's direction/orientation (acting as a compass)
-        # - a textual mission string (instructions for the agent)
-
-        if hasattr(self, 'obj_pos'):
-            obj_pos = self.obj_pos
-        else:
-            obj_pos = np.array([0, 0])
-
-        obs_dict = {
-            'direction': self.agent_dir,
-            'mission': self.mission,
-            'agent_pos': self.agent_pos,
-            'obj_pos': obj_pos
-        }
-        # Compute the object infos
-        self.compute_obj_infos()
+        # self.compute_obj_infos()  # TODO: necessary?
         grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
         if self.dropout_current_goal:
             goal = -np.ones_like(goal)
-        obs = np.concatenate([[obs_dict['direction']],
-                               obs_dict['agent_pos'],
+        obs = np.concatenate([[self.agent_dir],
+                               self.agent_pos,
                                grid_representation,
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
@@ -294,12 +353,28 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return deepcopy(obs)
 
     def step(self, action):
-        results = super().step(action)
+        """
+        Step both the env and the teacher
+        :param action: action to take
+        :return: results of stepping the env
+        """
+        obs, rew, done, info = super().step(action)
+        info['agent_pos'] = self.agent_pos
+        info['agent_dir'] = self.agent_dir
+        info['agent_room'] = self.room_from_pos(*self.agent_pos).top
+        if hasattr(self, "obj_pos"):
+            info['goal_room'] = self.room_from_pos(*self.obj_pos).top
+            info['goal_pos'] = self.obj_pos
+
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.step([action])
-        return results
+        return obs, rew, done, info
 
     def reset(self):
+        """
+        Reset both the env and the teacher
+        :return: observation from the env reset
+        """
         obs = super().reset()
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()

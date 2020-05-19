@@ -27,8 +27,8 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'CURRICULUMv0'
-
+PREFIX = 'best_logging_curriculum_correct_bias'
+# PREFIX = 'debug'
 
 def run_experiment(**config):
 
@@ -73,6 +73,7 @@ def run_experiment(**config):
                  "persist_agent": config['persist_agent'],
                  "dropout_goal": config['dropout_goal'],
                  "dropout_correction": config['dropout_correction'],
+                 "dropout_independently": config['dropout_independently'],
             }
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
                          ceil_reward=config['ceil_reward'])
@@ -140,13 +141,14 @@ def run_experiment(**config):
         trainer = Trainer(
             algo=algo,
             policy=policy,
-            env=env,
+            env=deepcopy(env),
             sampler=sampler,
             sample_processor=sample_processor,
             n_itr=config['n_itr'],
             sess=sess,
             start_itr=start_itr,
             reward_threshold=config['reward_threshold'],
+            exp_name=exp_dir,
         )
         trainer.train()
 
@@ -160,6 +162,7 @@ if __name__ == '__main__':
         'persist_agent': [True],
         'dropout_goal': [0],
         'dropout_correction': [0],
+        'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.95],
         "feedback_type": [None],
         "rollouts_per_meta_task": [2],

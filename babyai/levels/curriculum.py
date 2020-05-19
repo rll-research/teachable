@@ -94,6 +94,13 @@ class Curriculum(Serializable):
     #     if self.index > len(self.levels_list):
     #         print("LEARNED ALL THE LEVELS!!")
 
+    def set_level(self, index):
+        """
+        Set the curriculum at a certain level
+        :param index: Index of the level to use
+        """
+        self._wrapped_env = self.levels_list[index]
+
     def reset(self):
         """
         Each time the env resets, sample which babyai level to use from the categorical distribution array.

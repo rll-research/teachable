@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 from meta_mb.logger import logger
-
+from meta_mb.samplers.utils import rollout
 
 class Trainer(object):
     """
@@ -34,6 +34,7 @@ class Trainer(object):
             use_rp_inner=False,
             use_rp_outer=False,
             reward_threshold=0.8,
+            exp_name="",
             ):
         self.algo = algo
         self.env = env
@@ -51,13 +52,14 @@ class Trainer(object):
         self.use_rp_outer = use_rp_outer
         self.reward_threshold = reward_threshold
         self.curriculum_step = 0
+        self.exp_name = exp_name
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
         should_advance = rewards > self.reward_threshold
         if should_advance:
             self.curriculum_step += 1
-        return self.curriculum_step
+        return should_advance
 
     def train(self):
         """
@@ -145,6 +147,16 @@ class Trainer(object):
                 logger.log("Saved")
 
                 logger.dumpkvs()
+
+
+                self.env.set_level(self.curriculum_step)
+                paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
+                        video_filename=self.exp_name + '/sim_out' + str(self.curriculum_step) + '.mp4', num_rollouts=10)
+                print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
+                print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+
+
                 if itr == 0:
                     sess.graph.finalize()
 
