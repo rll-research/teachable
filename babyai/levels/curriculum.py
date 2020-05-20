@@ -80,7 +80,7 @@ class Curriculum(Serializable):
         self.index += 1
         if self.index > len(self.levels_list):
             print("LEARNED ALL THE LEVELS!!")
-        print("updated curriculum", curr_index + 1, self.index - 1, type(self._wrapped_env))
+        print("updated curriculum", self.index - 1, type(self._wrapped_env))
 
     # def advance_curriculum(self):  # advance_curriculum_uniform_smooth
     #     """Advance curriculum by assigning 0.5 probability to the new environment and 0.5 to all past environments."""
@@ -100,6 +100,15 @@ class Curriculum(Serializable):
         :param index: Index of the level to use
         """
         self._wrapped_env = self.levels_list[index]
+
+    def set_level_distribution(self, index):
+        """
+        Set the curriculum at a certain level, and set the distribution to only sample that level.
+        :param index: Index of the level to use
+        """
+        self._wrapped_env = self.levels_list[index]
+        self.distribution = np.zeros((len(self.levels_list)))
+        self.distribution[index] = 1
 
     def reset(self):
         """

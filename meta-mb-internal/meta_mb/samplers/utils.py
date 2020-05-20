@@ -4,7 +4,7 @@ import moviepy.editor as mpy
 from matplotlib import pyplot as plt
 
 
-def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
+def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1, save_failures=True,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None):
     if hasattr(env, 'dt'):
         timestep = env.dt
@@ -27,6 +27,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         agent_infos = []
         env_infos = []
         curr_images = []
+        failures = []
         if i % reset_every == 0:
             agent.reset(dones=[True] * batch_size)
             env.set_task(None)
@@ -79,9 +80,10 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         # Add a few blank frames at the end to indicate success (white) or failure (black)
         sample_img = np.zeros_like(curr_images[-1])
         if r > 0:
-            curr_images += [sample_img * 255] * 3
+            curr_images += [sample_img + 255] * 3
         else:
             curr_images += [sample_img] * 3
+            failures += curr_images
 
         # If show_last is enabled, only show the end of the trajectory.
         if not show_last:
@@ -104,5 +106,13 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         else:
             clip.write_videofile(video_filename, fps=fps)
         print("Video saved at %s" % video_filename)
+
+        if len(failures) > 0:
+            clip = mpy.ImageSequenceClip(failures, fps=fps)
+            if video_filename[-3:] == 'gif':
+                clip.write_gif(video_filename[:-4] + "failures" + ".gif", fps=fps)
+            else:
+                clip.write_videofile(video_filename[:-4] + "failures" + video_filename[-4:], fps=fps)
+
 
     return paths

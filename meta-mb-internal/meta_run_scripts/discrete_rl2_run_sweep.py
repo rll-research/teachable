@@ -27,8 +27,8 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'best_logging_curriculum_correct_bias'
-# PREFIX = 'debug'
+PREFIX = 'improved_videos_curriculum_correct_bias'
+# PREFIX = 'debug_again'
 
 def run_experiment(**config):
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
-        'reward_threshold': [0.95],
+        'reward_threshold': [0.9],
         "feedback_type": [None],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
@@ -186,7 +186,7 @@ if __name__ == '__main__':
         "max_epochs": [5],
         "cell_type": ["lstm"],
         "num_minibatches": [1],
-        "n_itr": [1000],
+        "n_itr": [10000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
     }
