@@ -56,5 +56,6 @@ class RL2SampleProcessor(SampleProcessor):
             advantages=advantages,
             env_infos=env_infos,
             agent_infos=agent_infos,
+            avg_reward=np.mean([sum(path["rewards"]) for path in all_paths])
         )
         return samples_data

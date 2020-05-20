@@ -5,7 +5,8 @@ import tensorflow as tf
 import argparse
 from meta_mb.samplers.utils import rollout
 from experiment_utils.utils import load_exps_data
-from babyai.levels.iclr19_levels import Level_GoToIndexedObj
+from babyai.levels import iclr19_levels
+from babyai.levels.iclr19_levels import *
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
 from babyai.bot import Bot
@@ -58,27 +59,24 @@ if __name__ == "__main__":
                         help='Number of distractors')
     parser.add_argument('--use-teacher', action='store_true',
                         help='Whether to use a teacher')
-    parser.add_argument('--obstacle_representation', action='store_true',
-                        help='Whether to use the obstacle representation; default is partially-observable grid representation')
     parser.add_argument('--max_pkl', type=int, default=None,
                         help='Maximum value of the pkl policies')
     parser.add_argument('--prompt', type=bool, default=False,
                         help='Whether or not to prompt for more sim')
     parser.add_argument('--ignore_done', action='store_true',
                         help='Whether stop animation when environment done or continue anyway')
+    parser.add_argument('--use_pickled_env', action='store_true',
+                        help='Whether to use the pickled env or create a new one')
     parser.add_argument('--stochastic', action='store_true', help='Apply stochastic action instead of deterministic')
     parser.add_argument('--feedback_type', type=str, choices=['none', 'random', 'oracle'], default='none', help='Give random feedback (not useful feedback)')
     parser.add_argument('--animated', action='store_true', help='Show video while generating it.')
-    parser.add_argument('--start_loc', type=str, choices=['top', 'bottom', 'all'], help='which set of starting points to use (top, bottom, all)', default='bottom')
+    parser.add_argument('--start_loc', type=str, choices=['top', 'bottom', 'all'], help='which set of starting points to use (top, bottom, all)', default='all')
+    parser.add_argument('--class_name', type=str, help='which env class to use.', default=None)
     parser.add_argument('--reset_every', type=int, default=2,
                         help='How many runs between each rnn state reset.')
     args = parser.parse_args()
 
-    # If the snapshot file use tensorflow, do:
-    # import tensorflow as tf
-    # with tf.Session():
-    #     [rest of the code]
-
+    assert args.class_name is not None or args.use_pickled_env
     experiment_paths = load_exps_data(args.path, gap=args.gap_pkl, max=args.max_pkl)
     for exp_path in experiment_paths:
         max_path_length = exp_path['json']['max_path_length'] if args.max_path_length is None else args.max_path_length
@@ -88,28 +86,33 @@ if __name__ == "__main__":
                     print("\n Testing policy %s \n" % pkl_path)
                     data = joblib.load(pkl_path)
                     policy = data['policy']
+
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
-                    env_args = {
-                        'start_loc': args.start_loc,
-                        'include_holdout_obj': args.holdout_obj,
-                        'obstacle_representation': args.obstacle_representation,
-                    }
-                    if args.grid_size is not None:
-                        env_args['room_size'] = args.grid_size
-                    if args.num_dists is not None:
-                        env_args['num_dists'] = args.num_dists
-                    e_new = Level_GoToIndexedObj(**env_args)
-                    e_new.use_teacher = args.use_teacher
-                    if args.use_teacher:
-                        teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
-                        e_new.teacher = teacher
-                        e_new.teacher.set_feedback_type(args.feedback_type)
-                    env = rl2env(normalize(e_new))
+                    if args.use_pickled_env:
+                        env = data['env']
+                    else:
+                        all_attr = dir(iclr19_levels)
+                        env_class = getattr(iclr19_levels, args.class_name)
+                        env_args = {
+                            'start_loc': args.start_loc,
+                            'include_holdout_obj': args.holdout_obj,
+                        }
+                        if args.grid_size is not None:
+                            env_args['room_size'] = args.grid_size
+                        if args.num_dists is not None:
+                            env_args['num_dists'] = args.num_dists
+                        e_new = env_class(**env_args)
+                        e_new.use_teacher = args.use_teacher
+                        if args.use_teacher:
+                            teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                            e_new.teacher = teacher
+                            e_new.teacher.set_feedback_type(args.feedback_type)
+                        env = rl2env(normalize(e_new))
 
                     video_filename = pkl_path.split('.')[0] + '.mp4'
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
-                                    video_filename=video_filename, save_video=True, ignore_done=args.ignore_done,
+                                    video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
                                         stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))

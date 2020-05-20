@@ -75,7 +75,10 @@ class NormalizedEnv(Serializable):
             attribute of the wrapped_env
 
         """
-        orig_attr = self._wrapped_env.__getattribute__(attr)
+        if hasattr(self._wrapped_env, '_wrapped_env'):
+            orig_attr = self._wrapped_env.__getattr__(attr)
+        else:
+            orig_attr = self._wrapped_env.__getattribute__(attr)
 
         if callable(orig_attr):
             def hooked(*args, **kwargs):

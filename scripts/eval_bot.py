@@ -28,7 +28,11 @@ from random import Random
 # MissBossLevel is the only level the bot currently can't always handle
 level_list = [name for name, level in level_dict.items()
               if (not getattr(level, 'is_bonus', False) and not name == 'MiniBossLevel')]
-
+# success:"GoToLocal", "GoTo", "Open", "Unlock" (98.6%) "GoToImpUnlock"
+# failure: "UnblockPickup" "Pickup", "PutNext"
+# level_list = ["GoToLocal", "GoTo", "GoToImpUnlock", "Pickup", "UnblockPickup", "Open", "Unlock", "PutNext"]
+level_list = ["Unlock"]
+print("LEVEL", level_list)
 
 parser = OptionParser()
 parser.add_option(
@@ -95,6 +99,7 @@ start_time = time.time()
 all_good = True
 
 for level_name in level_list:
+    print("Starting level ", level_name)
 
     num_success = 0
     total_reward = 0
@@ -108,6 +113,8 @@ for level_name in level_list:
 
         mission_seed = options.seed + run_no
         mission = level(seed=mission_seed)
+        if not run_no % 1:
+            print(run_no, mission.mission)
         expert = Bot(mission)
 
         if options.verbose:
@@ -122,7 +129,11 @@ for level_name in level_list:
             episode_steps = 0
             last_action = None
             while True:
+                # vis_mask = expert.vis_mask
+                # expert = Bot(mission)
+                # expert.vis_mask = vis_mask
                 action = expert.replan(last_action)
+                # action = expert.replan(last_action)
                 if options.advise_mode and episode_steps < non_optimal_steps:
                     if rng.random() < options.bad_action_proba:
                         while True:
@@ -164,11 +175,11 @@ for level_name in level_list:
                     break
         except Exception as e:
             print('FAILURE on %s, seed %d' % (level_name, mission_seed))
-            traceback.print_exc()
+            # traceback.print_exc()
             # Playing these 2 sets of actions should get you to the mission snapshot above
-            print(before_optimal_actions)
-            print(optimal_actions)
-            print(expert.stack)
+            # print(before_optimal_actions)
+            # print(optimal_actions)
+            # print(expert.stack)
             break
 
     all_good = all_good and (num_success == options.num_runs)

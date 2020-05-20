@@ -37,9 +37,10 @@ class MetaSampler(BaseSampler):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
 
+        self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.max_path_length = max_path_length
         self.envs_per_task = rollouts_per_meta_task if envs_per_task is None else envs_per_task
         self.meta_batch_size = meta_batch_size
-        self.total_samples = meta_batch_size * rollouts_per_meta_task * max_path_length
         self.parallel = parallel
         self.total_timesteps_sampled = 0
         self.reward_predictor = reward_predictor
@@ -57,7 +58,7 @@ class MetaSampler(BaseSampler):
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
 
-    def obtain_samples(self, log=False, log_prefix='', random=False):
+    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False):
         """
         Collect batch_size trajectories from each task
 
@@ -86,10 +87,11 @@ class MetaSampler(BaseSampler):
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
+        if advance_curriculum:
+            self.vec_env.advance_curriculum()
         obses = self.vec_env.reset()
         
-        while n_samples < self.total_samples:
-            
+        for _ in range(self.rollouts_per_meta_task * self.max_path_length):
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
@@ -126,6 +128,9 @@ class MetaSampler(BaseSampler):
 
                 # if running path is done, add it to paths and empty the running path
                 if done:
+                    curr_path = paths[idx // self.envs_per_task]
+                    if len(curr_path) >= self.rollouts_per_meta_task:
+                        continue
                     paths[idx // self.envs_per_task].append(dict(
                         observations=np.asarray(running_paths[idx]["observations"]),
                         actions=np.asarray(running_paths[idx]["actions"]),

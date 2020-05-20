@@ -582,6 +582,10 @@ class Bot:
 
         suggested_action = None
         while self.stack:
+
+            if len(self.stack) > 20:
+                self.mission.render(mode='human')
+
             subgoal = self.stack[-1]
             suggested_action = subgoal.replan_before_action()
             # If is not clear what can be done for the current subgoal

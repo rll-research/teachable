@@ -233,11 +233,21 @@ class SampleProcessor(object):
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
         path_length = [path['env_infos']['episode_length'][-1] for path in paths]
         success = [path['env_infos']['success'][-1] for path in paths]
+        total_success = [np.sum(path['env_infos']['success']) for path in paths]
+        first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
+        same_room_start = [path['env_infos']['agent_room'][0] == path['env_infos']['goal_room'][0] for path in paths]
+        same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths]
 
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
 
         elif log == 'all' or log is True:
+
+            logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
+            logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
+            logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
+
+
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
             logger.logkv(log_prefix + 'NumTrajs', len(paths))
@@ -246,6 +256,7 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
 
             logger.logkv(log_prefix + 'AverageSuccess', np.mean(success))
+            logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))
             logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))

@@ -90,11 +90,11 @@ class RoomGridLevel(RoomGrid):
                 self.validate_instrs(self.instrs)
 
             except RecursionError as error:
-                print('Timeout during mission generation:', error)
+                # print('Timeout during mission generation:', error)
                 continue
 
             except RejectSampling as error:
-                #print('Sampling rejected:', error)
+                # print('Sampling rejected:', error)
                 continue
 
             break

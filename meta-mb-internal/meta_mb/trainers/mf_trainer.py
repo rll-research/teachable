@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 from meta_mb.logger import logger
-
+from meta_mb.samplers.utils import rollout
 
 class Trainer(object):
     """
@@ -33,6 +33,8 @@ class Trainer(object):
             sess=None,
             use_rp_inner=False,
             use_rp_outer=False,
+            reward_threshold=0.8,
+            exp_name="",
             ):
         self.algo = algo
         self.env = env
@@ -48,6 +50,16 @@ class Trainer(object):
         self.sess = sess
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
+        self.reward_threshold = reward_threshold
+        self.curriculum_step = 0
+        self.exp_name = exp_name
+
+    def check_advance_curriculum(self, data):
+        rewards = data['avg_reward']
+        should_advance = rewards > self.reward_threshold
+        if should_advance:
+            self.curriculum_step += 1
+        return should_advance
 
     def train(self):
         """
@@ -66,6 +78,7 @@ class Trainer(object):
             # initialize uninitialized vars  (only initialize vars that were not loaded)
             uninit_vars = [var for var in tf.global_variables() if not sess.run(tf.is_variable_initialized(var))]
             sess.run(tf.variables_initializer(uninit_vars))
+            advance_curriculum = False
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
@@ -78,7 +91,7 @@ class Trainer(object):
 
                 logger.log("Obtaining samples...")
                 time_env_sampling_start = time.time()
-                paths = self.sampler.obtain_samples(log=True, log_prefix='train-')
+                paths = self.sampler.obtain_samples(log=True, log_prefix='train-', advance_curriculum=advance_curriculum)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""
@@ -86,6 +99,7 @@ class Trainer(object):
                 logger.log("Processing samples...")
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train-')
+                advance_curriculum = self.check_advance_curriculum(samples_data)
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -124,12 +138,28 @@ class Trainer(object):
                 logger.logkv('Time', time.time() - start_time)
                 logger.logkv('ItrTime', time.time() - itr_start_time)
 
+                logger.logkv('Curriculum Step', self.curriculum_step)
+                logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
+
                 logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)
                 logger.save_itr_params(itr, params)
                 logger.log("Saved")
 
                 logger.dumpkvs()
+
+
+                self.env.set_level_distribution(self.curriculum_step)
+                step = self.curriculum_step
+                if advance_curriculum:
+                    step -= 1
+                paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
+                        video_filename=self.exp_name + '/sample_video' + str(step) + '.mp4', num_rollouts=10)
+                print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
+                print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+
+
                 if itr == 0:
                     sess.graph.finalize()
 
