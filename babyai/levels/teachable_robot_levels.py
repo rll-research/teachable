@@ -345,9 +345,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
             if self.dropout_current_correction:
-                correction = self.teacher.give_feedback([obs])[0]
-            else:
                 correction = self.teacher.empty_feedback()[0]
+            else:
+                correction = self.teacher.give_feedback([obs])[0]
             obs = np.concatenate([obs, correction])
 
         return deepcopy(obs)

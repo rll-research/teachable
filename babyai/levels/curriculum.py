@@ -110,12 +110,11 @@ class Curriculum(Serializable):
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[index] = 1
 
-    def reset(self):
+    def set_task(self, args):
         """
-        Each time the env resets, sample which babyai level to use from the categorical distribution array.
-        Then reset as usual.
-        :return: observation from the env reset
+        Each time we set a task, sample which babyai level to use from the categorical distribution array.
+        Then set the task as usual.
         """
         env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
         self._wrapped_env = self.levels_list[env_index]
-        return self._wrapped_env.reset()
+        return self._wrapped_env.set_task(args)
