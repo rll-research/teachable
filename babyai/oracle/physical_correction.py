@@ -29,8 +29,8 @@ class PhysicalCorrections(Teacher):
         if self.path is None:
             raise Exception('Path not found, blah')
         else:
-            if len(self.path) > 1:
-                feedback = self.path[1]
+            if len(self.agent_positions) > 1:
+                feedback = self.agent_positions[1]
                 self.env.agent_pos = np.array(feedback)
         return np.array([])
 

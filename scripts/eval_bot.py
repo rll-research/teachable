@@ -14,7 +14,8 @@ eval_bot.py --advise_mode --num_runs 100
 eval_boy.py --advise_mode --bad_action_proba .8 --non_optimal_steps 10 --random_agent_seed 9
 
 """
-
+import numpy as np
+import skvideo.io
 import random
 import time
 import traceback
@@ -117,7 +118,7 @@ for level_name in level_list:
         before_optimal_actions = []
         non_optimal_steps = options.non_optimal_steps or int(mission.max_steps // 3)
         rng = Random(mission_seed)
-
+        imgs = []
         try:
             episode_steps = 0
             last_action = None
@@ -143,6 +144,8 @@ for level_name in level_list:
                     optimal_actions.append(action)
 
                 obs, reward, done, info = mission.step(action)
+                # img = mission.render('rgb_array')
+                # imgs.append(img)
                 last_action = action
 
                 total_reward += reward
@@ -170,7 +173,7 @@ for level_name in level_list:
             print(optimal_actions)
             print(expert.stack)
             break
-
+        # skvideo.io.vwrite('video_%d.mp4'%run_no, np.array(imgs))
     all_good = all_good and (num_success == options.num_runs)
 
     success_rate = 100 * num_success / options.num_runs

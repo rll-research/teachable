@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class BatchTeacher:
     """
@@ -7,11 +7,12 @@ class BatchTeacher:
     def __init__(self, teachers):
         self.teachers = teachers
 
-    def step(self, agent_action_list):
-        [teacher.step(action) for teacher, action in zip(self.teachers, agent_action_list)]
+    def step(self, agent_action):
+        [teacher.step(agent_action) for teacher in self.teachers]
 
-    def give_feedback(self, state_list):
-        return [teacher.give_feedback(state) for teacher, state in zip(self.teachers, state_list)]
+    def give_feedback(self, state):
+        feedback = [teacher.give_feedback(state) for teacher in self.teachers]
+        return feedback
 
     def empty_feedback(self):
         return [teacher.empty_feedback() for teacher in self.teachers]

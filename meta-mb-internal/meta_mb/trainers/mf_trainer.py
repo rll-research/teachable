@@ -88,21 +88,22 @@ class Trainer(object):
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train-')
                 proc_samples_time = time.time() - time_proc_samples_start
 
-                """ ------------------ Reward Predictor Splicing ---------------------"""
-                r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                # Splice into the inference process
-                if self.use_rp_inner:
-                    samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
-                # Splice into the meta-learning process
-                if self.use_rp_outer:
-                    samples_data['rewards'] = logprobs[:, :, 1]   
-                
-                """ ------------------ End Reward Predictor Splicing ---------------------"""
-
                 if type(paths) is list:
                     self.log_diagnostics(paths, prefix='train-')
                 else:
                     self.log_diagnostics(sum(paths.values(), []), prefix='train-')
+
+                """ ------------------ Reward Predictor Splicing ---------------------"""
+                if self.algo.reward_predictor is not None:
+                    r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                    # Splice into the inference process
+                    if self.use_rp_inner:
+                        samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
+                    # Splice into the meta-learning process
+                    if self.use_rp_outer:
+                        samples_data['rewards'] = logprobs[:, :, 1]   
+                
+                """ ------------------ End Reward Predictor Splicing ---------------------"""
 
                 """ ------------------ Policy Update ---------------------"""
 
@@ -110,8 +111,9 @@ class Trainer(object):
                 # This needs to take all samples_data so that it can construct graph for meta-optimization.
                 time_optimization_step_start = time.time()
                 self.algo.optimize_policy(samples_data)
-                # TODO: Make sure we optimize this for more steps
-                self.algo.optimize_reward(samples_data)
+                if self.algo.reward_predictor is not None:
+                    # TODO: Make sure we optimize this for more steps
+                    self.algo.optimize_reward(samples_data)
 
                 """ ------------------- Logging Stuff --------------------------"""
                 logger.logkv('Itr', itr)
@@ -141,9 +143,9 @@ class Trainer(object):
         Gets the current policy and env for storage
         """
         if self.algo.reward_predictor is not None:
-            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline)
-        else:
             return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline, reward_predictor=self.algo.reward_predictor)
+        else:
+            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline)
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far

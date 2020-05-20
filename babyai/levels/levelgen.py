@@ -47,18 +47,19 @@ class RoomGridLevel(RoomGrid):
         # TODO: Un-hardcode this
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()
-            feedback = self.teacher.empty_feedback()[0]
+            feedback = np.concatenate(self.teacher.empty_feedback())
             obs = np.concatenate([obs, feedback])
         return obs
 
     def step(self, action):
         obs, reward, done, info = super().step(action)
         if hasattr(self, 'teacher') and self.teacher is not None:
-            obs = self.teacher.give_feedback([obs])[0]
+            feedback = np.concatenate(self.teacher.give_feedback(obs))
+            obs = np.concatenate([obs, feedback])
             # TODO: make this a flag rather than just commenting this out when we don't want feedback
             # feedback = self.teacher.empty_feedback()[0]
             # obs = np.concatenate([obs, feedback])
-            self.teacher.step([action])
+            self.teacher.step(action)
         # If we drop an object, we need to update its position in the environment
         if action == self.actions.drop:
             self.update_objs_poss()

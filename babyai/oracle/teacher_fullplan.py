@@ -1,11 +1,12 @@
 import torch
 import numpy as np
+import copy
 
-class Teacher:
+class TeacherFullPlan:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
-    def __init__(self, botclass, env, device=None, feedback_type='oracle'):
+    def __init__(self, botclass, env, env_copy=None, device=None, feedback_type='oracle'):
         """
         :param botclass: Oracle class
         :param env: babyai env
@@ -18,6 +19,7 @@ class Teacher:
         #  figure out what situations it fails and not generate those.
         self.oracle = botclass(env)
         self.env = env
+        self.env_copy = env_copy
         self.env.open_all_doors()
         self.botclass = botclass
         self.next_action = None
@@ -54,9 +56,31 @@ class Teacher:
         new_oracle.vis_mask = self.oracle.vis_mask
         self.oracle = new_oracle
         self.next_action = self.oracle.replan()
+        self.path = self.oracle.shortest_path_obj()
+        self.env_path, self.env_rewards, self.agent_positions = self.compute_full_path()
         import IPython
         IPython.embed()
-        self.path = self.oracle.shortest_path_obj()
+        
+    def compute_full_path(self):
+        self.env_copy = copy.deepcopy(self.env)
+        new_oracle = self.botclass(self.env_copy)
+        new_oracle.vis_mask = copy.deepcopy(self.oracle.vis_mask)
+        self.oracle = new_oracle
+
+        # Do the full planning
+        env_states = []
+        env_rewards = []
+        agent_positions = []
+        done = False
+        self.oracle.mission.teacher = None
+        while not done:
+            action = self.oracle.replan()
+            obs, reward, done, info = self.oracle.mission.step(action)
+            env_states.append(obs)
+            env_rewards.append(reward)
+            agent_positions.append(self.oracle.mission.agent_pos.copy())
+
+        return np.array(env_states), np.array(env_rewards), np.array(agent_positions)
 
 
     def give_feedback(self, state):

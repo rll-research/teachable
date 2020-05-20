@@ -26,7 +26,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'test_combined_single'
+EXP_NAME = 'temp'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -61,6 +61,7 @@ def run_experiment(**config):
         else:
             baseline = config['baseline']()
             e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=5)
+            e_new_copy = Level_GoToIndexedObj(start_loc='bottom', num_dists=5)
             feedback_class = None
             if config["feedback_type"] is None:
                 teacher = None
@@ -79,7 +80,7 @@ def run_experiment(**config):
                     bots = []
                     for fb in config["feedback_combine"]:
                         if fb == 'ActionAdvice':
-                            bot_curr = ActionAdvice(Bot, e_new)
+                            bot_curr = ActionAdvice(Bot, e_new, env_copy=e_new_copy)
                         elif fb == 'DemoCorrections':
                             bot_curr = DemoCorrections(Bot, e_new)
                         elif fb == 'LandmarkCorrection':
@@ -167,7 +168,7 @@ if __name__ == '__main__':
         "hidden_sizes": [(64,), (128,)],
         'backprop_steps': [50, 100, 200],
         "rollouts_per_meta_task": [2],
-        "parallel": [True],
+        "parallel": [False],
         "max_path_length": [200],
         "discount": [0.99],
         "gae_lambda": [1.0],
@@ -181,7 +182,7 @@ if __name__ == '__main__':
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
         "feedback_type": ['Combined'],
-        "feedback_combine": [('ActionAdvice', 'DemoCorrections', 'LandmarkCorrection', 'CartesianCorrections')]
+        "feedback_combine": [('ActionAdvice',)]
         #'timeskip': [1, 2, 3, 4]
     }
     run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)

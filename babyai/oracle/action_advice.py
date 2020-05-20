@@ -1,9 +1,9 @@
 import numpy as np
 from babyai.oracle.teacher import Teacher
+from babyai.oracle.teacher_fullplan import TeacherFullPlan
 
 
-
-class ActionAdvice(Teacher):
+class ActionAdvice(TeacherFullPlan):
 
     def empty_feedback(self):
         """

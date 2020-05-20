@@ -26,7 +26,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-EXP_NAME = 'test_combined_single'
+EXP_NAME = 'test_using_rp'
 
 def run_experiment(**config):
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + str(config['seed'])
@@ -39,81 +39,56 @@ def run_experiment(**config):
     sess = tf.Session(config=config_sess)
     reward_predictor = None
     with sess.as_default() as sess:
-        if config['saved_path'] is not None:
-            saved_model = joblib.load(config['saved_path'])
-            policy = saved_model['policy']
-            baseline = saved_model['baseline']
-            env = saved_model['env']
-            start_itr = saved_model['itr']
-            obs_dim = env._wrapped_env.reset().shape[0]
-            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
-            if 'reward_predictor' not in saved_model:
-                reward_predictor = DiscreteRNNPolicy(
-                    name="reward-predictor",
-                    action_dim=2,
-                    obs_dim=obs_dim - 1,
-                    meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
-                    cell_type=config['cell_type']
-                )
-            else:
-                reward_predictor = saved_model['reward_predictor']
+        saved_model = joblib.load(config['saved_path'])
+        print("LOADING SAVED PATH FROM %s"%(config['saved_path']))
+        baseline = config['baseline']()
+        e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=5)
+        feedback_class = None
+        if config["feedback_type"] is None:
+            teacher = None
         else:
-            baseline = config['baseline']()
-            e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=5)
-            feedback_class = None
-            if config["feedback_type"] is None:
-                teacher = None
+            if config["feedback_type"] == 'ActionAdvice':
+                teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+            elif config["feedback_type"] == 'DemoCorrections':
+                teacher = BatchTeacher([DemoCorrections(Bot, e_new)])
+            elif config["feedback_type"] == 'LandmarkCorrection':
+                teacher = BatchTeacher([LandmarkCorrection(Bot, e_new)])
+            elif config["feedback_type"] == 'CartesianCorrections':
+                teacher = BatchTeacher([CartesianCorrections(Bot, e_new)])
+            elif config["feedback_type"] == 'PhysicalCorrections':
+                teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
+            elif config["feedback_type"] == 'Combined':
+                bots = []
+                for fb in config["feedback_combine"]:
+                    if fb == 'ActionAdvice':
+                        bot_curr = ActionAdvice(Bot, e_new)
+                    elif fb == 'DemoCorrections':
+                        bot_curr = DemoCorrections(Bot, e_new)
+                    elif fb == 'LandmarkCorrection':
+                        bot_curr = LandmarkCorrection(Bot, e_new)
+                    elif fb == 'CartesianCorrections':
+                        bot_curr = CartesianCorrections(Bot, e_new)
+                    elif fb == 'PhysicalCorrections':
+                        bot_curr = PhysicalCorrections(Bot, e_new)
+                    bots.append(bot_curr)
+                teacher = BatchTeacher(bots)
             else:
-                if config["feedback_type"] == 'ActionAdvice':
-                    teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
-                elif config["feedback_type"] == 'DemoCorrections':
-                    teacher = BatchTeacher([DemoCorrections(Bot, e_new)])
-                elif config["feedback_type"] == 'LandmarkCorrection':
-                    teacher = BatchTeacher([LandmarkCorrection(Bot, e_new)])
-                elif config["feedback_type"] == 'CartesianCorrections':
-                    teacher = BatchTeacher([CartesianCorrections(Bot, e_new)])
-                elif config["feedback_type"] == 'PhysicalCorrections':
-                    teacher = BatchTeacher([PhysicalCorrections(Bot, e_new)])
-                elif config["feedback_type"] == 'Combined':
-                    bots = []
-                    for fb in config["feedback_combine"]:
-                        if fb == 'ActionAdvice':
-                            bot_curr = ActionAdvice(Bot, e_new)
-                        elif fb == 'DemoCorrections':
-                            bot_curr = DemoCorrections(Bot, e_new)
-                        elif fb == 'LandmarkCorrection':
-                            bot_curr = LandmarkCorrection(Bot, e_new)
-                        elif fb == 'CartesianCorrections':
-                            bot_curr = CartesianCorrections(Bot, e_new)
-                        elif fb == 'PhysicalCorrections':
-                            bot_curr = PhysicalCorrections(Bot, e_new)
-                        bots.append(bot_curr)
-                    teacher = BatchTeacher(bots)
-                else:
-                    assert NotImplementedError("THIS IS NOT MPLEMENTED")
-            e_new.teacher = teacher
-            # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
-            env = rl2env(normalize(e_new), ceil_reward=True)
-            obs_dim = e_new.reset().shape[0]
-            obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
-            policy = DiscreteRNNPolicy(
-                    name="meta-policy",
-                    action_dim=np.prod(env.action_space.n),
-                    obs_dim=obs_dim,
-                    meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
-                    cell_type=config['cell_type']
-                )
-            reward_predictor = DiscreteRNNPolicy(
-                name="reward-predictor",
-                action_dim=2,
-                obs_dim=obs_dim - 1,
+                assert NotImplementedError("THIS IS NOT MPLEMENTED")
+        e_new.teacher = teacher
+        # TODO: Unhardcode this ceil-reward thing. It basically sends the reward to 0/1
+        env = rl2env(normalize(e_new), ceil_reward=True)
+        obs_dim = e_new.reset().shape[0]
+        obs_dim = obs_dim + np.prod(env.action_space.n) + 1 + 1 # obs + act + rew + done
+        policy = DiscreteRNNPolicy(
+                name="meta-policy-again",
+                action_dim=np.prod(env.action_space.n),
+                obs_dim=obs_dim,
                 meta_batch_size=config['meta_batch_size'],
                 hidden_sizes=config['hidden_sizes'],
                 cell_type=config['cell_type']
             )
-            start_itr = 0
+        reward_predictor = saved_model['reward_predictor']
+        start_itr = 0
 
         sampler = MetaSampler(
             env=env,
@@ -151,6 +126,8 @@ def run_experiment(**config):
             n_itr=config['n_itr'],
             sess=sess,
             start_itr=start_itr,
+            use_rp_outer=True,
+            use_rp_inner=True
         )
         trainer.train()
 
@@ -160,7 +137,7 @@ if __name__ == '__main__':
     sweep_params = {
         'algo': ['rl2'],
         'seed': [1, 2, 3],
-        'saved_path': [None],
+        'saved_path': ['data/retrain_rp1/params.pkl'],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
@@ -180,8 +157,8 @@ if __name__ == '__main__':
         "n_itr": [1000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
-        "feedback_type": ['Combined'],
-        "feedback_combine": [('ActionAdvice', 'DemoCorrections', 'LandmarkCorrection', 'CartesianCorrections')]
+        "feedback_type": ['ActionAdvice'],
+        "feedback_combine": [None]
         #'timeskip': [1, 2, 3, 4]
     }
     run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)

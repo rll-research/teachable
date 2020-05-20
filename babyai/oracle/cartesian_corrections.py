@@ -29,7 +29,9 @@ class CartesianCorrections(Teacher):
         else:
             if len(self.path) > 1:
                 feedback = self.path[1]
-            else:
+            elif len(self.path) == 0:
+                feedback = self.env.obj_pos
+            elif len(self.path) == 1:
                 feedback = self.path[0]
         return np.array(feedback)
 

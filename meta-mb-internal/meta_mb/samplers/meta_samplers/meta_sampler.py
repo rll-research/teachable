@@ -94,7 +94,6 @@ class MetaSampler(BaseSampler):
         obses = self.vec_env.reset()
         
         while n_samples < self.total_samples:
-            
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)

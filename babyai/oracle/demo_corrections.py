@@ -5,6 +5,7 @@ class DemoCorrections(Teacher):
     def reset(self):
         self.env.compute_obj_infos()
         empty_path = np.zeros((self.env.grid.height + self.env.grid.width, 2))
+        self.env_path, self.env_rewards, self.agent_positions = self.compute_full_path()
         path = self.oracle.shortest_path_obj()
         empty_path[:len(path)] = path
         self.init_obj_infos = self.env.obj_infos.copy()
