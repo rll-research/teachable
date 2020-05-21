@@ -5,6 +5,9 @@ from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
+from babyai.oracle.batch_teacher import BatchTeacher
+from babyai.oracle.action_advice import ActionAdvice
+from babyai.bot import Bot
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     """
@@ -16,7 +19,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def __init__(self, start_loc='all',
                  include_holdout_obj=True,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 dropout_goal=0, dropout_correction=0, dropout_independently=True, **kwargs):
+                 dropout_goal=0, dropout_correction=0, dropout_independently=True, 
+                 feedback_type=None, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -41,6 +45,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_independently = dropout_independently
         self.task = {}
         super().__init__(**kwargs)
+        if feedback_type == 'ActionAdvice':
+            teacher = BatchTeacher([ActionAdvice(Bot, self)])
+        else:
+            teacher = None
+        self.teacher = teacher
 
     def sample_object(self):
         """
@@ -349,7 +358,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             else:
                 correction = self.teacher.empty_feedback()[0]
             obs = np.concatenate([obs, correction])
-
         return deepcopy(obs)
 
     def step(self, action):

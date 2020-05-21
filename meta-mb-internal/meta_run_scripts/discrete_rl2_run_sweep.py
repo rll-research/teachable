@@ -74,24 +74,10 @@ def run_experiment(**config):
                  "dropout_goal": config['dropout_goal'],
                  "dropout_correction": config['dropout_correction'],
                  "dropout_independently": config['dropout_independently'],
+                 "feedback_type": config["feedback_type"]
             }
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
                          ceil_reward=config['ceil_reward'])
-            if config["feedback_type"] is None:
-                teacher = None
-            else:
-                if config["feedback_type"] == 'ActionAdvice':
-                    teacher = BatchTeacher([ActionAdvice(Bot, env)])
-                elif config["feedback_type"] == 'DemoCorrections':
-                    teacher = BatchTeacher([DemoCorrections(Bot, env)])
-                elif config["feedback_type"] == 'LandmarkCorrection':
-                    teacher = BatchTeacher([LandmarkCorrection(Bot, env)])
-                elif config["feedback_type"] == 'CartesianCorrections':
-                    teacher = BatchTeacher([CartesianCorrections(Bot, env)])
-                elif config["feedback_type"] == 'PhysicalCorrections':
-                    teacher = BatchTeacher([PhysicalCorrections(Bot, env)])
-            env.teacher = teacher
-
             obs_dim = env.reset().shape[0]
             policy = DiscreteRNNPolicy(
                     name="meta-policy",
@@ -164,7 +150,7 @@ if __name__ == '__main__':
         'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.9],
-        "feedback_type": [None],
+        "feedback_type": ['ActionAdvice'],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
         'advance_curriculum_func': ['advance_curriculum_one_hot'],
