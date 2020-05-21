@@ -54,7 +54,7 @@ class Teacher:
         new_oracle.vis_mask = self.oracle.vis_mask
         self.oracle = new_oracle
         self.next_action = self.oracle.replan()
-        self.path = self.oracle.shortest_path_obj()
+        # self.path = self.oracle.shortest_path_obj()
 
 
     def give_feedback(self, state):
