@@ -5,7 +5,7 @@ import time
 import numpy as np
 import copy
 from pyprind import ProgBar
-
+from scipy.stats import entropy
 
 class BaseSampler(object):
     """
@@ -237,6 +237,7 @@ class SampleProcessor(object):
         first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
         same_room_start = [path['env_infos']['agent_room'][0] == path['env_infos']['goal_room'][0] for path in paths]
         same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths]
+        action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
 
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
@@ -262,6 +263,8 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
             logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
             logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
+
+            logger.logkv(log_prefix + 'AverageActionEntropy', np.mean(action_entropy))
 
 
         return np.mean(undiscounted_returns)
