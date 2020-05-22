@@ -35,6 +35,7 @@ class Trainer(object):
             use_rp_outer=False,
             reward_threshold=0.8,
             exp_name="",
+            videos_every=5,
             ):
         self.algo = algo
         self.env = env
@@ -53,6 +54,7 @@ class Trainer(object):
         self.reward_threshold = reward_threshold
         self.curriculum_step = 0
         self.exp_name = exp_name
+        self.videos_every = videos_every
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
@@ -149,15 +151,17 @@ class Trainer(object):
                 logger.dumpkvs()
 
 
-                step = self.curriculum_step
-                if advance_curriculum:
-                    step -= 1
-                self.env.set_level_distribution(step)
-                paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
-                        video_filename=self.exp_name + '/sample_video' + str(step) + '.mp4', num_rollouts=10)
-                print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
-                print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
-                print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+                # Save videos of the progress periodically, or right before we advance levels
+                if advance_curriculum or itr % self.videos_every == 0:
+                    step = self.curriculum_step
+                    if advance_curriculum:
+                        step -= 1
+                    self.env.set_level_distribution(step)
+                    paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
+                            video_filename=self.exp_name + '/sample_video' + str(step) + '.mp4', num_rollouts=2)
+                    print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
+                    print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                    print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
 
 
                 if itr == 0:
