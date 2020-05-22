@@ -20,7 +20,7 @@ class Teacher:
         self.env = env
         # self.env.open_all_doors()
         self.botclass = botclass
-        self.next_action = None
+        self.next_action = -1
         self.agent_actions = []
         self.oracle_actions = []
         self.feedback_type = feedback_type
@@ -95,6 +95,6 @@ class Teacher:
 
     def reset(self):
         self.oracle = self.botclass(self.env)
-        self.next_action = None
+        self.next_action = -1
         self.agent_actions = []
         self.oracle_actions = []
