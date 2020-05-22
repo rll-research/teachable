@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1, save_failures=True,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None):
+    start = time.time()
     if hasattr(env, 'dt'):
         timestep = env.dt
     else:
@@ -18,7 +19,8 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         mode = 'rgb_array'
 
     render = animated or save_video
-
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     for i in range(num_rollouts):
         print("Rollout", i)
         observations = []
@@ -28,6 +30,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         env_infos = []
         curr_images = []
         failures = []
+        successes = []
         if i % reset_every == 0:
             agent.reset(dones=[True] * batch_size)
             env.set_task(None)
@@ -35,7 +38,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         o = env.reset()
         if render:
             _ = env.render(mode)
-
         while path_length < max_path_length:
 
             obs_big = np.stack([o] * batch_size)
@@ -60,18 +62,18 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if save_video:
                 image = env.render(mode='rgb_array')
 
-                # If you uncomment this, it runs a lot slower but prints the mission on the screen
+                plt.imshow(image)
+                plt.title(env.mission)
+                label_str = ""
+                if hasattr(env, "teacher"):
+                    label_str += "Teacher on:    "
+                label_str += "Run: " + str(i % reset_every)
+                plt.xlabel(label_str)
+                fig.canvas.draw()
+                data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+                image = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+                fig.clf()
 
-                # fig = plt.figure()
-                # fig.add_subplot(111)
-                # #
-                # plt.imshow(image)
-                # plt.title(env.mission)
-                # plt.xlabel("Teacher on: " + str(env.use_teacher) + "    Run: " + str(i % reset_every))
-                # fig.canvas.draw()
-                # data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-                # image = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-                # plt.close(fig)
                 curr_images.append(image)
 
             if d and not ignore_done:
@@ -81,6 +83,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         sample_img = np.zeros_like(curr_images[-1])
         if r > 0:
             curr_images += [sample_img + 255] * 3
+            successes += curr_images
         else:
             curr_images += [sample_img] * 3
             failures += curr_images
@@ -113,6 +116,14 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 clip.write_gif(video_filename[:-4] + "failures" + ".gif", fps=fps)
             else:
                 clip.write_videofile(video_filename[:-4] + "failures" + video_filename[-4:], fps=fps)
+        if len(successes) > 0:
+            clip = mpy.ImageSequenceClip(successes, fps=fps)
+            if video_filename[-3:] == 'gif':
+                clip.write_gif(video_filename[:-4] + "successes" + ".gif", fps=fps)
+            else:
+                clip.write_videofile(video_filename[:-4] + "successes" + video_filename[-4:], fps=fps)
 
-
+    plt.close(fig)
+    end = time.time()
+    print("total time spent on rollouts", end - start)
     return paths
