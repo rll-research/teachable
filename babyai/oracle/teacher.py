@@ -5,7 +5,7 @@ class Teacher:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
-    def __init__(self, botclass, env, device=None, feedback_type='oracle'):
+    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False):
         """
         :param botclass: Oracle class
         :param env: babyai env
@@ -24,6 +24,7 @@ class Teacher:
         self.agent_actions = []
         self.oracle_actions = []
         self.feedback_type = feedback_type
+        self.feedback_always = feedback_always
         if device is None:
             if torch.cuda.is_available():
                 self.device = 'cuda'
@@ -46,14 +47,12 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        # TODO: Currently we open all doors to prevent planning errors. We should fix this.
-        # self.env.open_all_doors()
         self.agent_actions.append(agent_action)
         self.oracle_actions.append(self.next_action)
         new_oracle = self.botclass(self.env)
         new_oracle.vis_mask = self.oracle.vis_mask
         self.oracle = new_oracle
-        self.next_action = self.oracle.replan()
+        self.next_action = self.oracle.replan(-1)
         # self.path = self.oracle.shortest_path_obj()
 
 
@@ -63,11 +62,14 @@ class Teacher:
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
-        if self.feedback_type == 'none' or not self.feedback_condition():
+        if self.feedback_always:
+            feedback = self.compute_feedback()
+        elif self.feedback_type == 'none' or not self.feedback_condition():
             feedback = self.empty_feedback()
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()
         elif self.feedback_type == 'oracle':
+
             feedback = self.compute_feedback()
         else:
             raise ValueError("Unsupported feedback type")

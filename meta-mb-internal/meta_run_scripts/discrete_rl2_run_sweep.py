@@ -74,7 +74,8 @@ def run_experiment(**config):
                  "dropout_goal": config['dropout_goal'],
                  "dropout_correction": config['dropout_correction'],
                  "dropout_independently": config['dropout_independently'],
-                 "feedback_type": config["feedback_type"]
+                 "feedback_type": config["feedback_type"],
+                 "feedback_always": config["feedback_always"],
             }
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
                          ceil_reward=config['ceil_reward'])
@@ -155,6 +156,7 @@ if __name__ == '__main__':
         'ceil_reward': [True],
         'advance_curriculum_func': ['advance_curriculum_one_hot'],
         'entropy_bonus': [1e-3],
+        'feedback_always': [True],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],

@@ -19,7 +19,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, dropout_independently=True, 
-                 feedback_type=None, **kwargs):
+                 feedback_type=None, feedback_always=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -32,6 +32,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                If False, it drops out the goal normally, then only drops out the correction if the goal isn't dropped
                out (so the probability that the correction is dropped out is actually (1 - goal_dropout) * corr_dropout
         :param feedback_type: Type of teacher feedback, string
+        :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
         :param kwargs: Additional arguments passed to the parent class
         """
         assert start_loc in ['top', 'bottom', 'all']
@@ -46,7 +47,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.task = {}
         super().__init__(**kwargs)
         if feedback_type == 'ActionAdvice':
-            teacher = ActionAdvice(Bot, self)
+            teacher = ActionAdvice(Bot, self, feedback_always=feedback_always)
 
         else:
             teacher = None
