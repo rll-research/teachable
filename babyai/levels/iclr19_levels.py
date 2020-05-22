@@ -202,6 +202,55 @@ class Level_GoToLocalS8N7(Level_GoToLocal):
         super().__init__(room_size=8, num_dists=7, seed=seed, **kwargs)
 
 
+class Level_PickupLocal(Level_TeachableRobot):
+    """
+    Pick up an object, inside a single room with no doors, multiple distractors
+    """
+
+    def __init__(self, room_size=8, num_dists=8, seed=None, **kwargs):
+        self.num_dists = num_dists
+        super().__init__(
+            num_rows=1,
+            num_cols=1,
+            room_size=room_size,
+            seed=seed,
+            **kwargs
+        )
+
+    def make_mission(self):
+        obj_type, obj_color = self.sample_object()
+        return {
+            "task": (obj_type, obj_color),
+            "instrs": PickupInstr(ObjDesc(obj_type, obj_color))
+        }
+
+    def add_objs(self, task):
+        obj_type, obj_color = task
+        obj, _ = self.add_object(0, 0, obj_type, obj_color)
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+        return dists + [obj], obj
+
+
+class Level_PickupLocalS5N2(Level_PickupLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=5, num_dists=2, seed=seed, **kwargs)
+
+
+class Level_PickupLocalS6N3(Level_PickupLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=6, num_dists=3, seed=seed, **kwargs)
+
+
+class Level_PickupLocalS7N4(Level_PickupLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=7, num_dists=4, seed=seed, **kwargs)
+
+
+class Level_PickupLocalS8N7(Level_PickupLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=8, num_dists=7, seed=seed, **kwargs)
+
+
 class Level_PutNextLocal(Level_TeachableRobot):
     """
     Put an object next to another object, inside a single room
@@ -242,6 +291,54 @@ class Level_PutNextLocalS5N3(Level_PutNextLocal):
 
 
 class Level_PutNextLocalS6N4(Level_PutNextLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=6, num_dists=4, seed=seed, **kwargs)
+
+
+class Level_OpenLocal(Level_TeachableRobot):
+    """
+    Open a door in the current room (0,0), since that's currently where we initialize the agent.
+    """
+
+    def __init__(self, room_size=8, num_dists=8, seed=None, **kwargs):
+        self.num_dists = num_dists
+        super().__init__(
+            room_size=room_size,
+            seed=seed,
+            **kwargs
+        )
+
+    def make_mission(self):
+        # We only need the color
+        _, obj_color = self.sample_object()
+        return {
+            "task": obj_color,
+            "instrs": OpenInstr(ObjDesc("door", obj_color))
+        }
+
+
+    def add_objs(self, task):
+        obj_color = task
+        self.connect_all()
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+
+        # Make sure at least one door has the required color by randomly setting one door color
+        doors = []
+        room = self.get_room(0, 0)
+        for door in room.doors:
+            if door:
+                doors.append(door)
+        door = self._rand_elem(doors)
+        door.color = obj_color
+        return dists + self.get_doors(), door
+
+
+class Level_OpenLocalS5N3(Level_OpenLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=5, num_dists=3, seed=seed, **kwargs)
+
+
+class Level_OpenLocalS6N4(Level_OpenLocal):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=6, num_dists=4, seed=seed, **kwargs)
 
