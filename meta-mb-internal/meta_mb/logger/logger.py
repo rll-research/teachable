@@ -373,10 +373,13 @@ class Logger(object):
             if isinstance(fmt, SeqWriter):
                 fmt.writeseq(map(str, args))
 
-    def save_itr_params(self, itr, params):
+    def save_itr_params(self, itr, step, params):
         if self.dir:
             if self.snapshot_mode == 'all':
                 file_name = osp.join(self.dir, 'itr_%d.pkl' % itr)
+                joblib.dump(params, file_name, compress=3)
+            elif self.snapshot_mode == 'level':
+                file_name = osp.join(self.dir, 'level_%d.pkl' % itr)
                 joblib.dump(params, file_name, compress=3)
             elif self.snapshot_mode == 'last':
                 # override previous params

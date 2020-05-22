@@ -145,7 +145,10 @@ class Trainer(object):
 
                 logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)
-                logger.save_itr_params(itr, params)
+                step = self.curriculum_step
+                if advance_curriculum:
+                    step -= 1
+                logger.save_itr_params(itr, step, params)
                 logger.log("Saved")
 
                 logger.dumpkvs()
@@ -153,9 +156,7 @@ class Trainer(object):
 
                 # Save videos of the progress periodically, or right before we advance levels
                 if advance_curriculum or itr % self.videos_every == 0:
-                    step = self.curriculum_step
-                    if advance_curriculum:
-                        step -= 1
+
                     self.env.set_level_distribution(step)
                     paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
                             video_filename=self.exp_name + '/sample_video' + str(step) + '.mp4', num_rollouts=2)

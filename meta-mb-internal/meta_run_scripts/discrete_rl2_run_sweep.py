@@ -48,7 +48,7 @@ def run_experiment(**config):
     print("EXPERIMENT NAME:", EXP_NAME)
 
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='last_gap', snapshot_gap=50)
+    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level', snapshot_gap=50)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
     set_seed(config['seed'])
     config_sess = tf.ConfigProto()
