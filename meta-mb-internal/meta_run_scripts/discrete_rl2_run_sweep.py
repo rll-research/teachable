@@ -27,8 +27,8 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'improved_videos_curriculum_correct_bias'
-# PREFIX = 'debug_again'
+# PREFIX = 'curriculum+ActionAdvice'
+PREFIX = 'debug_again'
 
 def run_experiment(**config):
 
@@ -154,6 +154,7 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
         'advance_curriculum_func': ['advance_curriculum_one_hot'],
+        'entropy_bonus': [1e-3],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],
@@ -164,7 +165,7 @@ if __name__ == '__main__':
         'backprop_steps': [50, 100, 200],
         "parallel": [True],
         "max_path_length": [200],
-        "discount": [0.99],
+        "discount": [0.95],
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
