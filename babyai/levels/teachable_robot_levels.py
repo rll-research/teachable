@@ -5,7 +5,6 @@ from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
-from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.action_advice import ActionAdvice
 from babyai.bot import Bot
 
@@ -32,6 +31,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param dropout_independently: Whether to sample instances of goal and correction dropout independently
                If False, it drops out the goal normally, then only drops out the correction if the goal isn't dropped
                out (so the probability that the correction is dropped out is actually (1 - goal_dropout) * corr_dropout
+        :param feedback_type: Type of teacher feedback, string
         :param kwargs: Additional arguments passed to the parent class
         """
         assert start_loc in ['top', 'bottom', 'all']
@@ -46,7 +46,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.task = {}
         super().__init__(**kwargs)
         if feedback_type == 'ActionAdvice':
-            teacher = BatchTeacher([ActionAdvice(Bot, self)])
+            teacher = ActionAdvice(Bot, self)
+
         else:
             teacher = None
         self.teacher = teacher
@@ -215,6 +216,34 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             except Exception as e:
                 print(e)
 
+    def prevent_teacher_errors(self, objs):
+        """
+        The teacher fails in certain situations.  Here we modify the objects in the environment to avoid this.
+        Prevent boxes from disappearing. When a box disappears, it is replaced by its contents (or None, if empty.)
+        Prevent doors from closing once open.
+        :param objs:
+        """
+
+        def make_door_toggle(obj):
+            def toggle(env, pos):
+                # If the player has the right key to open the door
+                if obj.is_locked:
+                    if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
+                        obj.is_locked = False
+                        obj.is_open = True
+                        return True
+                    return False
+
+                obj.is_open = True
+                return True
+            return toggle
+
+        for obj in objs:
+            if obj.type == 'box':
+                obj.contains = obj
+            if obj.type == 'door':
+                obj.toggle = make_door_toggle(obj)
+
     def gen_mission(self):
         """
         Generate the mission for a single meta-task.  Any environment setup elements in the self.task dictionary
@@ -231,6 +260,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if 'objs' in self.task:
             objs, goal_objs = self.task['objs']
             self.objs = deepcopy(objs)
+            self.prevent_teacher_errors(self.objs)
             self.goal_objs = deepcopy(goal_objs)
             self.place_in_grid(self.objs)
 
@@ -241,6 +271,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             mission = self.make_mission()
         if not 'objs' in self.task:
             objs, goal_objs = self.add_objs(mission["task"])
+            self.prevent_teacher_errors(objs)
             self.objs = deepcopy(objs)
             self.goal_objs = deepcopy(goal_objs)
 
@@ -354,9 +385,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
             if self.dropout_current_correction:
-                correction = self.teacher.empty_feedback()[0]
+                correction = self.teacher.empty_feedback()
             else:
-                correction = self.teacher.give_feedback([obs])[0]
+                correction = self.teacher.give_feedback([obs])
             obs = np.concatenate([obs, correction])
         return deepcopy(obs)
 
@@ -375,7 +406,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['goal_pos'] = self.obj_pos
 
         if hasattr(self, 'teacher') and self.teacher is not None:
-            self.teacher.step([action])
+            teacher_copy = deepcopy(self.teacher)
+            try:
+                self.teacher.step([action])
+            except Exception as e:
+                self.render('human')
+                print("ERROR!!!!!", e)
+                teacher_copy.step([action])
         return obs, rew, done, info
 
     def reset(self):

@@ -2,7 +2,7 @@ from gym_minigrid.minigrid import *
 from babyai.levels.verifier import *
 from babyai.levels.verifier import (ObjDesc, pos_next_to,
                                     GoToInstr, OpenInstr, PickupInstr, PutNextInstr, BeforeInstr, AndInstr, AfterInstr)
-
+import random
 
 class DisappearedBoxError(Exception):
     """
@@ -543,6 +543,7 @@ class Bot:
         # How many steps were made in total in all BFS searches
         # performed by this bot
         self.bfs_step_counter = 0
+        self.step = 0
 
     def replan(self, action_taken=None):
         """Replan and suggest an action.
@@ -597,7 +598,24 @@ class Bot:
             suggested_action = self.mission.actions.done
 
         self._remember_current_state()
+        self.step += 1
         return suggested_action
+
+    def find_open_cell(self, attempts=100):
+        length = len(self.vis_mask)
+        width = len(self.vis_mask[0])
+        empty_visible_cells = []
+        for i in range(length):
+            for j in range(width):
+                # if self.vis_mask[i][j]:
+                    cell = self.mission.grid.get(i, j)
+                    if cell is None and not (i == self.mission.agent_pos[0] and j == self.mission.agent_pos[1]):
+                        empty_visible_cells.append((i, j))
+        if len(empty_visible_cells) > 0:
+            return random.choice(empty_visible_cells)
+        self.mission.render("human")
+        raise RecursionError(f"Did not find an open cell in {attempts} iterations.")
+
 
     def shortest_path_obj(self):
         target_pos = self.mission.obj_pos
@@ -1002,12 +1020,40 @@ class Bot:
         if isinstance(instr, PickupInstr):
             # We pick up and immediately drop so
             # that we may carry other objects
-            self.stack.append(DropSubgoal(self))
-            self.stack.append(PickupSubgoal(self))
-            self.stack.append(GoNextToSubgoal(self, instr.desc))
+            if not self.mission.carrying:
+                self.stack.append(DropSubgoal(self))
+                self.stack.append(PickupSubgoal(self))
+                self.stack.append(GoNextToSubgoal(self, instr.desc))
+            # If we're carrying an object, drop it first
+            else:
+                self.stack.append(DropSubgoal(self))
+                fwd_cell = self.mission.grid.get(*self.mission.agent_pos + self.mission.dir_vec)
+                if fwd_cell is not None:
+                    empty = self.find_open_cell()
+                    self.stack.append(GoNextToSubgoal(self, empty))
             return
 
         if isinstance(instr, PutNextInstr):
+            if self.mission.carrying:
+                obj_carrying = self.mission.carrying
+                valid_objs = instr.desc_move.obj_set
+                # If we're already carrying the correct object, just drop it in the right place
+                if obj_carrying in valid_objs:
+                    self.stack.append(DropSubgoal(self))
+                    self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))
+                    return
+                else:
+                    # If we're carrying the wrong object, drop it off in an empty cell first.
+                    self.stack.append(DropSubgoal(self))
+                    self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))
+                    self.stack.append(PickupSubgoal(self))
+                    self.stack.append(GoNextToSubgoal(self, instr.desc_move))
+                    self.stack.append(DropSubgoal(self))
+                    fwd_cell = self.mission.grid.get(*self.mission.agent_pos + self.mission.dir_vec)
+                    if fwd_cell is not None:
+                        empty = self.find_open_cell()
+                        self.stack.append(GoNextToSubgoal(self, empty))
+                    return
             self.stack.append(DropSubgoal(self))
             self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))
             self.stack.append(PickupSubgoal(self))
