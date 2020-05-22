@@ -90,8 +90,8 @@ class MetaSampler(BaseSampler):
         if advance_curriculum:
             self.vec_env.advance_curriculum()
         obses = self.vec_env.reset()
-        
-        for _ in range(self.rollouts_per_meta_task * self.max_path_length):
+        num_paths = 0
+        while num_paths < self.rollouts_per_meta_task * self.meta_batch_size * self.envs_per_task:
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
@@ -139,6 +139,7 @@ class MetaSampler(BaseSampler):
                         env_infos=utils.stack_tensor_dict_list(running_paths[idx]["env_infos"]),
                         agent_infos=utils.stack_tensor_dict_list(running_paths[idx]["agent_infos"]),
                     ))
+                    num_paths += 1
                     new_samples += len(running_paths[idx]["rewards"])
                     running_paths[idx] = _get_empty_running_paths_dict()
 
