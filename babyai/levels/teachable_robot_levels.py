@@ -342,7 +342,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         types = ['door', 'key', 'ball', 'box']
         actions = ["go", "pick", "up", "open", "put"]
         fillers = ["to", "next", "the", "a"]
-        return colors + types + actions + fillers
+        misc = ["follow_teacher"]
+        return colors + types + actions + fillers + misc
 
     def to_vocab_index(self, mission, pad_length=None):  # TODO: turn this into an embedding
         """

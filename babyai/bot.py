@@ -274,6 +274,21 @@ class PickupSubgoal(Subgoal):
             self._plan_undo_action(action_taken)
 
 
+class TakeActionSubgoal(Subgoal):
+
+    def __init__(self, bot, delay, action):
+        super().__init__(bot, action)
+        self.delay = delay
+
+    def replan_before_action(self):
+        if self.bot.step >= self.delay:
+            return self.datum
+        return -1
+
+    def replan_after_action(self, action_taken):
+        return
+
+
 class GoNextToSubgoal(Subgoal):
     """The subgoal for going next to objects or positions.
 
@@ -1007,6 +1022,10 @@ class Bot:
         """
         Translate instructions into an internal form the agent can execute
         """
+
+        if isinstance(instr, TakeActionInstr):
+            self.stack.append(TakeActionSubgoal(self, instr.delay, instr.action))
+            return
 
         if isinstance(instr, GoToInstr):
             self.stack.append(GoNextToSubgoal(self, instr.desc))

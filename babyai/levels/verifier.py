@@ -238,6 +238,40 @@ class ActionInstr(Instr):
         raise NotImplementedError
 
 
+class TakeActionInstr(ActionInstr):
+    """
+    Task to take the action the teacher is asking for.
+    """
+
+    def __init__(self, action, delay):
+        super().__init__()
+        self.action = action
+        self.delay = delay
+        self.step = 0
+
+        # Indicates that the action was completed on the last step
+        self.lastStepMatch = False
+
+    def surface(self, env):
+        return 'follow_teacher'
+
+    def reset_verifier(self, env):
+        super().reset_verifier(env)
+
+        # Identify set of possible matching objects in the environment
+        self.steps = 0
+
+    def verify_action(self, action):
+        self.step += 1
+        # Only verify when the toggle action is performed
+        if action != self.action:
+            return 'continue'
+        if self.step <= self.delay:
+            return 'continue'
+
+        return 'success'
+
+
 class OpenInstr(ActionInstr):
     def __init__(self, obj_desc, strict=False):
         super().__init__()

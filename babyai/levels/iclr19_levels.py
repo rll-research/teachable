@@ -8,6 +8,54 @@ from .teachable_robot_levels import Level_TeachableRobot
 from meta_mb.meta_envs.base import MetaEnv
 from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
 
+
+class Level_IntroPrimitives(Level_TeachableRobot):
+    """
+    Get a reward for doing what the teacher tells you to do.
+    """
+    def __init__(self, max_delay=0, room_size=8, seed=None, **kwargs):
+        self.room_size = room_size
+        self.max_delay = max_delay
+        super().__init__(
+            num_rows=1,
+            num_cols=1,
+            room_size=room_size,
+            seed=seed,
+            **kwargs
+        )
+
+    def make_mission(self):
+        action = self.action_space.sample()
+        delay = np.random.randint(0, self.max_delay + 1)
+        delay = self.max_delay
+        return {
+            "task": (action, delay),
+            "instrs": TakeActionInstr(action, delay)
+        }
+
+    def add_objs(self, task):
+        num_dists = np.random.randint(0, min(20, (self.room_size - 3) ** 2))
+        dists = self.add_distractors(num_distractors=num_dists, all_unique=False)
+        return dists, None
+
+
+class Level_IntroPrimitivesD0(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=0, seed=seed, **kwargs)
+
+class Level_IntroPrimitivesD1(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=1, seed=seed, **kwargs)
+
+class Level_IntroPrimitivesD5(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=5, seed=seed, **kwargs)
+
+class Level_IntroPrimitivesD10(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=10, seed=seed, **kwargs)
+
+
 class Level_GoToRedBallGrey(Level_TeachableRobot):
     """
     Go to the red ball, single room, with distractors.

@@ -8,7 +8,12 @@ class Curriculum(Serializable):
         # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
         # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
         # also some harder levels with multiple instructions chained together.
-        self.levels_list = [Level_GoToRedBallNoDists(**kwargs),
+        self.levels_list = [
+                            Level_IntroPrimitivesD0(**kwargs),
+                            Level_IntroPrimitivesD1(**kwargs),
+                            Level_IntroPrimitivesD5(**kwargs),
+                            Level_IntroPrimitivesD10(**kwargs),
+                            Level_GoToRedBallNoDists(**kwargs),
                             Level_GoToRedBallGrey(**kwargs),
                             Level_GoToRedBall(**kwargs),
                             Level_GoToObjS4(**kwargs),
@@ -19,12 +24,12 @@ class Curriculum(Serializable):
                             Level_GoToLocalS7N4(**kwargs),
                             Level_GoToLocalS8N7(**kwargs),
                             Level_GoToLocal(**kwargs),
-                            Level_PickupLocalS5N2(**kwargs),
+                            Level_PickupLocalS5N2(**kwargs), # hard even with action teacher
                             Level_PickupLocalS6N3(**kwargs),
                             Level_PickupLocalS7N4(**kwargs),
                             Level_PickupLocalS8N7(**kwargs),
-                            Level_PickupLocal(**kwargs),
-                            Level_PutNextLocalS5N3(**kwargs),
+                            Level_PickupLocal(**kwargs), # hard with postaction teacher
+                            Level_PutNextLocalS5N3(**kwargs), # hard even with preaction teacher
                             Level_PutNextLocalS6N4(**kwargs),
                             Level_PutNextLocal(**kwargs),
                             Level_OpenLocalS5N3(**kwargs),
