@@ -8,7 +8,7 @@ from experiment_utils.utils import load_exps_data
 from babyai.levels import iclr19_levels
 from babyai.levels.iclr19_levels import *
 from babyai.oracle.batch_teacher import BatchTeacher
-from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.bot import Bot
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
@@ -105,7 +105,7 @@ if __name__ == "__main__":
                         e_new = env_class(**env_args)
                         e_new.use_teacher = args.use_teacher
                         if args.use_teacher:
-                            teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+                            teacher = BatchTeacher([PostActionAdvice(Bot, e_new)])
                             e_new.teacher = teacher
                             e_new.teacher.set_feedback_type(args.feedback_type)
                         env = rl2env(normalize(e_new))
