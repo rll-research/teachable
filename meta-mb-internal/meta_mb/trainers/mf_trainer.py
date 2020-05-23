@@ -36,6 +36,7 @@ class Trainer(object):
             reward_threshold=0.8,
             exp_name="",
             videos_every=5,
+            curriculum_step=0,
             ):
         self.algo = algo
         self.env = env
@@ -52,7 +53,7 @@ class Trainer(object):
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
         self.reward_threshold = reward_threshold
-        self.curriculum_step = 0
+        self.curriculum_step = curriculum_step
         self.exp_name = exp_name
         self.videos_every = videos_every
 
@@ -155,15 +156,14 @@ class Trainer(object):
 
 
                 # Save videos of the progress periodically, or right before we advance levels
-                if advance_curriculum or itr % self.videos_every == 0:
-
+                if advance_curriculum:
+                    # Save a video of the original level
+                    self.save_videos(step, save_name='ending_video', num_rollouts=10)
+                    # Save a video of the new level
+                    self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
+                elif itr % self.videos_every == 0:
                     self.env.set_level_distribution(step)
-                    paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True, batch_size=100,
-                            video_filename=self.exp_name + '/sample_video' + str(step) + '.mp4', num_rollouts=2)
-                    print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
-                    print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
-                    print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
-
+                    self.save_videos(step, save_name='intermediate_video', num_rollouts=2)
 
                 if itr == 0:
                     sess.graph.finalize()
@@ -171,14 +171,31 @@ class Trainer(object):
         logger.log("Training finished")
         self.sess.close()
 
+    def save_videos(self, step, save_name='sample_video', num_rollouts=2):
+        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True,
+                        batch_size=100,
+                        video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
+        print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
+        print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+        print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+
     def get_itr_snapshot(self, itr):
         """
         Gets the current policy and env for storage
         """
         if self.algo.reward_predictor is not None:
-            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline)
+            return dict(itr=itr,
+                        policy=self.policy,
+                        env=self.env,
+                        baseline=self.baseline,
+                        curriculum_step=self.curriculum_step)
         else:
-            return dict(itr=itr, policy=self.policy, env=self.env, baseline=self.baseline, reward_predictor=self.algo.reward_predictor)
+            return dict(itr=itr,
+                        policy=self.policy,
+                        env=self.env,
+                        baseline=self.baseline,
+                        curriculum_step=self.curriculum_step,
+                        reward_predictor=self.algo.reward_predictor)
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far

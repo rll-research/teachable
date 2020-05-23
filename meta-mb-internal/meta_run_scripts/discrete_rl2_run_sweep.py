@@ -27,9 +27,9 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'curriculumBetter'
+# PREFIX = 'curriculumBetter'
 # PREFIX = 'putnext'
-# PREFIX = 'debug_again'
+PREFIX = 'debug_again'
 
 def run_experiment(**config):
 
@@ -64,6 +64,7 @@ def run_experiment(**config):
             baseline = saved_model['baseline']
             env = saved_model['env']
             start_itr = saved_model['itr']
+            curriculum_step = saved_model['curriculum_step']
         else:
             baseline = config['baseline']()
             arguments = {
@@ -98,6 +99,7 @@ def run_experiment(**config):
                 cell_type=config['cell_type']
             )
             start_itr = 0
+            curriculum_step = 0
 
         sampler = MetaSampler(
             env=env,
@@ -137,6 +139,7 @@ def run_experiment(**config):
             start_itr=start_itr,
             reward_threshold=config['reward_threshold'],
             exp_name=exp_dir,
+            curriculum_step=curriculum_step,
         )
         trainer.train()
 
