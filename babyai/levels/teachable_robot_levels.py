@@ -116,8 +116,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     self.validate_instrs(mission['instrs'])
 
             except RecursionError as error:
-                self.render(mode="human")
-                self.validate_instrs(mission['instrs'])
+                # self.render(mode="human")
                 print('Timeout during mission generation:', error)
                 continue
 

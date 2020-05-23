@@ -20,7 +20,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
 
     render = animated or save_video
     fig = plt.figure()
-    ax = fig.add_subplot(111)
     for i in range(num_rollouts):
         print("Rollout", i)
         observations = []
