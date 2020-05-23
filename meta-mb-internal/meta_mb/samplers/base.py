@@ -231,7 +231,7 @@ class SampleProcessor(object):
         # compute log stats
 
         has_teacher = 'teacher_action' in paths[0]['env_infos']
-        has_goal = 'goal_room' in paths[0]['env_infos']
+        has_goal = sum(['goal_room' in path['env_infos'] for path in paths])
 
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
@@ -240,9 +240,10 @@ class SampleProcessor(object):
         total_success = [np.sum(path['env_infos']['success']) for path in paths]
         first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
         action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
-        if has_goal:
-            same_room_start = [path['env_infos']['agent_room'][0] == path['env_infos']['goal_room'][0] for path in paths]
-            same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths]
+        same_room_start = [path['env_infos']['agent_room'][0] == path['env_infos']['goal_room'][0] for path in paths
+                           if not (path['env_infos']['goal_room'][0] == -1).all()]
+        same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths
+                         if not (path['env_infos']['goal_room'][0] == -1).all()]
 
 
 
@@ -257,7 +258,7 @@ class SampleProcessor(object):
         elif log == 'all' or log is True:
 
             logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
-            if has_goal:
+            if len(same_room_end) > 0:
                 logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
                 logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
 

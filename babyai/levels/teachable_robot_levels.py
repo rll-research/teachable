@@ -407,18 +407,20 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, "obj_pos"):
             info['goal_room'] = self.room_from_pos(*self.obj_pos).top
             info['goal_pos'] = self.obj_pos
+        else:
+            info['goal_room'] = (-1, -1)
+            info['goal_pos'] = (-1, -1)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
             teacher_copy = deepcopy(self.teacher)
             try:
-                self.teacher.step([action])
-                # Update the observation with the teacher's new feedback
-                obs = self.gen_obs()
-
                 # Even if we use multiple teachers, presumably they all relate to one underlying path.
                 # We can log what action is the next one on this path (currently in teacher.next_action).
                 info['teacher_action'] = self.teacher.next_action
 
+                self.teacher.step([action])
+                # Update the observation with the teacher's new feedback
+                obs = self.gen_obs()
 
             except Exception as e:
                 self.render('human')
