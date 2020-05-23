@@ -23,7 +23,7 @@ from babyai.model import ACModel
 from babyai.evaluate import batch_evaluate
 from babyai.utils.agent import ModelAgent
 from babyai.oracle.batch_teacher import BatchTeacher
-from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.bot import Bot
 
 
@@ -60,7 +60,7 @@ for i in range(args.procs):
     env = gym.make(args.env)
     env.seed(100 * args.seed + i)
     envs.append(env)
-    teacher_list.append(ActionAdvice(Bot, env))
+    teacher_list.append(PostActionAdvice(Bot, env))
 teacher = BatchTeacher(teacher_list)
 env.teacher = teacher
 

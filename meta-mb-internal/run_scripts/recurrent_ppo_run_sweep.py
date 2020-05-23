@@ -16,7 +16,7 @@ from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
 from babyai.levels.iclr19_levels import Level_GoToIndexedObj
 from babyai.oracle.batch_teacher import BatchTeacher
-from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.bot import Bot
 import joblib
 
@@ -42,7 +42,7 @@ def run_experiment(**config):
         else:
             baseline = config['baseline']()
             e_new = Level_GoToIndexedObj(start_loc='bottom', num_dists=config['num_dists'])
-            teacher = BatchTeacher([ActionAdvice(Bot, e_new)])
+            teacher = BatchTeacher([PostActionAdvice(Bot, e_new)])
             e_new.teacher = teacher
             env = rl2env(normalize(e_new))
             obs_dim = e_new.reset().shape[0]
