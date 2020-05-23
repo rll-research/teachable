@@ -379,7 +379,7 @@ class Logger(object):
                 file_name = osp.join(self.dir, 'itr_%d.pkl' % itr)
                 joblib.dump(params, file_name, compress=3)
             elif self.snapshot_mode == 'level':
-                file_name = osp.join(self.dir, 'level_%d.pkl' % itr)
+                file_name = osp.join(self.dir, 'level_%d.pkl' % step)
                 joblib.dump(params, file_name, compress=3)
             elif self.snapshot_mode == 'last':
                 # override previous params
