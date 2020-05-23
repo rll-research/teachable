@@ -239,6 +239,12 @@ class SampleProcessor(object):
         same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths]
         action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
 
+        has_teacher = 'teacher_action' in paths[0]['env_infos']
+        if has_teacher:
+            actions_taken = np.array([step for path in paths for step in path['actions']])
+            actions_teacher = np.array([step for path in paths for step in path['env_infos']['teacher_action']])
+            teacher_suggestions = actions_taken == actions_teacher
+
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
 
@@ -247,7 +253,6 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
             logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
             logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
-
 
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
@@ -264,7 +269,9 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
             logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
 
-            logger.logkv(log_prefix + 'AverageActionEntropy', np.mean(action_entropy))
+            logger.logkv(log_prefix + 'AvgEntropy', np.mean(action_entropy))
+            if has_teacher:
+                logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions))
 
 
         return np.mean(undiscounted_returns)

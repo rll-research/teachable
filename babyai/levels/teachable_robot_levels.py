@@ -413,6 +413,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 self.teacher.step([action])
                 # Update the observation with the teacher's new feedback
                 obs = self.gen_obs()
+
+                # Even if we use multiple teachers, presumably they all relate to one underlying path.
+                # We can log what action is the next one on this path (currently in teacher.next_action).
+                info['teacher_action'] = self.teacher.next_action
+
+
             except Exception as e:
                 self.render('human')
                 print("ERROR!!!!!", e)
