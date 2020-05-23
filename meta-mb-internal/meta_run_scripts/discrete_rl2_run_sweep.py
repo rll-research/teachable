@@ -17,7 +17,7 @@ import tensorflow as tf
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
 from babyai.oracle.batch_teacher import BatchTeacher
-from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.physical_correction import PhysicalCorrections
 from babyai.oracle.landmark_correction import LandmarkCorrection
@@ -27,8 +27,9 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# PREFIX = 'curriculum+ActionAdvice'
-PREFIX = 'debug_again'
+PREFIX = 'curriculumBetter'
+# PREFIX = 'putnext'
+# PREFIX = 'debug_again'
 
 def run_experiment(**config):
 
@@ -151,7 +152,7 @@ if __name__ == '__main__':
         'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.9],
-        "feedback_type": ['ActionAdvice'],
+        "feedback_type": ['PreActionAdvice'],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
         'advance_curriculum_func': ['advance_curriculum_one_hot'],

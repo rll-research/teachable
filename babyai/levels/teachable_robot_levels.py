@@ -5,7 +5,8 @@ from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
-from babyai.oracle.action_advice import ActionAdvice
+from babyai.oracle.post_action_advice import PostActionAdvice
+from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.bot import Bot
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
@@ -46,9 +47,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_independently = dropout_independently
         self.task = {}
         super().__init__(**kwargs)
-        if feedback_type == 'ActionAdvice':
-            teacher = ActionAdvice(Bot, self, feedback_always=feedback_always)
-
+        if feedback_type == 'PostActionAdvice':
+            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
+        elif feedback_type == 'PreActionAdvice':
+            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
         self.teacher = teacher
@@ -410,6 +412,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher_copy = deepcopy(self.teacher)
             try:
                 self.teacher.step([action])
+                # Update the observation with the teacher's new feedback
+                obs = self.gen_obs()
             except Exception as e:
                 self.render('human')
                 print("ERROR!!!!!", e)

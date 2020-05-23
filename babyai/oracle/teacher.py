@@ -18,9 +18,9 @@ class Teacher:
         #  figure out what situations it fails and not generate those.
         self.oracle = botclass(env)
         self.env = env
-        # self.env.open_all_doors()
         self.botclass = botclass
-        self.next_action = -1
+        self.last_action = -1
+        self.next_action = self.oracle.replan(-1)
         self.agent_actions = []
         self.oracle_actions = []
         self.feedback_type = feedback_type
@@ -48,10 +48,11 @@ class Teacher:
         :param agent_action: The action the agent plans to take.
         """
         self.agent_actions.append(agent_action)
-        self.oracle_actions.append(self.next_action)
+        self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(self.env)
         new_oracle.vis_mask = self.oracle.vis_mask
         self.oracle = new_oracle
+        self.last_action = self.next_action
         self.next_action = self.oracle.replan(-1)
         # self.path = self.oracle.shortest_path_obj()
 
@@ -95,6 +96,6 @@ class Teacher:
 
     def reset(self):
         self.oracle = self.botclass(self.env)
-        self.next_action = -1
+        self.last_action = -1
         self.agent_actions = []
         self.oracle_actions = []

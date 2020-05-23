@@ -3,7 +3,7 @@ from babyai.oracle.teacher import Teacher
 
 
 
-class ActionAdvice(Teacher):
+class PreActionAdvice(Teacher):
 
     def empty_feedback(self):
         """
