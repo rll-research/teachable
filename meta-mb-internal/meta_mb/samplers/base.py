@@ -231,7 +231,6 @@ class SampleProcessor(object):
         # compute log stats
 
         has_teacher = 'teacher_action' in paths[0]['env_infos']
-        has_goal = sum(['goal_room' in path['env_infos'] for path in paths])
 
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
@@ -244,7 +243,45 @@ class SampleProcessor(object):
                            if not (path['env_infos']['goal_room'][0] == -1).all()]
         same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths
                          if not (path['env_infos']['goal_room'][0] == -1).all()]
+        unique_steps = np.unique([path['env_infos']['step'][0] for path in paths])
 
+        # log by step in the meta-task
+        for i in unique_steps:
+            success_i = [path['env_infos']['success'][-1] for path in paths if path['env_infos']['step'][0] == i]
+            undiscounted_returns_i = [sum(path["rewards"]) for path in paths if path['env_infos']['step'][0] == i]
+            average_discounted_return_i = [path["returns"][0] for path in paths if path['env_infos']['step'][0] == i]
+
+            logger.logkv(log_prefix + 'AvgDiscountedReturn' + str(i), np.mean(average_discounted_return_i))
+            logger.logkv(log_prefix + 'AvgReturn' + str(i), np.mean(undiscounted_returns_i))
+            logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
+
+            if has_teacher:
+                actions_taken_i = np.array([step for path in paths for step in path['actions']
+                                            if path['env_infos']['step'][0] == i])
+                actions_teacher_i = np.array([step for path in paths for step in path['env_infos']['teacher_action']
+                                              if path['env_infos']['step'][0] == i])
+                teacher_suggestions_i = actions_taken_i == actions_teacher_i
+
+                logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
+
+            # Log split by dropout
+            # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
+            no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
+            no_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
+            yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
+            yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
+            sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
+            names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
+            for name, sublist in zip(names, sublists):
+                success_i = [path['env_infos']['success'][-1] for path in sublist]
+                undiscounted_returns_i = [sum(path["rewards"]) for path in sublist]
+                average_discounted_return_i = [path["returns"][0] for path in sublist]
+                path_length_i = [path['env_infos']['episode_length'][-1] for path in sublist]
+
+                logger.logkv(log_prefix + 'AvgDiscountedReturn' + str(i), np.mean(average_discounted_return_i))
+                logger.logkv(log_prefix + 'AvgReturn' + str(i), np.mean(undiscounted_returns_i))
+                logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
+                logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length_i))
 
 
         if has_teacher:

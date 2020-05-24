@@ -107,6 +107,7 @@ class Trainer(object):
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
                 r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
                 # Splice into the inference process
                 if self.use_rp_inner:
                     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
@@ -202,3 +203,85 @@ class Trainer(object):
         self.env.log_diagnostics(paths, prefix)
         self.policy.log_diagnostics(paths, prefix)
         self.baseline.log_diagnostics(paths, prefix)
+
+    def _log_rew_pred(self, r_discrete, rewards, log_prefix):
+        correct = rewards == r_discrete
+        positives = rewards > 0
+        pred_positives = r_discrete > 0
+        negatives = 1 - positives
+        incorrect = 1 - correct
+
+        if positives.sum() > 0:
+            false_negatives = (incorrect * positives).sum() / positives.sum()
+            logger.logkv(log_prefix + 'FalseNegative', false_negatives)
+            recall = (correct * positives).sum() / positives.sum()
+            logger.logkv(log_prefix + 'Recall', recall)
+        else:
+            logger.logkv(log_prefix + 'FalseNegative', -1) # Indicates none available
+
+        if negatives.sum() > 0:
+            false_positives = (incorrect * negatives).sum() / negatives.sum()
+            logger.logkv(log_prefix + 'FalsePositive', false_positives)
+        else:
+            logger.logkv(log_prefix + 'FalsePositive', -1)
+
+        if pred_positives.sum():
+            precision = (correct * positives).sum() / pred_positives.sum()
+            logger.logkv(log_prefix + 'Precision', precision)
+        else:
+            logger.logkv(log_prefix + 'Precision', -1)
+
+        if positives.sum() > 0 and pred_positives.sum() > 0:
+            logger.logkv(log_prefix + 'F1', precision * recall / (precision + recall))
+        else:
+            logger.logkv(log_prefix + 'F1', -1)
+
+
+
+    def log_rew_pred(self, r_discrete, rewards, env_infos):
+        log_prefix = "RewPred"
+
+        # Flatten, trim out any which are just there for padding
+        # Elements where step=0 are just padding on the end.
+        curr_elements = 1 - (env_infos['step'].flatten() == 0)
+        r_discrete = np.stack([data for data, curr_bool in zip(r_discrete.flatten(), curr_elements) if curr_bool])
+        rewards = np.stack([data for data, curr_bool in zip(rewards.flatten(), curr_elements) if curr_bool])
+        step = np.stack([data for data, curr_bool in zip(env_infos['step'].flatten(), curr_elements) if curr_bool])
+
+
+        self._log_rew_pred(r_discrete, rewards, log_prefix + "-")
+
+        # Log split by index in meta-task
+        unique_steps = np.unique(env_infos['step'])
+        for i in unique_steps:
+            if i == 0:
+                continue  # Remove 0, which is just filler
+            curr_elements = step == i
+            r_discrete_i = np.stack([data for data, curr_bool in zip(r_discrete, curr_elements) if curr_bool])
+            rewards_i = np.stack([data for data, curr_bool in zip(rewards, curr_elements) if curr_bool])
+            self._log_rew_pred(r_discrete_i, rewards_i, log_prefix + str(i) + "-")
+
+        # Log split by dropout
+        no_goal = np.stack([dropout for dropout, curr_bool in zip(env_infos['dropout_goal'].flatten(), curr_elements)
+                            if curr_bool])
+        no_corrections = np.stack(
+            [dropout for dropout, curr_bool in zip(env_infos['dropout_corrections'].flatten(), curr_elements)
+             if curr_bool])
+        yes_goal = np.stack(
+            [not dropout for dropout, curr_bool in zip(env_infos['dropout_goal'].flatten(), curr_elements)
+             if curr_bool])
+        yes_corrections = np.stack(
+            [not dropout for dropout, curr_bool in zip(env_infos['dropout_corrections'].flatten(), curr_elements)
+             if curr_bool])
+        masks = [no_goal, yes_goal, no_corrections, yes_corrections]
+        names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
+        for name, mask in zip(names, masks):
+            # Skip logging if there aren't any in this category (e.g. if we aren't using dropout)
+            if mask.sum() == 0:
+                continue
+            if name == 'yes_corrections':
+                print("hi")
+            log_prefix_i = log_prefix + name + "-"
+            r_discrete_i = np.stack([data for data, curr_bool in zip(r_discrete, mask) if curr_bool.all()])
+            rewards_i = np.stack([data for data, curr_bool in zip(rewards, mask) if curr_bool.all()])
+            self._log_rew_pred(r_discrete_i, rewards_i, log_prefix_i)

@@ -46,6 +46,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_correction = dropout_correction
         self.dropout_independently = dropout_independently
         self.task = {}
+        self.itr = 0
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
@@ -134,6 +135,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         Sets task dictionary. The parameter is a dummy passed in for compatibility with the normal RL2 set task function
         """
         self.task = self.sample_task()
+        self.itr = 0
 
     # Functions for RL2
     def get_task(self):
@@ -404,6 +406,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         info['agent_pos'] = self.agent_pos
         info['agent_dir'] = self.agent_dir
         info['agent_room'] = self.room_from_pos(*self.agent_pos).top
+        info['step'] = self.itr
+        info['dropout_goal'] = self.dropout_current_goal
+        info['dropout_corrections'] = self.dropout_current_correction
+
         if hasattr(self, "obj_pos"):
             info['goal_room'] = self.room_from_pos(*self.obj_pos).top
             info['goal_pos'] = self.obj_pos
@@ -436,4 +442,5 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         obs = super().reset()
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()
+        self.itr += 1
         return obs
