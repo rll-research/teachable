@@ -78,24 +78,25 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if d and not ignore_done:
                 break
 
-        # Add a few blank frames at the end to indicate success (white) or failure (black)
-        sample_img = np.zeros_like(curr_images[-1])
-        if r > 0:
-            curr_images += [sample_img + 255] * 3
-            successes += curr_images
-        else:
-            curr_images += [sample_img] * 3
-            failures += curr_images
+        if save_video:
+            # Add a few blank frames at the end to indicate success (white) or failure (black)
+            sample_img = np.zeros_like(curr_images[-1])
+            if r > 0:
+                curr_images += [sample_img + 255] * 3
+                successes += curr_images
+            else:
+                curr_images += [sample_img] * 3
+                failures += curr_images
 
-        # If show_last is enabled, only show the end of the trajectory.
-        if not show_last:
-            images += curr_images
-        else:
-            images += curr_images[-show_last - 3:]
+            # If show_last is enabled, only show the end of the trajectory.
+            if not show_last:
+                images += curr_images
+            else:
+                images += curr_images[-show_last - 3:]
 
         paths.append(dict(
                 observations=observations,
-                actons=actions,
+                actions=actions,
                 rewards=rewards,
                 agent_infos=agent_infos,
                 env_infos=env_infos
