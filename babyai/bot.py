@@ -642,6 +642,14 @@ class Bot:
     def _find_obj_pos(self, obj_desc, adjacent=False):
         """Find the position of the closest visible object matching a given description."""
 
+        if not len(obj_desc.obj_set) > 0:
+            print("WEIRDNESS!!!")
+            print(obj_desc)
+            print(self.mission.mission)
+            print(self.step)
+            for obj in self.mission.objs:
+                if obj is not None:
+                    print((obj.type, obj.color))
         assert len(obj_desc.obj_set) > 0
 
         best_distance_to_obj = 999
