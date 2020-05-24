@@ -26,8 +26,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'EASYcurriculum'
-# PREFIX = 'putnext'
+PREFIX = 'YETAGAINcurriculum'
 # PREFIX = 'debug_again'
 
 def run_experiment(**config):
@@ -42,9 +41,11 @@ def run_experiment(**config):
         EXP_NAME += "o"
     if config['persist_agent']:
         EXP_NAME += "a"
+    if config['pre_levels']:
+        EXP_NAME += '_pre'
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
     EXP_NAME += 'corr' + str(config['dropout_correction'])
-    EXP_NAME += '_currfn' + config['advance_curriculum_func'][19:]  # chop off beginning for space
+    EXP_NAME += '_currfn' + config['advance_curriculum_func']  # chop off beginning for space
     print("EXPERIMENT NAME:", EXP_NAME)
 
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
@@ -55,7 +56,6 @@ def run_experiment(**config):
     config_sess.gpu_options.allow_growth = True
     config_sess.gpu_options.per_process_gpu_memory_fraction = config.get('gpu_frac', 0.95)
     sess = tf.Session(config=config_sess)
-    reward_predictor = None
     with sess.as_default() as sess:
         if config['saved_path'] is not None:
             saved_model = joblib.load(config['saved_path'])
@@ -99,7 +99,7 @@ def run_experiment(**config):
                 cell_type=config['cell_type']
             )
             start_itr = 0
-            curriculum_step = 0
+            curriculum_step = 0 if config['pre_levels'] else len(env.pre_levels_list)
 
         sampler = MetaSampler(
             env=env,
@@ -155,12 +155,13 @@ if __name__ == '__main__':
         'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.95],
-        "feedback_type": ['PreActionAdvice'],
+        "feedback_type": ["PreActionAdvice"],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
         'advance_curriculum_func': ['one_hot'],
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
+        'pre_levels': [True],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],

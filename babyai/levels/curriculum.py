@@ -3,56 +3,76 @@ from babyai.levels.iclr19_levels import *
 
 
 class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, **kwargs):
+    def __init__(self, advance_curriculum_func, start_index=None, pre_levels=False, **kwargs):
+        """
+
+        :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
+        curriculum to be a single environment or a distribution over past environments
+        :param start_index: what index of the curriculum to start on
+        :param pre_levels: Whether or not to first run the 'pre_levels' which are designed to just introduce the
+        different actions the agent can take and the teacher's feedback
+        :param kwargs: arguments for the environment
+        """
         Serializable.quick_init(self, locals())
         self.advance_curriculum_func = advance_curriculum_func
+        self.pre_levels = pre_levels
         # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
         # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
         # also some harder levels with multiple instructions chained together.
-        self.levels_list = [
-                            Level_IntroPrimitivesD0(**kwargs),
-                            Level_IntroPrimitivesD1(**kwargs),
-                            Level_IntroPrimitivesD5(**kwargs),
-                            Level_IntroPrimitivesD10(**kwargs),
-                            Level_GoToRedBallNoDists(**kwargs),
-                            Level_GoToRedBallGrey(**kwargs),
-                            Level_GoToRedBall(**kwargs),
-                            Level_GoToObjS4(**kwargs),
-                            Level_GoToObjS6(**kwargs),
-                            Level_GoToObj(**kwargs),
-                            Level_GoToLocalS5N2(**kwargs),
-                            Level_GoToLocalS6N3(**kwargs),
-                            Level_GoToLocalS7N4(**kwargs),
-                            Level_GoToLocalS8N7(**kwargs),
-                            Level_GoToLocal(**kwargs),
-                            Level_PickupLocalS5N2(**kwargs), # hard even with action teacher
-                            Level_PickupLocalS6N3(**kwargs),
-                            Level_PickupLocalS7N4(**kwargs),
-                            Level_PickupLocalS8N7(**kwargs),
-                            Level_PickupLocal(**kwargs), # hard with postaction teacher
-                            Level_PutNextLocalS5N3(**kwargs), # hard even with preaction teacher
-                            Level_PutNextLocalS6N4(**kwargs),
-                            Level_PutNextLocal(**kwargs),
-                            Level_OpenLocalS5N3(**kwargs),
-                            Level_OpenLocalS6N4(**kwargs),
-                            Level_OpenLocal(**kwargs),
-                            Level_GoToObjMazeOpen(**kwargs),
-                            Level_GoToOpen(**kwargs),
-                            Level_GoToObjMazeS4R2(**kwargs),
-                            Level_GoToObjMazeS5(**kwargs),
-                            Level_GoToObjMaze(**kwargs),
-                            Level_Open(**kwargs),
-                            Level_GoTo(**kwargs),
-                            Level_Pickup(**kwargs),
-                            Level_Unlock(**kwargs),
-                            Level_GoToImpUnlock(**kwargs),
-                            Level_PutNext(**kwargs),
-                            Level_UnblockPickup(**kwargs),
-                            ]
+        self.pre_levels_list = [
+            Level_IntroPrimitivesD0(**kwargs),
+            Level_IntroPrimitivesD1(**kwargs),
+            Level_IntroPrimitivesD5(**kwargs),
+            Level_IntroPrimitivesD10(**kwargs),
+        ]
+        self.normal_levels_list = [
+            Level_GoToRedBallNoDists(**kwargs),
+            Level_GoToRedBallGrey(**kwargs),
+            Level_GoToRedBall(**kwargs),
+            Level_GoToObjS4(**kwargs),
+            Level_GoToObjS6(**kwargs),
+            Level_GoToObj(**kwargs),
+            Level_GoToLocalS5N2(**kwargs),
+            Level_GoToLocalS6N3(**kwargs),
+            Level_GoToLocalS7N4(**kwargs),
+            Level_GoToLocalS8N7(**kwargs),
+            Level_GoToLocal(**kwargs),
+            Level_PickupLocalS5N2(**kwargs), # hard even with action teacher
+            Level_PickupLocalS6N3(**kwargs),
+            Level_PickupLocalS7N4(**kwargs),
+            Level_PickupLocalS8N7(**kwargs),
+            Level_PickupLocal(**kwargs), # hard with postaction teacher
+            Level_PutNextLocalS5N3(**kwargs), # hard even with preaction teacher
+            Level_PutNextLocalS6N4(**kwargs),
+            Level_PutNextLocal(**kwargs),
+            Level_OpenLocalS5N3(**kwargs),
+            Level_OpenLocalS6N4(**kwargs),
+            Level_OpenLocal(**kwargs),
+            Level_GoToObjMazeOpen(**kwargs),
+            Level_GoToOpen(**kwargs),
+            Level_GoToObjMazeS4R2(**kwargs),
+            Level_GoToObjMazeS5(**kwargs),
+            Level_GoToObjMaze(**kwargs),
+            Level_Open(**kwargs),
+            Level_GoTo(**kwargs),
+            Level_Pickup(**kwargs),
+            Level_Unlock(**kwargs),
+            Level_GoToImpUnlock(**kwargs),
+            Level_PutNext(**kwargs),
+            Level_UnblockPickup(**kwargs),
+        ]
+        # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
+        # from the end of the pre-levels.
+        if start_index is None:
+            if pre_levels:
+                start_index = 0
+            else:
+                start_index = len(self.pre_levels_list)
+        self.levels_list = self.pre_levels_list + self.normal_levels_list
         self.distribution = np.zeros((len(self.levels_list)))
-        self.distribution[0] = 1
-        self._wrapped_env = self.levels_list[0]
-        self.index = 1
+        self.distribution[start_index] = 1
+        self._wrapped_env = self.levels_list[start_index]
+        self.index = start_index + 1
 
 
     def __getattr__(self, attr):
@@ -93,8 +113,13 @@ class Curriculum(Serializable):
             curr_index = np.argmax(self.distribution)
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[curr_index + 1] = 0.9
-            prev_env_prob = 0.1 / (curr_index + 1)
-            self.distribution[:curr_index + 1] = prev_env_prob
+            if self.pre_levels:
+                prev_env_prob = 0.1 / (curr_index + 1)
+                self.distribution[:curr_index + 1] = prev_env_prob
+            else:
+                num_past_levels = curr_index + 1 if self.pre_levels else curr_index + 1 - len(self.pre_levels_list)
+                prev_env_prob = 0.1 / num_past_levels
+                self.distribution[len(self.pre_levels_list):curr_index + 1] = prev_env_prob
         else:
             raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
         self.index += 1
