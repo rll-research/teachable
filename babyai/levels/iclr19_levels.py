@@ -649,16 +649,15 @@ class Level_Unlock(Level_TeachableRobot):
             agent_room = self.room_from_pos(*self.agent_pos)
             if not locked_room is agent_room:
                 break
-        door, pos = self.add_door(id, jd, locked=True)
-        door.color = obj_color
+        door, pos = self.add_door(id, jd, color=obj_color, locked=True)
 
         # Add the key to a different room
         while True:
             ik = self._rand_int(0, self.num_rows)
             jk = self._rand_int(0, self.num_cols)
-            if ik is id and jk is jd:
+            if ik == id and jk == jd:
                 continue
-            self.add_object(ik, jk, 'key', door.color)
+            key, _ = self.add_object(ik, jk, 'key', door.color)
             break
 
         # With 50% probability, ensure that the locked door is the only
@@ -686,7 +685,7 @@ class Level_Unlock(Level_TeachableRobot):
                     all_dists += dists
 
         self.check_objs_reachable()
-        return all_dists + self.get_doors(), door
+        return [key] + all_dists + self.get_doors(), door
 
 
 class Level_PutNext(Level_TeachableRobot):
