@@ -189,14 +189,14 @@ class Trainer(object):
                         policy=self.policy,
                         env=self.env,
                         baseline=self.baseline,
-                        curriculum_step=self.curriculum_step)
+                        curriculum_step=self.curriculum_step,
+                        reward_predictor=self.algo.reward_predictor)
         else:
             return dict(itr=itr,
                         policy=self.policy,
                         env=self.env,
                         baseline=self.baseline,
-                        curriculum_step=self.curriculum_step,
-                        reward_predictor=self.algo.reward_predictor)
+                        curriculum_step=self.curriculum_step,)
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far
@@ -232,7 +232,7 @@ class Trainer(object):
             logger.logkv(log_prefix + 'Precision', -1)
 
         if positives.sum() > 0 and pred_positives.sum() > 0:
-            logger.logkv(log_prefix + 'F1', precision * recall / (precision + recall))
+            logger.logkv(log_prefix + 'F1', 2 * precision * recall / (precision + recall))
         else:
             logger.logkv(log_prefix + 'F1', -1)
 
