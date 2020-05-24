@@ -16,7 +16,6 @@ from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
-from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.physical_correction import PhysicalCorrections
@@ -27,9 +26,9 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# PREFIX = 'curriculumBetter'
+PREFIX = 'EASYcurriculum'
 # PREFIX = 'putnext'
-PREFIX = 'debug_again'
+# PREFIX = 'debug_again'
 
 def run_experiment(**config):
 
@@ -65,6 +64,7 @@ def run_experiment(**config):
             env = saved_model['env']
             start_itr = saved_model['itr']
             curriculum_step = saved_model['curriculum_step']
+            reward_predictor = saved_model['reward_predictor']
         else:
             baseline = config['baseline']()
             arguments = {
@@ -154,11 +154,11 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
-        'reward_threshold': [0.9],
+        'reward_threshold': [0.95],
         "feedback_type": ['PreActionAdvice'],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
-        'advance_curriculum_func': ['advance_curriculum_one_hot'],
+        'advance_curriculum_func': ['one_hot'],
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
 

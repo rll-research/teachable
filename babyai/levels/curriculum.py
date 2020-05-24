@@ -5,6 +5,7 @@ from babyai.levels.iclr19_levels import *
 class Curriculum(Serializable):
     def __init__(self, advance_curriculum_func, **kwargs):
         Serializable.quick_init(self, locals())
+        self.advance_curriculum_func = advance_curriculum_func
         # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
         # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
         # also some harder levels with multiple instructions chained together.
@@ -52,8 +53,6 @@ class Curriculum(Serializable):
         self.distribution[0] = 1
         self._wrapped_env = self.levels_list[0]
         self.index = 1
-        # I tried this, but for whatever reason it broke curriculum updating # TODO: figure out what's up here
-        # self.advance_curriculum = self.__getattr__(advance_curriculum_func)
 
 
     def __getattr__(self, attr):
@@ -84,28 +83,24 @@ class Curriculum(Serializable):
             else:
                 return orig_attr
 
-    def advance_curriculum(self):
-        """Advance the curriculum to 100% sample from the next hardest level. """
-        curr_index = np.argmax(self.distribution)
-        self.distribution = np.zeros((len(self.levels_list)))
-        self.distribution[curr_index + 1] = 1
-        self._wrapped_env = self.levels_list[self.index]
+    def advance_curriculum(self):  # advance_curriculum_uniform_smooth
+        if self.advance_curriculum_func == 'one_hot':
+            curr_index = np.argmax(self.distribution)
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[curr_index + 1] = 1
+        elif self.advance_curriculum_func == 'smooth':
+            # Advance curriculum by assigning 0.9 probability to the new environment and 0.1 to all past environments.
+            curr_index = np.argmax(self.distribution)
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[curr_index + 1] = 0.9
+            prev_env_prob = 0.1 / (curr_index + 1)
+            self.distribution[:curr_index + 1] = prev_env_prob
+        else:
+            raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
         self.index += 1
         if self.index > len(self.levels_list):
             print("LEARNED ALL THE LEVELS!!")
         print("updated curriculum", self.index - 1, type(self._wrapped_env))
-
-    # def advance_curriculum(self):  # advance_curriculum_uniform_smooth
-    #     """Advance curriculum by assigning 0.5 probability to the new environment and 0.5 to all past environments."""
-    #     curr_index = np.argmax(self.distribution)
-    #     self.distribution = np.zeros((len(self.levels_list)))
-    #     self.distribution[curr_index + 1] = 0.5
-    #     prev_env_prob = 0.5/(curr_index + 1)
-    #     self.distribution[:curr_index + 1] = prev_env_prob
-    #     print("updated curriculum", curr_index + 1, self.index - 1, type(self.levels_list[self.index]))
-    #     self.index += 1
-    #     if self.index > len(self.levels_list):
-    #         print("LEARNED ALL THE LEVELS!!")
 
     def set_level(self, index):
         """
