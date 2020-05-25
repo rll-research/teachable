@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+import pickle
+import copy
 
 class Teacher:
     """
@@ -55,7 +57,35 @@ class Teacher:
         self.oracle = new_oracle
         self.last_action = self.next_action
         self.next_action = self.oracle.replan(-1)
-        # self.path = self.oracle.shortest_path_obj()
+
+    def compute_full_path(self, steps):
+        # Settings steps to -1 computes the full path forward
+        before_pos = self.env.agent_pos.copy()
+        self.env_copy = pickle.loads(pickle.dumps(self.env))
+
+        new_oracle = self.botclass(self.env_copy)
+        new_oracle.vis_mask = copy.deepcopy(self.oracle.vis_mask)
+        self.oracle = new_oracle
+
+        # Do the full planning
+        env_states = []
+        env_rewards = []
+        agent_positions = []
+        done = False
+        self.oracle.mission.teacher = None
+        steps_taken = 0
+        while not done:
+            if steps_taken == steps:
+                break
+            action = self.oracle.replan()
+            obs, reward, done, info = self.oracle.mission.step(action)
+            env_states.append(obs)
+            env_rewards.append(reward)
+            agent_positions.append(self.oracle.mission.agent_pos.copy())
+            steps_taken += 1
+        after_pos = self.env.agent_pos.copy()
+        assert np.all(after_pos == before_pos), 'POSITION CHANGED'
+        return np.array(env_states), np.array(env_rewards), np.array(agent_positions)
 
 
     def give_feedback(self, state):
