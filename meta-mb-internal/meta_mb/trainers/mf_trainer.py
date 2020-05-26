@@ -37,6 +37,7 @@ class Trainer(object):
             exp_name="",
             videos_every=5,
             curriculum_step=0,
+            config=None,
             ):
         self.algo = algo
         self.env = env
@@ -56,6 +57,7 @@ class Trainer(object):
         self.curriculum_step = curriculum_step
         self.exp_name = exp_name
         self.videos_every = videos_every
+        self.config = config
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
@@ -190,12 +192,14 @@ class Trainer(object):
                         env=self.env,
                         baseline=self.baseline,
                         curriculum_step=self.curriculum_step,
+                        config=self.config,
                         reward_predictor=self.algo.reward_predictor)
         else:
             return dict(itr=itr,
                         policy=self.policy,
                         env=self.env,
                         baseline=self.baseline,
+                        config=self.config,
                         curriculum_step=self.curriculum_step,)
 
     def log_diagnostics(self, paths, prefix):

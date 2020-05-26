@@ -92,8 +92,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  agent (specifies the agent starting position and directino),
                  objs (specifies all object locations, types, and colors)]
         """
+        tries = 0
         while True:
             try:
+                tries += 1
                 # Reset the grid first
                 RoomGrid._gen_grid(self, self.width, self.height)
 
@@ -122,6 +124,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 continue
 
             except RejectSampling as e:
+                if tries > 1000:
+                    print("ISSUE sampling", e)
+                    self.render(mode='human')
+                    raise RejectSampling
                 # print("Rejection error", e)
                 continue
 

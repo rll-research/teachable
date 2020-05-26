@@ -8,6 +8,7 @@ from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
 from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
 import os
+import shutil
 from meta_mb.logger import logger
 import json
 import numpy as np
@@ -27,7 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'YETAGAINcurriculum'
-# PREFIX = 'debug_again'
+PREFIX = 'debug22'
 
 def run_experiment(**config):
 
@@ -48,23 +49,26 @@ def run_experiment(**config):
     EXP_NAME += '_currfn' + config['advance_curriculum_func']  # chop off beginning for space
     print("EXPERIMENT NAME:", EXP_NAME)
 
-    exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level', snapshot_gap=50)
-    json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
     set_seed(config['seed'])
     config_sess = tf.ConfigProto()
     config_sess.gpu_options.allow_growth = True
     config_sess.gpu_options.per_process_gpu_memory_fraction = config.get('gpu_frac', 0.95)
     sess = tf.Session(config=config_sess)
+    original_saved_path = config['saved_path']
     with sess.as_default() as sess:
         if config['saved_path'] is not None:
             saved_model = joblib.load(config['saved_path'])
+            if 'config' in saved_model:
+                if not config['override_old_config']:
+                    config = saved_model['config']
+            set_seed(config['seed'])
             policy = saved_model['policy']
             baseline = saved_model['baseline']
             env = saved_model['env']
             start_itr = saved_model['itr']
             curriculum_step = saved_model['curriculum_step']
             reward_predictor = saved_model['reward_predictor']
+
         else:
             baseline = config['baseline']()
             arguments = {
@@ -128,6 +132,14 @@ def run_experiment(**config):
             reward_predictor=reward_predictor
         )
 
+        exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
+        if original_saved_path is None:
+            if os.path.isdir(exp_dir):
+                shutil.rmtree(exp_dir)
+        logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level',
+                         snapshot_gap=50, step=start_itr)
+        json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
+
         trainer = Trainer(
             algo=algo,
             policy=policy,
@@ -140,19 +152,20 @@ def run_experiment(**config):
             reward_threshold=config['reward_threshold'],
             exp_name=exp_dir,
             curriculum_step=curriculum_step,
+            config=config,
         )
         trainer.train()
 
 
 if __name__ == '__main__':
-
     sweep_params = {
         'saved_path': [None],
+        'override_old_config': [False], # only relevant when we're restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
         'dropout_goal': [0],
-        'dropout_correction': [0],
+        'dropout_correction': [0.5],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.95],
         "feedback_type": ["PreActionAdvice"],
@@ -161,7 +174,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
-        'pre_levels': [True],
+        'pre_levels': [False],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],

@@ -149,10 +149,10 @@ class TensorBoardOutputFormat(KVWriter):
     """
     Dumps key/value pairs into TensorBoard's numeric format.
     """
-    def __init__(self, dir):
+    def __init__(self, dir, step):
         os.makedirs(dir, exist_ok=True)
         self.dir = dir
-        self.step = 1
+        self.step = step + 1
         prefix = 'events'
         path = osp.join(osp.abspath(dir), prefix)
         import tensorflow as tf
@@ -181,7 +181,7 @@ class TensorBoardOutputFormat(KVWriter):
             self.writer = None
 
 
-def make_output_format(format, ev_dir, log_suffix=''):
+def make_output_format(format, ev_dir, log_suffix='', step=0):
     os.makedirs(ev_dir, exist_ok=True)
     if format == 'stdout':
         return HumanOutputFormat(sys.stdout)
@@ -192,7 +192,7 @@ def make_output_format(format, ev_dir, log_suffix=''):
     elif format == 'csv':
         return CSVOutputFormat(osp.join(ev_dir, 'progress%s.csv' % log_suffix))
     elif format == 'tensorboard':
-        return TensorBoardOutputFormat(osp.join(ev_dir, 'tb%s' % log_suffix))
+        return TensorBoardOutputFormat(osp.join(ev_dir, 'tb%s' % log_suffix), step)
     else:
         raise ValueError('Unknown format specified: %s' % (format,))
 
@@ -401,7 +401,7 @@ class Logger(object):
 Logger.DEFAULT = Logger.CURRENT = Logger(dir=None, output_formats=[HumanOutputFormat(sys.stdout)])
 
 
-def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1):
+def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1, step=0):
     if dir is None:
         dir = os.getenv('OPENAI_LOGDIR')
     if dir is None:
@@ -425,7 +425,7 @@ def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1):
         else:
             format_strs = LOG_OUTPUT_FORMATS_MPI if rank>0 else LOG_OUTPUT_FORMATS
 
-    output_formats = [make_output_format(f, dir, log_suffix) for f in format_strs]
+    output_formats = [make_output_format(f, dir, log_suffix, step) for f in format_strs]
 
     Logger.CURRENT = Logger(dir=dir, output_formats=output_formats, snapshot_mode=snapshot_mode, snapshot_gap=snapshot_gap)
     log('Logging to %s' % dir)
