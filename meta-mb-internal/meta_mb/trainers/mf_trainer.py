@@ -173,7 +173,7 @@ class Trainer(object):
                     self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
                 elif itr % self.videos_every == 0:
                     self.env.set_level_distribution(step)
-                    self.save_videos(step, save_name='intermediate_video', num_rollouts=2)
+                    self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
 
                 if itr == 0:
                     sess.graph.finalize()
