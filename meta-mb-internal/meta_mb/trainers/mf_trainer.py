@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import time
+import os
+import psutil
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
 
@@ -147,6 +149,11 @@ class Trainer(object):
                 logger.logkv('Curriculum Step', self.curriculum_step)
                 logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
 
+                process = psutil.Process(os.getpid())
+                memory_use = process.memory_info().rss / float(2 ** 20)
+                print("Memory Use MiB", memory_use)
+                logger.logkv('Memory MiB', memory_use)
+
                 logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)
                 step = self.curriculum_step
@@ -175,7 +182,7 @@ class Trainer(object):
         self.sess.close()
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
-        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=10, stochastic=True,
+        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
                         batch_size=100,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
