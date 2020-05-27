@@ -72,7 +72,7 @@ class Curriculum(Serializable):
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[start_index] = 1
         self._wrapped_env = self.levels_list[start_index]
-        self.index = start_index + 1
+        self.index = start_index
 
 
     def __getattr__(self, attr):
@@ -103,29 +103,29 @@ class Curriculum(Serializable):
             else:
                 return orig_attr
 
-    def advance_curriculum(self):  # advance_curriculum_uniform_smooth
+    def advance_curriculum(self, index=None):
+        if index is None:
+            index = self.index + 1
         if self.advance_curriculum_func == 'one_hot':
-            curr_index = np.argmax(self.distribution)
             self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[curr_index + 1] = 1
+            self.distribution[index] = 1
         elif self.advance_curriculum_func == 'smooth':
             # Advance curriculum by assigning 0.9 probability to the new environment and 0.1 to all past environments.
-            curr_index = np.argmax(self.distribution)
             self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[curr_index + 1] = 0.9
+            self.distribution[index] = 0.9
             if self.pre_levels:
-                prev_env_prob = 0.1 / (curr_index + 1)
-                self.distribution[:curr_index + 1] = prev_env_prob
+                prev_env_prob = 0.1 / index
+                self.distribution[:index] = prev_env_prob
             else:
-                num_past_levels = curr_index + 1 if self.pre_levels else curr_index + 1 - len(self.pre_levels_list)
+                num_past_levels = index if self.pre_levels else index - len(self.pre_levels_list)
                 prev_env_prob = 0.1 / num_past_levels
-                self.distribution[len(self.pre_levels_list):curr_index + 1] = prev_env_prob
+                self.distribution[len(self.pre_levels_list):index] = prev_env_prob
         else:
             raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
-        self.index += 1
-        if self.index > len(self.levels_list):
+        self.index = index
+        if self.index >= len(self.levels_list):
             print("LEARNED ALL THE LEVELS!!")
-        print("updated curriculum", self.index - 1, type(self._wrapped_env))
+        print("updated curriculum", self.index, type(self._wrapped_env))
 
     def set_level(self, index):
         """

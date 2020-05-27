@@ -18,7 +18,6 @@ import tensorflow as tf
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
 from babyai.oracle.post_action_advice import PostActionAdvice
-from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.physical_correction import PhysicalCorrections
 from babyai.oracle.landmark_correction import LandmarkCorrection
 from babyai.oracle.demo_corrections import DemoCorrections
@@ -56,6 +55,18 @@ def run_experiment(**config):
     sess = tf.Session(config=config_sess)
     original_saved_path = config['saved_path']
     with sess.as_default() as sess:
+        arguments = {
+            "start_loc": 'all',
+            "include_holdout_obj": False,
+            "persist_goal": config['persist_goal'],
+            "persist_objs": config['persist_objs'],
+            "persist_agent": config['persist_agent'],
+            "dropout_goal": config['dropout_goal'],
+            "dropout_correction": config['dropout_correction'],
+            "dropout_independently": config['dropout_independently'],
+            "feedback_type": config["feedback_type"],
+            "feedback_always": config["feedback_always"],
+        }
         if config['saved_path'] is not None:
             saved_model = joblib.load(config['saved_path'])
             if 'config' in saved_model:
@@ -64,25 +75,14 @@ def run_experiment(**config):
             set_seed(config['seed'])
             policy = saved_model['policy']
             baseline = saved_model['baseline']
-            env = saved_model['env']
-            start_itr = saved_model['itr']
             curriculum_step = saved_model['curriculum_step']
+            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
+                                              **arguments)),
+                         ceil_reward=config['ceil_reward'])
+            start_itr = saved_model['itr']
             reward_predictor = saved_model['reward_predictor']
-
         else:
             baseline = config['baseline']()
-            arguments = {
-                 "start_loc": 'all',
-                 "include_holdout_obj": False,
-                 "persist_goal": config['persist_goal'],
-                 "persist_objs": config['persist_objs'],
-                 "persist_agent": config['persist_agent'],
-                 "dropout_goal": config['dropout_goal'],
-                 "dropout_correction": config['dropout_correction'],
-                 "dropout_independently": config['dropout_independently'],
-                 "feedback_type": config["feedback_type"],
-                 "feedback_always": config["feedback_always"],
-            }
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
@@ -159,13 +159,13 @@ def run_experiment(**config):
 
 if __name__ == '__main__':
     sweep_params = {
-        'saved_path': [None],
+        'saved_path': ['/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/YETAGAINcurriculum_teacherPreActionAdvice_persistgoa_pre_dropgoal0corr0_currfnone_hot_1/level_20.pkl'],
         'override_old_config': [False], # only relevant when we're restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
         'dropout_goal': [0],
-        'dropout_correction': [0.5],
+        'dropout_correction': [0],
         'dropout_independently': [True], # Don't ensure we have at least one source of feedback
         'reward_threshold': [0.95],
         "feedback_type": ["PreActionAdvice"],
@@ -174,7 +174,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
-        'pre_levels': [False],
+        'pre_levels': [True],
 
         'algo': ['rl2'],
         'seed': [1, 2, 3],
