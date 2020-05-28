@@ -26,12 +26,11 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'YETAGAINcurriculum'
+# PREFIX = 'V0curriculum'
 PREFIX = 'debug22'
+# PREFIX = 'WhyNotFollowTeacher'
 
-def run_experiment(**config):
-
-
+def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
     EXP_NAME += '_persist'
@@ -45,9 +44,11 @@ def run_experiment(**config):
         EXP_NAME += '_pre'
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
     EXP_NAME += 'corr' + str(config['dropout_correction'])
-    EXP_NAME += '_currfn' + config['advance_curriculum_func']  # chop off beginning for space
+    EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
+    return EXP_NAME
 
+def run_experiment(**config):
     set_seed(config['seed'])
     config_sess = tf.ConfigProto()
     config_sess.gpu_options.allow_growth = True
@@ -83,7 +84,8 @@ def run_experiment(**config):
             reward_predictor = saved_model['reward_predictor']
         else:
             baseline = config['baseline']()
-            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], **arguments)),
+            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'],
+                                              pre_levels=config['pre_levels'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
             policy = DiscreteRNNPolicy(
@@ -103,7 +105,7 @@ def run_experiment(**config):
                 cell_type=config['cell_type']
             )
             start_itr = 0
-            curriculum_step = 0 if config['pre_levels'] else len(env.pre_levels_list)
+            curriculum_step = env.index
 
         sampler = MetaSampler(
             env=env,
@@ -132,6 +134,7 @@ def run_experiment(**config):
             reward_predictor=reward_predictor
         )
 
+        EXP_NAME = get_exp_name(config)
         exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
         if original_saved_path is None:
             if os.path.isdir(exp_dir):
@@ -158,16 +161,17 @@ def run_experiment(**config):
 
 
 if __name__ == '__main__':
+    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
-        'saved_path': ['/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/YETAGAINcurriculum_teacherPreActionAdvice_persistgoa_pre_dropgoal0corr0_currfnone_hot_1/level_20.pkl'],
-        'override_old_config': [False], # only relevant when we're restarting a run; do we use the old config or the new?
+        'saved_path': [None],#base_path + 'V0curriculum_teacherPreActionAdvice_persistgoa_pre_dropgoal0corr0_currfnone_hot_3/level_34.pkl'],
+        'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
         'dropout_goal': [0],
         'dropout_correction': [0],
-        'dropout_independently': [True], # Don't ensure we have at least one source of feedback
-        'reward_threshold': [0.95],
+        'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
+        'reward_threshold': [1], # SKETCHY
         "feedback_type": ["PreActionAdvice"],
         "rollouts_per_meta_task": [2],
         'ceil_reward': [True],
@@ -177,7 +181,7 @@ if __name__ == '__main__':
         'pre_levels': [True],
 
         'algo': ['rl2'],
-        'seed': [1, 2, 3],
+        'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],

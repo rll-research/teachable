@@ -15,8 +15,7 @@ class Teacher:
         :param feedback_type: Specify what feedback type to give. Options: ['oracle', 'random', 'none']
         """
         # TODO: this is pretty sketchy.  To stop the bot from failing, we
-        #  (a) reinitialize the oracle every timestep, and
-        #  (b) open all doors every timestep.  Later it would be better to fix the bot, or at least
+        #  reinitialize the oracle every timestep  Later it would be better to fix the bot, or at least
         #  figure out what situations it fails and not generate those.
         self.oracle = botclass(env)
         self.env = env

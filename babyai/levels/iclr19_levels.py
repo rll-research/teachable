@@ -505,7 +505,7 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
             jd = self._rand_int(0, self.num_cols)
             locked_room = self.get_room(id, jd)
             agent_room = self.room_from_pos(*self.agent_pos)
-            if not locked_room is agent_room:
+            if not (locked_room is agent_room):
                 break
         door, pos = self.add_door(id, jd, locked=True)
         door.color = obj_color
@@ -514,9 +514,9 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
         while True:
             ik = self._rand_int(0, self.num_rows)
             jk = self._rand_int(0, self.num_cols)
-            if ik is id and jk is jd:
+            if ik == id and jk == jd:
                 continue
-            self.add_object(ik, jk, 'key', door.color)
+            key, _ = self.add_object(ik, jk, 'key', door.color)
             break
 
         self.connect_all()
@@ -540,7 +540,7 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
         self.check_objs_reachable()
 
         obj, _ = self.add_object(id, jd, obj_type, obj_color)
-        return all_dists + self.get_doors() + [obj], obj
+        return all_dists + self.get_doors() + [obj, key], obj
 
 
 class Level_Pickup(Level_TeachableRobot):
@@ -693,11 +693,9 @@ class Level_PutNext(Level_TeachableRobot):
     Put an object next to another object. Either of these may be in another room.
     """
 
-    def __init__(self, room_size=8, num_objs=8, seed=None, **kwargs):
-        self.num_objs = num_objs
+    def __init__(self, room_size=8, num_dists=16, seed=None, **kwargs):
+        self.num_dists = num_dists
         super().__init__(
-            num_rows=1,
-            num_cols=1,
             room_size=room_size,
             seed=seed,
             **kwargs
@@ -716,9 +714,13 @@ class Level_PutNext(Level_TeachableRobot):
     def add_objs(self, task):
         self.connect_all()
         o1_type, o1_color, o2_type, o2_color = task
-        obj1, _ = self.add_object(0, 0, o1_type, o1_color)
-        obj2, _ = self.add_object(0, 0, o2_type, o2_color)
-        dists = self.add_distractors(num_distractors=16 - 2, all_unique=True)
+        i1 = self._rand_int(0, self.num_rows)
+        j1 = self._rand_int(0, self.num_cols)
+        i2 = self._rand_int(0, self.num_rows)
+        j2 = self._rand_int(0, self.num_cols)
+        obj1, _ = self.add_object(i1, j1, o1_type, o1_color)
+        obj2, _ = self.add_object(i2, j2, o2_type, o2_color)
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
         self.check_objs_reachable()
         return dists + self.get_doors() + [obj1, obj2], (obj1, obj2)
 
