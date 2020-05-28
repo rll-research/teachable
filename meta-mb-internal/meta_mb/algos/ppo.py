@@ -107,6 +107,8 @@ class PPO(Algo, Serializable):
                                                   1 - self._clip_eps,
                                                   1 + self._clip_eps ) * adv_ph)
         # TODO: Check that the discrete entropy looks fine
+        self.reward_loss = tf.reduce_mean(clipped_obj)
+        self.entropy_loss = self.entropy_bonus * tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
@@ -140,16 +142,22 @@ class PPO(Algo, Serializable):
             None
         """
         input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
+        entropy_loss, reward_loss = self.optimizer.compute_loss_variations(input_dict, self.entropy_loss,
+                                                                          self.reward_loss)
 
         if verbose: logger.log("Optimizing")
+
+        # Update model
         loss_before = self.optimizer.optimize(input_val_dict=input_dict)
 
         if verbose: logger.log("Computing statistics")
         loss_after = self.optimizer.loss(input_val_dict=input_dict)
 
         if log:
-            logger.logkv(prefix+'LossBefore', loss_before)
-            logger.logkv(prefix+'LossAfter', loss_after)
+            logger.logkv(prefix + 'LossBefore', loss_before)
+            logger.logkv(prefix + 'LossAfter', loss_after)
+            logger.logkv(prefix + 'PartialLossEntropy', entropy_loss)
+            logger.logkv(prefix + 'PartialLossReward', reward_loss)
 
 
     def optimize_reward(self, samples_data, log=True, prefix='', verbose=False):
