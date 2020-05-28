@@ -600,7 +600,8 @@ class Bot:
         while self.stack:
 
             if len(self.stack) > 20:
-                self.mission.render(mode='human')
+                print("STACK IS LONG > 20")
+                # self.mission.render(mode='human')
 
             subgoal = self.stack[-1]
             suggested_action = subgoal.replan_before_action()
@@ -628,7 +629,7 @@ class Bot:
                         empty_visible_cells.append((i, j))
         if len(empty_visible_cells) > 0:
             return random.choice(empty_visible_cells)
-        self.mission.render("human")
+        # self.mission.render("human")
         raise RecursionError(f"Did not find an open cell in {attempts} iterations.")
 
 

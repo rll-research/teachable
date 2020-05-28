@@ -79,7 +79,8 @@ class MetaSampler(BaseSampler):
         n_samples = 0
         running_paths = [_get_empty_running_paths_dict() for _ in range(self.vec_env.num_envs)]
 
-        pbar = ProgBar(self.total_samples)
+        total_paths = self.rollouts_per_meta_task * self.meta_batch_size * self.envs_per_task
+        pbar = ProgBar(total_paths)
         policy_time, env_time = 0, 0
 
         policy = self.policy
@@ -92,7 +93,7 @@ class MetaSampler(BaseSampler):
             self.update_tasks()
         obses = self.vec_env.reset()
         num_paths = 0
-        while num_paths < self.rollouts_per_meta_task * self.meta_batch_size * self.envs_per_task:
+        while num_paths < total_paths:
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
@@ -114,6 +115,7 @@ class MetaSampler(BaseSampler):
             agent_infos, env_infos = self._handle_info_dicts(agent_infos, env_infos)
 
             new_samples = 0
+            new_paths = 0
             for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
                                                                                     rewards, env_infos, agent_infos,
                                                                                     dones):
@@ -141,13 +143,15 @@ class MetaSampler(BaseSampler):
                         agent_infos=utils.stack_tensor_dict_list(running_paths[idx]["agent_infos"]),
                     ))
                     num_paths += 1
+                    new_paths += 1
                     new_samples += len(running_paths[idx]["rewards"])
                     running_paths[idx] = _get_empty_running_paths_dict()
 
-            pbar.update(new_samples)
+            pbar.update(new_paths)
             n_samples += new_samples
             obses = next_obses
         pbar.stop()
+        logger.log("Finished progress bar")
 
         self.total_timesteps_sampled += self.total_samples
         if log:

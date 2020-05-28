@@ -125,7 +125,7 @@ class Curriculum(Serializable):
         self.index = index
         if self.index >= len(self.levels_list):
             print("LEARNED ALL THE LEVELS!!")
-        print("updated curriculum", self.index, type(self._wrapped_env))
+        print("updated curriculum", self.index, type(self.levels_list[self.index]))
 
     def set_level(self, index):
         """

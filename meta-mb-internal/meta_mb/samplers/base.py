@@ -257,32 +257,33 @@ class SampleProcessor(object):
 
             if has_teacher:
                 actions_taken_i = np.array([step for path in paths for step in path['actions']
-                                            if path['env_infos']['step'][0] == i])
+                                            if path['env_infos']['step'][0] == i])[:,0]
                 actions_teacher_i = np.array([step for path in paths for step in path['env_infos']['teacher_action']
                                               if path['env_infos']['step'][0] == i])
                 teacher_suggestions_i = actions_taken_i == actions_teacher_i
 
                 logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
 
-            # Log split by dropout
-            # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
-            no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
-            no_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
-            yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
-            yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
-            sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
-            names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
-            for name, sublist in zip(names, sublists):
+        # Log split by dropout
+        # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
+        no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
+        no_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
+        yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
+        yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
+        sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
+        names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
+        for name, sublist in zip(names, sublists):
+            if len(sublist) > 0:
                 success_i = [path['env_infos']['success'][-1] for path in sublist]
                 undiscounted_returns_i = [sum(path["rewards"]) for path in sublist]
                 average_discounted_return_i = [path["returns"][0] for path in sublist]
                 path_length_i = [path['env_infos']['episode_length'][-1] for path in sublist]
 
-                logger.logkv(log_prefix + 'AvgDiscountedReturn' + str(i), np.mean(average_discounted_return_i))
-                logger.logkv(log_prefix + 'AvgReturn' + str(i), np.mean(undiscounted_returns_i))
-                logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
-                logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length_i))
-
+                log_prefix_i = log_prefix + name + "-"
+                logger.logkv(log_prefix_i + 'AvgDiscountedReturn', np.mean(average_discounted_return_i))
+                logger.logkv(log_prefix_i + 'AvgReturn', np.mean(undiscounted_returns_i))
+                logger.logkv(log_prefix_i + 'AvgSuccess', np.mean(success_i))
+                logger.logkv(log_prefix_i + 'AveragePathLength', np.mean(path_length_i))
 
         if has_teacher:
             actions_taken = np.array([step for path in paths for step in path['actions']])
