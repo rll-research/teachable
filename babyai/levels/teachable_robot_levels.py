@@ -7,6 +7,8 @@ import numpy as np
 from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
+from babyai.oracle.cartesian_corrections import CartesianCorrections
+
 from babyai.bot import Bot
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
@@ -52,6 +54,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
         elif feedback_type == 'PreActionAdvice':
             teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
+        elif feedback_type == 'CartesianCorrections':
+            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
         self.teacher = teacher
@@ -126,7 +130,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             except RejectSampling as e:
                 if tries > 1000:
                     print("ISSUE sampling", e)
-                    self.render(mode='human')
+                    # self.render(mode='human')
                     raise RejectSampling
                 # print("Rejection error", e)
                 continue
@@ -435,7 +439,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 obs = self.gen_obs()
 
             except Exception as e:
-                self.render('human')
+                # self.render('human')
                 print("ERROR!!!!!", e)
                 teacher_copy.step([action])
         return obs, rew, done, info
