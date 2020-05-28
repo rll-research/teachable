@@ -154,6 +154,8 @@ class Trainer(object):
                 print("Memory Use MiB", memory_use)
                 logger.logkv('Memory MiB', memory_use)
 
+                logger.log(self.exp_name)
+
                 logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)
                 step = self.curriculum_step
@@ -166,14 +168,14 @@ class Trainer(object):
 
 
                 # Save videos of the progress periodically, or right before we advance levels
-                if advance_curriculum:
-                    # Save a video of the original level
-                    self.save_videos(step, save_name='ending_video', num_rollouts=10)
-                    # Save a video of the new level
-                    self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
-                elif itr % self.videos_every == 0:
-                    self.env.set_level_distribution(step)
-                    self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
+                # if advance_curriculum:
+                #     # Save a video of the original level
+                #     self.save_videos(step, save_name='ending_video', num_rollouts=10)
+                #     # Save a video of the new level
+                #     self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
+                # elif itr % self.videos_every == 0:
+                #     self.env.set_level_distribution(step)
+                #     self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
 
                 if itr == 0:
                     sess.graph.finalize()
@@ -183,7 +185,7 @@ class Trainer(object):
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
         paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
-                        batch_size=100,
+                        batch_size=100,# step=step,  # TODO: THIS!!!
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
@@ -290,8 +292,6 @@ class Trainer(object):
             # Skip logging if there aren't any in this category (e.g. if we aren't using dropout)
             if mask.sum() == 0:
                 continue
-            if name == 'yes_corrections':
-                print("hi")
             log_prefix_i = log_prefix + name + "-"
             r_discrete_i = np.stack([data for data, curr_bool in zip(r_discrete, mask) if curr_bool.all()])
             rewards_i = np.stack([data for data, curr_bool in zip(rewards, mask) if curr_bool.all()])
