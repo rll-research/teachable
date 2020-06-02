@@ -13,9 +13,10 @@ class Level_IntroPrimitives(Level_TeachableRobot):
     """
     Get a reward for doing what the teacher tells you to do.
     """
-    def __init__(self, max_delay=0, room_size=8, seed=None, **kwargs):
+    def __init__(self, max_delay=0, room_size=8, strict=False, seed=None, **kwargs):
         self.room_size = room_size
         self.max_delay = max_delay
+        self.strict = strict
         super().__init__(
             num_rows=1,
             num_cols=1,
@@ -27,10 +28,9 @@ class Level_IntroPrimitives(Level_TeachableRobot):
     def make_mission(self):
         action = self.action_space.sample()
         delay = np.random.randint(0, self.max_delay + 1)
-        delay = self.max_delay
         return {
             "task": (action, delay),
-            "instrs": TakeActionInstr(action, delay)
+            "instrs": TakeActionInstr(action, delay, self.strict)
         }
 
     def add_objs(self, task):
@@ -54,6 +54,23 @@ class Level_IntroPrimitivesD5(Level_IntroPrimitives):
 class Level_IntroPrimitivesD10(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=10, seed=seed, **kwargs)
+
+
+class Level_IntroPrimitivesD0Strict(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=0, seed=seed, strict=True, **kwargs)
+
+class Level_IntroPrimitivesD1Strict(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=1, seed=seed, strict=True, **kwargs)
+
+class Level_IntroPrimitivesD5Strict(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=5, seed=seed, strict=True, **kwargs)
+
+class Level_IntroPrimitivesD10Strict(Level_IntroPrimitives):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(max_delay=10, seed=seed, strict=True, **kwargs)
 
 
 class Level_GoToRedBallGrey(Level_TeachableRobot):

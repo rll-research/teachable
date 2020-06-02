@@ -126,6 +126,7 @@ class Teacher:
 
     def reset(self):
         self.oracle = self.botclass(self.env)
+        self.next_action = self.oracle.replan()
         self.last_action = -1
         self.agent_actions = []
         self.oracle_actions = []

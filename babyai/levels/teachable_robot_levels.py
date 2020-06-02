@@ -19,9 +19,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     """
 
     def __init__(self, start_loc='all',
-                 include_holdout_obj=True,
+                 include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 dropout_goal=0, dropout_correction=0, dropout_independently=True, 
+                 dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
                  feedback_type=None, feedback_always=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
@@ -34,6 +34,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param dropout_independently: Whether to sample instances of goal and correction dropout independently
                If False, it drops out the goal normally, then only drops out the correction if the goal isn't dropped
                out (so the probability that the correction is dropped out is actually (1 - goal_dropout) * corr_dropout
+        :param dropout_type: options are 'step' (dropout or not at each timestep), rollout (dropout or not each rollout)
+               meta_rollout (dropout or not each set of tasks in the 'inner loop', and meta_rollout_start (the first
+               half of the rollouts in the inner loop get the teacher, the second half don't)
         :param feedback_type: Type of teacher feedback, string
         :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
         :param kwargs: Additional arguments passed to the parent class
@@ -47,8 +50,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_goal = dropout_goal
         self.dropout_correction = dropout_correction
         self.dropout_independently = dropout_independently
+        self.dropout_type = dropout_type
+        self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
+        self.dropout_current_goal = False
+        self.dropout_current_correction = False
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
@@ -299,16 +306,17 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 goal_obj = goal_objs
             self.obj_pos = goal_obj.cur_pos
 
-        if 'dropout_goal' in self.task:
-            self.dropout_current_goal = self.task['dropout_goal']
-        else:
-            self.dropout_current_goal = False
-        if self.dropout_independently and self.dropout_current_goal:
-            self.dropout_current_correction = False
-        elif 'dropout_correction' in self.task:
-            self.dropout_current_correction = self.task['dropout_correction']
-        else:
-            self.dropout_current_correction = False
+        if self.dropout_type == 'meta_rollout':
+            if 'dropout_goal' in self.task:
+                self.dropout_current_goal = self.task['dropout_goal']
+            else:
+                self.dropout_current_goal = False
+            if self.dropout_independently and self.dropout_current_goal:
+                self.dropout_current_correction = False
+            elif 'dropout_correction' in self.task:
+                self.dropout_current_correction = self.task['dropout_correction']
+            else:
+                self.dropout_current_correction = False
 
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
@@ -400,10 +408,14 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
             if self.dropout_current_correction:
-                correction = self.teacher.empty_feedback()
+                correction_index = self.teacher.empty_feedback()
             else:
-                correction = self.teacher.give_feedback([obs])
+                correction_index = self.teacher.give_feedback([obs])
+            correction = np.zeros((self.action_space.n + 1,))
+            correction[correction_index] = 1.0
             obs = np.concatenate([obs, correction])
+
+        # obs = obs[160:] # TODO: remove
         return deepcopy(obs)
 
     def step(self, action):
@@ -412,6 +424,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param action: action to take
         :return: results of stepping the env
         """
+        if self.dropout_type == 'step':
+            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
+            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+        old_obs = self.gen_obs()
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
         info['agent_dir'] = self.agent_dir
@@ -439,7 +455,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 obs = self.gen_obs()
 
             except Exception as e:
-                # self.render('human')
+                self.render('human')
                 print("ERROR!!!!!", e)
                 teacher_copy.step([action])
         return obs, rew, done, info
@@ -449,8 +465,24 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         Reset both the env and the teacher
         :return: observation from the env reset
         """
+
         obs = super().reset()
+
+        if self.dropout_type == 'rollout':
+            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
+            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+        elif self.dropout_type == 'meta_rollout_start':
+            should_dropout = self.itr == self.num_meta_tasks - 1  # only dropout on the last
+            self.dropout_current_goal = should_dropout
+            self.dropout_current_correction = should_dropout
+        if self.dropout_type == 'step':
+            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
+            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()
+
+        obs = self.gen_obs()
+
         self.itr += 1
         return obs
