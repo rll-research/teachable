@@ -98,14 +98,14 @@ class Trainer(object):
 
                 logger.log("Obtaining samples...")
                 time_env_sampling_start = time.time()
-                paths = self.sampler.obtain_samples(log=True, log_prefix='train-', advance_curriculum=advance_curriculum)
+                paths = self.sampler.obtain_samples(log=True, log_prefix='train/', advance_curriculum=advance_curriculum)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""
 
                 logger.log("Processing samples...")
                 time_proc_samples_start = time.time()
-                samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train-')
+                samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
                 advance_curriculum = self.check_advance_curriculum(samples_data)
                 proc_samples_time = time.time() - time_proc_samples_start
 
@@ -117,7 +117,7 @@ class Trainer(object):
                     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
                 # Splice into the meta-learning process
                 if self.use_rp_outer:
-                    samples_data['rewards'] = logprobs[:, :, 1]   
+                    samples_data['rewards'] = logprobs[:, :, 1]
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -139,12 +139,12 @@ class Trainer(object):
                 logger.logkv('Itr', itr)
                 logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
 
-                logger.logkv('Time-Optimization', time.time() - time_optimization_step_start)
-                logger.logkv('Time-SampleProc', np.sum(proc_samples_time))
-                logger.logkv('Time-Sampling', sampling_time)
+                logger.logkv('Time/Optimization', time.time() - time_optimization_step_start)
+                logger.logkv('Time/SampleProc', np.sum(proc_samples_time))
+                logger.logkv('Time/Sampling', sampling_time)
 
-                logger.logkv('Time', time.time() - start_time)
-                logger.logkv('ItrTime', time.time() - itr_start_time)
+                logger.logkv('Time/Total', time.time() - start_time)
+                logger.logkv('Time/Itr', time.time() - itr_start_time)
 
                 logger.logkv('Curriculum Step', self.curriculum_step)
                 logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
@@ -252,7 +252,7 @@ class Trainer(object):
 
 
     def log_rew_pred(self, r_discrete, rewards, env_infos):
-        log_prefix = "RewPred"
+        log_prefix = "RewPred/"
 
         # Flatten, trim out any which are just there for padding
         # Elements where step=0 are just padding on the end.
@@ -262,7 +262,7 @@ class Trainer(object):
         step = np.stack([data for data, curr_bool in zip(env_infos['step'].flatten(), curr_elements) if curr_bool])
 
 
-        self._log_rew_pred(r_discrete, rewards, log_prefix + "-")
+        self._log_rew_pred(r_discrete, rewards, log_prefix)
 
         # Log split by index in meta-task
         unique_steps = np.unique(env_infos['step'])

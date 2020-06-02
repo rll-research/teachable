@@ -3,6 +3,7 @@ from meta_mb.samplers.meta_samplers.meta_vectorized_env_executor import MetaPara
 from meta_mb.logger import logger
 from meta_mb.utils import utils
 from collections import OrderedDict
+from meta_mb.algos.dummy import CopyPolicy
 
 from pyprind import ProgBar
 import numpy as np
@@ -151,9 +152,8 @@ class MetaSampler(BaseSampler):
             n_samples += new_samples
             obses = next_obses
         pbar.stop()
-        logger.log("Finished progress bar")
 
-        self.total_timesteps_sampled += self.total_samples
+        self.total_timesteps_sampled += n_samples
         if log:
             logger.logkv(log_prefix + "PolicyExecTime", policy_time)
             logger.logkv(log_prefix + "EnvExecTime", env_time)
