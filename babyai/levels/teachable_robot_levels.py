@@ -22,6 +22,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
+                 dropout_incremental=None,
                  feedback_type=None, feedback_always=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
@@ -37,6 +38,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param dropout_type: options are 'step' (dropout or not at each timestep), rollout (dropout or not each rollout)
                meta_rollout (dropout or not each set of tasks in the 'inner loop', and meta_rollout_start (the first
                half of the rollouts in the inner loop get the teacher, the second half don't)
+        :param dropout_incremental: options are None (dropout at the normal rate from the beginning) or the proportion
+               of the total dropout rate which gets added each time the accuracy
+               threshold is reached
         :param feedback_type: Type of teacher feedback, string
         :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
         :param kwargs: Additional arguments passed to the parent class
@@ -51,9 +55,14 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_correction = dropout_correction
         self.dropout_independently = dropout_independently
         self.dropout_type = dropout_type
+        self.dropout_incremental = dropout_incremental
         self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
+        if dropout_incremental is None:
+            self.dropout_proportion = 1
+        else:
+            self.dropout_proportion = 0
         self.dropout_current_goal = False
         self.dropout_current_correction = False
         super().__init__(**kwargs)
@@ -122,8 +131,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 if self.persist_objs:
                     objs = self.add_objs(mission["task"])
                     task['objs'] = objs
-                task['dropout_goal'] = np.random.uniform() < self.dropout_goal
-                task['dropout_correction'] = np.random.uniform() < self.dropout_correction
+                task['dropout_goal'] = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
+                task['dropout_correction'] = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
 
                 # If we have placed all components in place, sanity check that the placement is valid.
                 if self.persist_goal and self.persist_agent and self.persist_objs:
@@ -153,6 +162,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         self.task = self.sample_task()
         self.itr = 0
+        if self.dropout_incremental is None:
+            self.dropout_proportion = 1
+        else:
+            self.dropout_proportion = 0
 
     # Functions for RL2
     def get_task(self):
@@ -425,8 +438,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :return: results of stepping the env
         """
         if self.dropout_type == 'step':
-            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
-            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
+            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
         info['agent_dir'] = self.agent_dir
@@ -434,6 +447,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         info['step'] = self.itr
         info['dropout_goal'] = self.dropout_current_goal
         info['dropout_corrections'] = self.dropout_current_correction
+        info['dropout_proportion'] = self.dropout_proportion
 
         if hasattr(self, "obj_pos"):
             info['goal_room'] = self.room_from_pos(*self.obj_pos).top
@@ -465,18 +479,18 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :return: observation from the env reset
         """
 
-        obs = super().reset()
+        super().reset()
 
         if self.dropout_type == 'rollout':
-            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
-            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
+            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
         elif self.dropout_type == 'meta_rollout_start':
-            should_dropout = self.itr == self.num_meta_tasks - 1  # only dropout on the last
+            should_dropout = int(self.itr == self.num_meta_tasks - 1) * self.dropout_proportion  # only dropout the last
             self.dropout_current_goal = should_dropout
             self.dropout_current_correction = should_dropout
         if self.dropout_type == 'step':
-            self.dropout_current_goal = np.random.uniform() < self.dropout_goal
-            self.dropout_current_correction = np.random.uniform() < self.dropout_correction
+            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
+            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()
@@ -485,3 +499,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         self.itr += 1
         return obs
+
+    def increase_dropout_proportion(self):
+        if self.dropout_incremental is None or self.dropout_proportion == 1:
+            return
+        self.dropout_proportion = min(1, self.dropout_proportion + self.dropout_incremental)

@@ -41,6 +41,7 @@ class Trainer(object):
             curriculum_step=0,
             config=None,
             log_and_save=True,
+            increase_dropout_threshold = 0,
             ):
         self.algo = algo
         self.env = env
@@ -62,13 +63,16 @@ class Trainer(object):
         self.videos_every = videos_every
         self.config = config
         self.log_and_save = log_and_save
+        self.increase_dropout_threshold = increase_dropout_threshold
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
-        should_advance = rewards > self.reward_threshold
-        if should_advance:
+        dropout_level = np.min(data['env_infos']['dropout_proportion'])
+        should_advance_curriculum = (rewards > self.reward_threshold) and dropout_level == 1
+        should_increase_dropout = rewards > self.increase_dropout_threshold
+        if should_advance_curriculum:
             self.curriculum_step += 1
-        return should_advance
+        return should_advance_curriculum, should_increase_dropout
 
     def train(self):
         """
@@ -88,6 +92,7 @@ class Trainer(object):
             uninit_vars = [var for var in tf.global_variables() if not sess.run(tf.is_variable_initialized(var))]
             sess.run(tf.variables_initializer(uninit_vars))
             advance_curriculum = False
+            increase_dropout = False
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
@@ -99,7 +104,9 @@ class Trainer(object):
 
                 logger.log("Obtaining samples...")
                 time_env_sampling_start = time.time()
-                paths = self.sampler.obtain_samples(log=True, log_prefix='train/', advance_curriculum=advance_curriculum)
+                paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
+                                                    advance_curriculum=advance_curriculum,
+                                                    increase_dropout=increase_dropout)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""
@@ -107,7 +114,7 @@ class Trainer(object):
                 logger.log("Processing samples...")
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
-                advance_curriculum = self.check_advance_curriculum(samples_data)
+                advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""

@@ -35,7 +35,7 @@ PREFIX = 'debug22'
 # PREFIX = 'REALLYEASYnormallevel'
 # PREFIX = 'BIGMODEL'
 # PREFIX = 'SUPERVISEDDROPOUTMR'
-PREFIX = 'DISCOUNT.9'
+# PREFIX = 'DISCOUNT.9'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -50,6 +50,7 @@ def get_exp_name(config):
     if config['pre_levels']:
         EXP_NAME += '_pre'
     EXP_NAME += '_droptype' + str(config['dropout_type'])
+    EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
     EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
@@ -76,6 +77,7 @@ def run_experiment(**config):
             "dropout_correction": config['dropout_correction'],
             "dropout_independently": config['dropout_independently'],
             "dropout_type": config['dropout_type'],
+            "dropout_incremental": None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
             "feedback_type": config["feedback_type"],
             "feedback_always": config["feedback_always"],
             "num_meta_tasks": config["rollouts_per_meta_task"],
@@ -188,6 +190,7 @@ def run_experiment(**config):
             exp_name=exp_dir,
             curriculum_step=curriculum_step,
             config=config,
+            increase_dropout_threshold=0 if config['dropout_incremental'] is None else config['dropout_incremental'][0]
         )
         trainer.train()
 
@@ -203,6 +206,8 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
+        'dropout_incremental': [(0.01, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
+                                   # and increment is the proportion of the total dropout rate which gets added each time # TODO: change back
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
         "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice"]

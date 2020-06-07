@@ -237,6 +237,7 @@ class SampleProcessor(object):
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
         path_length = [path['env_infos']['episode_length'][-1] for path in paths]
+        dropout_proportion = [path['env_infos']['dropout_proportion'][-1] for path in paths]
         success = [path['env_infos']['success'][-1] for path in paths]
         total_success = [np.sum(path['env_infos']['success']) for path in paths]
         first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
@@ -333,6 +334,7 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))
+            logger.logkv(log_prefix + 'DropoutProportion', np.mean(dropout_proportion))
             logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
             logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
             logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
