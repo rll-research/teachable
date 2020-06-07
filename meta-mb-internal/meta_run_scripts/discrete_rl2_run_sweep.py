@@ -194,7 +194,7 @@ def run_experiment(**config):
         )
         trainer.train()
 
-
+set
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
@@ -206,7 +206,7 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
-        'dropout_incremental': [(0.01, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
+        'dropout_incremental': [(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
                                    # and increment is the proportion of the total dropout rate which gets added each time # TODO: change back
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
@@ -228,7 +228,7 @@ if __name__ == '__main__':
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
-        "discount": [0.9],
+        "discount": [0.95],
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],

@@ -110,6 +110,7 @@ class Curriculum(Serializable):
                 return orig_attr
 
     def advance_curriculum(self, index=None):
+        self._wrapped_env.reset_dropout_proportion()
         if index is None:
             index = self.index + 1
         if self.advance_curriculum_func == 'one_hot':

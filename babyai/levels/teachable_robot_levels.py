@@ -162,10 +162,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         self.task = self.sample_task()
         self.itr = 0
-        if self.dropout_incremental is None:
-            self.dropout_proportion = 1
-        else:
-            self.dropout_proportion = 0
 
     # Functions for RL2
     def get_task(self):
@@ -504,3 +500,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if self.dropout_incremental is None or self.dropout_proportion == 1:
             return
         self.dropout_proportion = min(1, self.dropout_proportion + self.dropout_incremental)
+
+    def reset_dropout_proportion(self):
+        if self.dropout_incremental is None:
+            self.dropout_proportion = 1
+        else:
+            self.dropout_proportion = 0
