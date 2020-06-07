@@ -48,6 +48,13 @@ class RL2Env(Serializable):
         Serializable.quick_init(self, locals())
 
         self._wrapped_env = env
+        if isinstance(self._wrapped_env.action_space, Discrete):
+            size = self._wrapped_env.action_space.n
+        else:
+            size = self._wrapped_env.action_space.shape
+        self.prev_action = np.zeros(size)
+        self.prev_reward = [0]
+        self.prev_done = [0]
 
     def __getattr__(self, attr):
         """
@@ -75,11 +82,7 @@ class RL2Env(Serializable):
 
     def reset(self):
         obs = self._wrapped_env.reset()
-        if isinstance(self._wrapped_env.action_space, Discrete):
-            size = self._wrapped_env.action_space.n
-        else:
-            size = self._wrapped_env.action_space.shape
-        return np.concatenate([obs, np.zeros(size), [0], [0]])
+        return np.concatenate([obs, self.prev_action, self.prev_reward, self.prev_done])
 
     def __getstate__(self):
         d = Serializable.__getstate__(self)
@@ -100,7 +103,20 @@ class RL2Env(Serializable):
         next_obs_rewardfree = np.concatenate([next_obs, action, [done]]).copy()
         next_obs = np.concatenate([next_obs, action, [reward], [done]]).copy()
         info['next_obs_rewardfree'] = next_obs_rewardfree
+        self.prev_action = action
+        self.prev_reward = [reward]
+        self.prev_done = [done]
         return next_obs, reward, done, info
+
+    def set_task(self, args):
+        self._wrapped_env.set_task(args)
+        if isinstance(self._wrapped_env.action_space, Discrete):
+            size = self._wrapped_env.action_space.n
+        else:
+            size = self._wrapped_env.action_space.shape
+        self.prev_action = np.zeros(size)
+        self.prev_reward = [0]
+        self.prev_done = [0]
 
 
 rl2env = RL2Env
