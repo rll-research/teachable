@@ -34,6 +34,7 @@ class MetaSampler(BaseSampler):
             envs_per_task=None,
             parallel=False,
             reward_predictor=None,
+            supervised_model=None
             ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
@@ -45,6 +46,7 @@ class MetaSampler(BaseSampler):
         self.parallel = parallel
         self.total_timesteps_sampled = 0
         self.reward_predictor = reward_predictor
+        self.supervised_model = supervised_model
         # setup vectorized environment
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
@@ -59,7 +61,7 @@ class MetaSampler(BaseSampler):
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
 
-    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False):
+    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, policy=None):
         """
         Collect batch_size trajectories from each task
 
@@ -84,14 +86,17 @@ class MetaSampler(BaseSampler):
         pbar = ProgBar(total_paths)
         policy_time, env_time = 0, 0
 
-        policy = self.policy
+        if policy is None:
+          policy = self.policy
         policy.reset(dones=[True] * self.meta_batch_size)
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
+        if self.supervised_model is not None:
+            self.supervised_model.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
-            self.update_tasks()
+        self.update_tasks()
         obses = self.vec_env.reset()
         num_paths = 0
         while num_paths < total_paths:

@@ -300,8 +300,8 @@ class SampleProcessor(object):
             actions_taken = np.array([step[0] for path in paths for step in path['actions']])
             actions_teacher = np.array([step for path in paths for step in path['env_infos']['teacher_action']])
             probs = [probs for path in paths for probs in path['agent_infos']['probs']]
-            prob_actions_teacher = [p[i] for p, i in zip(probs, actions_teacher)]
-            prob_actions_taken = [p[i] for p, i in zip(probs, actions_taken)]
+            prob_actions_teacher = [p[int(i)] for p, i in zip(probs, actions_teacher)]
+            prob_actions_taken = [p[int(i)] for p, i in zip(probs, actions_taken)]
             logger.logkv(log_prefix + 'ProbActionTeacher', np.mean(prob_actions_teacher))
             logger.logkv(log_prefix + 'ProbActionTaken', np.mean(prob_actions_taken))
 

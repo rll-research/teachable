@@ -84,9 +84,12 @@ class Algo(object):
         if discrete:
             action_shape = [None, 1] if not recurrent else [None, None, 1]
             action_ph = tf.placeholder(dtype=tf.int32, shape=action_shape, name=prefix + '_action')
+            ground_truth_action_ph = tf.placeholder(dtype=tf.int32, shape=action_shape, name=prefix + '_env_infos/teacher_action')
         else:
             action_shape = [None, self.policy.action_dim] if not recurrent else [None, None, self.policy.action_dim]
             action_ph = tf.placeholder(dtype=tf.float32, shape=action_shape, name=prefix + '_action')
+            ground_truth_action_ph = tf.placeholder(dtype=tf.int32, shape=action_shape, name=prefix + '_env_infos/teacher_action')
+        all_phs_dict['%s_%s' % (prefix, 'env_infos/teacher_action')] = ground_truth_action_ph
         all_phs_dict['%s_%s' % (prefix, 'actions')] = action_ph
 
         # advantage ph
@@ -113,14 +116,14 @@ class Algo(object):
         all_phs_dict['%s_%s' % (prefix, 'env_infos/next_obs_rewardfree')] = obs_r_ph
 
         if not next_obs:
-            return obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict
+            return obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict, ground_truth_action_ph
 
         else:
             obs_shape = [None, self.policy.obs_dim] if not recurrent else [None, None, self.policy.obs_dim]
             next_obs_ph = tf.placeholder(dtype=tf.float32, shape=obs_shape, name=prefix + '_obs')
             all_phs_dict['%s_%s' % (prefix, 'next_observations')] = next_obs_ph
 
-        return obs_ph, action_ph, next_obs_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict
+        return obs_ph, action_ph, next_obs_ph, adv_ph, r_ph, obs_r_ph, dist_info_ph_dict, all_phs_dict, ground_truth_action_ph
 
     def _extract_input_dict(self, samples_data, keys, prefix=''):
         """

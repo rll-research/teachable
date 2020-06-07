@@ -29,7 +29,7 @@ class DiscreteRNNPolicy(Policy):
 
     """
 
-    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='lstm', **kwargs):
+    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='lstm', preprocess_obs_type=None, **kwargs):
         # store the init args for serialization and call the super constructors
         Serializable.quick_init(self, locals())
         Policy.__init__(self, *args, **kwargs)
@@ -43,6 +43,8 @@ class DiscreteRNNPolicy(Policy):
         self._hidden_state = None
         self.recurrent = True
         self._cell_type = cell_type
+        self.preprocess_obs_type = preprocess_obs_type
+        self.should_dropout = []
 
         self.build_graph()
         self._zero_hidden = self.cell.zero_state(1, tf.float32)
@@ -98,6 +100,23 @@ class DiscreteRNNPolicy(Policy):
         k = np.clip(k, min_val, max_val)
         return np.asarray(k)
 
+    def preprocess_obs(self, observations):
+        if self.preprocess_obs_type == 'full_dropout':
+            for o in observations:
+                o[:, 160:167] = 0
+                o[:, 166] = 1
+        elif self.preprocess_obs_type == 'meta_rollout_dropout':
+            for i, (should_dropout, o) in enumerate(zip(self.should_dropout, observations[0])):
+                done_index = o[-1]
+                should_dropout = should_dropout or done_index
+                self.should_dropout[i] = should_dropout
+
+                if should_dropout:
+                    o[160:167] = 0
+                    o[166] = 1
+        return observations
+
+
     def get_actions(self, observations):
         """
         Runs each set of observations through each task specific policy
@@ -108,6 +127,7 @@ class DiscreteRNNPolicy(Policy):
         Returns:
             (ndarray) : array of sampled actions - shape: (batch_size, action_dim)
         """
+        observations = self.preprocess_obs(observations)
         observations = np.array(observations)
         assert observations.shape[-1] == self.obs_dim
         if observations.ndim == 2:
@@ -214,6 +234,7 @@ class DiscreteRNNPolicy(Policy):
                 self._hidden_state.h[dones] = _hidden_state.h
             else:
                 self._hidden_state[dones] = _hidden_state
+        self.should_dropout = [False for _ in dones]
 
     def get_zero_state(self, batch_size):
         sess = tf.get_default_session()

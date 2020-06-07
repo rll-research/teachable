@@ -427,7 +427,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if self.dropout_type == 'step':
             self.dropout_current_goal = np.random.uniform() < self.dropout_goal
             self.dropout_current_correction = np.random.uniform() < self.dropout_correction
-        old_obs = self.gen_obs()
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
         info['agent_dir'] = self.agent_dir
@@ -448,7 +447,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             try:
                 # Even if we use multiple teachers, presumably they all relate to one underlying path.
                 # We can log what action is the next one on this path (currently in teacher.next_action).
-                info['teacher_action'] = self.teacher.next_action
+                info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int)
 
                 self.teacher.step([action])
                 # Update the observation with the teacher's new feedback

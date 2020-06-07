@@ -40,6 +40,7 @@ class Trainer(object):
             videos_every=5,
             curriculum_step=0,
             config=None,
+            log_and_save=True,
             ):
         self.algo = algo
         self.env = env
@@ -60,6 +61,7 @@ class Trainer(object):
         self.exp_name = exp_name
         self.videos_every = videos_every
         self.config = config
+        self.log_and_save = log_and_save
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
@@ -89,7 +91,6 @@ class Trainer(object):
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
-                self.sampler.update_tasks()
                 itr_start_time = time.time()
                 logger.log("\n ---------------- Iteration %d ----------------" % itr)
                 logger.log("Sampling set of tasks/goals for this meta-batch...")
@@ -111,6 +112,8 @@ class Trainer(object):
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
                 r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                if self.algo.supervised_model is not None:
+                    self.log_supervised(samples_data)
                 self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
                 # Splice into the inference process
                 if self.use_rp_inner:
@@ -118,6 +121,7 @@ class Trainer(object):
                 # Splice into the meta-learning process
                 if self.use_rp_outer:
                     samples_data['rewards'] = logprobs[:, :, 1]
+                samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -134,6 +138,10 @@ class Trainer(object):
                 self.algo.optimize_policy(samples_data)
                 # TODO: Make sure we optimize this for more steps
                 self.algo.optimize_reward(samples_data)
+                if self.algo.supervised_model is not None:
+                    self.algo.optimize_supervised(samples_data)
+                    if itr % 1 == 5:
+                        self.run_supervised()
 
                 """ ------------------- Logging Stuff --------------------------"""
                 logger.logkv('Itr', itr)
@@ -156,15 +164,17 @@ class Trainer(object):
 
                 logger.log(self.exp_name)
 
-                logger.log("Saving snapshot...")
                 params = self.get_itr_snapshot(itr)
                 step = self.curriculum_step
                 if advance_curriculum:
                     step -= 1
-                logger.save_itr_params(itr, step, params)
-                logger.log("Saved")
 
-                logger.dumpkvs()
+                if self.log_and_save:
+                    logger.log("Saving snapshot...")
+                    logger.save_itr_params(itr, step, params)
+                    logger.log("Saved")
+
+                    logger.dumpkvs()
 
 
                 # Save videos of the progress periodically, or right before we advance levels
@@ -177,11 +187,15 @@ class Trainer(object):
                 #     self.env.set_level_distribution(step)
                 #     self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
 
-                if itr == 0:
-                    sess.graph.finalize()
+                # if itr == 0:
+                #     sess.graph.finalize()
 
         logger.log("Training finished")
-        self.sess.close()
+        # self.sess.close()  # TODO: is this okay?
+
+    def run_supervised(self):
+        paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.algo.supervised_model)
+        self.sample_processor.process_samples(paths, log='all', log_prefix="Supervised/")
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
         paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
@@ -195,21 +209,25 @@ class Trainer(object):
         """
         Gets the current policy and env for storage
         """
-        if self.algo.reward_predictor is not None:
-            return dict(itr=itr,
-                        policy=self.policy,
-                        env=self.env,
-                        baseline=self.baseline,
-                        curriculum_step=self.curriculum_step,
-                        config=self.config,
-                        reward_predictor=self.algo.reward_predictor)
-        else:
-            return dict(itr=itr,
+        d = dict(itr=itr,
                         policy=self.policy,
                         env=self.env,
                         baseline=self.baseline,
                         config=self.config,
                         curriculum_step=self.curriculum_step,)
+        if self.algo.reward_predictor is not None:
+            d['reward_predictor'] = self.algo.reward_predictor
+        if self.algo.supervised_model is not None:
+            d['supervised_model'] = self.algo.supervised_model
+        return d
+
+
+    def log_supervised(self, samples_data):
+        pred_actions, _ = self.algo.supervised_model.get_actions(samples_data['observations'])
+        real_actions = samples_data['env_infos']['teacher_action']
+        matches = pred_actions == real_actions
+        log_prefix = "Supervised"
+        logger.logkv(log_prefix + 'Accuracy', np.mean(matches))
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far
