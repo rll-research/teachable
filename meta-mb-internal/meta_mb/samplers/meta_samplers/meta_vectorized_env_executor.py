@@ -81,11 +81,11 @@ class MetaIterativeEnvExecutor(object):
         advances = [env.advance_curriculum() for env in self.envs]
         return advances
 
-    def increase_dropout(self):
+    def set_dropout(self, dropout_proportion):
         """
-        Increases the dropout level
+        Changes the dropout level
         """
-        advances = [env.increase_dropout_proportion() for env in self.envs]
+        advances = [env.set_dropout_proportion(dropout_proportion) for env in self.envs]
         return advances
 
     @property
@@ -178,12 +178,12 @@ class MetaParallelEnvExecutor(object):
         [remote.recv() for remote in self.remotes]
         return None
 
-    def increase_dropout(self):
+    def set_dropout(self, dropout_proportion):
         """
-        Increases the dropout level
+        Changes the dropout level
         """
         for remote in self.remotes:
-            remote.send(('increase_dropout_proportion', None))
+            remote.send(('set_dropout_proportion', dropout_proportion))
         [remote.recv() for remote in self.remotes]
         return None
 

@@ -110,7 +110,6 @@ class Curriculum(Serializable):
                 return orig_attr
 
     def advance_curriculum(self, index=None):
-        self._wrapped_env.reset_dropout_proportion()
         if index is None:
             index = self.index + 1
         if self.advance_curriculum_func == 'one_hot':
@@ -149,6 +148,7 @@ class Curriculum(Serializable):
         self._wrapped_env = self.levels_list[index]
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[index] = 1
+        self.index = index
 
     def set_task(self, args):
         """

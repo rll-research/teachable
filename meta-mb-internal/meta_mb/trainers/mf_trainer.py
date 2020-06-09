@@ -41,7 +41,8 @@ class Trainer(object):
             curriculum_step=0,
             config=None,
             log_and_save=True,
-            increase_dropout_threshold = 0,
+            increase_dropout_threshold=float('inf'),
+            increase_dropout_increment=None,
             ):
         self.algo = algo
         self.env = env
@@ -64,12 +65,14 @@ class Trainer(object):
         self.config = config
         self.log_and_save = log_and_save
         self.increase_dropout_threshold = increase_dropout_threshold
+        self.increase_dropout_increment = increase_dropout_increment
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
-        dropout_level = np.min(data['env_infos']['dropout_proportion'])
-        should_advance_curriculum = (rewards > self.reward_threshold) and dropout_level == 1
-        should_increase_dropout = rewards > self.increase_dropout_threshold
+        # We take the max since runs which end early will be 0-padded
+        dropout_level = np.max(data['env_infos']['dropout_proportion'])
+        should_advance_curriculum = (rewards >= self.reward_threshold) and (dropout_level == 1)
+        should_increase_dropout = rewards >= self.increase_dropout_threshold
         if should_advance_curriculum:
             self.curriculum_step += 1
         return should_advance_curriculum, should_increase_dropout
@@ -92,7 +95,7 @@ class Trainer(object):
             uninit_vars = [var for var in tf.global_variables() if not sess.run(tf.is_variable_initialized(var))]
             sess.run(tf.variables_initializer(uninit_vars))
             advance_curriculum = False
-            increase_dropout = False
+            dropout_proportion = 1 if self.increase_dropout_increment is None else 0
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
@@ -106,7 +109,7 @@ class Trainer(object):
                 time_env_sampling_start = time.time()
                 paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                     advance_curriculum=advance_curriculum,
-                                                    increase_dropout=increase_dropout)
+                                                    dropout_proportion=dropout_proportion)
                 sampling_time = time.time() - time_env_sampling_start
 
                 """ ----------------- Processing Samples ---------------------"""
@@ -115,6 +118,9 @@ class Trainer(object):
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
                 advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
+                if increase_dropout:
+                    dropout_proportion += self.increase_dropout_increment
+                    dropout_proportion = min(1, dropout_proportion)
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -147,7 +153,7 @@ class Trainer(object):
                 self.algo.optimize_reward(samples_data)
                 if self.algo.supervised_model is not None:
                     self.algo.optimize_supervised(samples_data)
-                    if itr % 1 == 5:
+                    if itr % 5 == 0:
                         self.run_supervised()
 
                 """ ------------------- Logging Stuff --------------------------"""

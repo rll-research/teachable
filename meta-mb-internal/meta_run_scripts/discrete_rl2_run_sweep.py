@@ -30,12 +30,12 @@ INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
 # PREFIX = 'WhyNotFollowTeacherYesEntropy'
 # PREFIX = 'ArePreLevelsGood'
-# PREFIX = 'DROPOUT'
+# PREFIX = 'DROPOUTINC'
 # PREFIX = 'FOLLOWSTRICT'
 # PREFIX = 'REALLYEASYnormallevel'
 # PREFIX = 'BIGMODEL'
 # PREFIX = 'SUPERVISEDDROPOUTMR'
-# PREFIX = 'DISCOUNT.9'
+# PREFIX = 'THRESHOLDMAYBEIMPROVED'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -52,6 +52,8 @@ def get_exp_name(config):
     EXP_NAME += '_droptype' + str(config['dropout_type'])
     EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
+    EXP_NAME += '_disc' + str(config['discount'])
+    EXP_NAME += '_thresh' + str(config['reward_threshold'])
     EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
     EXP_NAME += 'corr' + str(config['dropout_correction'])
@@ -77,7 +79,6 @@ def run_experiment(**config):
             "dropout_correction": config['dropout_correction'],
             "dropout_independently": config['dropout_independently'],
             "dropout_type": config['dropout_type'],
-            "dropout_incremental": None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
             "feedback_type": config["feedback_type"],
             "feedback_always": config["feedback_always"],
             "num_meta_tasks": config["rollouts_per_meta_task"],
@@ -173,7 +174,7 @@ def run_experiment(**config):
         if original_saved_path is None:
             if os.path.isdir(exp_dir):
                 shutil.rmtree(exp_dir)
-        logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level', # TODO: change back to level
+        logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level',
                          snapshot_gap=50, step=start_itr)
         json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
@@ -190,11 +191,11 @@ def run_experiment(**config):
             exp_name=exp_dir,
             curriculum_step=curriculum_step,
             config=config,
-            increase_dropout_threshold=0 if config['dropout_incremental'] is None else config['dropout_incremental'][0]
+            increase_dropout_threshold=float('inf') if config['dropout_incremental'] is None else config['dropout_incremental'][0],
+            increase_dropout_increment=None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
         )
         trainer.train()
 
-set
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
@@ -206,8 +207,8 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
-        'dropout_incremental': [(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
-                                   # and increment is the proportion of the total dropout rate which gets added each time # TODO: change back
+        'dropout_incremental': [None],#[(0.1, 0.5)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
+                                   # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
         "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice"]
@@ -217,7 +218,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
         'pre_levels': [False],
-        'il_comparison': [True],
+        'il_comparison': [False],
 
         'algo': ['rl2'],
         'seed': [4],
@@ -228,7 +229,7 @@ if __name__ == '__main__':
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
-        "discount": [0.95],
+        "discount": [0.9],
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],

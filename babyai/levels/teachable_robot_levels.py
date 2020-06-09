@@ -22,7 +22,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
-                 dropout_incremental=None,
                  feedback_type=None, feedback_always=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
@@ -38,9 +37,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param dropout_type: options are 'step' (dropout or not at each timestep), rollout (dropout or not each rollout)
                meta_rollout (dropout or not each set of tasks in the 'inner loop', and meta_rollout_start (the first
                half of the rollouts in the inner loop get the teacher, the second half don't)
-        :param dropout_incremental: options are None (dropout at the normal rate from the beginning) or the proportion
-               of the total dropout rate which gets added each time the accuracy
-               threshold is reached
         :param feedback_type: Type of teacher feedback, string
         :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
         :param kwargs: Additional arguments passed to the parent class
@@ -55,14 +51,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_correction = dropout_correction
         self.dropout_independently = dropout_independently
         self.dropout_type = dropout_type
-        self.dropout_incremental = dropout_incremental
         self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
-        if dropout_incremental is None:
-            self.dropout_proportion = 1
-        else:
-            self.dropout_proportion = 0
+        self.dropout_proportion = 0
         self.dropout_current_goal = False
         self.dropout_current_correction = False
         super().__init__(**kwargs)
@@ -496,13 +488,5 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr += 1
         return obs
 
-    def increase_dropout_proportion(self):
-        if self.dropout_incremental is None or self.dropout_proportion == 1:
-            return
-        self.dropout_proportion = min(1, self.dropout_proportion + self.dropout_incremental)
-
-    def reset_dropout_proportion(self):
-        if self.dropout_incremental is None:
-            self.dropout_proportion = 1
-        else:
-            self.dropout_proportion = 0
+    def set_dropout_proportion(self, dropout_proportion):
+        self.dropout_proportion = dropout_proportion

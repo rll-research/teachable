@@ -8,6 +8,7 @@ from meta_mb.logger import logger
 import tensorflow as tf
 import numpy as np
 from collections import OrderedDict
+import copy
 
 
 class DiscreteRNNPolicy(Policy):
@@ -101,6 +102,7 @@ class DiscreteRNNPolicy(Policy):
         return np.asarray(k)
 
     def preprocess_obs(self, observations):
+        observations = copy.deepcopy(observations)
         if self.preprocess_obs_type == 'full_dropout':
             for o in observations:
                 o[:, 160:167] = 0
