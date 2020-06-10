@@ -6,6 +6,19 @@ class RL2FirstOrderOptimizer(RNNFirstOrderOptimizer):
     def __init__(self, *args ,**kwargs):
         super(RL2FirstOrderOptimizer, self).__init__(*args, **kwargs)
 
+    def compute_loss_variations(self, input_dict, entropy_loss, reward_loss, log_values=None):
+        # Log different loss components
+        sess = tf.get_default_session()
+        feed_dict = self.create_feed_dict(input_dict)
+        batch_size, seq_len, *_ = list(input_dict.values())[0].shape
+        hidden_batch = self._target.get_zero_state(batch_size)
+        feed_dict[self._hidden_ph] = hidden_batch
+        entropy_loss = sess.run(entropy_loss, feed_dict=feed_dict)
+        reward_loss = sess.run(reward_loss, feed_dict=feed_dict)
+        if log_values is not None:
+            log_values = sess.run(log_values, feed_dict=feed_dict)
+        return entropy_loss, reward_loss
+
 
 class RL2PPOOptimizer(RNNFirstOrderOptimizer):
     """

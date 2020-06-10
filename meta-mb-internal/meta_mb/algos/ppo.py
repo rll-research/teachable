@@ -26,6 +26,7 @@ class PPO(Algo, Serializable):
     def __init__(
             self,
             policy,
+            supervised_model=None,
             name="ppo",
             learning_rate=1e-3,
             clip_eps=0.2,
@@ -42,12 +43,16 @@ class PPO(Algo, Serializable):
         super(PPO, self).__init__(policy)
 
         self.recurrent = getattr(self.policy, 'recurrent', False)
+        self.supervised_model = supervised_model
         if self.recurrent:
             backprop_steps = kwargs.get('backprop_steps', 32)
             self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs,
                                                     backprop_steps=backprop_steps)
             if self.reward_predictor is not None:
                 self.optimizer_r = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs_r, backprop_steps=backprop_steps)
+            if self.supervised_model is not None:
+                self.optimizer_s = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs_r,
+                                                          backprop_steps=backprop_steps)
         else:
             self.optimizer = FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
         # TODO figure out what this does
@@ -83,7 +88,7 @@ class PPO(Algo, Serializable):
             discrete = True
         else:
             discrete = False
-        obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_old_ph, all_phs_dict = self._make_input_placeholders('train',
+        obs_ph, action_ph, adv_ph, r_ph, obs_r_ph, dist_info_old_ph, all_phs_dict, ground_truth_action_ph = self._make_input_placeholders('train',
                                                                                                   recurrent=self.recurrent, 
                                                                                                   discrete=discrete)
         self.op_phs_dict.update(all_phs_dict)
@@ -93,6 +98,8 @@ class PPO(Algo, Serializable):
             # TODO: Check if anything is problematic here, when obs is concatenating previous reward
             if self.reward_predictor is not None:
                 distribution_info_vars_r, hidden_ph_r, next_hidden_var_r = self.reward_predictor.distribution_info_sym(obs_r_ph)
+            if self.supervised_model is not None:
+                distribution_info_vars_s, hidden_ph_s, next_hidden_var_s = self.supervised_model.distribution_info_sym(obs_ph)
         else:
             distribution_info_vars = self.policy.distribution_info_sym(obs_ph)
             hidden_ph, next_hidden_var = None, None
@@ -107,6 +114,9 @@ class PPO(Algo, Serializable):
                                                   1 - self._clip_eps,
                                                   1 + self._clip_eps ) * adv_ph)
         # TODO: Check that the discrete entropy looks fine
+        self.log_values = [likelihood_ratio, adv_ph, clipped_obj, dist_info_old_ph, distribution_info_vars]
+        self.reward_loss = tf.reduce_mean(clipped_obj)
+        self.entropy_loss = self.entropy_bonus * tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
@@ -117,6 +127,20 @@ class PPO(Algo, Serializable):
                 input_ph_dict=self.op_phs_dict, # TODO: Check this
                 hidden_ph=hidden_ph_r,
                 next_hidden_var=next_hidden_var_r
+            )
+        if self.supervised_model is not None:
+            action_logits = tf.log(distribution_info_vars_s['probs'])
+            one_hot_ground_truth = tf.squeeze(tf.one_hot(ground_truth_action_ph, action_logits.shape[-1]), axis=2)
+            sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
+                one_hot_ground_truth, action_logits,
+            )
+            self.log_values_sup = [action_logits, distribution_info_vars_s['probs'], one_hot_ground_truth]
+            self.optimizer_s.build_graph(
+                loss=sup_learning_loss,
+                target=self.supervised_model,
+                input_ph_dict=self.op_phs_dict,
+                hidden_ph=hidden_ph_s,
+                next_hidden_var=next_hidden_var_s
             )
 
         self.optimizer.build_graph(
@@ -140,16 +164,22 @@ class PPO(Algo, Serializable):
             None
         """
         input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
+        entropy_loss, reward_loss = self.optimizer.compute_loss_variations(input_dict, self.entropy_loss,
+                                                                          self.reward_loss, self.log_values)
 
         if verbose: logger.log("Optimizing")
+
+        # Update model
         loss_before = self.optimizer.optimize(input_val_dict=input_dict)
 
         if verbose: logger.log("Computing statistics")
         loss_after = self.optimizer.loss(input_val_dict=input_dict)
 
         if log:
-            logger.logkv(prefix+'LossBefore', loss_before)
-            logger.logkv(prefix+'LossAfter', loss_after)
+            logger.logkv(prefix + 'Loss/LossBefore', loss_before)
+            logger.logkv(prefix + 'Loss/LossAfter', loss_after)
+            logger.logkv(prefix + 'Loss/PartialLossEntropy', entropy_loss)
+            logger.logkv(prefix + 'Loss/PartialLossReward', reward_loss)
 
 
     def optimize_reward(self, samples_data, log=True, prefix='', verbose=False):
@@ -175,6 +205,20 @@ class PPO(Algo, Serializable):
         if log:
             logger.logkv(prefix+'RewardLossBefore', loss_before)
             logger.logkv(prefix+'RewardLossAfter', loss_after)
+
+
+    def optimize_supervised(self, samples_data, log=True, prefix='', verbose=False):
+        input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
+
+        if verbose: logger.log("Optimizing Supervised Model")
+        loss_before = self.optimizer_s.optimize(input_val_dict=input_dict)
+
+        if verbose: logger.log("Computing statistics")
+        loss_after = self.optimizer_s.loss(input_val_dict=input_dict)
+
+        if log:
+            logger.logkv(prefix+'SupervisedLossBefore', loss_before)
+            logger.logkv(prefix+'SupervisedLossAfter', loss_after)
 
 
     def __getstate__(self):

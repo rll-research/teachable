@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import argparse
 from meta_mb.samplers.utils import rollout
-from experiment_utils.utils import load_exps_data
+from experiment_utils.utils import load_exps_data, load_single_exp_data
 from babyai.levels import iclr19_levels
 from babyai.levels.iclr19_levels import *
 from babyai.oracle.batch_teacher import BatchTeacher
@@ -50,6 +50,8 @@ if __name__ == "__main__":
                         help='Max length of rollout')
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
+    parser.add_argument('--run_name', type=str, default='latest.pkl',
+                        help='Name of pickle file to load')
     parser.add_argument('--gap_pkl', type=int, default=1,
                         help='Gap between pkl policies')
     parser.add_argument('--grid_size', type=int, default=None,
@@ -77,7 +79,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     assert args.class_name is not None or args.use_pickled_env
-    experiment_paths = load_exps_data(args.path, gap=args.gap_pkl, max=args.max_pkl)
+    experiment_paths = [load_single_exp_data(args.path, args.run_name)]
     for exp_path in experiment_paths:
         max_path_length = exp_path['json']['max_path_length'] if args.max_path_length is None else args.max_path_length
         if valid_experiment(exp_path['json']):
@@ -113,7 +115,7 @@ if __name__ == "__main__":
                     video_filename = pkl_path.split('.')[0] + '.mp4'
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
-                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every)
+                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every, record_teacher=True)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))

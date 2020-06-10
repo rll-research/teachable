@@ -7,6 +7,7 @@ import copy
 from pyprind import ProgBar
 from scipy.stats import entropy
 
+
 class BaseSampler(object):
     """
     Sampler interface
@@ -80,7 +81,7 @@ class BaseSampler(object):
             if done:
                 next_obs = self.env.reset()
                 ts = 0
-                
+
             env_time += time.time() - t
 
             new_samples = 0
@@ -146,12 +147,12 @@ class SampleProcessor(object):
             gae_lambda=1,
             normalize_adv=False,
             positive_adv=False,
-            ):
+    ):
 
         assert 0 <= discount <= 1.0, 'discount factor must be in [0,1]'
         assert 0 <= gae_lambda <= 1.0, 'gae_lambda must be in [0,1]'
         assert hasattr(baseline, 'fit') and hasattr(baseline, 'predict')
-        
+
         self.baseline = baseline
         self.discount = discount
         self.gae_lambda = gae_lambda
@@ -205,7 +206,8 @@ class SampleProcessor(object):
         paths = self._compute_advantages(paths, all_path_baselines)
 
         # 4) stack path data
-        observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = self._concatenate_path_data(copy.deepcopy(paths))
+        observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = self._concatenate_path_data(
+            copy.deepcopy(paths))
 
         # 5) if desired normalize / shift advantages
         if self.normalize_adv:
@@ -235,6 +237,7 @@ class SampleProcessor(object):
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
         path_length = [path['env_infos']['episode_length'][-1] for path in paths]
+        dropout_proportion = [path['env_infos']['dropout_proportion'][-1] for path in paths]
         success = [path['env_infos']['success'][-1] for path in paths]
         total_success = [np.sum(path['env_infos']['success']) for path in paths]
         first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
@@ -256,43 +259,64 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
 
             if has_teacher:
-                actions_taken_i = np.array([step for path in paths for step in path['actions']
+                actions_taken_i = np.array([step[0] for path in paths for step in path['actions']
                                             if path['env_infos']['step'][0] == i])
                 actions_teacher_i = np.array([step for path in paths for step in path['env_infos']['teacher_action']
                                               if path['env_infos']['step'][0] == i])
                 teacher_suggestions_i = actions_taken_i == actions_teacher_i
-
+                mean_advice = np.mean(teacher_suggestions_i)
                 logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
 
-            # Log split by dropout
-            # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
-            no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
-            no_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
-            yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
-            yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
-            sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
-            names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
-            for name, sublist in zip(names, sublists):
+        # Log split by dropout
+        # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
+        no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
+        no_corrections = [path for path in paths if path['env_infos']['dropout_corrections'][0]]
+        yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
+        yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
+        sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
+        names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
+        for name, sublist in zip(names, sublists):
+            if len(sublist) > 0:
                 success_i = [path['env_infos']['success'][-1] for path in sublist]
                 undiscounted_returns_i = [sum(path["rewards"]) for path in sublist]
                 average_discounted_return_i = [path["returns"][0] for path in sublist]
                 path_length_i = [path['env_infos']['episode_length'][-1] for path in sublist]
 
-                logger.logkv(log_prefix + 'AvgDiscountedReturn' + str(i), np.mean(average_discounted_return_i))
-                logger.logkv(log_prefix + 'AvgReturn' + str(i), np.mean(undiscounted_returns_i))
-                logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
-                logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length_i))
+                log_prefix_i = log_prefix + name + "-"
+                logger.logkv(log_prefix_i + 'AvgDiscountedReturn', np.mean(average_discounted_return_i))
+                logger.logkv(log_prefix_i + 'AvgReturn', np.mean(undiscounted_returns_i))
+                logger.logkv(log_prefix_i + 'AvgSuccess', np.mean(success_i))
+                logger.logkv(log_prefix_i + 'AveragePathLength', np.mean(path_length_i))
 
+                if has_teacher:
+                    actions_taken_i = np.array([step[0] for path in sublist for step in path['actions']
+                                                if path['env_infos']['step'][0] == i])
+                    actions_teacher_i = np.array([step for path in sublist for step in path['env_infos']['teacher_action']
+                                                  if path['env_infos']['step'][0] == i])
+                    teacher_suggestions_i = actions_taken_i == actions_teacher_i
+                    mean_advice = np.mean(teacher_suggestions_i)
+                    logger.logkv(log_prefix_i + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
 
         if has_teacher:
-            actions_taken = np.array([step for path in paths for step in path['actions']])
+            actions_taken = np.array([step[0] for path in paths for step in path['actions']])
             actions_teacher = np.array([step for path in paths for step in path['env_infos']['teacher_action']])
+            probs = [probs for path in paths for probs in path['agent_infos']['probs']]
+            prob_actions_teacher = [p[int(i)] for p, i in zip(probs, actions_teacher)]
+            prob_actions_taken = [p[int(i)] for p, i in zip(probs, actions_taken)]
+            logger.logkv(log_prefix + 'ProbActionTeacher', np.mean(prob_actions_teacher))
+            logger.logkv(log_prefix + 'ProbActionTaken', np.mean(prob_actions_taken))
+
+            # real_actions_teacher = np.array([step[160] for path in paths for step in path['observations']])
+            # rewards = np.array([step for path in paths for step in path['rewards']])
             teacher_suggestions = actions_taken == actions_teacher
 
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
 
         elif log == 'all' or log is True:
+
+            all_actions = np.array([step[0] for path in paths for step in path['actions']])
+            logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
 
             logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
             if len(same_room_end) > 0:
@@ -310,6 +334,7 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))
+            logger.logkv(log_prefix + 'DropoutProportion', np.mean(dropout_proportion))
             logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
             logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
             logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
@@ -317,7 +342,6 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'AvgEntropy', np.mean(action_entropy))
             if has_teacher:
                 logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions))
-
 
         return np.mean(undiscounted_returns)
 
@@ -359,11 +383,9 @@ class SampleProcessor(object):
 
         return observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos
 
-
     def _stack_padding(self, paths, key, max_path):
         padded_array = np.stack([
             np.concatenate([path[key], np.zeros((max_path - path[key].shape[0],) + path[key].shape[1:])])
             for path in paths
         ])
         return padded_array
-

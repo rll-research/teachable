@@ -3,6 +3,7 @@ from meta_mb.samplers.meta_samplers.meta_vectorized_env_executor import MetaPara
 from meta_mb.logger import logger
 from meta_mb.utils import utils
 from collections import OrderedDict
+# from meta_mb.algos.dummy import CopyPolicy
 
 from pyprind import ProgBar
 import numpy as np
@@ -33,6 +34,7 @@ class MetaSampler(BaseSampler):
             envs_per_task=None,
             parallel=False,
             reward_predictor=None,
+            supervised_model=None
             ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
@@ -44,6 +46,7 @@ class MetaSampler(BaseSampler):
         self.parallel = parallel
         self.total_timesteps_sampled = 0
         self.reward_predictor = reward_predictor
+        self.supervised_model = supervised_model
         # setup vectorized environment
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
@@ -58,7 +61,8 @@ class MetaSampler(BaseSampler):
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
 
-    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False):
+    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, dropout_proportion=1,
+                       policy=None):
         """
         Collect batch_size trajectories from each task
 
@@ -79,19 +83,25 @@ class MetaSampler(BaseSampler):
         n_samples = 0
         running_paths = [_get_empty_running_paths_dict() for _ in range(self.vec_env.num_envs)]
 
-        pbar = ProgBar(self.total_samples)
+        total_paths = self.rollouts_per_meta_task * self.meta_batch_size * self.envs_per_task
+        pbar = ProgBar(total_paths)
         policy_time, env_time = 0, 0
 
-        policy = self.policy
+        if policy is None:
+          policy = self.policy
         policy.reset(dones=[True] * self.meta_batch_size)
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
+        if self.supervised_model is not None:
+            self.supervised_model.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
+        self.vec_env.set_dropout(dropout_proportion)
+        self.update_tasks()
         obses = self.vec_env.reset()
         num_paths = 0
-        while num_paths < self.rollouts_per_meta_task * self.meta_batch_size * self.envs_per_task:
+        while num_paths < total_paths:
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
@@ -113,6 +123,7 @@ class MetaSampler(BaseSampler):
             agent_infos, env_infos = self._handle_info_dicts(agent_infos, env_infos)
 
             new_samples = 0
+            new_paths = 0
             for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
                                                                                     rewards, env_infos, agent_infos,
                                                                                     dones):
@@ -140,15 +151,16 @@ class MetaSampler(BaseSampler):
                         agent_infos=utils.stack_tensor_dict_list(running_paths[idx]["agent_infos"]),
                     ))
                     num_paths += 1
+                    new_paths += 1
                     new_samples += len(running_paths[idx]["rewards"])
                     running_paths[idx] = _get_empty_running_paths_dict()
 
-            pbar.update(new_samples)
+            pbar.update(new_paths)
             n_samples += new_samples
             obses = next_obses
         pbar.stop()
 
-        self.total_timesteps_sampled += self.total_samples
+        self.total_timesteps_sampled += n_samples
         if log:
             logger.logkv(log_prefix + "PolicyExecTime", policy_time)
             logger.logkv(log_prefix + "EnvExecTime", env_time)

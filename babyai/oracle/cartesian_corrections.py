@@ -21,7 +21,7 @@ class CartesianCorrections(Teacher):
         """
         # TODO: Unhardocde this
         # Hardcoded 1 time-step away
-        self.env_states, self.env_rewards, self.agent_positions = self.compute_full_path(-1)
+        self.env_states, self.env_rewards, self.agent_positions = self.compute_full_path(1)
         if len(self.env_states) > 0:
             feedback = self.env_states[0]
         else:

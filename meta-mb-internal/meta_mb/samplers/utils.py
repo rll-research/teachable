@@ -1,16 +1,22 @@
 import numpy as np
 import time
-import moviepy.editor as mpy
 from matplotlib import pyplot as plt
+import cv2
 
 
-def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1, save_failures=True,
-            video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None):
+def write_video(writer, frames, show_last=None):
+    if show_last is not None:
+        frames = frames[-show_last:]
+    for frame in frames:
+        writer.write(frame)
+
+def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
+            video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None, record_teacher=False):
     start = time.time()
     if hasattr(env, 'dt'):
         timestep = env.dt
     else:
-        timestep = 0.2
+        timestep = 0.1
     images = []
     paths = []
     if animated:
@@ -18,8 +24,17 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
     else:
         mode = 'rgb_array'
 
+    img = env.render(mode='rgb_array')
+    height, width, channels = img.shape
+    size = (width, height + 100)
+    fps = int(speedup / timestep)
+    if save_video:
+        all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        success_writer = None
+        failure_writer = None
+
+
     render = animated or save_video
-    fig = plt.figure()
     for i in range(num_rollouts):
         print("Rollout", i)
         observations = []
@@ -28,8 +43,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         agent_infos = []
         env_infos = []
         curr_images = []
-        failures = []
-        successes = []
         if i % reset_every == 0:
             agent.reset(dones=[True] * batch_size)
             env.set_task(None)
@@ -59,19 +72,20 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 time.sleep(timestep/speedup)
 
             if save_video:
-                image = env.render(mode='rgb_array')
-
-                plt.imshow(image)
-                plt.title(env.mission)
+                image = env.render(mode='rgb_array')[:, :, ::-1] # RGB --> BGR
+                title_block = np.zeros((100, image.shape[1], 3), np.uint8) + 255
+                image = cv2.vconcat((title_block, image))
+                font = cv2.FONT_HERSHEY_SIMPLEX
                 label_str = ""
-                if hasattr(env, "teacher"):
-                    label_str += "Teacher on:    "
+                if hasattr(env, "teacher") and env.teacher is not None:
+                    if record_teacher:
+                        label_str += f"Teacher advice: {o[-1]}"
+                    else:
+                        label_str += f"Teacher on: {env.teacher.feedback_type}   "
                 label_str += "Run: " + str(i % reset_every)
-                plt.xlabel(label_str)
-                fig.canvas.draw()
-                data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-                image = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-                fig.clf()
+                plt.title(env.mission)
+                cv2.putText(image, env.mission, (30, 30), font, 1, (0, 0, 0), 3, 0)
+                cv2.putText(image, label_str, (30, 90), font, 1, (0, 0, 0), 3, 0)
 
                 curr_images.append(image)
 
@@ -83,16 +97,15 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             sample_img = np.zeros_like(curr_images[-1])
             if r > 0:
                 curr_images += [sample_img + 255] * 3
-                successes += curr_images
+                if success_writer is None:
+                    success_writer = cv2.VideoWriter(video_filename[:-4] + "success" + video_filename[-4:], cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+                write_video(success_writer, curr_images)
             else:
                 curr_images += [sample_img] * 3
-                failures += curr_images
-
-            # If show_last is enabled, only show the end of the trajectory.
-            if not show_last:
-                images += curr_images
-            else:
-                images += curr_images[-show_last - 3:]
+                if failure_writer is None:
+                    failure_writer = cv2.VideoWriter(video_filename[:-4] + "failures" + video_filename[-4:], cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+                write_video(failure_writer, curr_images)
+            write_video(all_writer, curr_images, show_last)
 
         paths.append(dict(
                 observations=observations,
@@ -102,28 +115,14 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 env_infos=env_infos
             ))
     if save_video:
-        fps = int(speedup/timestep)
-        clip = mpy.ImageSequenceClip(images, fps=fps)
-        if video_filename[-3:] == 'gif':
-            clip.write_gif(video_filename, fps=fps)
-        else:
-            clip.write_videofile(video_filename, fps=fps)
+        all_writer.release()
+        if success_writer is not None:
+            success_writer.release()
+        if failure_writer is not None:
+            failure_writer.release()
         print("Video saved at %s" % video_filename)
 
-        if len(failures) > 0:
-            clip = mpy.ImageSequenceClip(failures, fps=fps)
-            if video_filename[-3:] == 'gif':
-                clip.write_gif(video_filename[:-4] + "failures" + ".gif", fps=fps)
-            else:
-                clip.write_videofile(video_filename[:-4] + "failures" + video_filename[-4:], fps=fps)
-        if len(successes) > 0:
-            clip = mpy.ImageSequenceClip(successes, fps=fps)
-            if video_filename[-3:] == 'gif':
-                clip.write_gif(video_filename[:-4] + "successes" + ".gif", fps=fps)
-            else:
-                clip.write_videofile(video_filename[:-4] + "successes" + video_filename[-4:], fps=fps)
 
-    plt.close(fig)
     end = time.time()
     print("total time spent on rollouts", end - start)
     return paths

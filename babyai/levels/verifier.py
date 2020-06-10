@@ -243,11 +243,12 @@ class TakeActionInstr(ActionInstr):
     Task to take the action the teacher is asking for.
     """
 
-    def __init__(self, action, delay):
+    def __init__(self, action, delay, strict=False):
         super().__init__()
         self.action = action
         self.delay = delay
         self.step = 0
+        self.strict = strict
 
         # Indicates that the action was completed on the last step
         self.lastStepMatch = False
@@ -258,12 +259,16 @@ class TakeActionInstr(ActionInstr):
     def reset_verifier(self, env):
         super().reset_verifier(env)
 
-        # Identify set of possible matching objects in the environment
         self.steps = 0
 
     def verify_action(self, action):
+        if self.strict and (self.step == self.delay):
+            if action == self.action:
+                return 'success'
+            return 'failure'
+
         self.step += 1
-        # Only verify when the toggle action is performed
+        # Only verify when the correct action is performed
         if action != self.action:
             return 'continue'
         if self.step <= self.delay:

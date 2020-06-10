@@ -64,6 +64,16 @@ def load_exps_data(exp_path, gap=1, max=None):
     return exps_data
 
 
+def load_single_exp_data(exp_path, pkl_name):
+    try:
+        params_json = load_json(os.path.join(exp_path, "params.json"))
+        progress_csv_path = os.path.join(exp_path, "progress.csv")
+        pkl_path = os.path.join(exp_path, pkl_name)
+        return dict(csv=progress_csv_path, json=params_json,
+            pkl=[pkl_path], exp_name=exp_path)
+    except IOError as e:
+        print(e)
+
 def load_json(params_json_path):
     with open(params_json_path, 'r') as f:
         data = json.loads(f.read())
