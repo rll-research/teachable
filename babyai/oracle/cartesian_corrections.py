@@ -7,13 +7,13 @@ class CartesianCorrections(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return -1*np.ones_like(self.env.gen_obs())
+        return -1*np.ones(self.obs_size)
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.random.uniform(0, 1, size=self.env.gen_obs().shape)
+        return np.random.uniform(0, 1, size=self.obs_size)
 
     def compute_feedback(self):
         """
@@ -21,11 +21,11 @@ class CartesianCorrections(Teacher):
         """
         # TODO: Unhardocde this
         # Hardcoded 1 time-step away
-        self.env_states, self.env_rewards, self.agent_positions = self.compute_path_forward(-1)
-        if len(self.path) > 1:
-            feedback = self.env_states[1]
-        else:
+        self.env_states, self.env_rewards, self.agent_positions = self.compute_full_path(-1)
+        if len(self.env_states) > 0:
             feedback = self.env_states[0]
+        else:
+            feedback = -1*np.ones(self.obs_size)
         return np.array(feedback)
 
     def feedback_condition(self):

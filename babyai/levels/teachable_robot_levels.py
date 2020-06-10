@@ -7,6 +7,8 @@ import numpy as np
 from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
+from babyai.oracle.cartesian_corrections import CartesianCorrections
+
 from babyai.bot import Bot
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
@@ -52,6 +54,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
         elif feedback_type == 'PreActionAdvice':
             teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
+        elif feedback_type == 'CartesianCorrections':
+            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
         self.teacher = teacher
@@ -389,7 +393,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                grid_representation,
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
-            if self.dropout_current_correction:
+            self.teacher.obs_size = obs.shape
+            if self.dropout_current_correction or self.reset_yet is False:
                 correction = self.teacher.empty_feedback()
             else:
                 correction = self.teacher.give_feedback([obs])
