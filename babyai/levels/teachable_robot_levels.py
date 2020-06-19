@@ -57,6 +57,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_proportion = 0
         self.dropout_current_goal = False
         self.dropout_current_correction = False
+        self.concat_itr = False # TODO: remove this or make it a flag
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
@@ -416,6 +417,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             correction[correction_index] = 1.0
             obs = np.concatenate([obs, correction])
 
+        if self.concat_itr:
+            obs = np.concatenate([obs, [self.itr]])
+
         # obs = obs[160:] # TODO: remove
         return deepcopy(obs)
 
@@ -445,7 +449,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['goal_pos'] = (-1, -1)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
-            teacher_copy = deepcopy(self.teacher)
+            # teacher_copy = deepcopy(self.teacher)
             try:
                 # Even if we use multiple teachers, presumably they all relate to one underlying path.
                 # We can log what action is the next one on this path (currently in teacher.next_action).
@@ -458,7 +462,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             except Exception as e:
                 self.render('human')
                 print("ERROR!!!!!", e)
-                teacher_copy.step([action])
+                # teacher_copy.step([action])
         return obs, rew, done, info
 
     def reset(self):

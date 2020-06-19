@@ -1,3 +1,4 @@
+*.mp4
 model/glove50.txt
 trained_models
 meta-mb-internal/data

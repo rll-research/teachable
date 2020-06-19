@@ -1,6 +1,7 @@
 import joblib
 import json
 import numpy as np
+import os
 import tensorflow as tf
 import argparse
 from meta_mb.samplers.utils import rollout
@@ -94,28 +95,44 @@ if __name__ == "__main__":
                     if args.use_pickled_env:
                         env = data['env']
                     else:
+                        config = data['config']
+                        arguments = {
+                          "start_loc": 'all',
+                          "include_holdout_obj": False,
+                          "persist_goal": config['persist_goal'],
+                          "persist_objs": config['persist_objs'],
+                          "persist_agent": config['persist_agent'],
+                          "dropout_goal": config['dropout_goal'],
+                          "dropout_correction": config['dropout_correction'],
+                          "dropout_independently": config['dropout_independently'],
+                          "feedback_type": config["feedback_type"],
+                          "feedback_always": config["feedback_always"],
+                          "num_meta_tasks": config["rollouts_per_meta_task"],
+                        }
                         all_attr = dir(iclr19_levels)
                         env_class = getattr(iclr19_levels, args.class_name)
-                        env_args = {
-                            'start_loc': args.start_loc,
-                            'include_holdout_obj': args.holdout_obj,
-                        }
-                        if args.grid_size is not None:
-                            env_args['room_size'] = args.grid_size
-                        if args.num_dists is not None:
-                            env_args['num_dists'] = args.num_dists
-                        e_new = env_class(**env_args)
+                        # env_args = {
+                        #     'start_loc': args.start_loc,
+                        #     'include_holdout_obj': args.holdout_obj,
+                        # }
+                        # if args.grid_size is not None:
+                        #     env_args['room_size'] = args.grid_size
+                        # if args.num_dists is not None:
+                        #     env_args['num_dists'] = args.num_dists
+                        # e_new = env_class(**env_args)
+                        e_new = env_class(**arguments)
                         e_new.use_teacher = args.use_teacher
                         if args.use_teacher:
-                            teacher = BatchTeacher([PostActionAdvice(Bot, e_new)])
+                            teacher = PostActionAdvice(Bot, e_new)
                             e_new.teacher = teacher
                             e_new.teacher.set_feedback_type(args.feedback_type)
                         env = rl2env(normalize(e_new))
 
-                    video_filename = pkl_path.split('.')[0] + '.mp4'
+                    video_filename = os.path.join(args.path, 'video.mp4')
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
-                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every, record_teacher=True)
+                                        stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every,
+                                    record_teacher=True)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
