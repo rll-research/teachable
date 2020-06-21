@@ -21,13 +21,14 @@ class CartesianCorrections(Teacher):
         """
         # TODO: Unhardocde this
         # Hardcoded 1 time-step away
-        self.env_states, self.env_rewards, self.agent_positions = self.compute_full_path(1)
-        if len(self.env_states) > 0:
-            feedback = self.env_states[0]
-        else:
-            feedback = -1*np.ones(self.obs_size)
-        return np.array(feedback)
-
+        # self.env_states, self.env_rewards, self.agent_positions = self.compute_full_path(1)
+        # if len(self.env_states) > 0:
+        #     feedback = self.env_states[0]
+        # else:
+        #     feedback = -1*np.ones(self.obs_size)
+        # return np.array(feedback)
+        return np.array(self.next_state)
+        
     def feedback_condition(self):
         """
         Returns true when we should give feedback.

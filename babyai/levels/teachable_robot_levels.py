@@ -247,25 +247,25 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param objs:
         """
 
-        def make_door_toggle(obj):
-            def toggle(env, pos):
-                # If the player has the right key to open the door
-                if obj.is_locked:
-                    if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
-                        obj.is_locked = False
-                        obj.is_open = True
-                        return True
-                    return False
+        # def make_door_toggle(obj):
+        #     def toggle(env, pos):
+        #         # If the player has the right key to open the door
+        #         if obj.is_locked:
+        #             if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
+        #                 obj.is_locked = False
+        #                 obj.is_open = True
+        #                 return True
+        #             return False
 
-                obj.is_open = True
-                return True
-            return toggle
+        #         obj.is_open = True
+        #         return True
+        #     return toggle
 
         for obj in objs:
             if obj.type == 'box':
                 obj.contains = obj
-            if obj.type == 'door':
-                obj.toggle = make_door_toggle(obj)
+            # if obj.type == 'door':
+            #     obj.toggle = make_door_toggle(obj)
 
     def gen_mission(self):
         """

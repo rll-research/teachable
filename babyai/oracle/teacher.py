@@ -22,6 +22,8 @@ class Teacher:
         self.botclass = botclass
         self.last_action = -1
         self.next_action = self.oracle.replan(-1)
+        # This first one is going to be wrong
+        self.next_state = self.env.gen_obs()
         self.agent_actions = []
         self.oracle_actions = []
         self.feedback_type = feedback_type
@@ -56,6 +58,12 @@ class Teacher:
         self.oracle = new_oracle
         self.last_action = self.next_action
         self.next_action = self.oracle.replan(-1)
+        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
+        self.env_copy1.teacher = None
+        if self.next_action == -1:
+            self.next_state = self.env.gen_obs()
+        else:
+            self.next_state,  _,  _,  _ = self.env_copy1.step(self.next_action)
 
     def compute_full_path(self, steps):
         # Settings steps to -1 computes the full path forward
@@ -76,7 +84,7 @@ class Teacher:
         while not done:
             if steps_taken == steps:
                 break
-            action = self.oracle.replan()
+            action = self.oracle.replan(-1)
             obs, reward, done, info = self.oracle.mission.step(action)
             env_states.append(obs)
             env_rewards.append(reward)
