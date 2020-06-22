@@ -61,8 +61,22 @@ class MetaSampler(BaseSampler):
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
 
+    def mask_teacher(self, obs, feedback_list = []):
+        for feedback_type in feedback_list:
+            indices = feedback_type['indices']
+            null_value = feedback_type['null']
+            if isinstance(obs, list):
+                assert len(obs[0].shape) == 1
+                for o in obs:
+                    o[indices] = null_value
+            elif isinstance(obs, np.ndarray):
+                assert len(obs.shape) == 3
+                obs[:, :, indices] = null_value
+        return obs
+
+
     def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, dropout_proportion=1,
-                       policy=None):
+                       policy=None, feedback_list=[]):
         """
         Collect batch_size trajectories from each task
 
@@ -102,6 +116,7 @@ class MetaSampler(BaseSampler):
         obses = self.vec_env.reset()
         num_paths = 0
         while num_paths < total_paths:
+            obses = self.mask_teacher(obses, feedback_list)
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)

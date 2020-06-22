@@ -13,11 +13,12 @@ class RL2FirstOrderOptimizer(RNNFirstOrderOptimizer):
         batch_size, seq_len, *_ = list(input_dict.values())[0].shape
         hidden_batch = self._target.get_zero_state(batch_size)
         feed_dict[self._hidden_ph] = hidden_batch
-        entropy_loss = sess.run(entropy_loss, feed_dict=feed_dict)
-        reward_loss = sess.run(reward_loss, feed_dict=feed_dict)
         if log_values is not None:
             log_values = sess.run(log_values, feed_dict=feed_dict)
-        return entropy_loss, reward_loss
+        if entropy_loss is not None:
+            entropy_loss = sess.run(entropy_loss, feed_dict=feed_dict)
+            reward_loss = sess.run(reward_loss, feed_dict=feed_dict)
+            return entropy_loss, reward_loss
 
 
 class RL2PPOOptimizer(RNNFirstOrderOptimizer):

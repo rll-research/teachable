@@ -83,6 +83,7 @@ class Algo(object):
         # action ph
         if discrete:
             action_shape = [None, 1] if not recurrent else [None, None, 1]
+            probs_dim = dist_info_specs[0][1][0]
             action_ph = tf.placeholder(dtype=tf.int32, shape=action_shape, name=prefix + '_action')
             ground_truth_action_ph = tf.placeholder(dtype=tf.int32, shape=action_shape, name=prefix + '_env_infos/teacher_action')
         else:

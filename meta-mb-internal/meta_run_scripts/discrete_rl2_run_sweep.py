@@ -26,16 +26,8 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# PREFIX = 'V0curriculum'
 PREFIX = 'debug22'
-# PREFIX = 'WhyNotFollowTeacherYesEntropy'
-# PREFIX = 'ArePreLevelsGood'
-# PREFIX = 'DROPOUTINC'
-# PREFIX = 'FOLLOWSTRICT'
-# PREFIX = 'REALLYEASYnormallevel'
-# PREFIX = 'BIGMODEL'
-# PREFIX = 'SUPERVISEDDROPOUTMR'
-# PREFIX = 'THRESHOLDMAYBEIMPROVED'
+# PREFIX = 'DISTILLKLLoss'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -49,6 +41,10 @@ def get_exp_name(config):
         EXP_NAME += "a"
     if config['pre_levels']:
         EXP_NAME += '_pre'
+    if config['il_comparison']:
+        EXP_NAME += '_IL' + config['il_comparison'][:3]
+    if config['self_distill']:
+        EXP_NAME += '_SD'
     EXP_NAME += '_droptype' + str(config['dropout_type'])
     EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
@@ -124,16 +120,18 @@ def run_experiment(**config):
                 hidden_sizes=config['hidden_sizes'],
                 cell_type=config['cell_type']
             )
+            assert not (config['il_comparison'] and config['self_distill'])
             if config['il_comparison']:
                 supervised_model = DiscreteRNNPolicy(
                     name="supervised-policy",
                     action_dim=np.prod(env.action_space.n),
                     obs_dim=obs_dim,
                     meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
+                    hidden_sizes=(128, 256, 256),
                     cell_type=config['cell_type'],
-                    preprocess_obs_type='meta_rollout_dropout',#'full_dropout',
                 )
+            elif config['self_distill']:
+                supervised_model = policy
             else:
                 supervised_model = None
             start_itr = 0
@@ -162,6 +160,7 @@ def run_experiment(**config):
         algo = PPO(
             policy=policy,
             supervised_model=supervised_model,
+            supervised_ground_truth='agent' if config['self_distill'] else 'teacher',
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
@@ -178,6 +177,12 @@ def run_experiment(**config):
                          snapshot_gap=50, step=start_itr)
         json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
+        action_dim = env.action_space.n + 1
+        null_val = np.zeros(action_dim)
+        start_index = 160
+        null_val[-1] = -1
+        teacher_info = [{"indices": np.arange(start_index, start_index + action_dim), "null": null_val}]
+
         trainer = Trainer(
             algo=algo,
             policy=policy,
@@ -193,13 +198,15 @@ def run_experiment(**config):
             config=config,
             increase_dropout_threshold=float('inf') if config['dropout_incremental'] is None else config['dropout_incremental'][0],
             increase_dropout_increment=None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
+            advance_without_teacher=True,
+            teacher_info=teacher_info,
         )
         trainer.train()
 
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
-        'saved_path': [None],#base_path + 'SUPERVISED_teacherPreActionAdvice_persistgoa_droptypestep_dropgoal0_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        'saved_path': [None],#base_path + 'DISTILL2_teacherPreActionAdvice_persistgoa_SD_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
@@ -207,7 +214,7 @@ if __name__ == '__main__':
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
-        'dropout_incremental': [None],#[(0.1, 0.5)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
+        'dropout_incremental': [None],#[(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
                                    # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
@@ -218,14 +225,15 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
         'pre_levels': [False],
-        'il_comparison': [False],
+        'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'self_distill': [True],
 
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        "hidden_sizes": [(64,), (128,)],#[(256,), (256,), (256,)],#
+        "hidden_sizes": [(64, 64), (128,)],#[(256,), (256,), (256,)],#
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)

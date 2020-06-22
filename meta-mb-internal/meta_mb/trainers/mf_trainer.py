@@ -43,6 +43,8 @@ class Trainer(object):
             log_and_save=True,
             increase_dropout_threshold=float('inf'),
             increase_dropout_increment=None,
+            advance_without_teacher=False,
+            teacher_info=[],
             ):
         self.algo = algo
         self.env = env
@@ -66,6 +68,8 @@ class Trainer(object):
         self.log_and_save = log_and_save
         self.increase_dropout_threshold = increase_dropout_threshold
         self.increase_dropout_increment = increase_dropout_increment
+        self.advance_without_teacher = advance_without_teacher
+        self.teacher_info = teacher_info
 
     def check_advance_curriculum(self, data):
         rewards = data['avg_reward']
@@ -73,8 +77,6 @@ class Trainer(object):
         dropout_level = np.max(data['env_infos']['dropout_proportion'])
         should_advance_curriculum = (rewards >= self.reward_threshold) and (dropout_level == 1)
         should_increase_dropout = rewards >= self.increase_dropout_threshold
-        if should_advance_curriculum:
-            self.curriculum_step += 1
         return should_advance_curriculum, should_increase_dropout
 
     def train(self):
@@ -118,9 +120,6 @@ class Trainer(object):
                 time_proc_samples_start = time.time()
                 samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
                 advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
-                if increase_dropout:
-                    dropout_proportion += self.increase_dropout_increment
-                    dropout_proportion = min(1, dropout_proportion)
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -149,12 +148,21 @@ class Trainer(object):
                 # This needs to take all samples_data so that it can construct graph for meta-optimization.
                 time_optimization_step_start = time.time()
                 self.algo.optimize_policy(samples_data)
-                # TODO: Make sure we optimize this for more steps
                 self.algo.optimize_reward(samples_data)
-                if self.algo.supervised_model is not None:
-                    self.algo.optimize_supervised(samples_data)
-                    if itr % 5 == 0:
-                        self.run_supervised()
+                if self.algo.supervised_model is not None and advance_curriculum:
+                    logger.log("Distillation...")
+                    self.distill(samples_data)
+                    advance_curriculum_s, increase_dropout_s = self.run_supervised()
+                    if self.advance_without_teacher:
+                        advance_curriculum = advance_curriculum_s
+                        increase_dropout = increase_dropout_s
+
+                if advance_curriculum:
+                    self.curriculum_step += 1
+
+                if increase_dropout:
+                    dropout_proportion += self.increase_dropout_increment
+                    dropout_proportion = min(1, dropout_proportion)
 
                 """ ------------------- Logging Stuff --------------------------"""
                 logger.logkv('Itr', itr)
@@ -206,9 +214,20 @@ class Trainer(object):
         logger.log("Training finished")
         # self.sess.close()  # TODO: is this okay?
 
+
+    def distill(self, samples):
+        cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
+        samples['observations'] = cleaned_obs
+        self.algo.supervised_model.reset(dones=[True] * 100)
+        self.algo.optimize_supervised(samples)
+
+
     def run_supervised(self):
-        paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.algo.supervised_model)
-        self.sample_processor.process_samples(paths, log='all', log_prefix="Supervised/")
+        paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.algo.supervised_model,
+                                            feedback_list=self.teacher_info)
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
+        advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
+        return advance_curriculum, increase_dropout
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
         paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,

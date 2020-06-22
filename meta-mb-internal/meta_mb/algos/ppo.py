@@ -6,6 +6,7 @@ from meta_mb.utils import Serializable
 from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
 import tensorflow as tf
 from collections import OrderedDict
+import copy
 
 
 class PPO(Algo, Serializable):
@@ -27,6 +28,7 @@ class PPO(Algo, Serializable):
             self,
             policy,
             supervised_model=None,
+            supervised_ground_truth='teacher',
             name="ppo",
             learning_rate=1e-3,
             clip_eps=0.2,
@@ -61,6 +63,7 @@ class PPO(Algo, Serializable):
         self.name = name
         self._clip_eps = clip_eps
         self.entropy_bonus = entropy_bonus
+        self.supervised_ground_truth = supervised_ground_truth
 
         self.build_graph()
 
@@ -114,9 +117,11 @@ class PPO(Algo, Serializable):
                                                   1 - self._clip_eps,
                                                   1 + self._clip_eps ) * adv_ph)
         # TODO: Check that the discrete entropy looks fine
-        self.log_values = [likelihood_ratio, adv_ph, clipped_obj, dist_info_old_ph, distribution_info_vars]
+        mask = tf.reduce_sum(all_phs_dict['train_agent_infos/probs'], axis=2)
+        ent = self.policy.distribution.entropy_sym(distribution_info_vars) * mask
+        self.log_values = [likelihood_ratio, adv_ph, clipped_obj, dist_info_old_ph, distribution_info_vars, ent]
         self.reward_loss = tf.reduce_mean(clipped_obj)
-        self.entropy_loss = self.entropy_bonus * tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
+        self.entropy_loss = self.entropy_bonus * tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars) * mask)
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
@@ -129,12 +134,28 @@ class PPO(Algo, Serializable):
                 next_hidden_var=next_hidden_var_r
             )
         if self.supervised_model is not None:
-            action_logits = tf.log(distribution_info_vars_s['probs'])
-            one_hot_ground_truth = tf.squeeze(tf.one_hot(ground_truth_action_ph, action_logits.shape[-1]), axis=2)
-            sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
-                one_hot_ground_truth, action_logits,
-            )
-            self.log_values_sup = [action_logits, distribution_info_vars_s['probs'], one_hot_ground_truth]
+            if self.supervised_ground_truth == 'teacher':
+                action_logits = tf.log(distribution_info_vars_s['probs'])
+                ground_truth = tf.squeeze(tf.one_hot(ground_truth_action_ph, action_logits.shape[-1]), axis=2)
+                sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
+                    ground_truth, action_logits,
+                )
+            elif self.supervised_ground_truth == 'agent':
+                old_prob_var = all_phs_dict['train_agent_infos/probs']
+                new_prob_var = distribution_info_vars_s['probs']
+                TINY = tf.constant(1e-6)
+                # TODO: we could switch to this loss function instead, but for whatever reason it gives errors.
+                # diff = new_prob_var - old_prob_var
+                mask = tf.expand_dims(tf.reduce_sum(old_prob_var, axis=2), axis=2)
+                sup_learning_loss = tf.reduce_sum(
+                    mask * old_prob_var * (tf.log(old_prob_var + TINY) - tf.log(new_prob_var + TINY)),
+                )
+                # diff = diff * mask
+                # sup_learning_loss = tf.reduce_mean(diff**2)
+                self.log_values_sup = [old_prob_var, new_prob_var, sup_learning_loss, mask]
+            else:
+                raise NotImplementedError
+            # self.log_values_sup = self.[action_logits, distribution_info_vars_s['probs'], ground_truth]
             self.optimizer_s.build_graph(
                 loss=sup_learning_loss,
                 target=self.supervised_model,
@@ -209,6 +230,7 @@ class PPO(Algo, Serializable):
 
     def optimize_supervised(self, samples_data, log=True, prefix='', verbose=False):
         input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
+        self.optimizer_s.compute_loss_variations(input_dict, None, None, self.log_values_sup)
 
         if verbose: logger.log("Optimizing Supervised Model")
         loss_before = self.optimizer_s.optimize(input_val_dict=input_dict)

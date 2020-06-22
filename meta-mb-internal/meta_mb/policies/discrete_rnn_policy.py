@@ -30,7 +30,7 @@ class DiscreteRNNPolicy(Policy):
 
     """
 
-    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='lstm', preprocess_obs_type=None, **kwargs):
+    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='lstm', **kwargs):
         # store the init args for serialization and call the super constructors
         Serializable.quick_init(self, locals())
         Policy.__init__(self, *args, **kwargs)
@@ -44,8 +44,6 @@ class DiscreteRNNPolicy(Policy):
         self._hidden_state = None
         self.recurrent = True
         self._cell_type = cell_type
-        self.preprocess_obs_type = preprocess_obs_type
-        self.should_dropout = []
 
         self.build_graph()
         self._zero_hidden = self.cell.zero_state(1, tf.float32)
@@ -101,23 +99,6 @@ class DiscreteRNNPolicy(Policy):
         k = np.clip(k, min_val, max_val)
         return np.asarray(k)
 
-    def preprocess_obs(self, observations):
-        observations = copy.deepcopy(observations)
-        if self.preprocess_obs_type == 'full_dropout':
-            for o in observations:
-                o[:, 160:167] = 0
-                o[:, 166] = 1
-        elif self.preprocess_obs_type == 'meta_rollout_dropout':
-            for i, (should_dropout, o) in enumerate(zip(self.should_dropout, observations[0])):
-                done_index = o[-1]
-                should_dropout = should_dropout or done_index
-                self.should_dropout[i] = should_dropout
-
-                if should_dropout:
-                    o[160:167] = 0
-                    o[166] = 1
-        return observations
-
 
     def get_actions(self, observations):
         """
@@ -129,7 +110,6 @@ class DiscreteRNNPolicy(Policy):
         Returns:
             (ndarray) : array of sampled actions - shape: (batch_size, action_dim)
         """
-        observations = self.preprocess_obs(observations)
         observations = np.array(observations)
         assert observations.shape[-1] == self.obs_dim
         if observations.ndim == 2:
@@ -223,6 +203,9 @@ class DiscreteRNNPolicy(Policy):
         """
         raise ["probs"]
 
+    def set_hidden_state(self, _hidden_state):
+        self._hidden_state = _hidden_state
+
     def reset(self, dones=None):
         sess = tf.get_default_session()
         if dones is None:
@@ -234,9 +217,12 @@ class DiscreteRNNPolicy(Policy):
             if isinstance(self._hidden_state, tf.contrib.rnn.LSTMStateTuple):
                 self._hidden_state.c[dones] = _hidden_state.c
                 self._hidden_state.h[dones] = _hidden_state.h
+            elif isinstance(self._hidden_state, tuple) and isinstance(self._hidden_state[0], tf.contrib.rnn.LSTMStateTuple):
+                for layer_state, new_layer_state in zip(self._hidden_state, _hidden_state):
+                    layer_state.c[dones] = new_layer_state.c
+                    layer_state.h[dones] = new_layer_state.h
             else:
                 self._hidden_state[dones] = _hidden_state
-        self.should_dropout = [False for _ in dones]
 
     def get_zero_state(self, batch_size):
         sess = tf.get_default_session()
@@ -246,5 +232,14 @@ class DiscreteRNNPolicy(Policy):
             hidden_h = np.concatenate([_hidden_state.h] * batch_size)
             hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)
             return hidden
+        elif isinstance(_hidden_state, tuple) and isinstance(_hidden_state[0], tf.contrib.rnn.LSTMStateTuple):
+            hidden_states = []
+            for layer_state in _hidden_state:
+                hidden_c = np.concatenate([layer_state.c] * batch_size)
+                hidden_h = np.concatenate([layer_state.h] * batch_size)
+                hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)
+                hidden_states.append(hidden)
+            hidden_states = tuple(hidden_states)
+            return hidden_states
         else:
             return np.concatenate([_hidden_state] * batch_size)

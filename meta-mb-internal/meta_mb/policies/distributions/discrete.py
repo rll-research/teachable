@@ -30,7 +30,7 @@ class Discrete(Distribution):
         new_prob_var = new_dist_info_vars["probs"]
         # Assume layout is N * T * A
         return tf.reduce_sum(
-            old_prob_var * (tf.log(old_prob_var + TINY) - np.log(new_prob_var + TINY)),
+            old_prob_var * (tf.log(old_prob_var + TINY) - tf.log(new_prob_var + TINY)),
             axis=2
         )
 
