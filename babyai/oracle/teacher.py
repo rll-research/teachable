@@ -21,7 +21,7 @@ class Teacher:
         self.env = env
         self.botclass = botclass
         self.last_action = -1
-        self.next_action = self.oracle.replan(-1)
+        self.next_action, self.next_subgoal = self.oracle.replan(-1)
         # This first one is going to be wrong
         self.next_state = self.env.gen_obs()
         self.agent_actions = []
@@ -57,7 +57,7 @@ class Teacher:
         new_oracle.step = self.oracle.step
         self.oracle = new_oracle
         self.last_action = self.next_action
-        self.next_action = self.oracle.replan(-1)
+        self.next_action, self.next_subgoal = self.oracle.replan(-1)
         self.env_copy1 = pickle.loads(pickle.dumps(self.env))
         self.env_copy1.teacher = None
         if self.next_action == -1:
@@ -84,7 +84,7 @@ class Teacher:
         while not done:
             if steps_taken == steps:
                 break
-            action = self.oracle.replan(-1)
+            action, _ = self.oracle.replan(-1)
             obs, reward, done, info = self.oracle.mission.step(action)
             env_states.append(obs)
             env_rewards.append(reward)
@@ -134,7 +134,7 @@ class Teacher:
 
     def reset(self):
         self.oracle = self.botclass(self.env)
-        self.next_action = self.oracle.replan()
+        self.next_action, self.next_subgoal = self.oracle.replan()
         self.last_action = -1
         self.agent_actions = []
         self.oracle_actions = []

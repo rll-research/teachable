@@ -8,6 +8,7 @@ from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
+from babyai.oracle.subgoal_corrections import SubgoalCorrections
 
 from babyai.bot import Bot
 
@@ -65,6 +66,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
         elif feedback_type == 'CartesianCorrections':
             teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
+        elif feedback_type == 'SubgoalCorrections':
+            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
         self.teacher = teacher
