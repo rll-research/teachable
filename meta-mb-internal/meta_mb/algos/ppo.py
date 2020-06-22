@@ -98,6 +98,8 @@ class PPO(Algo, Serializable):
             # TODO: Check if anything is problematic here, when obs is concatenating previous reward
             if self.reward_predictor is not None:
                 distribution_info_vars_r, hidden_ph_r, next_hidden_var_r = self.reward_predictor.distribution_info_sym(obs_r_ph)
+                distribution_info_vars_r["mean"] = distribution_info_vars_r["mean"][:, :, 0]
+                distribution_info_vars_r["log_std"] = distribution_info_vars_r["log_std"][:, 0]
             if self.supervised_model is not None:
                 distribution_info_vars_s, hidden_ph_s, next_hidden_var_s = self.supervised_model.distribution_info_sym(obs_ph)
         else:
@@ -120,7 +122,7 @@ class PPO(Algo, Serializable):
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
-            r_obj =  -tf.reduce_mean(tf.exp(5*r_ph)*self.reward_predictor.distribution.log_likelihood_sym(tf.cast(r_ph, tf.int32), distribution_info_vars_r))
+            r_obj =  -tf.reduce_mean(self.reward_predictor.distribution.log_likelihood_sym(r_ph, distribution_info_vars_r))
             self.optimizer_r.build_graph(
                 loss=r_obj,
                 target=self.reward_predictor,

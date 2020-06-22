@@ -7,6 +7,7 @@ from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
 from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
+from meta_mb.policies.gaussian_rnn_policy import GaussianRNNPolicy
 import os
 import shutil
 from meta_mb.logger import logger
@@ -82,6 +83,7 @@ def run_experiment(**config):
             "feedback_type": config["feedback_type"],
             "feedback_always": config["feedback_always"],
             "num_meta_tasks": config["rollouts_per_meta_task"],
+            "intermediate_reward": config["intermediate_reward"]
         }
         if config['saved_path'] is not None:
             saved_model = joblib.load(config['saved_path'])
@@ -116,10 +118,18 @@ def run_experiment(**config):
                     hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type']
                 )
-            reward_predictor = DiscreteRNNPolicy(
+            # reward_predictor = DiscreteRNNPolicy(
+            #     name="reward-predictor",
+            #     action_dim=2,
+            #     obs_dim=obs_dim - 1,
+            #     meta_batch_size=config['meta_batch_size'],
+            #     hidden_sizes=config['hidden_sizes'],
+            #     cell_type=config['cell_type']
+            # )
+            reward_predictor = GaussianRNNPolicy(
                 name="reward-predictor",
-                action_dim=2,
                 obs_dim=obs_dim - 1,
+                action_dim=1,
                 meta_batch_size=config['meta_batch_size'],
                 hidden_sizes=config['hidden_sizes'],
                 cell_type=config['cell_type']
@@ -211,9 +221,9 @@ if __name__ == '__main__':
                                    # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
-        "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice"]
+        "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         "rollouts_per_meta_task": [2],
-        'ceil_reward': [True],
+        'ceil_reward': [False],
         'advance_curriculum_func': ['smooth'],
         'entropy_bonus': [1e-3],
         'feedback_always': [True],
@@ -239,6 +249,7 @@ if __name__ == '__main__':
         "num_minibatches": [1],
         "n_itr": [10000],
         'exp_tag': ['v0'],
+        'intermediate_reward': [False], # This turns the intermediate rewards on or off
         'log_rand': [0, 1, 2, 3],
     }
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)

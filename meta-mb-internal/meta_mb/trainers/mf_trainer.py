@@ -133,7 +133,7 @@ class Trainer(object):
                     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
                 # Splice into the meta-learning process
                 if self.use_rp_outer:
-                    samples_data['rewards'] = logprobs[:, :, 1]
+                    samples_data['rewards'] = r_discrete[:, :, 0]
                 samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""

@@ -232,8 +232,13 @@ class RNNFirstOrderOptimizer(Optimizer):
                 feed_dict = dict([(self._input_ph_dict[key], input_val_dict[key][:, i:n_i]) for key in
                                   self._input_ph_dict.keys()])
                 feed_dict[self._hidden_ph] = hidden_batch
-                batch_loss, grads, hidden_batch = sess.run([self._loss, self._gradients_var, self._next_hidden_var],
-                                                            feed_dict=feed_dict)
+
+                try:
+                    batch_loss, grads, hidden_batch = sess.run([self._loss, self._gradients_var, self._next_hidden_var],
+                                                                feed_dict=feed_dict)
+                except Exception as e:
+                    import IPython
+                    IPython.embed()
                 loss.append(batch_loss)
                 all_grads.append(grads)
 

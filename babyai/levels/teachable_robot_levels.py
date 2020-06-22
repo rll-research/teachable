@@ -23,7 +23,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
-                 feedback_type=None, feedback_always=False, **kwargs):
+                 feedback_type=None, feedback_always=False, intermediate_reward=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -44,6 +44,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
+        self.intermediate_reward = intermediate_reward
         self.include_holdout_obj = include_holdout_obj
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
@@ -436,6 +437,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param action: action to take
         :return: results of stepping the env
         """
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            opt_action = int(self.teacher.next_action)
+            followed_opt_action = (opt_action == action[0])
+        else:
+            followed_opt_action = False
+
         if self.dropout_type == 'step':
             self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
             self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
@@ -470,6 +477,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 self.render('human')
                 print("ERROR!!!!!", e)
                 teacher_copy.step([action])
+        # Reward at the end scaled by 1000
+        reward_total = rew*1000
+        if self.intermediate_reward:
+            reward_total += int(followed_opt_action)
+        rew = reward_total
         return obs, rew, done, info
 
     def reset(self):
