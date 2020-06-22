@@ -1,19 +1,19 @@
 import numpy as np
 from babyai.oracle.teacher import Teacher
 
-class CartesianCorrections(Teacher):
+class SubgoalCorrections(Teacher):
 
     def empty_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return -1*np.ones(self.obs_size)
+        return -1*np.ones(17)
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.random.uniform(0, 1, size=self.obs_size)
+        return np.random.uniform(0, 1, size=17)
 
     def compute_feedback(self):
         """
@@ -27,7 +27,7 @@ class CartesianCorrections(Teacher):
         # else:
         #     feedback = -1*np.ones(self.obs_size)
         # return np.array(feedback)
-        return np.array(self.next_state)
+        return np.array(self.next_subgoal)
         
     def feedback_condition(self):
         """

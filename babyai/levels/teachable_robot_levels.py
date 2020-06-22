@@ -8,6 +8,7 @@ from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
+from babyai.oracle.subgoal_corrections import SubgoalCorrections
 
 from babyai.bot import Bot
 
@@ -22,7 +23,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
-                 feedback_type=None, feedback_always=False, **kwargs):
+                 feedback_type=None, feedback_always=False, intermediate_reward=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -43,6 +44,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
+        self.intermediate_reward = intermediate_reward
         self.include_holdout_obj = include_holdout_obj
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
@@ -57,7 +59,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_proportion = 0
         self.dropout_current_goal = False
         self.dropout_current_correction = False
-        self.concat_itr = False # TODO: remove this or make it a flag
+        self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
             teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
@@ -65,6 +67,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
         elif feedback_type == 'CartesianCorrections':
             teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
+        elif feedback_type == 'SubgoalCorrections':
+            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
         self.teacher = teacher
@@ -247,25 +251,25 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param objs:
         """
 
-        def make_door_toggle(obj):
-            def toggle(env, pos):
-                # If the player has the right key to open the door
-                if obj.is_locked:
-                    if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
-                        obj.is_locked = False
-                        obj.is_open = True
-                        return True
-                    return False
+        # def make_door_toggle(obj):
+        #     def toggle(env, pos):
+        #         # If the player has the right key to open the door
+        #         if obj.is_locked:
+        #             if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
+        #                 obj.is_locked = False
+        #                 obj.is_open = True
+        #                 return True
+        #             return False
 
-                obj.is_open = True
-                return True
-            return toggle
+        #         obj.is_open = True
+        #         return True
+        #     return toggle
 
         for obj in objs:
             if obj.type == 'box':
                 obj.contains = obj
-            if obj.type == 'door':
-                obj.toggle = make_door_toggle(obj)
+            # if obj.type == 'door':
+            #     obj.toggle = make_door_toggle(obj)
 
     def gen_mission(self):
         """
@@ -409,18 +413,21 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                grid_representation,
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
-            if self.dropout_current_correction:
-                correction_index = self.teacher.empty_feedback()
+            self.teacher.obs_size = obs.shape
+            if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
+                if self.dropout_current_correction:
+                    correction_index = self.teacher.empty_feedback()
+                else:
+                    correction_index = self.teacher.give_feedback([obs])
+                correction = np.zeros((self.action_space.n + 1,))
+                correction[correction_index] = 1.0
             else:
-                correction_index = self.teacher.give_feedback([obs])
-            correction = np.zeros((self.action_space.n + 1,))
-            correction[correction_index] = 1.0
+                if self.dropout_current_correction or self.reset_yet is False:
+                    correction = self.teacher.empty_feedback()
+                else:
+                    correction = self.teacher.give_feedback([obs])
             obs = np.concatenate([obs, correction])
 
-        if self.concat_itr:
-            obs = np.concatenate([obs, [self.itr]])
-
-        # obs = obs[160:] # TODO: remove
         return deepcopy(obs)
 
     def step(self, action):
@@ -429,6 +436,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param action: action to take
         :return: results of stepping the env
         """
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            opt_action = int(self.teacher.next_action)
+            followed_opt_action = (opt_action == action[0])
+        else:
+            followed_opt_action = False
+
         if self.dropout_type == 'step':
             self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
             self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
@@ -463,6 +476,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 self.render('human')
                 print("ERROR!!!!!", e)
                 # teacher_copy.step([action])
+        # Reward at the end scaled by 1000
+        reward_total = rew*1000
+        if self.intermediate_reward:
+            reward_total += int(followed_opt_action)
+        rew = reward_total
         return obs, rew, done, info
 
     def reset(self):

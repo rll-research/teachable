@@ -128,9 +128,9 @@ class GaussianRNNPolicy(Policy):
         assert means.ndim == 3 and means.shape[-1] == self.action_dim
         rnd = np.random.normal(size=means.shape)
         actions = means + rnd * np.exp(logs_stds)
-        means = means[:, 0, :]
-        logs_stds = logs_stds[0, :]
-        assert actions.shape == (observations.shape[0], 1, self.action_dim)
+        means = means[:, :, 0]
+        logs_stds = logs_stds[:, 0]
+        # assert actions.shape == (observations.shape[0], 1, self.action_dim)
         agent_infos = [[dict(mean=mean, log_std=logs_stds)] for mean in means]
         return actions, agent_infos
 

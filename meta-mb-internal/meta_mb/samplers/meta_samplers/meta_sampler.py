@@ -3,7 +3,7 @@ from meta_mb.samplers.meta_samplers.meta_vectorized_env_executor import MetaPara
 from meta_mb.logger import logger
 from meta_mb.utils import utils
 from collections import OrderedDict
-from meta_mb.algos.dummy import CopyPolicy
+# from meta_mb.algos.dummy import CopyPolicy
 
 from pyprind import ProgBar
 import numpy as np

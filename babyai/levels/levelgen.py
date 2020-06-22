@@ -33,8 +33,10 @@ class RoomGridLevel(RoomGrid):
         )
 
     def reset(self, **kwargs):
+        self.reset_yet = False
         obs = super().reset(**kwargs)
-
+        self.reset_yet = True
+        
         # Recreate the verifier
         self.instrs.reset_verifier(self)
 

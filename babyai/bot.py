@@ -4,6 +4,9 @@ from babyai.levels.verifier import (ObjDesc, pos_next_to,
                                     GoToInstr, OpenInstr, PickupInstr, PutNextInstr, BeforeInstr, AndInstr, AfterInstr)
 import random
 
+OBJ_TYPES = ['box', 'ball', 'key', 'door']
+from gym_minigrid.minigrid import COLOR_NAMES, DIR_TO_VEC
+
 class DisappearedBoxError(Exception):
     """
     Error that's thrown when a box is opened.
@@ -612,10 +615,62 @@ class Bot:
                 break
         if not self.stack:
             suggested_action = self.mission.actions.done
-
         self._remember_current_state()
         self.step += 1
-        return suggested_action
+        return suggested_action, self.subgoal_to_index(subgoal)
+
+    def subgoal_to_index(self, subgoal):
+        subgoal_names = ['CloseSubgoal',
+                        'OpenSubgoal',
+                        'DropSubgoal',
+                        'PickupSubgoal',
+                        'TakeActionSubgoal',
+                        'GoNextToSubgoal',
+                        'ExploreSubgoal']
+        reason_names = ['Unlock',
+                        None,
+                        'UnlockAndKeepKey',
+                        'PutNext',
+                        'Open',
+                        'Explore',
+                        'KeepKey']
+                        
+        # Name of the subgoal
+        subgoal_name_idx = subgoal_names.index(type(subgoal).__name__)
+
+        # Reason
+        subgoal_reason_idx = reason_names.index(subgoal.reason)
+
+        # Datum
+        if type(subgoal.datum) == int:
+            subgoal_type = 0
+            # Repeat the datum twice
+            subgoal_val  = np.array([subgoal.datum, subgoal.datum])
+        elif type(subgoal.datum) == tuple:
+            subgoal_type = 1
+            # Position to go to
+            subgoal_val = np.array(subgoal.datum)
+        elif type(subgoal.datum) == ObjDesc:
+            subgoal_type = 2
+            color_idx = COLOR_NAMES.index(subgoal.datum.color)
+            type_idx = OBJ_TYPES.index(subgoal.datum.type)
+            subgoal_val = np.array([color_idx, type_idx])
+        elif subgoal.datum is None:
+            subgoal_type = 3
+            subgoal_val = np.array([-1, -1])
+        else:
+            raise Exception('Not implemented this variant of subgoal')
+
+        subgoal_idx_all = np.zeros(len(subgoal_names) + len(reason_names) + 3)
+        # Index the subgoal type
+        subgoal_idx_all[subgoal_name_idx] = 1.0
+        # Index the reason
+        subgoal_idx_all[len(subgoal_names) + subgoal_reason_idx] = 1.0
+        # Index the datum type
+        subgoal_idx_all[len(subgoal_names) + len(reason_names)] = subgoal_type
+        # Index the datum value
+        subgoal_idx_all[len(subgoal_names) + len(reason_names) + 1:] = subgoal_val
+        return subgoal_idx_all
 
     def find_open_cell(self, attempts=100):
         length = len(self.vis_mask)
