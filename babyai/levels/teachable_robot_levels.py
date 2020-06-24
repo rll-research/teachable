@@ -56,7 +56,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
-        self.dropout_proportion = 0
+        self.dropout_proportion = 1
         self.dropout_current_goal = False
         self.dropout_current_correction = False
         self.feedback_type = feedback_type
@@ -462,20 +462,24 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['goal_pos'] = (-1, -1)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
-            # teacher_copy = deepcopy(self.teacher)
+            teacher_copy = deepcopy(self.teacher)
             try:
                 # Even if we use multiple teachers, presumably they all relate to one underlying path.
                 # We can log what action is the next one on this path (currently in teacher.next_action).
-                info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int)
+                info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
 
                 self.teacher.step([action])
                 # Update the observation with the teacher's new feedback
                 obs = self.gen_obs()
 
             except Exception as e:
-                self.render('human')
+                import IPython
+                IPython.embed()
+                # self.render('human')
                 print("ERROR!!!!!", e)
-                # teacher_copy.step([action])
+                teacher_copy.step([action])
+        else:
+            info['teacher_action'] = np.array([-1], dtype=np.int32)
         # Reward at the end scaled by 1000
         reward_total = rew*1000
         if self.intermediate_reward:
@@ -512,3 +516,5 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
     def set_dropout_proportion(self, dropout_proportion):
         self.dropout_proportion = dropout_proportion
+        if not dropout_proportion == 1:  # TODO: remove
+            print("???", dropout_proportion)

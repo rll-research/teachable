@@ -207,16 +207,30 @@ class GaussianRNNPolicy(Policy):
             if isinstance(self._hidden_state, tf.contrib.rnn.LSTMStateTuple):
                 self._hidden_state.c[dones] = _hidden_state.c
                 self._hidden_state.h[dones] = _hidden_state.h
+            elif isinstance(self._hidden_state, tuple) and isinstance(self._hidden_state[0],
+                                                                      tf.contrib.rnn.LSTMStateTuple):
+                for layer_state, new_layer_state in zip(self._hidden_state, _hidden_state):
+                    layer_state.c[dones] = new_layer_state.c
+                    layer_state.h[dones] = new_layer_state.h
             else:
                 self._hidden_state[dones] = _hidden_state
 
     def get_zero_state(self, batch_size):
         sess = tf.get_default_session()
         _hidden_state = sess.run(self._zero_hidden)
-        if isinstance(self._hidden_state, tf.contrib.rnn.LSTMStateTuple):
+        if isinstance(_hidden_state, tf.contrib.rnn.LSTMStateTuple):
             hidden_c = np.concatenate([_hidden_state.c] * batch_size)
             hidden_h = np.concatenate([_hidden_state.h] * batch_size)
             hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)
             return hidden
+        elif isinstance(_hidden_state, tuple) and isinstance(_hidden_state[0], tf.contrib.rnn.LSTMStateTuple):
+            hidden_states = []
+            for layer_state in _hidden_state:
+                hidden_c = np.concatenate([layer_state.c] * batch_size)
+                hidden_h = np.concatenate([layer_state.h] * batch_size)
+                hidden = tf.contrib.rnn.LSTMStateTuple(hidden_c, hidden_h)
+                hidden_states.append(hidden)
+            hidden_states = tuple(hidden_states)
+            return hidden_states
         else:
             return np.concatenate([_hidden_state] * batch_size)

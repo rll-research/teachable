@@ -723,6 +723,15 @@ class Bot:
                         lambda pos, cell: pos == obj_pos,
                         try_with_blockers=True
                     )
+                    if shortest_path_to_obj is None:
+                        print("finding object", obj_desc)
+                        print("position", obj_pos)
+                        print("VisMask", self.vis_mask)
+                        self.mission.render('human')
+                        while True:
+                            x = 3
+                        print("???")
+
                     assert shortest_path_to_obj is not None
                     distance_to_obj = len(shortest_path_to_obj)
 
@@ -775,6 +784,7 @@ class Bot:
         # Compute the absolute coordinates of the top-left corner
         # of the agent's view area
         top_left = pos + f_vec * (view_size - 1) - r_vec * (view_size // 2)
+
 
         # Mark everything in front of us as visible
         for vis_j in range(0, view_size):

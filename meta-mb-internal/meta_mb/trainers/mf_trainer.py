@@ -45,6 +45,7 @@ class Trainer(object):
             increase_dropout_increment=None,
             advance_without_teacher=False,
             teacher_info=[],
+            sparse_rewards=True,
             ):
         self.algo = algo
         self.env = env
@@ -70,13 +71,16 @@ class Trainer(object):
         self.increase_dropout_increment = increase_dropout_increment
         self.advance_without_teacher = advance_without_teacher
         self.teacher_info = teacher_info
+        self.sparse_rewards = sparse_rewards
 
     def check_advance_curriculum(self, data):
-        rewards = data['avg_reward']
+        num_total_episodes = data['dones'].sum()
+        num_successes = data['env_infos']['success'].sum()
+        avg_reward = num_successes / num_total_episodes
         # We take the max since runs which end early will be 0-padded
         dropout_level = np.max(data['env_infos']['dropout_proportion'])
-        should_advance_curriculum = (rewards >= self.reward_threshold) and (dropout_level == 1)
-        should_increase_dropout = rewards >= self.increase_dropout_threshold
+        should_advance_curriculum = (avg_reward >= self.reward_threshold) and (dropout_level == 1)
+        should_increase_dropout = avg_reward >= self.increase_dropout_threshold
         return should_advance_curriculum, should_increase_dropout
 
     def train(self):
@@ -97,7 +101,7 @@ class Trainer(object):
             uninit_vars = [var for var in tf.global_variables() if not sess.run(tf.is_variable_initialized(var))]
             sess.run(tf.variables_initializer(uninit_vars))
             advance_curriculum = False
-            dropout_proportion = 1 if self.increase_dropout_increment is None else 0
+            dropout_proportion = 1 if self.increase_dropout_increment is None else 0  # TODO: remember 2 reset
 
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
@@ -126,14 +130,16 @@ class Trainer(object):
                 r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
                 if self.algo.supervised_model is not None:
                     self.log_supervised(samples_data)
-                self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
+                if self.sparse_rewards:
+                    self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
                 # Splice into the inference process
                 if self.use_rp_inner:
                     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
                 # Splice into the meta-learning process
                 if self.use_rp_outer:
                     samples_data['rewards'] = r_discrete[:, :, 0]
-                samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
+                if 'teacher_action' in samples_data['env_infos']:
+                    samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -294,7 +300,7 @@ class Trainer(object):
         else:
             logger.logkv(log_prefix + 'Precision', -1)
 
-        if positives.sum() > 0 and pred_positives.sum() > 0:
+        if positives.sum() > 0 and pred_positives.sum() > 0 and correct.sum() > 0:
             logger.logkv(log_prefix + 'F1', 2 * precision * recall / (precision + recall))
         else:
             logger.logkv(log_prefix + 'F1', -1)

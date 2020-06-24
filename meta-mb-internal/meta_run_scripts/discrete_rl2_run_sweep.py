@@ -27,8 +27,11 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'debug22'
+# PREFIX = 'debug22'
+PREFIX = 'DENSEREW++'
 # PREFIX = 'DISTILLKLLoss'
+# PREFIX = 'NOTEACHER'
+PREFIX = 'DISTILLAFTER'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -46,6 +49,8 @@ def get_exp_name(config):
         EXP_NAME += '_IL' + config['il_comparison'][:3]
     if config['self_distill']:
         EXP_NAME += '_SD'
+    if config['intermediate_reward']:
+        EXP_NAME += '_dense'
     EXP_NAME += '_droptype' + str(config['dropout_type'])
     EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
@@ -66,6 +71,11 @@ def run_experiment(**config):
     sess = tf.Session(config=config_sess)
     original_saved_path = config['saved_path']
     with sess.as_default() as sess:
+        if original_saved_path is not None:
+            saved_model = joblib.load(config['saved_path'])
+            if 'config' in saved_model:
+                if not config['override_old_config']:
+                    config = saved_model['config']
         arguments = {
             "start_loc": 'all',
             "include_holdout_obj": False,
@@ -81,11 +91,7 @@ def run_experiment(**config):
             "num_meta_tasks": config["rollouts_per_meta_task"],
             "intermediate_reward": config["intermediate_reward"]
         }
-        if config['saved_path'] is not None:
-            saved_model = joblib.load(config['saved_path'])
-            if 'config' in saved_model:
-                if not config['override_old_config']:
-                    config = saved_model['config']
+        if original_saved_path is not None:
             set_seed(config['seed'])
             policy = saved_model['policy']
             baseline = saved_model['baseline']
@@ -210,13 +216,17 @@ def run_experiment(**config):
             increase_dropout_increment=None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
             advance_without_teacher=True,
             teacher_info=teacher_info,
+            sparse_rewards=not config['intermediate_reward'],
         )
         trainer.train()
 
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
-        'saved_path': [None],#base_path + 'DISTILL2_teacherPreActionAdvice_persistgoa_SD_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        'saved_path': [None],
+        # 'saved_path': [base_path + 'DISTILLAFTER/latest.pkl'],
+        # 'saved_path': [base_path + 'DENSEREW_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        # 'saved_path': [base_path + 'DENSEREW_teacherCartesianCorrections_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
@@ -228,22 +238,23 @@ if __name__ == '__main__':
                                    # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
-        "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
+        "feedback_type": [None],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         "rollouts_per_meta_task": [2],
         'ceil_reward': [False],
         'advance_curriculum_func': ['smooth'],
-        'entropy_bonus': [1e-3],
+        'entropy_bonus': [1e-2], # 1e-2
         'feedback_always': [True],
         'pre_levels': [False],
         'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [True],
+        'self_distill': [False],
+        'intermediate_reward': [False], # This turns the intermediate rewards on or off
 
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        "hidden_sizes": [(64, 64), (128,)],#[(256,), (256,), (256,)],#
+        "hidden_sizes": [(64, 64,), (128,)],#[(256,), (256,), (256,)],#
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
@@ -251,13 +262,12 @@ if __name__ == '__main__':
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
-        "learning_rate": [1e-2],
+        "learning_rate": [1e-3],
         "max_epochs": [5],
         "cell_type": ["lstm"],
         "num_minibatches": [1],
         "n_itr": [10000],
         'exp_tag': ['v0'],
-        'intermediate_reward': [False], # This turns the intermediate rewards on or off
         'log_rand': [0, 1, 2, 3],
     }
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
