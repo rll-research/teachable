@@ -49,6 +49,7 @@ if __name__ == "__main__":
                         help='Max length of rollout')
     parser.add_argument('--num_rollouts', '-n', type=int, default=6,
                         help='Max length of rollout')
+    parser.add_argument('--reward_pred', action='store_true', help="Plot the reward predictor's predictions")
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     parser.add_argument('--run_name', type=str, default='latest.pkl',
@@ -89,6 +90,10 @@ if __name__ == "__main__":
                     print("\n Testing policy %s \n" % pkl_path)
                     data = joblib.load(pkl_path)
                     policy = data['policy']
+                    if args.reward_pred:
+                        reward_predictor = data['reward_predictor']
+                    else:
+                        reward_predictor = None
 
                     if hasattr(policy, 'switch_to_pre_update'):
                         policy.switch_to_pre_update()
@@ -109,6 +114,8 @@ if __name__ == "__main__":
                           "feedback_always": config["feedback_always"],
                           "num_meta_tasks": config["rollouts_per_meta_task"],
                         }
+                        # if not args.use_teacher:
+                        #     arguments['feedback_type'] = None
                         all_attr = dir(iclr19_levels)
                         env_class = getattr(iclr19_levels, args.class_name)
                         # env_args = {
@@ -132,7 +139,7 @@ if __name__ == "__main__":
                     paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
                                         stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every,
-                                    record_teacher=True)
+                                    record_teacher=True, reward_predictor=reward_predictor)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))

@@ -142,6 +142,7 @@ class PPO(Algo, Serializable):
                 sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
                     ground_truth, action_logits,
                 )
+                self.log_values_sup = [sup_learning_loss]
             elif self.supervised_ground_truth == 'agent':
                 old_prob_var = all_phs_dict['train_agent_infos/probs']
                 new_prob_var = distribution_info_vars_s['probs']

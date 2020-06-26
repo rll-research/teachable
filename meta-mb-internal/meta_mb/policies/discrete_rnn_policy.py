@@ -111,7 +111,7 @@ class DiscreteRNNPolicy(Policy):
             (ndarray) : array of sampled actions - shape: (batch_size, action_dim)
         """
         observations = np.array(observations)
-        assert observations.shape[-1] == self.obs_dim
+        assert observations.shape[-1] == self.obs_dim, (observations.shape, self.obs_dim)
         if observations.ndim == 2:
             observations = np.expand_dims(observations, 1)
         elif observations.ndim == 3:

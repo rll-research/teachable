@@ -659,7 +659,10 @@ class Bot:
             subgoal_type = 3
             subgoal_val = np.array([-1, -1])
         else:
-            raise Exception('Not implemented this variant of subgoal')
+            subgoal_type = 2
+            color_idx = COLOR_NAMES.index(subgoal.datum.color)
+            type_idx = OBJ_TYPES.index(subgoal.datum.type)
+            subgoal_val = np.array([color_idx, type_idx])
 
         subgoal_idx_all = np.zeros(len(subgoal_names) + len(reason_names) + 3)
         # Index the subgoal type

@@ -11,7 +11,7 @@ def write_video(writer, frames, show_last=None):
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
-            num_save=None, record_teacher=False):
+            num_save=None, record_teacher=False, reward_predictor=None):
     if num_save is None:
         num_save = num_rollouts
     start = time.time()
@@ -47,13 +47,16 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         curr_images = []
         if i % reset_every == 0:
             agent.reset(dones=[True] * batch_size)
+            if reward_predictor is not None:
+                reward_predictor.reset(dones=[True] * batch_size)
             env.set_task(None)
         path_length = 0
         o = env.reset()
         if render:
             _ = env.render(mode)
         while path_length < max_path_length:
-
+            # o[160:168] = 0
+            # o[168] = 1
             obs_big = np.stack([o] * batch_size)
             a, agent_info = agent.get_actions(obs_big)
             a = a[0]
@@ -62,9 +65,16 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 print("No advice!")
             # a = np.array([[np.argmax(o[160:167])]])
             # a = np.array([[6]])
+
             if not stochastic:
                 a = agent_info['mean']
             next_o, r, d, env_info = env.step(a)
+
+            if reward_predictor is not None:
+                reward_obs = np.stack([env_info['next_obs_rewardfree']] * batch_size)
+                pred_reward = reward_predictor.get_actions(reward_obs)
+
+
             observations.append(o)
             rewards.append(r)
             actions.append(a)
@@ -81,8 +91,18 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if save_video and i < num_save:
                 image = env.render(mode='rgb_array')[:, :, ::-1] # RGB --> BGR
                 title_block = np.zeros((100, image.shape[1], 3), np.uint8) + 255
-                if not env_info['teacher_action'] == a[0][0]:
-                    title_block[:, :, 0] = 0
+
+                # If we have a reward predictor, the background color is based on whether the reward predictor is correct
+                if reward_predictor is not None:
+                    pred_reward = np.round(pred_reward[0][0][0][0])
+                    if pred_reward == 0 and r == 1:
+                        title_block[:, :, 1] = 0
+                    elif pred_reward == 1 and r == 0:
+                        title_block[:, :, 2] = 0
+                # Otherwise, the background color is based on whether the action taken is correct
+                else:
+                    if not env_info['teacher_action'] == a[0][0]:
+                        title_block[:, :, 0] = 0
                 image = cv2.vconcat((title_block, image))
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 label_str = ""
