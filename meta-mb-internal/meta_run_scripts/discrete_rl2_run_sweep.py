@@ -28,10 +28,11 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # PREFIX = 'debug22'
-PREFIX = 'DENSEREW++'
+# PREFIX = 'DENSEREW2'
 # PREFIX = 'DISTILLKLLoss'
 # PREFIX = 'NOTEACHER'
-PREFIX = 'DISTILLAFTER'
+# PREFIX = 'ORIGINAL'
+PREFIX = 'SUPLEARNINGwTeacher'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -46,7 +47,7 @@ def get_exp_name(config):
     if config['pre_levels']:
         EXP_NAME += '_pre'
     if config['il_comparison']:
-        EXP_NAME += '_IL' + config['il_comparison'][:3]
+        EXP_NAME += '_IL'
     if config['self_distill']:
         EXP_NAME += '_SD'
     if config['intermediate_reward']:
@@ -120,14 +121,6 @@ def run_experiment(**config):
                     hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type']
                 )
-            # reward_predictor = DiscreteRNNPolicy(
-            #     name="reward-predictor",
-            #     action_dim=2,
-            #     obs_dim=obs_dim - 1,
-            #     meta_batch_size=config['meta_batch_size'],
-            #     hidden_sizes=config['hidden_sizes'],
-            #     cell_type=config['cell_type']
-            # )
             reward_predictor = GaussianRNNPolicy(
                 name="reward-predictor",
                 obs_dim=obs_dim - 1,
@@ -223,10 +216,7 @@ def run_experiment(**config):
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
-        'saved_path': [None],
-        # 'saved_path': [base_path + 'DISTILLAFTER/latest.pkl'],
-        # 'saved_path': [base_path + 'DENSEREW_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
-        # 'saved_path': [base_path + 'DENSEREW_teacherCartesianCorrections_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        'saved_path': [None],#base_path + 'DENSEREW2_teacherPreActionAdvice_persistgoa_dense_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.1_lr0.001corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'persist_goal': [True],
         'persist_objs': [True],
@@ -238,14 +228,14 @@ if __name__ == '__main__':
                                    # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
         'reward_threshold': [.95],
-        "feedback_type": [None],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
+        "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         "rollouts_per_meta_task": [2],
         'ceil_reward': [False],
         'advance_curriculum_func': ['smooth'],
         'entropy_bonus': [1e-2], # 1e-2
         'feedback_always': [True],
         'pre_levels': [False],
-        'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
         'intermediate_reward': [False], # This turns the intermediate rewards on or off
 
@@ -254,7 +244,7 @@ if __name__ == '__main__':
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        "hidden_sizes": [(64, 64,), (128,)],#[(256,), (256,), (256,)],#
+        "hidden_sizes": [(128, 128,), (128,)],#[(256,), (256,), (256,)],#
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
