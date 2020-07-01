@@ -36,6 +36,8 @@ class PPO(Algo, Serializable):
             max_epochs_r = 20,
             entropy_bonus=0.,
             reward_predictor=None,
+            reward_predictor_type='gaussian',
+            grad_clip_threshold=None,
             **kwargs
             ):
 
@@ -48,13 +50,20 @@ class PPO(Algo, Serializable):
         self.supervised_model = supervised_model
         if self.recurrent:
             backprop_steps = kwargs.get('backprop_steps', 32)
-            self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs,
-                                                    backprop_steps=backprop_steps)
+            self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate,
+                                                    max_epochs=max_epochs,
+                                                    backprop_steps=backprop_steps,
+                                                    grad_clip_threshold=grad_clip_threshold)
             if self.reward_predictor is not None:
-                self.optimizer_r = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs_r, backprop_steps=backprop_steps)
+                self.optimizer_r = RL2FirstOrderOptimizer(learning_rate=learning_rate,
+                                                          max_epochs=max_epochs_r,
+                                                          backprop_steps=backprop_steps,
+                                                          grad_clip_threshold=grad_clip_threshold)
             if self.supervised_model is not None:
-                self.optimizer_s = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs_r,
-                                                          backprop_steps=backprop_steps)
+                self.optimizer_s = RL2FirstOrderOptimizer(learning_rate=learning_rate,
+                                                          max_epochs=max_epochs_r,
+                                                          backprop_steps=backprop_steps,
+                                                          grad_clip_threshold=grad_clip_threshold)
         else:
             self.optimizer = FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
         # TODO figure out what this does
@@ -64,6 +73,7 @@ class PPO(Algo, Serializable):
         self._clip_eps = clip_eps
         self.entropy_bonus = entropy_bonus
         self.supervised_ground_truth = supervised_ground_truth
+        self.reward_predictor_type = reward_predictor_type
 
         self.build_graph()
 
@@ -101,8 +111,9 @@ class PPO(Algo, Serializable):
             # TODO: Check if anything is problematic here, when obs is concatenating previous reward
             if self.reward_predictor is not None:
                 distribution_info_vars_r, hidden_ph_r, next_hidden_var_r = self.reward_predictor.distribution_info_sym(obs_r_ph)
-                distribution_info_vars_r["mean"] = distribution_info_vars_r["mean"][:, :, 0]
-                distribution_info_vars_r["log_std"] = distribution_info_vars_r["log_std"][:, 0]
+                if self.reward_predictor_type == 'gaussian':
+                    distribution_info_vars_r["mean"] = distribution_info_vars_r["mean"][:, :, 0]
+                    distribution_info_vars_r["log_std"] = distribution_info_vars_r["log_std"][:, 0]  # TODO: uncomment
             if self.supervised_model is not None:
                 distribution_info_vars_s, hidden_ph_s, next_hidden_var_s = self.supervised_model.distribution_info_sym(obs_ph)
         else:
@@ -127,11 +138,16 @@ class PPO(Algo, Serializable):
         surr_obj = - tf.reduce_mean(clipped_obj) - self.entropy_bonus * \
                         tf.reduce_mean(self.policy.distribution.entropy_sym(distribution_info_vars))
         if self.reward_predictor is not None:
-            r_obj =  -tf.reduce_mean(self.reward_predictor.distribution.log_likelihood_sym(r_ph, distribution_info_vars_r))
+            if self.reward_predictor_type == 'gaussian':
+                r_obj =  -tf.reduce_mean(self.reward_predictor.distribution.log_likelihood_sym(r_ph, distribution_info_vars_r))
+            else:
+                r_obj = -tf.reduce_mean(
+                    tf.exp(5 * r_ph) * self.reward_predictor.distribution.log_likelihood_sym(tf.cast(r_ph, tf.int32),
+                                                                                             distribution_info_vars_r))  # TODO: what's this?
             self.optimizer_r.build_graph(
                 loss=r_obj,
                 target=self.reward_predictor,
-                input_ph_dict=self.op_phs_dict, # TODO: Check this
+                input_ph_dict=self.op_phs_dict,
                 hidden_ph=hidden_ph_r,
                 next_hidden_var=next_hidden_var_r
             )
@@ -140,9 +156,9 @@ class PPO(Algo, Serializable):
                 action_logits = tf.log(distribution_info_vars_s['probs'])
                 ground_truth = tf.squeeze(tf.one_hot(ground_truth_action_ph, action_logits.shape[-1]), axis=2)
                 sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
-                    ground_truth, action_logits,
+                    ground_truth, action_logits, weights=mask,
                 )
-                self.log_values_sup = [sup_learning_loss]
+                self.log_values_sup = [sup_learning_loss, action_logits, ground_truth]
             elif self.supervised_ground_truth == 'agent':
                 old_prob_var = all_phs_dict['train_agent_infos/probs']
                 new_prob_var = distribution_info_vars_s['probs']

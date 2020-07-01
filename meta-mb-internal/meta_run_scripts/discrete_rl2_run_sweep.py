@@ -28,11 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # PREFIX = 'debug22'
-# PREFIX = 'DENSEREW2'
-# PREFIX = 'DISTILLKLLoss'
-# PREFIX = 'NOTEACHER'
-# PREFIX = 'ORIGINAL'
-PREFIX = 'SUPLEARNINGwTeacher'
+PREFIX = 'ILTEACHERNOTEACHERPRETRAINEDL13'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -136,7 +132,7 @@ def run_experiment(**config):
                     action_dim=np.prod(env.action_space.n),
                     obs_dim=obs_dim,
                     meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=(128, 256, 256),
+                    hidden_sizes=config['hidden_sizes'],
                     cell_type=config['cell_type'],
                 )
             elif config['self_distill']:
@@ -174,7 +170,9 @@ def run_experiment(**config):
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
             reward_predictor=reward_predictor,
+            reward_predictor_type=config['reward_predictor_type'],
             entropy_bonus=config['entropy_bonus'],
+            grad_clip_threshold=config['grad_clip_threshold'],
         )
 
         EXP_NAME = get_exp_name(config)
@@ -187,10 +185,14 @@ def run_experiment(**config):
         json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
         action_dim = env.action_space.n + 1
-        null_val = np.zeros(action_dim)
-        start_index = 160
-        null_val[-1] = -1
-        teacher_info = [{"indices": np.arange(start_index, start_index + action_dim), "null": null_val}]
+
+        if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types
+            teacher_info = []
+        else:
+            null_val = np.zeros(action_dim)
+            start_index = 160
+            null_val[-1] = 1
+            teacher_info = [{"indices": np.arange(start_index, start_index + action_dim), "null": null_val}]
 
         trainer = Trainer(
             algo=algo,
@@ -210,49 +212,71 @@ def run_experiment(**config):
             advance_without_teacher=True,
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
+            distill_only=config['distill_only'],
         )
         trainer.train()
 
 if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
-        'saved_path': [None],#base_path + 'DENSEREW2_teacherPreActionAdvice_persistgoa_dense_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.1_lr0.001corr0_currfnsmooth_4/latest.pkl'],
+
+        # Saving/loading/finetuning
+        'saved_path': [None],#base_path + 'OGPARAMS_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
+        'distill_only': [False],
+
+        # Meta
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
+        "rollouts_per_meta_task": [2],
+
+        # Dropout
         'dropout_goal': [0],
         'dropout_correction': [0],
         'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
         'dropout_incremental': [None],#[(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
                                    # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
-        'reward_threshold': [.95],
+
+        # Teacher
         "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
-        "rollouts_per_meta_task": [2],
-        'ceil_reward': [False],
-        'advance_curriculum_func': ['smooth'],
-        'entropy_bonus': [1e-2], # 1e-2
         'feedback_always': [True],
+
+        # Curriculum
+        'advance_curriculum_func': ['smooth'],
         'pre_levels': [False],
+
+        # Model/Optimization
+        'entropy_bonus': [1e-2],  # 1e-2
+        'grad_clip_threshold': [10],
+        "learning_rate": [1e-3],
+        "hidden_sizes": [(128, 128,), (128,)],
+        "discount": [0.9],
+
+        # Reward
+        'reward_predictor_type': ['gaussian'],
+        'intermediate_reward': [False], # This turns the intermediate rewards on or off
+        'reward_threshold': [.95],
+        'ceil_reward': [False],
+
+        # Distillation
         'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
-        'intermediate_reward': [False], # This turns the intermediate rewards on or off
+        'distill_with_teacher': [False],
 
+        # Arguments we basically never change
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        "hidden_sizes": [(128, 128,), (128,)],#[(256,), (256,), (256,)],#
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
-        "discount": [0.9],
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
-        "learning_rate": [1e-3],
         "max_epochs": [5],
         "cell_type": ["lstm"],
         "num_minibatches": [1],

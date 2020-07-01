@@ -46,6 +46,7 @@ class Trainer(object):
             advance_without_teacher=False,
             teacher_info=[],
             sparse_rewards=True,
+            distill_only=False,
             ):
         self.algo = algo
         self.env = env
@@ -72,6 +73,7 @@ class Trainer(object):
         self.advance_without_teacher = advance_without_teacher
         self.teacher_info = teacher_info
         self.sparse_rewards = sparse_rewards
+        self.distill_only = distill_only
 
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
@@ -153,8 +155,9 @@ class Trainer(object):
                 logger.log("Optimizing policy...")
                 # This needs to take all samples_data so that it can construct graph for meta-optimization.
                 time_optimization_step_start = time.time()
-                self.algo.optimize_policy(samples_data)
-                self.algo.optimize_reward(samples_data)
+                if not self.distill_only:
+                    self.algo.optimize_policy(samples_data)
+                    self.algo.optimize_reward(samples_data)
                 if self.algo.supervised_model is not None and advance_curriculum:
                     logger.log("Distillation...")
                     self.distill(samples_data)

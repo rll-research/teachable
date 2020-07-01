@@ -30,7 +30,7 @@ class FirstOrderOptimizer(Optimizer, Serializable):
             max_epochs=1,
             tolerance=1e-6,
             num_minibatches=1,
-            verbose=False
+            verbose=False,
     ):
 
         Serializable.quick_init(self, locals())
@@ -139,7 +139,8 @@ class RNNFirstOrderOptimizer(Optimizer):
             tolerance=1e-6,
             num_minibatches=1,
             backprop_steps=32,
-            verbose=False
+            verbose=False,
+            grad_clip_threshold=None,
     ):
         self._target = None
         if tf_optimizer_args is None:
@@ -158,6 +159,7 @@ class RNNFirstOrderOptimizer(Optimizer):
         self._hidden_ph = None
         self._input_ph_dict = None
         self._backprop_steps = backprop_steps
+        self._grad_clip_threshold = grad_clip_threshold
 
     def build_graph(self, loss, target, input_ph_dict, hidden_ph, next_hidden_var):
         """
@@ -243,7 +245,18 @@ class RNNFirstOrderOptimizer(Optimizer):
                 all_grads.append(grads)
 
             grads = [np.mean(grad, axis=0) for grad in zip(*all_grads)]
-            feed_dict = dict(zip(self._gradients_ph, grads))
+            grad_mag = [np.mean(np.sqrt(grad ** 2)) for grad in grads]
+
+            if self._grad_clip_threshold is not None:
+                clipped_grad = []
+                for grad, grad_mag in zip(grads, grad_mag):
+                    if grad_mag > self._grad_clip_threshold:
+                        print("clipping grad", grad_mag)
+                        grad = grad / grad_mag * self._grad_clip_threshold
+                    clipped_grad.append(grad)
+            else:
+                clipped_grad = grads
+            feed_dict = dict(zip(self._gradients_ph, clipped_grad))
             _ = sess.run(self._train_op, feed_dict=feed_dict)
             full_losses.append(np.mean(np.asarray(loss)))
             if not loss_before_opt: loss_before_opt = np.mean(loss)
