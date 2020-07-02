@@ -249,7 +249,7 @@ if __name__ == '__main__':
 
         # Model/Optimization
         'entropy_bonus': [1e-2],  # 1e-2
-        'grad_clip_threshold': [10],
+        'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
         "hidden_sizes": [(128, 128,), (128,)],
         "discount": [0.9],

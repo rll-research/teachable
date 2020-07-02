@@ -78,6 +78,7 @@ if __name__ == "__main__":
     parser.add_argument('--class_name', type=str, help='which env class to use.', default=None)
     parser.add_argument('--reset_every', type=int, default=2,
                         help='How many runs between each rnn state reset.')
+    parser.add_argument('--supervised_model', action='store_true', help="Use the supervised model instead of the RL policy")
     args = parser.parse_args()
 
     assert args.class_name is not None or args.use_pickled_env
@@ -89,7 +90,10 @@ if __name__ == "__main__":
                 with tf.Session() as sess:
                     print("\n Testing policy %s \n" % pkl_path)
                     data = joblib.load(pkl_path)
-                    policy = data['policy']
+                    if args.supervised_model:
+                        policy = data['supervised_model']
+                    else:
+                        policy = data['policy']
                     if args.reward_pred:
                         reward_predictor = data['reward_predictor']
                     else:
