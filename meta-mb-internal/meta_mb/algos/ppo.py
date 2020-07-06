@@ -36,7 +36,7 @@ class PPO(Algo, Serializable):
             max_epochs_r = 20,
             entropy_bonus=0.,
             reward_predictor=None,
-            reward_predictor_type='gaussian',
+            reward_predictor_type='discrete',
             grad_clip_threshold=None,
             **kwargs
             ):
@@ -158,7 +158,7 @@ class PPO(Algo, Serializable):
                 sup_learning_loss = tf.compat.v1.losses.softmax_cross_entropy(
                     ground_truth, action_logits, weights=mask,
                 )
-                self.log_values_sup = [sup_learning_loss, action_logits, ground_truth]
+                self.log_values_sup = [sup_learning_loss, action_logits, ground_truth, mask]
             elif self.supervised_ground_truth == 'agent':
                 old_prob_var = all_phs_dict['train_agent_infos/probs']
                 new_prob_var = distribution_info_vars_s['probs']

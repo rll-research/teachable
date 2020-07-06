@@ -27,36 +27,43 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# PREFIX = 'debug22'
-PREFIX = 'ILTEACHERNOTEACHERPRETRAINEDL13'
+PREFIX = 'debug22'
+PREFIX = 'JUSTSUPLEARNING'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
-    EXP_NAME += '_teacher' + str(config['feedback_type'])
-    EXP_NAME += '_persist'
-    if config['persist_goal']:
-        EXP_NAME += "g"
-    if config['persist_objs']:
-        EXP_NAME += "o"
-    if config['persist_agent']:
-        EXP_NAME += "a"
-    if config['pre_levels']:
-        EXP_NAME += '_pre'
-    if config['il_comparison']:
-        EXP_NAME += '_IL'
-    if config['self_distill']:
-        EXP_NAME += '_SD'
-    if config['intermediate_reward']:
-        EXP_NAME += '_dense'
-    EXP_NAME += '_droptype' + str(config['dropout_type'])
-    EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
-    EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
-    EXP_NAME += '_disc' + str(config['discount'])
-    EXP_NAME += '_thresh' + str(config['reward_threshold'])
-    EXP_NAME += '_ent' + str(config['entropy_bonus'])
-    EXP_NAME += '_lr' + str(config['learning_rate'])
-    EXP_NAME += 'corr' + str(config['dropout_correction'])
-    EXP_NAME += '_currfn' + config['advance_curriculum_func']
+    EXP_NAME += 'L' + str(config['level'])
+    EXP_NAME += config['mode']
+    if config['mode'] == 'distillation':
+        EXP_NAME += "_batches" + str(config['num_batches'])
+
+
+
+    # EXP_NAME += '_teacher' + str(config['feedback_type'])
+    # EXP_NAME += '_persist'
+    # if config['persist_goal']:
+    #     EXP_NAME += "g"
+    # if config['persist_objs']:
+    #     EXP_NAME += "o"
+    # if config['persist_agent']:
+    #     EXP_NAME += "a"
+    # if config['pre_levels']:
+    #     EXP_NAME += '_pre'
+    # if config['il_comparison']:
+    #     EXP_NAME += '_IL'
+    # if config['self_distill']:
+    #     EXP_NAME += '_SD'
+    # if config['intermediate_reward']:
+    #     EXP_NAME += '_dense'
+    # EXP_NAME += '_droptype' + str(config['dropout_type'])
+    # EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
+    # EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
+    # EXP_NAME += '_disc' + str(config['discount'])
+    # EXP_NAME += '_thresh' + str(config['reward_threshold'])
+    # EXP_NAME += '_ent' + str(config['entropy_bonus'])
+    # EXP_NAME += '_lr' + str(config['learning_rate'])
+    # EXP_NAME += 'corr' + str(config['dropout_correction'])
+    # EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
@@ -73,6 +80,9 @@ def run_experiment(**config):
             if 'config' in saved_model:
                 if not config['override_old_config']:
                     config = saved_model['config']
+                    config['intermediate_reward'] = False  # TODO
+                    config['reward_predictor_type'] = 'discrete'
+                    config['grad_clip_threshold'] = None
         arguments = {
             "start_loc": 'all',
             "include_holdout_obj": False,
@@ -92,11 +102,13 @@ def run_experiment(**config):
             set_seed(config['seed'])
             policy = saved_model['policy']
             baseline = saved_model['baseline']
-            curriculum_step = saved_model['curriculum_step']
+            curriculum_step = config['level']
+            saved_model['curriculum_step']
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
+            start_itr = 0 ## TODO: comment out!
             reward_predictor = saved_model['reward_predictor']
             if 'supervised_model' in saved_model:
                 supervised_model = saved_model['supervised_model']
@@ -142,6 +154,15 @@ def run_experiment(**config):
             start_itr = 0
             curriculum_step = env.index
 
+        # obs_dim = env.reset().shape[0]
+        # supervised_model = DiscreteRNNPolicy(
+        #     name="supervised-policy",
+        #     action_dim=np.prod(env.action_space.n),
+        #     obs_dim=obs_dim,
+        #     meta_batch_size=config['meta_batch_size'],
+        #     hidden_sizes=config['hidden_sizes'],
+        #     cell_type=config['cell_type'],
+        # )
         sampler = MetaSampler(
             env=env,
             policy=policy,
@@ -161,6 +182,8 @@ def run_experiment(**config):
             normalize_adv=config['normalize_adv'],
             positive_adv=config['positive_adv'],
         )
+
+        agent_type = 'agent' if config['self_distill'] else 'teacher'
 
         algo = PPO(
             policy=policy,
@@ -213,6 +236,9 @@ def run_experiment(**config):
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
             distill_only=config['distill_only'],
+            mode=config['mode'],
+            num_batches=config['num_batches'],
+            data_path=config['data_path']
         )
         trainer.train()
 
@@ -220,9 +246,16 @@ if __name__ == '__main__':
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
+        # TODO: at some point either remove this or make it less sketch
+        'mode': ['collection'],  # collection or distillation
+        'level': [32],
+        "n_itr": [1000],
+        'num_batches': [1000],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL32collection_4'],
+
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'OGPARAMS_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
-        'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
+        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
         # Meta
@@ -252,10 +285,10 @@ if __name__ == '__main__':
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
         "hidden_sizes": [(128, 128,), (128,)],
-        "discount": [0.9],
+        "discount": [0.95],
 
         # Reward
-        'reward_predictor_type': ['gaussian'],
+        'reward_predictor_type': ['discrete'],
         'intermediate_reward': [False], # This turns the intermediate rewards on or off
         'reward_threshold': [.95],
         'ceil_reward': [False],
@@ -280,7 +313,6 @@ if __name__ == '__main__':
         "max_epochs": [5],
         "cell_type": ["lstm"],
         "num_minibatches": [1],
-        "n_itr": [10000],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
     }
