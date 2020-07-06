@@ -28,7 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'JUSTSUPLEARNING'
+PREFIX = 'JUSTSUPLEARNING512'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -247,14 +247,14 @@ if __name__ == '__main__':
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
-        'mode': ['collection'],  # collection or distillation
-        'level': [32],
+        'mode': ['distillation'],  # collection or distillation
+        'level': [12],
         "n_itr": [1000],
-        'num_batches': [1000],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL32collection_4'],
+        'num_batches': [100],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL4collection_4'],
 
         # Saving/loading/finetuning
-        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -284,11 +284,11 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(128, 128,), (128,)],
+        "hidden_sizes": [(512, 512,), (128,)],
         "discount": [0.95],
 
         # Reward
-        'reward_predictor_type': ['discrete'],
+        'reward_predictor_type': ['gaussian'],
         'intermediate_reward': [False], # This turns the intermediate rewards on or off
         'reward_threshold': [.95],
         'ceil_reward': [False],
