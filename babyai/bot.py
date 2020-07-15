@@ -562,6 +562,7 @@ class Bot:
         # performed by this bot
         self.bfs_step_counter = 0
         self.step = 0
+        self.vis_mask_list = []
 
     def replan(self, action_taken=None):
         """Replan and suggest an action.
@@ -583,6 +584,7 @@ class Bot:
 
         """
         self._process_obs()
+        self.vis_mask_list.append([self.vis_mask, self.mission.agent_pos])
 
         # Check that no box has been opened
         self._check_erroneous_box_opening(action_taken)
@@ -599,12 +601,20 @@ class Bot:
         while self.stack and self.stack[-1].is_exploratory():
             self.stack.pop()
 
+        self.prev_stack = []
+
         suggested_action = None
         while self.stack:
 
             if len(self.stack) > 20:
                 print("STACK IS LONG > 20")
                 # self.mission.render(mode='human')
+
+            # TODO: delete this chunk!
+            import copy
+            curr_stack = copy.deepcopy(self.stack)
+            self.prev_stack.append(curr_stack)
+
 
             subgoal = self.stack[-1]
             suggested_action = subgoal.replan_before_action()
@@ -620,6 +630,7 @@ class Bot:
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
+        return None  # TODO: remove this if we are ever using the subgoal
         subgoal_names = ['CloseSubgoal',
                         'OpenSubgoal',
                         'DropSubgoal',
@@ -660,6 +671,10 @@ class Bot:
             subgoal_val = np.array([-1, -1])
         else:
             subgoal_type = 2
+            if type(subgoal.datum) is np.ndarray:
+                print("SUBGOAL NAME", subgoal_name_idx)
+                print("????????", subgoal, subgoal.datum)
+
             color_idx = COLOR_NAMES.index(subgoal.datum.color)
             type_idx = OBJ_TYPES.index(subgoal.datum.type)
             subgoal_val = np.array([color_idx, type_idx])
@@ -730,9 +745,13 @@ class Bot:
                         print("finding object", obj_desc)
                         print("position", obj_pos)
                         print("VisMask", self.vis_mask)
+                        print("STACK", self.stack)
+                        print("PREVIOUS STACK", self.prev_stack)
                         self.mission.render('human')
-                        while True:
-                            x = 3
+                        import IPython
+                        IPython.embed()
+                        # while True:
+                        #     x = 3
                         print("???")
 
                     assert shortest_path_to_obj is not None

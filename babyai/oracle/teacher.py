@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 import pickle
 import copy
@@ -28,13 +27,6 @@ class Teacher:
         self.oracle_actions = []
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
-        if device is None:
-            if torch.cuda.is_available():
-                self.device = 'cuda'
-            else:
-                self.device = 'cpu'
-        else:
-            self.device = device
 
     def set_feedback_type(self, feedback_type):
         """

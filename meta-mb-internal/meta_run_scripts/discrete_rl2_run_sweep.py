@@ -28,7 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'JUSTSUPLEARNING512Agent'
+PREFIX = 'JUSTSUPLEARNING512'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -183,7 +183,7 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        agent_type = 'agent'# if config['self_distill'] else 'teacher'
+        agent_type = 'agent' if config['self_distill'] else 'teacher'
 
         algo = PPO(
             policy=policy,
@@ -247,15 +247,15 @@ if __name__ == '__main__':
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
-        'mode': ['distillation'],  # collection or distillation
-        'level': [37],
-        "n_itr": [500],
-        'num_batches': [107],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL37collection_4'],
-        'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
+        'mode': ['collection'],  # collection or distillation
+        'level': [36],
+        "n_itr": [726],
+        'num_batches': [208],
+        'data_path': [base_path + 'JUSTSUPLEARNING512L13collection_batches_4'],
+        'reward_predictor_type': ['discrete'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
