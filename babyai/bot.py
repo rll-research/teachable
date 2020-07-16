@@ -587,6 +587,10 @@ class Bot:
         self._process_obs()
         self.vis_mask_list.append([self.vis_mask, self.mission.agent_pos])
         self.img_list.append(self.mission.render('rgb_array'))
+        k = 5
+        if len(self.vis_mask_list) > k:
+            self.vis_mask_list = self.vis_mask_list[-k:]
+            self.img_list = self.img_list[-k:]
 
         # Check that no box has been opened
         self._check_erroneous_box_opening(action_taken)
@@ -632,7 +636,6 @@ class Bot:
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
-        return None  # TODO: remove this if we are ever using the subgoal
         subgoal_names = ['CloseSubgoal',
                         'OpenSubgoal',
                         'DropSubgoal',
@@ -674,8 +677,11 @@ class Bot:
         else:
             subgoal_type = 2
             if type(subgoal.datum) is np.ndarray:
+                print(type(subgoal.datum))
                 print("SUBGOAL NAME", subgoal_name_idx)
                 print("????????", subgoal, subgoal.datum)
+                import IPython
+                IPython.embed()
 
             color_idx = COLOR_NAMES.index(subgoal.datum.color)
             type_idx = OBJ_TYPES.index(subgoal.datum.type)

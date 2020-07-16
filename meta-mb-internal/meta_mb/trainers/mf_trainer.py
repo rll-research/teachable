@@ -152,14 +152,14 @@ class Trainer(object):
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
                                                         dropout_proportion=dropout_proportion)
-                    sampling_time = time.time() - time_env_sampling_start
-
-                    """ ----------------- Processing Samples ---------------------"""
-
-                    logger.log("Processing samples...")
-                    time_proc_samples_start = time.time()
-                    samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
-                    self.save_data(samples_data, itr)
+                    # sampling_time = time.time() - time_env_sampling_start
+                    #
+                    # """ ----------------- Processing Samples ---------------------"""
+                    #
+                    # logger.log("Processing samples...")
+                    # time_proc_samples_start = time.time()
+                    # samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
+                    # self.save_data(samples_data, itr)
 
                 logger.logkv('Itr', itr)
                 logger.log(self.exp_name)

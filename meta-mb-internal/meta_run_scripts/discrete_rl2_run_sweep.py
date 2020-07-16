@@ -263,7 +263,7 @@ if __name__ == '__main__':
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
-        "rollouts_per_meta_task": [2],
+        "rollouts_per_meta_task": [1],
 
         # Dropout
         'dropout_goal': [0],
@@ -285,7 +285,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(512, 512,), (128,)],
+        "hidden_sizes": [(2,), (128,)],
         "discount": [0.95],
 
         # Reward
@@ -303,7 +303,7 @@ if __name__ == '__main__':
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
-        'meta_batch_size': [100],
+        'meta_batch_size': [10],
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
