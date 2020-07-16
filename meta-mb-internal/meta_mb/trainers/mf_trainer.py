@@ -134,15 +134,16 @@ class Trainer(object):
                     logger.log("Training supervised model")
                     self.distill(samples_data)
                     logger.log("Running supervised model")
-                    self.run_supervised()
-                    logger.log('Evaluating supervised')
-                    self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                    actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
-                    mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
-                    original_actions = samples_data['env_infos']['teacher_action']
-                    correct = (actions == original_actions) * mask
-                    accuracy = np.sum(correct) / np.sum(mask)
-                    logger.logkv("Distilled/Accuracy", accuracy)
+                    if itr % 20 == 0:
+                        self.run_supervised()
+                        logger.log('Evaluating supervised')
+                        self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                        actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
+                        mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
+                        original_actions = samples_data['env_infos']['teacher_action']
+                        correct = (actions == original_actions) * mask
+                        accuracy = np.sum(correct) / np.sum(mask)
+                        logger.logkv("Distilled/Accuracy", accuracy)
 
                     params = self.get_itr_snapshot(itr)
                     logger.save_itr_params(itr, self.curriculum_step, params)

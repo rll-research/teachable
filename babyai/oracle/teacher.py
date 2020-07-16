@@ -46,6 +46,8 @@ class Teacher:
         self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(self.env)
         new_oracle.vis_mask = self.oracle.vis_mask
+        new_oracle.vis_mask_list = self.oracle.vis_mask_list
+        new_oracle.img_list = self.oracle.img_list
         new_oracle.step = self.oracle.step
         self.oracle = new_oracle
         self.last_action = self.next_action

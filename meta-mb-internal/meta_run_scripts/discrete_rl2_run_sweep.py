@@ -249,10 +249,10 @@ if __name__ == '__main__':
         # TODO: at some point either remove this or make it less sketch
         'mode': ['collection'],  # collection or distillation
         'level': [36],
-        "n_itr": [726],
-        'num_batches': [208],
-        'data_path': [base_path + 'JUSTSUPLEARNING512L13collection_batches_4'],
-        'reward_predictor_type': ['discrete'],  # TODO: change to gaussian for distillation
+        "n_itr": [1000],
+        'num_batches': [189],
+        'data_path': [base_path + 'JUSTSUPLEARNING512AgentL14collection_4'],
+        'reward_predictor_type': ['distillation'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
         'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],

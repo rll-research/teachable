@@ -563,6 +563,7 @@ class Bot:
         self.bfs_step_counter = 0
         self.step = 0
         self.vis_mask_list = []
+        self.img_list = []
 
     def replan(self, action_taken=None):
         """Replan and suggest an action.
@@ -585,6 +586,7 @@ class Bot:
         """
         self._process_obs()
         self.vis_mask_list.append([self.vis_mask, self.mission.agent_pos])
+        self.img_list.append(self.mission.render('rgb_array'))
 
         # Check that no box has been opened
         self._check_erroneous_box_opening(action_taken)
