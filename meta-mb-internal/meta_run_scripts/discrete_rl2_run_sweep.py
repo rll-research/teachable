@@ -28,7 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # PREFIX = 'debug22'
-PREFIX = 'ILTEACHERNOTEACHERPRETRAINEDL13'
+PREFIX = 'CURRICULUMDISTILLATION'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -165,7 +165,7 @@ def run_experiment(**config):
         algo = PPO(
             policy=policy,
             supervised_model=supervised_model,
-            supervised_ground_truth='agent' if config['self_distill'] else 'teacher',
+            supervised_ground_truth='agent',# if config['self_distill'] else 'teacher',
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
@@ -251,8 +251,8 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(128, 128,), (128,)],
-        "discount": [0.9],
+        "hidden_sizes": [(512, 512,), (128,)],
+        "discount": [0.95],
 
         # Reward
         'reward_predictor_type': ['gaussian'],

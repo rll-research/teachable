@@ -160,7 +160,8 @@ class Trainer(object):
                     self.algo.optimize_reward(samples_data)
                 if self.algo.supervised_model is not None and advance_curriculum:
                     logger.log("Distillation...")
-                    self.distill(samples_data)
+                    for _ in range(20):
+                        self.distill(samples_data)
                     advance_curriculum_s, increase_dropout_s = self.run_supervised()
                     if self.advance_without_teacher:
                         advance_curriculum = advance_curriculum_s
