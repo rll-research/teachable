@@ -228,7 +228,7 @@ class Trainer(object):
     def distill(self, samples):
         cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
         samples['observations'] = cleaned_obs
-        self.algo.supervised_model.reset(dones=[True] * 100)
+        self.algo.supervised_model.reset(dones=[True] * self.sampler.meta_batch_size)
         self.algo.optimize_supervised(samples)
 
 

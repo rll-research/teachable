@@ -239,6 +239,7 @@ class RNNFirstOrderOptimizer(Optimizer):
                     batch_loss, grads, hidden_batch = sess.run([self._loss, self._gradients_var, self._next_hidden_var],
                                                                 feed_dict=feed_dict)
                 except Exception as e:
+                    print("ERROR!", e)
                     import IPython
                     IPython.embed()
                 loss.append(batch_loss)
