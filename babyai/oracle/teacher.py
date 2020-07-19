@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 import pickle
 import copy
@@ -28,13 +27,6 @@ class Teacher:
         self.oracle_actions = []
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
-        if device is None:
-            if torch.cuda.is_available():
-                self.device = 'cuda'
-            else:
-                self.device = 'cpu'
-        else:
-            self.device = device
 
     def set_feedback_type(self, feedback_type):
         """
@@ -54,6 +46,8 @@ class Teacher:
         self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(self.env)
         new_oracle.vis_mask = self.oracle.vis_mask
+        new_oracle.vis_mask_list = self.oracle.vis_mask_list
+        new_oracle.img_list = self.oracle.img_list
         new_oracle.step = self.oracle.step
         self.oracle = new_oracle
         self.last_action = self.next_action

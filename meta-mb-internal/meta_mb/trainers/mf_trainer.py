@@ -134,15 +134,16 @@ class Trainer(object):
                     logger.log("Training supervised model")
                     self.distill(samples_data)
                     logger.log("Running supervised model")
-                    self.run_supervised()
-                    logger.log('Evaluating supervised')
-                    self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                    actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
-                    mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
-                    original_actions = samples_data['env_infos']['teacher_action']
-                    correct = (actions == original_actions) * mask
-                    accuracy = np.sum(correct) / np.sum(mask)
-                    logger.logkv("Distilled/Accuracy", accuracy)
+                    if itr % 20 == 0:
+                        self.run_supervised()
+                        logger.log('Evaluating supervised')
+                        self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                        actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
+                        mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
+                        original_actions = samples_data['env_infos']['teacher_action']
+                        correct = (actions == original_actions) * mask
+                        accuracy = np.sum(correct) / np.sum(mask)
+                        logger.logkv("Distilled/Accuracy", accuracy)
 
                     params = self.get_itr_snapshot(itr)
                     logger.save_itr_params(itr, self.curriculum_step, params)
@@ -151,14 +152,14 @@ class Trainer(object):
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
                                                         dropout_proportion=dropout_proportion)
-                    sampling_time = time.time() - time_env_sampling_start
-
-                    """ ----------------- Processing Samples ---------------------"""
-
-                    logger.log("Processing samples...")
-                    time_proc_samples_start = time.time()
-                    samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
-                    self.save_data(samples_data, itr)
+                    # sampling_time = time.time() - time_env_sampling_start
+                    #
+                    # """ ----------------- Processing Samples ---------------------"""
+                    #
+                    # logger.log("Processing samples...")
+                    # time_proc_samples_start = time.time()
+                    # samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
+                    # self.save_data(samples_data, itr)
 
                 logger.logkv('Itr', itr)
                 logger.log(self.exp_name)

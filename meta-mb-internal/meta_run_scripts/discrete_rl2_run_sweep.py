@@ -102,6 +102,7 @@ def run_experiment(**config):
         if original_saved_path is not None:
             set_seed(config['seed'])
             policy = saved_model['policy']
+            policy.hidden_state = None
             baseline = saved_model['baseline']
             curriculum_step = config['level']
             saved_model['curriculum_step']
@@ -111,6 +112,7 @@ def run_experiment(**config):
             start_itr = saved_model['itr']
             start_itr = 0 ## TODO: comment out!
             reward_predictor = saved_model['reward_predictor']
+            reward_predictor.hidden_state = None
             if 'supervised_model' in saved_model:
                 supervised_model = saved_model['supervised_model']
             else:
@@ -184,7 +186,7 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        agent_type = 'agent'# if config['self_distill'] else 'teacher'
+        agent_type = 'agent' if config['self_distill'] else 'teacher'
 
         algo = PPO(
             policy=policy,
@@ -245,14 +247,15 @@ def run_experiment(**config):
 
 if __name__ == '__main__':
     base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
+    hidden_size = 512
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [22],
+        'level': [32],
         "n_itr": [1000],
-        'num_batches': [677],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
+        'num_batches': [46],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL32collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
@@ -264,7 +267,7 @@ if __name__ == '__main__':
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
-        "rollouts_per_meta_task": [2],
+        "rollouts_per_meta_task": [1],
 
         # Dropout
         'dropout_goal': [0],
@@ -286,7 +289,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(128, 128), (128,)],
+        "hidden_sizes": [(hidden_size, hidden_size), (128,)],
         "discount": [0.95],
 
         # Reward
