@@ -28,12 +28,13 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'JUSTSUPLEARNING512Agent'
+PREFIX = 'SIZECOMPARISONORACLE'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += 'L' + str(config['level'])
     EXP_NAME += config['mode']
+    EXP_NAME += 'SS' + str(config['hidden_sizes'][0])
     if config['mode'] == 'distillation':
         EXP_NAME += "_batches" + str(config['num_batches'])
 
@@ -243,15 +244,15 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
+    base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [37],
-        "n_itr": [500],
-        'num_batches': [107],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL37collection_4'],
+        'level': [22],
+        "n_itr": [1000],
+        'num_batches': [677],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
@@ -285,7 +286,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(512, 512,), (128,)],
+        "hidden_sizes": [(128, 128), (128,)],
         "discount": [0.95],
 
         # Reward
