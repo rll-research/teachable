@@ -28,7 +28,8 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 # PREFIX = 'debug22'
-PREFIX = 'CURRICULUMDISTILLATION'
+PREFIX = 'CURRICULUMPRETRAINED'
+PREFIX = 'CURRICULUMFROMSCRATCH'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -73,6 +74,13 @@ def run_experiment(**config):
             if 'config' in saved_model:
                 if not config['override_old_config']:
                     config = saved_model['config']
+                    config['intermediate_reward'] = False
+                    config['reward_predictor_type'] = 'discrete'
+                    config['grad_clip_threshold'] = None
+                    config['self_distill'] = False
+                    config['il_comparison'] = True
+                    config['distill_with_teacher'] = False
+                    config['distill_only'] = False
         arguments = {
             "start_loc": 'all',
             "include_holdout_obj": False,
@@ -93,10 +101,12 @@ def run_experiment(**config):
             policy = saved_model['policy']
             baseline = saved_model['baseline']
             curriculum_step = saved_model['curriculum_step']
+            curriculum_step = 4  # TODO: remove this!
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
+            start_itr = 0 # TODO: remove this!
             reward_predictor = saved_model['reward_predictor']
             if 'supervised_model' in saved_model:
                 supervised_model = saved_model['supervised_model']
@@ -141,6 +151,17 @@ def run_experiment(**config):
                 supervised_model = None
             start_itr = 0
             curriculum_step = env.index
+
+        # TODO: remove this!
+        obs_dim = env.reset().shape[0]
+        supervised_model = DiscreteRNNPolicy(
+            name="supervised-policy",
+            action_dim=np.prod(env.action_space.n),
+            obs_dim=obs_dim,
+            meta_batch_size=config['meta_batch_size'],
+            hidden_sizes=config['hidden_sizes'],
+            cell_type=config['cell_type'],
+        )
 
         sampler = MetaSampler(
             env=env,
@@ -221,7 +242,7 @@ if __name__ == '__main__':
     sweep_params = {
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'OGPARAMS_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -256,13 +277,13 @@ if __name__ == '__main__':
 
         # Reward
         'reward_predictor_type': ['gaussian'],
-        'intermediate_reward': [False], # This turns the intermediate rewards on or off
-        'reward_threshold': [.95],
+        'intermediate_reward': [True], # This turns the intermediate rewards on or off
+        'reward_threshold': [.9],
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [False],
+        'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'self_distill': [True],
         'distill_with_teacher': [False],
 
         # Arguments we basically never change

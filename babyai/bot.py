@@ -731,8 +731,6 @@ class Bot:
                         print("position", obj_pos)
                         print("VisMask", self.vis_mask)
                         self.mission.render('human')
-                        while True:
-                            x = 3
                         print("???")
 
                     assert shortest_path_to_obj is not None
