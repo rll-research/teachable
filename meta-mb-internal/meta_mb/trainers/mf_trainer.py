@@ -163,6 +163,14 @@ class Trainer(object):
                     for _ in range(20):
                         self.distill(samples_data)
                     advance_curriculum_s, increase_dropout_s = self.run_supervised()
+                    logger.log('Evaluating supervised')
+                    self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                    actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
+                    mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
+                    original_actions = samples_data['env_infos']['teacher_action']
+                    correct = (actions == original_actions) * mask
+                    accuracy = np.sum(correct) / np.sum(mask)
+                    logger.logkv("Distilled/Accuracy", accuracy)
                     if self.advance_without_teacher:
                         advance_curriculum = advance_curriculum_s
                         increase_dropout = increase_dropout_s
