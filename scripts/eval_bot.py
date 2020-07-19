@@ -21,7 +21,7 @@ import traceback
 from optparse import OptionParser
 from babyai.levels import level_dict
 from babyai.bot import Bot
-from babyai.utils.agent import ModelAgent, RandomAgent
+# from babyai.utils.agent import ModelAgent, RandomAgent
 from random import Random
 
 
@@ -31,7 +31,7 @@ level_list = [name for name, level in level_dict.items()
 # success:"GoToLocal", "GoTo", "Open", "Unlock" (98.6%) "GoToImpUnlock"
 # failure: "UnblockPickup" "Pickup", "PutNext"
 # level_list = ["GoToLocal", "GoTo", "GoToImpUnlock", "Pickup", "UnblockPickup", "Open", "Unlock", "PutNext"]
-level_list = ["Unlock"]
+level_list = ["GoToImpUnlock", "PutNext", "UnblockPickup"]
 print("LEVEL", level_list)
 
 parser = OptionParser()
@@ -108,13 +108,14 @@ for level_name in level_list:
     total_episode_steps = 0
     total_bfs_steps = 0
 
+    total_actions = []
     for run_no in range(options.num_runs):
         level = level_dict[level_name]
 
         mission_seed = options.seed + run_no
         mission = level(seed=mission_seed)
-        if not run_no % 1:
-            print(run_no, mission.mission)
+        # if not run_no % 1:
+        #     print(run_no, mission.mission)
         expert = Bot(mission)
 
         if options.verbose:
@@ -132,7 +133,7 @@ for level_name in level_list:
                 # vis_mask = expert.vis_mask
                 # expert = Bot(mission)
                 # expert.vis_mask = vis_mask
-                action = expert.replan(last_action)
+                action = expert.replan(last_action)[0]
                 # action = expert.replan(last_action)
                 if options.advise_mode and episode_steps < non_optimal_steps:
                     if rng.random() < options.bad_action_proba:
@@ -160,6 +161,8 @@ for level_name in level_list:
                 episode_steps += 1
 
                 if done:
+                    print("episode steps", episode_steps)
+                    total_actions.append(episode_steps)
                     total_episode_steps += episode_steps
                     total_bfs_steps += expert.bfs_step_counter
                     total_bfs += expert.bfs_counter
@@ -174,6 +177,7 @@ for level_name in level_list:
                             print('FAILURE on %s, seed %d, reward %.2f' % (level_name, mission_seed, reward))
                     break
         except Exception as e:
+            print("E", e)
             print('FAILURE on %s, seed %d' % (level_name, mission_seed))
             # traceback.print_exc()
             # Playing these 2 sets of actions should get you to the mission snapshot above
@@ -183,6 +187,7 @@ for level_name in level_list:
             break
 
     all_good = all_good and (num_success == options.num_runs)
+    print("MAX", max(total_actions))
 
     success_rate = 100 * num_success / options.num_runs
     mean_reward = total_reward / options.num_runs
