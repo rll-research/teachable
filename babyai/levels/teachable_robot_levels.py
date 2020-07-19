@@ -509,6 +509,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset()
+        self.max_steps = min(self.max_steps, 300)
 
         obs = self.gen_obs()
 
