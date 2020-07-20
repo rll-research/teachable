@@ -247,19 +247,19 @@ def run_experiment(**config):
 
 if __name__ == '__main__':
     base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
-    hidden_size = 512
+    hidden_size = 128
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
         'level': [22],
-        "n_itr": [1000],
+        "n_itr": [10000],
         'num_batches': [677],
         'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
