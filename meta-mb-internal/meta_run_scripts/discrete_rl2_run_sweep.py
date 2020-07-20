@@ -252,10 +252,10 @@ if __name__ == '__main__':
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [32],
+        'level': [22],
         "n_itr": [1000],
-        'num_batches': [46],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL32collection_4'],
+        'num_batches': [677],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning

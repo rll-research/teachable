@@ -1,5 +1,5 @@
 from gym.core import Env
-from gym.envs.mujoco import MujocoEnv
+#from gym.envs.mujoco import MujocoEnv
 import numpy as np
 
 
@@ -47,7 +47,7 @@ class MetaEnv(Env):
         """
         pass
 
-class RandomEnv(MetaEnv, MujocoEnv):
+class RandomEnv(MetaEnv):#, MujocoEnv):
     """
     This class provides functionality for randomizing the physical parameters of a mujoco model
     The following parameters are changed:
