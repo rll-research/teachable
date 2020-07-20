@@ -369,7 +369,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         actions = ["go", "pick", "up", "open", "put"]
         fillers = ["to", "next", "the", "a"]
         misc = ["follow_teacher"]
-        return colors + types + actions + fillers + misc
+        return ['PAD'] + colors + types + actions + fillers + misc
 
     def to_vocab_index(self, mission, pad_length=None):  # TODO: turn this into an embedding
         """
@@ -383,7 +383,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         vocab = self.vocab()
         mission_list = [vocab.index(word) for word in words]
         if pad_length is not None:
-            mission_list = mission_list + [-1] * (pad_length - len(mission_list))
+            mission_list = mission_list + [0] * (pad_length - len(mission_list))
         if len(mission_list) > pad_length:
             raise ValueError("Mission is too long: " + mission + str(pad_length))
         return mission_list

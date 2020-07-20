@@ -58,6 +58,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
         self.action_space = action_space
+        self.env = env
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.obs_space = obs_space
 
@@ -197,6 +199,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         except Exception:
             raise ValueError('Could not add extra heads')
 
+    def reset(self, dones=None):
+        batch_len = 1 if dones is None else len(dones)
+        self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
+
     @property
     def memory_size(self):
         return 2 * self.semi_memory_size
@@ -206,17 +212,49 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return self.memory_dim
 
     def get_actions(self, obs):
-        probs, memory = self(obs, self.memory)  # TODO: initialize this
-        self.memory = memory  # TODO: reset this
-        action = np.random.choice(self.action_space, p=probs)
+        if type(obs) is list:
+            obs = torch.FloatTensor(np.stack(obs, axis=0)).to(self.device)
+        else:
+            obs = torch.FloatTensor(obs).to(self.device)
+        assert len(obs.shape) == 3, obs.shape
+        action_list = [[] for _ in range(len(obs))]
+        probs_list = [[] for _ in range(len(obs))]
+        for t in range(len(obs[0])):
+            obs_t = obs[:, t]
+            action, probs = self.get_actions_t(obs_t)
+            for i in range(len(probs_list)):
+                action_list[i].append(action[i])
+                probs_list[i].append(probs[i])
+        actions = np.array(action_list)
+        return actions, probs_list
+
+    def get_actions_t(self, obs):
+        probs, memory, dist = self(obs, self.memory)  # TODO: initialize this
+        self.memory = memory
+        probs = probs.data.cpu().numpy()
+        action = [[np.random.choice(self.action_space.n, p=p)] for p in probs]
+        probs = [{"probs": p} for p in probs]
         return action, probs
+
+    def get_instr(self, obs):
+        instr_indices = list(range(150, 161))
+        instruction_vector = obs[:, instr_indices].long() + 1  # TODO: the +1 is b/c torch doesn't like -1 indices.  But we should change this later.
+        return instruction_vector
+
+    def get_img(self, obs):
+        img_indices = list(range(3, 150))
+        try:
+            img_vector = obs[:, img_indices].reshape((len(obs), 7, 7, 3))
+        except:
+            print("ERROR", obs.shape)
+            assert False
+        return img_vector
 
     def forward(self, obs, memory, instr_embedding=None):
 
-        instr_indices = list(range(150, 161))  # Expect obs to be [batch, obs_dim]
-        img_indices = list(range(3, 150))
-        instruction_vector = obs[:, instr_indices]
-        img_vector = obs[:, img_indices].reshape((7, 7, 3))
+          # Expect obs to be [batch, obs_dim]
+        instruction_vector = self.get_instr(obs)
+        img_vector = self.get_img(obs)
 
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
@@ -240,8 +278,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-        # x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
-        x = img_vector
+        x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
         if self.arch.startswith("expert_filmcnn"):
             x = self.image_conv(x)
@@ -271,12 +308,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         x = self.actor(embedding)
         probs = F.softmax(x, dim=1)
-        # dist = Categorical(logits=F.log_softmax(x, dim=1))
+        dist = Categorical(logits=F.log_softmax(x, dim=1))
 
         # x = self.critic(embedding)
         # value = x.squeeze(1)
 
-        return probs, memory
+        return probs, memory, dist
         # return {'dist': dist, 'value': value, 'memory': memory, 'extra_predictions': extra_predictions}
 
     def _get_instr_embedding(self, instr): # expect token indices [batch, instr_length], 0 padded

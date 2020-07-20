@@ -3,7 +3,7 @@ from meta_mb.algos.base import Algo
 from meta_mb.optimizers.rl2_first_order_optimizer import RL2FirstOrderOptimizer
 from meta_mb.optimizers.first_order_optimizer import FirstOrderOptimizer
 from meta_mb.utils import Serializable
-from meta_mb.policies.discrete_rnn_with_cnn import DiscreteRNNPolicy
+from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
 import tensorflow as tf
 from collections import OrderedDict
 import copy

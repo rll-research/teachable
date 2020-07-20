@@ -192,7 +192,7 @@ class MetaSampler(BaseSampler):
             assert len(agent_infos[0]) == self.envs_per_task
             agent_infos = sum(agent_infos, [])  # stack agent_infos
 
-        assert len(agent_infos) == self.meta_batch_size * self.envs_per_task == len(env_infos)
+        assert len(agent_infos) == self.meta_batch_size * self.envs_per_task == len(env_infos), (len(agent_infos), self.meta_batch_size, self.envs_per_task, len(env_infos))
         return agent_infos, env_infos
 
 
