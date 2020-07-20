@@ -6,8 +6,10 @@ from meta_mb.algos.ppo import PPO
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
+from meta_mb.policies.discrete_rnn_with_cnn import DiscreteRNNPolicy
 from meta_mb.policies.gaussian_rnn_policy import GaussianRNNPolicy
+from babyai.model import ACModel
+
 import os
 import shutil
 from meta_mb.logger import logger
@@ -119,14 +121,24 @@ def run_experiment(**config):
                                               pre_levels=config['pre_levels'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
-            policy = DiscreteRNNPolicy(
-                    name="meta-policy",
-                    action_dim=np.prod(env.action_space.n),
-                    obs_dim=obs_dim,
-                    meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
-                    cell_type=config['cell_type']
-                )
+            image_dim = 128
+            memory_dim = 128
+            instr_dim = 128  # TODO: confirm OK
+            use_instr = True
+            instr_arch = 'bigru'
+            use_mem = True
+            arch = 'expert_filmcnn'
+            policy = ACModel(env.observation_space, env.action_space, env,
+                                       image_dim, memory_dim, instr_dim,
+                                       use_instr, instr_arch, use_mem, arch)
+            # policy = DiscreteRNNPolicy(
+            #         name="meta-policy",
+            #         action_dim=np.prod(env.action_space.n),
+            #         obs_dim=obs_dim,
+            #         meta_batch_size=config['meta_batch_size'],
+            #         hidden_sizes=config['hidden_sizes'],
+            #         cell_type=config['cell_type']
+            #     )
             reward_predictor = GaussianRNNPolicy(
                 name="reward-predictor",
                 obs_dim=obs_dim - 1,
@@ -152,16 +164,16 @@ def run_experiment(**config):
             start_itr = 0
             curriculum_step = env.index
 
-        # TODO: remove this!
-        obs_dim = env.reset().shape[0]
-        supervised_model = DiscreteRNNPolicy(
-            name="supervised-policy",
-            action_dim=np.prod(env.action_space.n),
-            obs_dim=obs_dim,
-            meta_batch_size=config['meta_batch_size'],
-            hidden_sizes=config['hidden_sizes'],
-            cell_type=config['cell_type'],
-        )
+        # # TODO: remove this!
+        # obs_dim = env.reset().shape[0]
+        # supervised_model = DiscreteRNNPolicy(
+        #     name="supervised-policy",
+        #     action_dim=np.prod(env.action_space.n),
+        #     obs_dim=obs_dim,
+        #     meta_batch_size=config['meta_batch_size'],
+        #     hidden_sizes=config['hidden_sizes'],
+        #     cell_type=config['cell_type'],
+        # )
 
         sampler = MetaSampler(
             env=env,
@@ -242,7 +254,7 @@ if __name__ == '__main__':
     sweep_params = {
 
         # Saving/loading/finetuning
-        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
+        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -291,10 +303,10 @@ if __name__ == '__main__':
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
-        'meta_batch_size': [100],
+        'meta_batch_size': [1],  # TODO: change back!
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
-        "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
+        "max_path_length": [2],#float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)  # TODO: change back!
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],

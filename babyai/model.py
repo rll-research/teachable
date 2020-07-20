@@ -6,7 +6,7 @@ from torch.distributions.categorical import Categorical
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import babyai.rl
 from babyai.rl.utils.supervised_losses import required_heads
-
+import numpy as np
 
 # Function from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def initialize_parameters(m):
@@ -42,7 +42,7 @@ class ExpertControllerFiLM(nn.Module):
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
-    def __init__(self, obs_space, action_space,
+    def __init__(self, obs_space, action_space, env,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False, arch="cnn1",
                  aux_info=None):
@@ -57,6 +57,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.image_dim = image_dim
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
+        self.action_space = action_space
 
         self.obs_space = obs_space
 
@@ -91,7 +92,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         # Define instruction embedding
         if self.use_instr:
             if self.lang_model in ['gru', 'bigru', 'attgru']:
-                self.word_embedding = nn.Embedding(obs_space["instr"], self.instr_dim)
+                self.word_embedding = nn.Embedding(len(env.vocab()), self.instr_dim)
                 if self.lang_model in ['gru', 'bigru', 'attgru']:
                     gru_dim = self.instr_dim
                     if self.lang_model in ['bigru', 'attgru']:
@@ -204,13 +205,25 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def semi_memory_size(self):
         return self.memory_dim
 
+    def get_actions(self, obs):
+        probs, memory = self(obs, self.memory)  # TODO: initialize this
+        self.memory = memory  # TODO: reset this
+        action = np.random.choice(self.action_space, p=probs)
+        return action, probs
+
     def forward(self, obs, memory, instr_embedding=None):
+
+        instr_indices = list(range(150, 161))  # Expect obs to be [batch, obs_dim]
+        img_indices = list(range(3, 150))
+        instruction_vector = obs[:, instr_indices]
+        img_vector = obs[:, img_indices].reshape((7, 7, 3))
+
         if self.use_instr and instr_embedding is None:
-            instr_embedding = self._get_instr_embedding(obs.instr)
+            instr_embedding = self._get_instr_embedding(instruction_vector)
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
             # memory: B x M
-            mask = (obs.instr != 0).float()
+            mask = (instruction_vector != 0).float()
             # The mask tensor has the same length as obs.instr, and
             # thus can be both shorter and longer than instr_embedding.
             # It can be longer if instr_embedding is computed
@@ -227,7 +240,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-        x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
+        # x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
+        x = img_vector
 
         if self.arch.startswith("expert_filmcnn"):
             x = self.image_conv(x)
@@ -256,14 +270,16 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             extra_predictions = dict()
 
         x = self.actor(embedding)
-        dist = Categorical(logits=F.log_softmax(x, dim=1))
+        probs = F.softmax(x, dim=1)
+        # dist = Categorical(logits=F.log_softmax(x, dim=1))
 
-        x = self.critic(embedding)
-        value = x.squeeze(1)
+        # x = self.critic(embedding)
+        # value = x.squeeze(1)
 
-        return {'dist': dist, 'value': value, 'memory': memory, 'extra_predictions': extra_predictions}
+        return probs, memory
+        # return {'dist': dist, 'value': value, 'memory': memory, 'extra_predictions': extra_predictions}
 
-    def _get_instr_embedding(self, instr):
+    def _get_instr_embedding(self, instr): # expect token indices [batch, instr_length], 0 padded
         lengths = (instr != 0).sum(1).long()
         if self.lang_model == 'gru':
             out, _ = self.instr_rnn(self.word_embedding(instr))
