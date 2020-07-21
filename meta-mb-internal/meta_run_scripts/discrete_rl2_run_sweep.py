@@ -32,7 +32,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'JUSTSUPLEARNING512'
+PREFIX = 'TORCHSUPLEARNING'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -280,15 +280,15 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
+    base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [32],
-        "n_itr": [1000],
-        'num_batches': [46],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL32collection_4'],
+        'level': [22],
+        "n_itr": [10000],
+        'num_batches': [677],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning

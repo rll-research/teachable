@@ -41,7 +41,7 @@ def run_sweep(run_experiment, sweep_params, exp_name, instance_type='c4.xlarge')
     sweeper = launcher.DoodadSweeper([local_mount], docker_img=config.DOCKER_IMAGE,
                                      docker_output_dir=docker_mount_point,
                                      local_output_dir=os.path.join(config.DATA_DIR, 'local', exp_name))
-    sweeper.mount_out_s3 = mount.MountS3(s3_path='', mount_point=docker_mount_point, output=True)
+    #sweeper.mount_out_s3 = mount.MountS3(s3_path='', mount_point=docker_mount_point, output=True)
 
     if args.mode == 'ec2':
         print("\n" + "**********" * 10 + "\nexp_prefix: {}\nvariants: {}".format(exp_name, len(
