@@ -110,7 +110,7 @@ def run_experiment(**config):
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
-            start_itr = 0 ## TODO: comment out!
+            start_itr = 1360 ## TODO: comment out!
             reward_predictor = saved_model['reward_predictor']
             reward_predictor.hidden_state = None
             if 'supervised_model' in saved_model:
@@ -154,7 +154,7 @@ def run_experiment(**config):
                 supervised_model = policy
             else:
                 supervised_model = None
-            start_itr = 0
+            start_itr = 1360
             curriculum_step = env.index
 
         # obs_dim = env.reset().shape[0]
@@ -243,6 +243,7 @@ def run_experiment(**config):
             num_batches=config['num_batches'],
             data_path=config['data_path']
         )
+        print("START ITR", start_itr)
         trainer.train()
 
 if __name__ == '__main__':
@@ -259,7 +260,7 @@ if __name__ == '__main__':
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
-        'saved_path': [base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
