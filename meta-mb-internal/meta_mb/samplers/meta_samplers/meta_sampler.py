@@ -127,7 +127,7 @@ class MetaSampler(BaseSampler):
             else:
                 actions, agent_infos = policy.get_actions(obs_per_task)
                 if max_action:
-                    actions = [[np.argmax(d['probs']) for d in agent_info] for agent_info in agent_infos]
+                    actions = [[[np.argmax(d['probs'])] for d in agent_info] for agent_info in agent_infos]
                     actions = np.array(actions, dtype=np.int32)
             policy_time += time.time() - t
 
