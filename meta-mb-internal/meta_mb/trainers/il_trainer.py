@@ -86,10 +86,10 @@ class ImitationLearning(object):
                 obs = demos['observations'][i, t]
                 if source == 'agent':
                     action = demos['actions'][i, t]
-                elif source == 'oracle':
+                elif source == 'teacher':
                     action = demos['agent_infos']['teacher_action'][i, t]
                 else:
-                    raise NotImplementedError
+                    raise NotImplementedError(source)
                 done = demos['dones'][i, t]
                 new_demo.append((obs, action, done))
                 t += 1
