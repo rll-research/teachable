@@ -283,7 +283,7 @@ class Trainer(object):
 
     def run_supervised(self):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.algo.supervised_model,
-                                            feedback_list=self.teacher_info)
+                                            feedback_list=self.teacher_info, max_action=True)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
