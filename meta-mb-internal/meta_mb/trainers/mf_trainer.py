@@ -53,6 +53,7 @@ class Trainer(object):
             num_batches=None,
             data_path=None,
             il_trainer=None,
+            source='agent',
             ):
         self.algo = algo
         self.env = env
@@ -84,6 +85,7 @@ class Trainer(object):
         self.num_batches = num_batches
         self.data_path = data_path
         self.il_trainer = il_trainer
+        self.source = source
 
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
@@ -153,118 +155,20 @@ class Trainer(object):
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
                                                         dropout_proportion=dropout_proportion)
-                    # sampling_time = time.time() - time_env_sampling_start
-                    #
-                    # """ ----------------- Processing Samples ---------------------"""
-                    #
-                    # logger.log("Processing samples...")
-                    # time_proc_samples_start = time.time()
-                    # samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
-                    # self.save_data(samples_data, itr)
+                    sampling_time = time.time() - time_env_sampling_start
+
+                    """ ----------------- Processing Samples ---------------------"""
+
+                    logger.log("Processing samples...")
+                    time_proc_samples_start = time.time()
+                    samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
+                    self.save_data(samples_data, itr)
 
                 logger.logkv('Itr', itr)
                 logger.log(self.exp_name)
                 logger.dumpkvs()
                 continue
 
-
-
-
-                #
-                # advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
-                # proc_samples_time = time.time() - time_proc_samples_start
-
-                # """ ------------------ Reward Predictor Splicing ---------------------"""
-                # r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                # if self.il_trainer.acmodel is not None:
-                #     self.log_supervised(samples_data)
-                # if self.sparse_rewards:
-                #     self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
-                # # Splice into the inference process
-                # if self.use_rp_inner:
-                #     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
-                # # Splice into the meta-learning process
-                # if self.use_rp_outer:
-                #     samples_data['rewards'] = r_discrete[:, :, 0]
-                # if 'teacher_action' in samples_data['env_infos']:
-                #     samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
-                #
-                # """ ------------------ End Reward Predictor Splicing ---------------------"""
-                #
-                # if type(paths) is list:
-                #     self.log_diagnostics(paths, prefix='train-')
-                # else:
-                #     self.log_diagnostics(sum(paths.values(), []), prefix='train-')
-                #
-                # """ ------------------ Policy Update ---------------------"""
-                #
-                # logger.log("Optimizing policy...")
-                # # This needs to take all samples_data so that it can construct graph for meta-optimization.
-                # time_optimization_step_start = time.time()
-                # if not self.distill_only:
-                #     self.algo.optimize_policy(samples_data)
-                #     self.algo.optimize_reward(samples_data)
-                # if self.il_trainer.acmodel is not None and advance_curriculum:
-                #     logger.log("Distillation...")
-                #     self.distill(samples_data)
-                #     advance_curriculum_s, increase_dropout_s = self.run_supervised()
-                #     if self.advance_without_teacher:
-                #         advance_curriculum = advance_curriculum_s
-                #         increase_dropout = increase_dropout_s
-                #
-                # if advance_curriculum:
-                #     self.curriculum_step += 1
-                #
-                # if increase_dropout:
-                #     dropout_proportion += self.increase_dropout_increment
-                #     dropout_proportion = min(1, dropout_proportion)
-                #
-                # """ ------------------- Logging Stuff --------------------------"""
-                # logger.logkv('Itr', itr)
-                # logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
-                #
-                # logger.logkv('Time/Optimization', time.time() - time_optimization_step_start)
-                # logger.logkv('Time/SampleProc', np.sum(proc_samples_time))
-                # logger.logkv('Time/Sampling', sampling_time)
-                #
-                # logger.logkv('Time/Total', time.time() - start_time)
-                # logger.logkv('Time/Itr', time.time() - itr_start_time)
-                #
-                # logger.logkv('Curriculum Step', self.curriculum_step)
-                # logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
-                #
-                # process = psutil.Process(os.getpid())
-                # memory_use = process.memory_info().rss / float(2 ** 20)
-                # print("Memory Use MiB", memory_use)
-                # logger.logkv('Memory MiB', memory_use)
-                #
-                # logger.log(self.exp_name)
-                #
-                # params = self.get_itr_snapshot(itr)
-                # step = self.curriculum_step
-                # if advance_curriculum:
-                #     step -= 1
-                #
-                # if self.log_and_save:
-                #     logger.log("Saving snapshot...")
-                #     logger.save_itr_params(itr, step, params)
-                #     logger.log("Saved")
-                #
-                #     logger.dumpkvs()
-
-
-                # Save videos of the progress periodically, or right before we advance levels
-                # if advance_curriculum:
-                #     # Save a video of the original level
-                #     self.save_videos(step, save_name='ending_video', num_rollouts=10)
-                #     # Save a video of the new level
-                #     self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
-                # elif itr % self.videos_every == 0:
-                #     self.env.set_level_distribution(step)
-                #     self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
-
-                # if itr == 0:
-                #     sess.graph.finalize()
 
         logger.log("Training finished")
         # self.sess.close()  # TODO: is this okay?
@@ -278,19 +182,15 @@ class Trainer(object):
     def distill(self, samples):
         cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
         samples['observations'] = cleaned_obs
-        log = self.il_trainer.distill(samples)
+        log = self.il_trainer.distill(samples, source=self.source)
         logger.logkv('Distilled/Entropy', log['entropy'])
         logger.logkv('SupervisedLossBefore', log['policy_loss'])
         logger.logkv('Distilled/Accuracy', log['accuracy'])
 
-        # TODO: make sure we reset from time to time
-        # self.il_trainer.acmodel.reset(dones=[True] * self.sampler.meta_batch_size)
-        # self.algo.optimize_supervised(samples)
-
 
     def run_supervised(self):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.il_trainer.acmodel,
-                                            feedback_list=self.teacher_info)
+                                            feedback_list=self.teacher_info, max_action=True)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout

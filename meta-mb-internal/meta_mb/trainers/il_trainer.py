@@ -70,7 +70,7 @@ class ImitationLearning(object):
         mean_return = {tid: np.mean(log["return_per_episode"]) for tid, log in enumerate(logs)}
         return mean_return
 
-    def transform_demos(self, demos):
+    def transform_demos(self, demos, source='agent'):
         '''
         takes as input a list of demonstrations in the format generated with `make_agent_demos` or `make_human_demos`
         i.e. each demo is a tuple (mission, blosc.pack_array(np.array(images)), directions, actions)
@@ -84,7 +84,12 @@ class ImitationLearning(object):
             t = 0
             while not done:
                 obs = demos['observations'][i, t]
-                action = demos['actions'][i, t]
+                if source == 'agent':
+                    action = demos['actions'][i, t]
+                elif source == 'oracle':
+                    action = demos['agent_infos']['teacher_action'][i, t]
+                else:
+                    raise NotImplementedError
                 done = demos['dones'][i, t]
                 new_demo.append((obs, action, done))
                 t += 1
@@ -95,8 +100,8 @@ class ImitationLearning(object):
         obs_arr = np.stack(obs, 0)
         return torch.FloatTensor(obs_arr).to(device)
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False):
-        batch = self.transform_demos(batch)
+    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
+        batch = self.transform_demos(batch, source)
         batch.sort(key=len, reverse=True)
         # Constructing flat batch and indices pointing to start of each demonstration
         flat_batch = []
@@ -203,10 +208,9 @@ class ImitationLearning(object):
         else:
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
-    def distill(self, demo_batch, is_training=True):
-        print("demo batch length", len(demo_batch['actions']))
+    def distill(self, demo_batch, is_training=True, source='agent'):
         # Learning rate scheduler
         self.scheduler.step()
         # Log is a dictionary with keys entropy, policy_loss, and accuracy
-        log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training)
+        log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
         return log

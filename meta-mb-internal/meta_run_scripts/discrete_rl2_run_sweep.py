@@ -220,11 +220,12 @@ def run_experiment(**config):
         )
 
         agent_type = 'agent' if config['self_distill'] else 'teacher'
+        source = 'agent' if config['self_distill'] else 'teacher'
 
         algo = PPO(
             policy=policy,
             supervised_model=None,
-            supervised_ground_truth='agent' if config['self_distill'] else 'teacher',
+            supervised_ground_truth=source,
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
@@ -276,6 +277,7 @@ def run_experiment(**config):
             num_batches=config['num_batches'],
             data_path=config['data_path'],
             il_trainer=il_trainer,
+            source=source,
         )
         trainer.train()
 
@@ -343,13 +345,13 @@ if __name__ == '__main__':
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
-        "max_path_length": [4],#float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
+        "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
         "max_epochs": [5],
         "cell_type": ["lstm"],
-        "num_minibatches": [3],
+        "num_minibatches": [1],
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
     }
