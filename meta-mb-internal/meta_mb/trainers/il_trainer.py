@@ -87,7 +87,7 @@ class ImitationLearning(object):
                 if source == 'agent':
                     action = demos['actions'][i, t]
                 elif source == 'teacher':
-                    action = demos['agent_infos']['teacher_action'][i, t]
+                    action = demos['env_infos']['teacher_action'][i, t]
                 else:
                     raise NotImplementedError(source)
                 done = demos['dones'][i, t]
