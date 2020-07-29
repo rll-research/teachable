@@ -32,7 +32,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'TORCHSUPLEARNING'
+PREFIX = 'TORCHSUPIMPROVED'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -147,8 +147,8 @@ def run_experiment(**config):
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
                 image_dim = 128
-                memory_dim = 128
-                instr_dim = 128  # TODO: confirm OK
+                memory_dim = 1024#2048
+                instr_dim = 128#256  # TODO: confirm OK
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
