@@ -255,7 +255,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
           # Expect obs to be [batch, obs_dim]
         instruction_vector = self.get_instr(obs)
         img_vector = self.get_img(obs)
-
+        img_vector_temp = self.get_img(obs * 1000)
+        min_v = torch.min(img_vector)
+        max_v = torch.max(img_vector)
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
         if self.use_instr and self.lang_model == "attgru":
@@ -293,6 +295,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
             hidden = self.memory_rnn(x, hidden)
+            hidden_temp = self.memory_rnn(x * 1000, hidden)
             embedding = hidden[0]
             memory = torch.cat(hidden, dim=1)
         else:
@@ -301,13 +304,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_instr and not "filmcnn" in self.arch:
             embedding = torch.cat((embedding, instr_embedding), dim=1)
 
-        if hasattr(self, 'aux_info') and self.aux_info:
-            extra_predictions = {info: self.extra_heads[info](embedding) for info in self.extra_heads}
-        else:
-            extra_predictions = dict()
-
         x = self.actor(embedding)
+        x_temp = self.actor(embedding * 1000)
         probs = F.softmax(x, dim=1)
+        if np.random.randint(0, 1) < .1:
+            print("PROBS", probs[0])
         dist = Categorical(logits=F.log_softmax(x, dim=1))
 
         # x = self.critic(embedding)

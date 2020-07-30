@@ -182,7 +182,10 @@ class ImitationLearning(object):
             policy_loss = -dist.log_prob(action_step).mean()
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=True)[1]
-            accuracy += float((action_pred == action_step.unsqueeze(1)).sum()) / total_frames
+            if np.random.randint(0, 1) < .05:
+                print("Distill Min/max", torch.min(action_pred), torch.max(action_pred))
+                print("Real Min/max", torch.min(action_step), torch.max(action_step))
+            accuracy += float((action_pred == action_step).sum()) / total_frames
             final_loss += loss
             final_entropy += entropy
             final_policy_loss += policy_loss

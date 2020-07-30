@@ -137,7 +137,7 @@ class Trainer(object):
                     logger.log("Training supervised model")
                     self.distill(samples_data)
                     logger.log("Running supervised model")
-                    if itr % 20 == 0:
+                    if itr % 200 == 199:  # TODO: back to 20
                         self.run_supervised()
                         logger.log('Evaluating supervised')
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
@@ -146,7 +146,7 @@ class Trainer(object):
                         original_actions = samples_data['env_infos']['teacher_action']
                         correct = (actions == original_actions) * mask
                         accuracy = np.sum(correct) / np.sum(mask)
-                        logger.logkv("Distilled/Accuracy", accuracy)
+                        logger.logkv("Distilled/Accuracy2", accuracy)
 
                     params = self.get_itr_snapshot(itr)
                     logger.save_itr_params(itr, self.curriculum_step, params)
@@ -181,6 +181,18 @@ class Trainer(object):
 
     def distill(self, samples):
         cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
+
+        b, t, w = cleaned_obs.shape
+        random = np.random.randint(0, 6, (b, t, 1))
+        cleaned_obs = cleaned_obs * 0
+        cleaned_obs[:, :, :50] += random
+        actions = samples['actions'] * 0 + random
+
+        samples['observations'] = cleaned_obs
+        samples['actions'] = actions
+
+
+
         samples['observations'] = cleaned_obs
         log = self.il_trainer.distill(samples, source=self.source)
         logger.logkv('Distilled/Entropy', log['entropy'])

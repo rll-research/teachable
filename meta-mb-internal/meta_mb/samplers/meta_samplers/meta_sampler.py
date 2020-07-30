@@ -138,6 +138,8 @@ class MetaSampler(BaseSampler):
             # step environments
             t = time.time()
             actions = np.concatenate(actions) # stack meta batch
+            if np.random.randint(0, 1) < .1:
+                print("Min/max", np.min(actions), np.max(actions))
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
             env_time += time.time() - t
 
