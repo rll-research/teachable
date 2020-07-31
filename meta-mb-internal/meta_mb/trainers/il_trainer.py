@@ -138,6 +138,14 @@ class ImitationLearning(object):
             obs = obss[inds]
             done_step = done[inds]
             preprocessed_obs = self.obss_preprocessor(obs, self.device)
+
+            img = preprocessed_obs
+            b, c = img.shape
+            r = np.random.randint(0, 5, (b, 1))
+            r = torch.FloatTensor(r).cuda()
+            preprocessed_obs = img * 0 + r
+
+
             with torch.no_grad():
                 # taking the memory till len(inds), as demos beyond that have already finished
                 new_memory = self.acmodel(
@@ -170,7 +178,20 @@ class ImitationLearning(object):
         for _ in range(self.args.recurrence):
             obs = obss[indexes]
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
+
+            img = preprocessed_obs
+            b, c = img.shape
+            r = np.random.randint(0, 5, (b, 1))
+            r = torch.FloatTensor(r).cuda()
+            preprocessed_obs = img * 0 + r
+
+
+
             action_step = action_true[indexes]
+            action_step = r[:, 0]
+
+
+
             mask_step = mask[indexes]
             model_results = self.acmodel(
                 preprocessed_obs, memory * mask_step,
@@ -183,8 +204,8 @@ class ImitationLearning(object):
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=True)[1]
             if np.random.randint(0, 1) < .05:
-                print("Distill Min/max", torch.min(action_pred), torch.max(action_pred))
-                print("Real Min/max", torch.min(action_step), torch.max(action_step))
+                print("Distill Min/max", torch.min(action_pred).detach().cpu().numpy(), torch.max(action_pred).detach().cpu().numpy())
+                print("Real Min/max", torch.min(action_step).detach().cpu().numpy(), torch.max(action_step).detach().cpu().numpy())
             accuracy += float((action_pred == action_step).sum()) / total_frames
             final_loss += loss
             final_entropy += entropy
