@@ -255,6 +255,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
           # Expect obs to be [batch, obs_dim]
         instruction_vector = self.get_instr(obs)
         img_vector = self.get_img(obs)
+        img0 = img_vector[0]
         img_vector_temp = self.get_img(obs * 1000)
         min_v = torch.min(img_vector)
         max_v = torch.max(img_vector)
@@ -293,8 +294,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         x = x.reshape(x.shape[0], -1)
 
         if self.use_memory:
+            mem = memory[0]
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
             hidden = self.memory_rnn(x, hidden)
+            h0 = hidden[0][0]
             hidden_temp = self.memory_rnn(x * 1000, hidden)
             embedding = hidden[0]
             memory = torch.cat(hidden, dim=1)
@@ -308,11 +311,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         x_temp = self.actor(embedding * 1000)
         probs = F.softmax(x, dim=1)
         if np.random.randint(0, 1) < .1:
-            print("PROBS", probs[0])
+            print("OURS PROBS", probs[0])
         dist = Categorical(logits=F.log_softmax(x, dim=1))
 
         # x = self.critic(embedding)
         # value = x.squeeze(1)
+
+        probs0 = probs[0]
 
         return probs, memory, dist
         # return {'dist': dist, 'value': value, 'memory': memory, 'extra_predictions': extra_predictions}

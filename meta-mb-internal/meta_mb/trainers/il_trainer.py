@@ -188,7 +188,7 @@ class ImitationLearning(object):
 
 
             action_step = action_true[indexes]
-            action_step = r[:, 0]
+            action_step = r
 
 
 
@@ -204,8 +204,8 @@ class ImitationLearning(object):
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=True)[1]
             if np.random.randint(0, 1) < .05:
-                print("Distill Min/max", torch.min(action_pred).detach().cpu().numpy(), torch.max(action_pred).detach().cpu().numpy())
-                print("Real Min/max", torch.min(action_step).detach().cpu().numpy(), torch.max(action_step).detach().cpu().numpy())
+                print("OURS Distill Min/max", torch.min(action_pred).detach().cpu().numpy(), torch.max(action_pred).detach().cpu().numpy())
+                print("OURS Real Min/max", torch.min(action_step).detach().cpu().numpy(), torch.max(action_step).detach().cpu().numpy())
             accuracy += float((action_pred == action_step).sum()) / total_frames
             final_loss += loss
             final_entropy += entropy
@@ -223,6 +223,8 @@ class ImitationLearning(object):
         log["entropy"] = float(final_entropy / self.args.recurrence)
         log["policy_loss"] = float(final_policy_loss / self.args.recurrence)
         log["accuracy"] = float(accuracy)
+        if np.random.randint(0, 1) < .1:
+            print("OUR ACCURACY", accuracy)
 
         return log
 
