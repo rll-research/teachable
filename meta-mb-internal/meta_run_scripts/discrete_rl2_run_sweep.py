@@ -219,7 +219,6 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        agent_type = 'agent' if config['self_distill'] else 'teacher'
         source = 'agent' if config['self_distill'] else 'teacher'
 
         algo = PPO(
