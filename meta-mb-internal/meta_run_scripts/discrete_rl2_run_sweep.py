@@ -31,7 +31,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'debug23'
+PREFIX = 'debug234'
 # PREFIX = 'TORCHSUPIMPROVED'
 
 def get_exp_name(config):
@@ -281,7 +281,7 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
+    base_path = 'data/'
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
