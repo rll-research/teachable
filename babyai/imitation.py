@@ -239,7 +239,6 @@ class ImitationLearning(object):
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
             action_step = action_true[indexes]
             mask_step = mask[indexes]
-            obs0 = preprocessed_obs[0]
             model_results = self.acmodel(
                 preprocessed_obs, memory * mask_step,
                 instr_embedding[episode_ids[indexes]])

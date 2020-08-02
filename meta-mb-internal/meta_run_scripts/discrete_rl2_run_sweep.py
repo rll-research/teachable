@@ -221,7 +221,6 @@ def run_experiment(**config):
 
         agent_type = 'agent' if config['self_distill'] else 'teacher'
         source = 'agent' if config['self_distill'] else 'teacher'
-        source = 'agent'  # TODO: remove
 
         algo = PPO(
             policy=policy,
