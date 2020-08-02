@@ -139,13 +139,6 @@ class ImitationLearning(object):
             done_step = done[inds]
             preprocessed_obs = self.obss_preprocessor(obs, self.device)
 
-            img = preprocessed_obs
-            b, c = img.shape
-            r = np.random.randint(0, 5, (b, 1))
-            r = torch.FloatTensor(r).cuda()
-            preprocessed_obs = img * 0 + r
-
-
             with torch.no_grad():
                 # taking the memory till len(inds), as demos beyond that have already finished
                 new_memory = self.acmodel(
@@ -157,9 +150,6 @@ class ImitationLearning(object):
             episode_ids[inds] = range(len(inds))
 
             # Updating inds, by removing those indices corresponding to which the demonstrations have finished
-            a = len(inds)
-            b = sum(done_step)
-            c = len(inds) - sum(done_step)
             inds = inds[:int(len(inds) - sum(done_step))]
             if len(inds) == 0:
                 break
@@ -179,18 +169,8 @@ class ImitationLearning(object):
             obs = obss[indexes]
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
 
-            img = preprocessed_obs
-            b, c = img.shape
-            r = np.random.randint(0, 5, (b, 1))
-            r = torch.FloatTensor(r).cuda()
-            preprocessed_obs = img * 0 + r
-
-
-
             action_step = action_true[indexes]
-            action_step = r
-
-
+            action_step = action_step[:, 0]
 
             mask_step = mask[indexes]
             model_results = self.acmodel(
@@ -202,10 +182,7 @@ class ImitationLearning(object):
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
             loss = policy_loss - self.args.entropy_coef * entropy
-            action_pred = dist.probs.max(1, keepdim=True)[1]
-            if np.random.randint(0, 1) < .05:
-                print("OURS Distill Min/max", torch.min(action_pred).detach().cpu().numpy(), torch.max(action_pred).detach().cpu().numpy())
-                print("OURS Real Min/max", torch.min(action_step).detach().cpu().numpy(), torch.max(action_step).detach().cpu().numpy())
+            action_pred = dist.probs.max(1, keepdim=False)[1]
             accuracy += float((action_pred == action_step).sum()) / total_frames
             final_loss += loss
             final_entropy += entropy
@@ -223,8 +200,8 @@ class ImitationLearning(object):
         log["entropy"] = float(final_entropy / self.args.recurrence)
         log["policy_loss"] = float(final_policy_loss / self.args.recurrence)
         log["accuracy"] = float(accuracy)
-        if np.random.randint(0, 1) < .1:
-            print("OUR ACCURACY", accuracy)
+        print("OUR ACCURACY", accuracy, len(obs))
+        print("LOSS", final_loss)
 
         return log
 
