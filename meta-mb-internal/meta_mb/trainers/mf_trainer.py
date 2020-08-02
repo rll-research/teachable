@@ -136,7 +136,7 @@ class Trainer(object):
                     samples_data = joblib.load(batch_path)
                     logger.log("Training supervised model")
                     self.distill(samples_data)
-                    if itr % 50 == 0:
+                    if itr % 200 == 10:
                         logger.log("Running supervised model")
                         self.run_supervised()
                         logger.log('Evaluating supervised')

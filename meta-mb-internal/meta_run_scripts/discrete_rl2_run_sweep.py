@@ -32,7 +32,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug23'
-# PREFIX = 'TORCHSUPIMPROVED'
+PREFIX = 'TORCHSUPFIXED'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -40,7 +40,8 @@ def get_exp_name(config):
     EXP_NAME += config['mode']
     if config['mode'] == 'distillation':
         EXP_NAME += "_batches" + str(config['num_batches'])
-
+    source = 'agent' if config['self_distill'] else 'teacher'
+    EXP_NAME += source
 
 
     # EXP_NAME += '_teacher' + str(config['feedback_type'])
@@ -147,8 +148,8 @@ def run_experiment(**config):
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
                 image_dim = 128
-                memory_dim = 1024#2048
-                instr_dim = 128#256  # TODO: confirm OK
+                memory_dim = 2048
+                instr_dim = 256  # TODO: confirm OK
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
@@ -281,15 +282,15 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
+    base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [4],
+        'level': [22],
         "n_itr": [10000],
-        'num_batches': [1000],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL4collection_4'],
+        'num_batches': [677],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
@@ -344,7 +345,7 @@ if __name__ == '__main__':
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
         "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
-        "max_path_length": [20],#float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
+        "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
