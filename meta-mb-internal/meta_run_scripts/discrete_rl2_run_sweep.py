@@ -152,7 +152,7 @@ def run_experiment(**config):
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
-                arch = 'expert_filmcnn'
+                arch = 'bow_endpool_res'
                 # supervised_model = DiscreteRNNPolicy(
                 #         name="supervised-policy",
                 #         action_dim=np.prod(env.action_space.n),
