@@ -247,8 +247,6 @@ class ImitationLearning(object):
 
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
-            k = action_step[0]
-            p = dist.probs[0]
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=True)[1]
             accuracy += float((action_pred == action_step.unsqueeze(1)).sum()) / total_frames

@@ -8,7 +8,7 @@ import babyai.rl
 from babyai.rl.utils.supervised_losses import required_heads
 import numpy as np
 
-# From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
+# Function from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def initialize_parameters(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
@@ -19,16 +19,12 @@ def initialize_parameters(m):
 
 
 # Inspired by FiLMedBlock from https://arxiv.org/abs/1709.07871
-class FiLM(nn.Module):
+class ExpertControllerFiLM(nn.Module):
     def __init__(self, in_features, out_features, in_channels, imm_channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(
-            in_channels=in_channels, out_channels=imm_channels,
-            kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=imm_channels, kernel_size=(3, 3), padding=1)
         self.bn1 = nn.BatchNorm2d(imm_channels)
-        self.conv2 = nn.Conv2d(
-            in_channels=imm_channels, out_channels=out_features,
-            kernel_size=(3, 3), padding=1)
+        self.conv2 = nn.Conv2d(in_channels=imm_channels, out_channels=out_features, kernel_size=(3, 3), padding=1)
         self.bn2 = nn.BatchNorm2d(out_features)
 
         self.weight = nn.Linear(in_features, out_features)
@@ -39,37 +35,18 @@ class FiLM(nn.Module):
     def forward(self, x, y):
         x = F.relu(self.bn1(self.conv1(x)))
         x = self.conv2(x)
-        weight = self.weight(y).unsqueeze(2).unsqueeze(3)
-        bias = self.bias(y).unsqueeze(2).unsqueeze(3)
-        out = x * weight + bias
-        return F.relu(self.bn2(out))
-
-
-class ImageBOWEmbedding(nn.Module):
-   def __init__(self, max_value, embedding_dim):
-       super().__init__()
-       self.max_value = max_value
-       self.embedding_dim = embedding_dim
-       self.embedding = nn.Embedding(3 * max_value, embedding_dim)
-       self.apply(initialize_parameters)
-
-   def forward(self, inputs):
-       offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inputs.device)
-       inputs = (inputs + offsets[None, :, None, None]).long()
-       return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
+        out = x * self.weight(y).unsqueeze(2).unsqueeze(3) + self.bias(y).unsqueeze(2).unsqueeze(3)
+        out = self.bn2(out)
+        out = F.relu(out)
+        return out
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, obs_space, action_space, env,
                  image_dim=128, memory_dim=128, instr_dim=128,
-                 use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None):
+                 use_instr=False, lang_model="gru", use_memory=False, arch="cnn1",
+                 aux_info=None):
         super().__init__()
-
-        endpool = 'endpool' in arch
-        use_bow = 'bow' in arch
-        pixel = 'pixel' in arch
-        self.res = 'res' in arch
 
         # Decide which components are enabled
         self.use_instr = use_instr
@@ -77,40 +54,42 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.arch = arch
         self.lang_model = lang_model
         self.aux_info = aux_info
-        if self.res and image_dim != 128:
-            raise ValueError(f"image_dim is {image_dim}, expected 128")
         self.image_dim = image_dim
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
-
-        self.obs_space = obs_space
         self.action_space = action_space
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        for part in self.arch.split('_'):
-            if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
-                raise ValueError("Incorrect architecture name: {}".format(self.arch))
+        self.obs_space = obs_space
 
-        # if not self.use_instr:
-        #     raise ValueError("FiLM architecture can be used when instructions are enabled")
-        self.image_conv = nn.Sequential(*[
-            *([ImageBOWEmbedding(147, 128)] if use_bow else []),
-            *([nn.Conv2d(
-                in_channels=3, out_channels=128, kernel_size=(8, 8),
-                stride=8, padding=0)] if pixel else []),
-            nn.Conv2d(
-                in_channels=128 if use_bow or pixel else 3, out_channels=128,
-                kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
-        ])
-        self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
+        if arch == "cnn1":
+            self.image_conv = nn.Sequential(
+                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(2, 2)),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=(2, 2), stride=2),
+                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(2, 2)),
+                nn.ReLU(),
+                nn.Conv2d(in_channels=32, out_channels=image_dim, kernel_size=(2, 2)),
+                nn.ReLU()
+            )
+        elif arch.startswith("expert_filmcnn"):
+            if not self.use_instr:
+                raise ValueError("FiLM architecture can be used when instructions are enabled")
+
+            self.image_conv = nn.Sequential(
+                nn.Conv2d(in_channels=3, out_channels=128, kernel_size=(2, 2), padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=(2, 2), stride=2),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=(2, 2), stride=2)
+            )
+            self.film_pool = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
+        else:
+            raise ValueError("Incorrect architecture name: {}".format(arch))
 
         # Define instruction embedding
         if self.use_instr:
@@ -134,21 +113,32 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if self.lang_model == 'attgru':
                 self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim)
 
-            num_module = 2
-            self.controllers = []
-            for ni in range(num_module):
-                mod = FiLM(
-                    in_features=self.final_instr_dim,
-                    out_features=128 if ni < num_module-1 else self.image_dim,
-                    in_channels=128, imm_channels=128)
-                self.controllers.append(mod)
-                self.add_module('FiLM_' + str(ni), mod)
-
-        # Define memory and resize image embedding
-        self.embedding_size = self.image_dim
+        # Define memory
         if self.use_memory:
             self.memory_rnn = nn.LSTMCell(self.image_dim, self.memory_dim)
-            self.embedding_size = self.semi_memory_size
+
+        # Resize image embedding
+        self.embedding_size = self.semi_memory_size
+        if self.use_instr and not "filmcnn" in arch:
+            self.embedding_size += self.final_instr_dim
+
+        if arch.startswith("expert_filmcnn"):
+            if arch == "expert_filmcnn":
+                num_module = 2
+            else:
+                num_module = int(arch[(arch.rfind('_') + 1):])
+            self.controllers = []
+            for ni in range(num_module):
+                if ni < num_module-1:
+                    mod = ExpertControllerFiLM(
+                        in_features=self.final_instr_dim,
+                        out_features=128, in_channels=128, imm_channels=128)
+                else:
+                    mod = ExpertControllerFiLM(
+                        in_features=self.final_instr_dim, out_features=self.image_dim,
+                        in_channels=128, imm_channels=128)
+                self.controllers.append(mod)
+                self.add_module('FiLM_Controler_' + str(ni), mod)
 
         # Define actor's model
         self.actor = nn.Sequential(
@@ -209,6 +199,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         except Exception:
             raise ValueError('Could not add extra heads')
 
+    def reset(self, dones=None):
+        batch_len = 1 if dones is None else len(dones)
+        self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
+
     @property
     def memory_size(self):
         return 2 * self.semi_memory_size
@@ -216,10 +210,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     @property
     def semi_memory_size(self):
         return self.memory_dim
-
-    def reset(self, dones=None):
-        batch_len = 1 if dones is None else len(dones)
-        self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
 
     def get_actions(self, obs):
         if type(obs) is list:
@@ -261,6 +251,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return img_vector
 
     def forward(self, obs, memory, instr_embedding=None):
+
         # Expect obs to be [batch, obs_dim]
         instruction_vector = self.get_instr(obs)
         img_vector = self.get_img(obs)
@@ -288,16 +279,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
-        if 'pixel' in self.arch:
-            x /= 256.0
-        x = self.image_conv(x)
-        if self.use_instr:
-            for controller in self.controllers:
-                out = controller(x, instr_embedding)
-                if self.res:
-                    out += x
-                x = out
-        x = F.relu(self.film_pool(x))
+        if self.arch.startswith("expert_filmcnn"):
+            x = self.image_conv(x)
+            for controler in self.controllers:
+                x = controler(x, instr_embedding)
+            x = F.relu(self.film_pool(x))
+        else:
+            x = self.image_conv(x)
+
         x = x.reshape(x.shape[0], -1)
 
         if self.use_memory:
@@ -308,17 +297,16 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
 
-        if hasattr(self, 'aux_info') and self.aux_info:
-            extra_predictions = {info: self.extra_heads[info](embedding) for info in self.extra_heads}
-        else:
-            extra_predictions = dict()
+        if self.use_instr and not "filmcnn" in self.arch:
+            embedding = torch.cat((embedding, instr_embedding), dim=1)
 
         x = self.actor(embedding)
-        dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
+        dist = Categorical(logits=F.log_softmax(x, dim=1))
+
         return probs, memory, dist
 
-    def _get_instr_embedding(self, instr):
+    def _get_instr_embedding(self, instr): # expect token indices [batch, instr_length], 0 padded
         lengths = (instr != 0).sum(1).long()
         if self.lang_model == 'gru':
             out, _ = self.instr_rnn(self.word_embedding(instr))
