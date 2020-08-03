@@ -519,3 +519,4 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.dropout_proportion = dropout_proportion
         if not dropout_proportion == 1:  # TODO: remove
             print("???", dropout_proportion)
+        return None

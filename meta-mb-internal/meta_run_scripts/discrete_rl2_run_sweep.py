@@ -345,16 +345,13 @@ if __name__ == '__main__':
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        'backprop_steps': [50, 100, 200],
-        "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        'backprop_steps': [20, 50, 100, 200],
+        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
         "max_epochs": [5],
         "cell_type": ["lstm"],
-        "num_minibatches": [1],
-        'exp_tag': ['v0'],
-        'log_rand': [0, 1, 2, 3],
     }
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
