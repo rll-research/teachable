@@ -123,7 +123,7 @@ def run_experiment(**config):
 
         else:
             baseline = config['baseline']()
-            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'],
+            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'],
                                               pre_levels=config['pre_levels'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
@@ -317,7 +317,7 @@ if __name__ == '__main__':
         'feedback_always': [True],
 
         # Curriculum
-        'advance_curriculum_func': ['smooth'],
+        'advance_curriculum_func': ['one_hot'],
         'pre_levels': [False],
 
         # Model/Optimization
