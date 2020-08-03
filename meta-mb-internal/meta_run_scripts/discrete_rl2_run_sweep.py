@@ -31,7 +31,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'TORCHSUPFIXED'
+PREFIX = 'EASY'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -108,12 +108,10 @@ def run_experiment(**config):
             policy.hidden_state = None
             baseline = saved_model['baseline']
             curriculum_step = config['level']
-            saved_model['curriculum_step']
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
-            start_itr = 0 ## TODO: comment out!
             reward_predictor = saved_model['reward_predictor']
             reward_predictor.hidden_state = None
             if 'supervised_model' in saved_model:
@@ -153,22 +151,9 @@ def run_experiment(**config):
                 instr_arch = 'bigru'
                 use_mem = True
                 arch = 'bow_endpool_res'
-                # supervised_model = DiscreteRNNPolicy(
-                #         name="supervised-policy",
-                #         action_dim=np.prod(env.action_space.n),
-                #         obs_dim=obs_dim,
-                #         meta_batch_size=config['meta_batch_size'],
-                #         hidden_sizes=config['hidden_sizes'],
-                #         cell_type=config['cell_type'],
-                #     )
                 supervised_model = ACModel(obs_dim, env.action_space, env,
                                        image_dim, memory_dim, instr_dim,
                                        use_instr, instr_arch, use_mem, arch)
-                parser = ArgumentParser()
-                args = parser.parse_args()
-                args.model = 'default_il'
-                args.recurrence = config['backprop_steps']
-                il_trainer = ImitationLearning(supervised_model, env, args)
             elif config['self_distill']:
                 supervised_model = policy
             else:
@@ -176,30 +161,12 @@ def run_experiment(**config):
             start_itr = 0
             curriculum_step = env.index
 
-        # obs_dim = env.reset().shape[0]
-        # supervised_model = DiscreteRNNPolicy(
-        #     name="supervised-policy",
-        #     action_dim=np.prod(env.action_space.n),
-        #     obs_dim=obs_dim,
-        #     meta_batch_size=config['meta_batch_size'],
-        #     hidden_sizes=config['hidden_sizes'],
-        #     cell_type=config['cell_type'],
-        # )
-        # obs_dim = env.reset().shape[0]
-        # image_dim = 128
-        # memory_dim = 128
-        # instr_dim = 128  # TODO: confirm OK
-        # use_instr = True
-        # instr_arch = 'bigru'
-        # use_mem = True
-        # arch = 'expert_filmcnn'
-        # supervised_model = ACModel(obs_dim, env.action_space, env,
-        #                            image_dim, memory_dim, instr_dim,
-        #                            use_instr, instr_arch, use_mem, arch)
-        # parser = ArgumentParser()
-        # args = parser.parse_args()
-        # args.model = 'default_il'
-        # il_trainer = ImitationLearning(supervised_model, env, args)
+        parser = ArgumentParser()
+        args = parser.parse_args()
+        args.model = 'default_il'
+        args.recurrence = config['backprop_steps']
+        il_trainer = ImitationLearning(supervised_model, env, args)
+
         sampler = MetaSampler(
             env=env,
             policy=policy,
@@ -288,14 +255,15 @@ if __name__ == '__main__':
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [22],
+        'level': [4],
         "n_itr": [10000],
         'num_batches': [677],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
+        'data_path': [base_path + 'JUSTSUPLEARNINGL4collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [base_path + 'EASYL4distillation_batches677teacher_4/latest.pkl'],
+        # 'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -331,7 +299,7 @@ if __name__ == '__main__':
         "discount": [0.95],
 
         # Reward
-        'intermediate_reward': [False], # This turns the intermediate rewards on or off
+        'intermediate_reward': [True], # This turns the intermediate rewards on or off
         'reward_threshold': [.95],
         'ceil_reward': [False],
 
