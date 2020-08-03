@@ -58,6 +58,7 @@ class Trainer(object):
         batch_size=100,
         eval_every=100,
         save_every=100,
+        log_every=10,
         save_videos_every=1000):
         self.algo = algo
         self.env = env
@@ -94,6 +95,7 @@ class Trainer(object):
         self.eval_every = eval_every
         self.save_every = save_every
         self.save_videos_every = save_videos_every
+        self.log_every = log_every
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -154,20 +156,17 @@ class Trainer(object):
             advance_curriculum = False
             dropout_proportion = 1 if self.increase_dropout_increment is None else 0  # TODO: remember 2 reset
 
-            start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
-                itr_start_time = time.time()
-                logger.log("\n ---------------- Iteration %d ----------------" % itr)
-                logger.log("Sampling set of tasks/goals for this meta-batch...")
+                if itr % self.log_every == 0:
+                    logger.log("\n ---------------- Iteration %d ----------------" % itr)
+                    logger.log("Sampling set of tasks/goals for this meta-batch...")
 
-                """ -------------------- Sampling --------------------------"""
+                    """ -------------------- Sampling --------------------------"""
 
-                logger.log("Obtaining samples...")
-                time_env_sampling_start = time.time()
+                    logger.log("Obtaining samples...")
 
                 if self.mode == 'distillation':
                     samples_data = self.load_data(0, self.num_train_batches)
-                    logger.log("Training supervised model")
                     distill_log = self.distill(samples_data, is_training=True)
                     for k, v in distill_log.items():
                         logger.logkv(f"Distilled/{k}_Train", v)
@@ -180,7 +179,6 @@ class Trainer(object):
                             distill_log = self.distill(samples_data, is_training=False)
                             for k, v in distill_log.items():
                                 logger.logkv(f"Distilled/{k}_Validation", v)
-
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
                             logger.log("Running supervised model")
                             self.run_supervised()
@@ -206,10 +204,10 @@ class Trainer(object):
                     samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
                     self.save_data(samples_data, itr)
 
-                logger.logkv('Itr', itr)
-                logger.log(self.exp_name)
-                logger.dumpkvs()
-                continue
+                if itr % self.log_every == 0:
+                    logger.logkv('Itr', itr)
+                    logger.log(self.exp_name)
+                    logger.dumpkvs()
 
 
         logger.log("Training finished")
