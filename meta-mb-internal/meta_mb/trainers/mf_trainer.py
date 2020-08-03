@@ -1,4 +1,5 @@
 import tensorflow as tf
+import torch
 import numpy as np
 import time
 import os
@@ -25,37 +26,39 @@ class Trainer(object):
         sess (tf.Session) : current tf session (if we loaded policy, for example)
     """
     def __init__(
-            self,
-            algo,
-            env,
-            sampler,
-            sample_processor,
-            policy,
-            n_itr,
-            start_itr=0,
-            task=None,
-            sess=None,
-            use_rp_inner=False,
-            use_rp_outer=False,
-            reward_threshold=0.8,
-            exp_name="",
-            videos_every=5,
-            curriculum_step=0,
-            config=None,
-            log_and_save=True,
-            increase_dropout_threshold=float('inf'),
-            increase_dropout_increment=None,
-            advance_without_teacher=False,
-            teacher_info=[],
-            sparse_rewards=True,
-            distill_only=False,
-            mode='collection',
-            num_batches=None,
-            data_path=None,
-            il_trainer=None,
-            source='agent',
-            batch_size=100,
-            ):
+        self,
+        algo,
+        env,
+        sampler,
+        sample_processor,
+        policy,
+        n_itr,
+        start_itr=0,
+        task=None,
+        sess=None,
+        use_rp_inner=False,
+        use_rp_outer=False,
+        reward_threshold=0.8,
+        exp_name="",
+        videos_every=5,
+        curriculum_step=0,
+        config=None,
+        log_and_save=True,
+        increase_dropout_threshold=float('inf'),
+        increase_dropout_increment=None,
+        advance_without_teacher=False,
+        teacher_info=[],
+        sparse_rewards=True,
+        distill_only=False,
+        mode='collection',
+        num_batches=None,
+        data_path=None,
+        il_trainer=None,
+        source='agent',
+        batch_size=100,
+        eval_every=100,
+        save_every=100,
+        save_videos_every=1000):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -88,6 +91,9 @@ class Trainer(object):
         self.il_trainer = il_trainer
         self.source = source
         self.batch_size = batch_size
+        self.eval_every = eval_every
+        self.save_every = save_every
+        self.save_videos_every = save_videos_every
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -166,36 +172,37 @@ class Trainer(object):
                     for k, v in distill_log.items():
                         logger.logkv(f"Distilled/{k}_Train", v)
 
-                    if itr % 20 == 0:
-                        # Accuracy on the validation set
-                        samples_data = self.load_data(self.num_train_batches, self.num_batches)
-                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                        distill_log = self.distill(samples_data, is_training=False)
-                        for k, v in distill_log.items():
-                            logger.logkv(f"Distilled/{k}_Validation", v)
+                    if itr % self.eval_every == 0 or itr == self.n_itr - 1:
+                        with torch.no_grad():
+                            # Accuracy on the validation set
+                            samples_data = self.load_data(self.num_train_batches, self.num_batches)
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            distill_log = self.distill(samples_data, is_training=False)
+                            for k, v in distill_log.items():
+                                logger.logkv(f"Distilled/{k}_Validation", v)
 
-                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                        logger.log("Running supervised model")
-                        self.run_supervised()
-                        logger.log('Evaluating supervised')
-                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            logger.log("Running supervised model")
+                            self.run_supervised()
+                            logger.log('Evaluating supervised')
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
 
-                        if itr % 100 == 0:
+                    if itr % self.save_videos_every == 0:
+                        with torch.no_grad():
                             self.save_videos(itr, save_name='video', num_rollouts=3)
 
-                    params = self.get_itr_snapshot(itr)
-                    logger.save_itr_params(itr, self.curriculum_step, params)
+                    if itr % self.save_every == 0 or itr == self.n_itr - 1:
+                        params = self.get_itr_snapshot(itr)
+                        logger.save_itr_params(itr, self.curriculum_step, params)
 
                 elif self.mode == 'collection':
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
                                                         dropout_proportion=dropout_proportion)
-                    sampling_time = time.time() - time_env_sampling_start
 
                     """ ----------------- Processing Samples ---------------------"""
 
                     logger.log("Processing samples...")
-                    time_proc_samples_start = time.time()
                     samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
                     self.save_data(samples_data, itr)
 
