@@ -180,6 +180,9 @@ class Trainer(object):
                         logger.log('Evaluating supervised')
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
 
+                        if itr % 100 == 0:
+                            self.save_videos(itr, save_name='video', num_rollouts=3)
+
                     params = self.get_itr_snapshot(itr)
                     logger.save_itr_params(itr, self.curriculum_step, params)
 
@@ -227,7 +230,7 @@ class Trainer(object):
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
         paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
-                        batch_size=self.sampler.meta_batch_size,# step=step,  # TODO: THIS!!!
+                        batch_size=self.sampler.meta_batch_size,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))

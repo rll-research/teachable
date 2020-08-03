@@ -55,19 +55,14 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         if render:
             _ = env.render(mode)
         while path_length < max_path_length:
-            # o[160:168] = 0
-            # o[168] = 1
             obs_big = np.stack([o] * batch_size)
             a, agent_info = agent.get_actions(obs_big)
-            a = a[0]
-            # print("advice", np.argmax(o[160:167]))
+            a = a[0][0]
             if np.argmax(o[160:167]) == 7:
                 print("No advice!")
-            # a = np.array([[np.argmax(o[160:167])]])
-            # a = np.array([[6]])
 
             if not stochastic:
-                a = np.argmax(agent_info['probs'])
+                a = np.argmax(agent_info[0][0]['probs'])
             next_o, r, d, env_info = env.step(a)
 
             if reward_predictor is not None:
@@ -101,7 +96,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                         title_block[:, :, 2] = 0
                 # Otherwise, the background color is based on whether the action taken is correct
                 else:
-                    if not env_info['teacher_action'] == a[0][0]:
+                    if not env_info['teacher_action'] == a:
                         title_block[:, :, 0] = 0
                 image = cv2.vconcat((title_block, image))
                 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -114,7 +109,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 label_str += "Run: " + str(i % reset_every)
                 cv2.putText(image, env.mission, (30, 30), font, 0.5, (0, 0, 0), 3, 0)
                 cv2.putText(image, label_str, (30, 90), font, 0.5, (0, 0, 0), 3, 0)
-                cv2.putText(image, "Action " + str(a[0][0]), (30, 60), font, 0.5, (0, 0, 0), 3, 0)
+                cv2.putText(image, "Action " + str(a[0]), (30, 60), font, 0.5, (0, 0, 0), 3, 0)
 
                 curr_images.append(image)
 

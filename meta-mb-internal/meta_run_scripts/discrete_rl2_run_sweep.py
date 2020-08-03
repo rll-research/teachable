@@ -147,8 +147,8 @@ def run_experiment(**config):
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
                 image_dim = 128
-                memory_dim = 2048
-                instr_dim = 256
+                memory_dim = config['memory_dim']
+                instr_dim = config['memory_dim']
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
@@ -325,6 +325,8 @@ if __name__ == '__main__':
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
         "hidden_sizes": [(512, 512), (128,)],
+        "memory_dim": [64],  # 2048
+        "instr_dim": [32],  # 256
         "discount": [0.95],
 
         # Reward
