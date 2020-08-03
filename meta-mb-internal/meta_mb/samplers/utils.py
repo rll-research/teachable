@@ -62,7 +62,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 print("No advice!")
 
             if not stochastic:
-                a = np.argmax(agent_info[0][0]['probs'])
+                a = np.array([np.argmax(agent_info[0][0]['probs'])])
             next_o, r, d, env_info = env.step(a)
 
             if reward_predictor is not None:

@@ -234,8 +234,8 @@ class Trainer(object):
         return advance_curriculum, increase_dropout
 
     def save_videos(self, step, save_name='sample_video', num_rollouts=2):
-        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
-                        batch_size=self.sampler.meta_batch_size,
+        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=False,
+                        batch_size=self.sampler.meta_batch_size, record_teacher=True,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))

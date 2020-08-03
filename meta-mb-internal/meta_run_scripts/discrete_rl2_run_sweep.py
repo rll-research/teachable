@@ -167,6 +167,7 @@ def run_experiment(**config):
                 parser = ArgumentParser()
                 args = parser.parse_args()
                 args.model = 'default_il'
+                args.recurrence = config['backprop_steps']
                 il_trainer = ImitationLearning(supervised_model, env, args)
             elif config['self_distill']:
                 supervised_model = policy
