@@ -112,7 +112,7 @@ class ImitationLearning(object):
             inds.append(inds[-1] + len(demo))
 
         # (batch size * avg demo length , 3), where 3 is for (state, action, done)
-        flat_batch = np.array(flat_batch)
+        flat_batch = np.array(flat_batch, dtype=object)
         inds = inds[:-1]
         num_frames = len(flat_batch)
 
@@ -224,9 +224,9 @@ class ImitationLearning(object):
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
     def distill(self, demo_batch, is_training=True, source='agent'):
+        # Log is a dictionary with keys entropy, policy_loss, and accuracy
+        log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
         if is_training:
             # Learning rate scheduler
             self.scheduler.step()
-        # Log is a dictionary with keys entropy, policy_loss, and accuracy
-        log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
         return log
