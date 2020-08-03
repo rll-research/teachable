@@ -221,7 +221,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         batch_len = 1 if dones is None else len(dones)
         self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
 
-    def get_actions(self, obs):
+    def get_actions(self, obs, training=False):
+        if training:
+            self.train()
+        else:
+            self.eval()
+
         if type(obs) is list:
             obs = torch.FloatTensor(np.stack(obs, axis=0)).to(self.device)
         else:

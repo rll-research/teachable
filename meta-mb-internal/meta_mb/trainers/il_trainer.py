@@ -101,6 +101,13 @@ class ImitationLearning(object):
         return torch.FloatTensor(obs_arr).to(device)
 
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
+
+        if is_training:
+            self.acmodel.train()
+        else:
+            self.acmodel.eval()
+
+
         batch = self.transform_demos(batch, source)
         batch.sort(key=len, reverse=True)
         # Constructing flat batch and indices pointing to start of each demonstration
