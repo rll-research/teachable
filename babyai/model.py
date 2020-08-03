@@ -226,6 +226,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             obs = torch.FloatTensor(np.stack(obs, axis=0)).to(self.device)
         else:
             obs = torch.FloatTensor(obs).to(self.device)
+        if len(obs.shape) == 2:
+            obs = obs.unsqueeze(0)
         assert len(obs.shape) == 3, obs.shape
         action_list = [[] for _ in range(len(obs))]
         probs_list = [[] for _ in range(len(obs))]
@@ -239,7 +241,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return actions, probs_list
 
     def get_actions_t(self, obs):
-        probs, memory, dist = self(obs, self.memory)  # TODO: initialize this
+        probs, memory, dist = self(obs, self.memory)
         self.memory = memory
         probs = probs.data.cpu().numpy()
         action = [[np.random.choice(self.action_space.n, p=p)] for p in probs]

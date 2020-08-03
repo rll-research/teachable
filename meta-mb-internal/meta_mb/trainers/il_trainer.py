@@ -111,6 +111,7 @@ class ImitationLearning(object):
             flat_batch += demo
             inds.append(inds[-1] + len(demo))
 
+        # (batch size * avg demo length , 3), where 3 is for (state, action, done)
         flat_batch = np.array(flat_batch)
         inds = inds[:-1]
         num_frames = len(flat_batch)
@@ -159,13 +160,15 @@ class ImitationLearning(object):
 
         # Here, actual backprop upto args.recurrence happens
         final_loss = 0
+        per_token_correct = [0, 0, 0, 0, 0, 0, 0]
+        per_token_count = [0, 0, 0, 0, 0, 0, 0]
         final_entropy, final_policy_loss, final_value_loss = 0, 0, 0
 
         indexes = self.starting_indexes(num_frames)
         memory = memories[indexes]
         accuracy = 0
         total_frames = len(indexes) * self.args.recurrence
-        for _ in range(self.args.recurrence):
+        for i in range(self.args.recurrence):
             obs = obss[indexes]
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
 
@@ -189,6 +192,15 @@ class ImitationLearning(object):
             final_policy_loss += policy_loss
             indexes += 1
 
+            action_step = action_step.detach().cpu().numpy()
+            action_pred = action_pred.detach().cpu().numpy()
+            for j in range(len(per_token_count)):
+                token_indices = np.where(action_step == j)[0]
+                count = len(token_indices)
+                correct = np.sum(action_step[token_indices] == action_pred[token_indices])
+                per_token_correct[j] += correct
+                per_token_count[j] += count
+
         final_loss /= self.args.recurrence
 
         if is_training:
@@ -197,12 +209,12 @@ class ImitationLearning(object):
             self.optimizer.step()
 
         log = {}
-        log["entropy"] = float(final_entropy / self.args.recurrence)
-        log["policy_loss"] = float(final_policy_loss / self.args.recurrence)
-        log["accuracy"] = float(accuracy)
-        print("OUR ACCURACY", accuracy, len(obs))
-        print("LOSS", final_loss)
-
+        log["Entropy"] = float(final_entropy / self.args.recurrence)
+        log["Loss"] = float(final_policy_loss / self.args.recurrence)
+        log["Accuracy"] = float(accuracy)
+        for i, (correct, count) in enumerate(zip(per_token_correct, per_token_count)):
+            if count > 0:
+                log[f'Accuracy_{i}'] = correct/count
         return log
 
     def starting_indexes(self, num_frames):
@@ -212,8 +224,9 @@ class ImitationLearning(object):
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
     def distill(self, demo_batch, is_training=True, source='agent'):
-        # Learning rate scheduler
-        self.scheduler.step()
+        if is_training:
+            # Learning rate scheduler
+            self.scheduler.step()
         # Log is a dictionary with keys entropy, policy_loss, and accuracy
         log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
         return log

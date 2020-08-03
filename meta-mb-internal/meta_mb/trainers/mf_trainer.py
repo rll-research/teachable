@@ -54,6 +54,7 @@ class Trainer(object):
             data_path=None,
             il_trainer=None,
             source='agent',
+            batch_size=100,
             ):
         self.algo = algo
         self.env = env
@@ -86,6 +87,11 @@ class Trainer(object):
         self.data_path = data_path
         self.il_trainer = il_trainer
         self.source = source
+        self.batch_size = batch_size
+        if self.num_batches is not None:
+            self.num_train_batches = (self.num_batches * 0.9)
+            self.num_val_batches = self.num_batches - self.num_train_batches
+            assert self.num_train_batches > 0
 
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
@@ -97,6 +103,30 @@ class Trainer(object):
         should_increase_dropout = avg_reward >= self.increase_dropout_threshold
         should_advance_curriculum = False  # TODO: never advance curriculum
         return should_advance_curriculum, should_increase_dropout
+
+    def load_data(self, start_index, end_index):
+        batch_index = np.random.randint(start_index, end_index)
+        batch_path = osp.join(self.data_path, 'batch_%d.pkl' % batch_index)
+        samples_data = joblib.load(batch_path)
+        curr_batch_len = len(samples_data['observations'])
+        if curr_batch_len < self.batch_size:
+            print(f'Found batch of length {curr_batch_len}, which is smaller than desired batch size {self.batch_size}')
+        elif curr_batch_len > self.batch_size:
+            diff = curr_batch_len - self.batch_size
+            start_index = np.random.choice(diff + 1)
+            samples_data2 = {}
+            for k, v in samples_data.items():
+                if type(v) is np.ndarray:
+                    samples_data2[k] = v[start_index: start_index + self.batch_size]
+                elif type(v) is dict:
+                    v2 = {}
+                    for vk, vv in v.items():
+                        v2[vk] = vv[start_index: start_index + self.batch_size]
+                    samples_data2[k] = v2
+                else:
+                    samples_data2[k] = v
+            samples_data = samples_data2
+        return samples_data
 
     def train(self):
         """
@@ -130,23 +160,25 @@ class Trainer(object):
                 time_env_sampling_start = time.time()
 
                 if self.mode == 'distillation':
-                    batch_index = np.random.randint(0, self.num_batches)
-                    batch_path = osp.join(self.data_path, 'batch_%d.pkl' % batch_index)
-                    logger.log("Loading data")
-                    samples_data = joblib.load(batch_path)
+                    samples_data = self.load_data(0, self.num_train_batches)
                     logger.log("Training supervised model")
-                    self.distill(samples_data)
-                    if itr % 200 == 10:
+                    distill_log = self.distill(samples_data, is_training=True)
+                    for k, v in distill_log.items():
+                        logger.logkv(f"Distilled/{k}_Train", v)
+
+                    if itr % 20 == 0:
+                        # Accuracy on the validation set
+                        samples_data = self.load_data(self.num_train_batches, self.num_batches)
+                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                        distill_log = self.distill(samples_data, is_training=False)
+                        for k, v in distill_log.items():
+                            logger.logkv(f"Distilled/{k}_Validation", v)
+
+                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
                         logger.log("Running supervised model")
                         self.run_supervised()
                         logger.log('Evaluating supervised')
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                        actions, logprobs = self.il_trainer.acmodel.get_actions(samples_data['observations'])
-                        mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
-                        original_actions = samples_data['env_infos']['teacher_action']
-                        correct = (actions == original_actions) * mask
-                        accuracy = np.sum(correct) / np.sum(mask)
-                        logger.logkv("Distilled/Accuracy2", accuracy)
 
                     params = self.get_itr_snapshot(itr)
                     logger.save_itr_params(itr, self.curriculum_step, params)
@@ -179,13 +211,11 @@ class Trainer(object):
         joblib.dump(data, file_name, compress=3)
 
 
-    def distill(self, samples):
+    def distill(self, samples, is_training=False):
         cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
         samples['observations'] = cleaned_obs
-        log = self.il_trainer.distill(samples, source=self.source)
-        logger.logkv('Distilled/Entropy', log['entropy'])
-        logger.logkv('SupervisedLossBefore', log['policy_loss'])
-        logger.logkv('Distilled/Accuracy', log['accuracy'])
+        log = self.il_trainer.distill(samples, source=self.source, is_training=is_training)
+        return log
 
 
     def run_supervised(self):

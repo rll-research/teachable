@@ -31,7 +31,6 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'debug23'
 PREFIX = 'TORCHSUPFIXED'
 
 def get_exp_name(config):
@@ -149,7 +148,7 @@ def run_experiment(**config):
                 obs_dim = env.reset().shape[0]
                 image_dim = 128
                 memory_dim = 2048
-                instr_dim = 256  # TODO: confirm OK
+                instr_dim = 256
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
@@ -278,6 +277,7 @@ def run_experiment(**config):
             data_path=config['data_path'],
             il_trainer=il_trainer,
             source=source,
+            batch_size=config['meta_batch_size'],
         )
         trainer.train()
 
