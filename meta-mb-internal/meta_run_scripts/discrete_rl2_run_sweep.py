@@ -28,7 +28,7 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'debug22'
-PREFIX = 'SIZECOMPARISONORACLE'
+PREFIX = 'IMPROVEDDATASET'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -105,12 +105,11 @@ def run_experiment(**config):
             policy.hidden_state = None
             baseline = saved_model['baseline']
             curriculum_step = config['level']
-            saved_model['curriculum_step']
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
-            start_itr = 1360 ## TODO: comment out!
+            start_itr = 0 ## TODO: comment out!
             reward_predictor = saved_model['reward_predictor']
             reward_predictor.hidden_state = None
             if 'supervised_model' in saved_model:
@@ -188,18 +187,21 @@ def run_experiment(**config):
 
         agent_type = 'agent' if config['self_distill'] else 'teacher'
 
-        algo = PPO(
-            policy=policy,
-            supervised_model=supervised_model,
-            supervised_ground_truth='agent' if config['self_distill'] else 'teacher',
-            learning_rate=config['learning_rate'],
-            max_epochs=config['max_epochs'],
-            backprop_steps=config['backprop_steps'],
-            reward_predictor=reward_predictor,
-            reward_predictor_type=config['reward_predictor_type'],
-            entropy_bonus=config['entropy_bonus'],
-            grad_clip_threshold=config['grad_clip_threshold'],
-        )
+        from collections import namedtuple
+        Algo = namedtuple('Algo', ['supervised_model', 'reward_predictor'])
+        algo = Algo(supervised_model, reward_predictor)
+        # algo = PPO(
+        #     policy=policy,
+        #     supervised_model=supervised_model,
+        #     supervised_ground_truth='agent' if config['self_distill'] else 'teacher',
+        #     learning_rate=config['learning_rate'],
+        #     max_epochs=config['max_epochs'],
+        #     backprop_steps=config['backprop_steps'],
+        #     reward_predictor=reward_predictor,
+        #     reward_predictor_type=config['reward_predictor_type'],
+        #     entropy_bonus=config['entropy_bonus'],
+        #     grad_clip_threshold=config['grad_clip_threshold'],
+        # )
 
         EXP_NAME = get_exp_name(config)
         exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
@@ -247,20 +249,20 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    base_path = '/home/olivia/Teachable/babyai/meta-mb-internal/data/'
+    base_path = 'data/'
     hidden_size = 128
     sweep_params = {
 
         # TODO: at some point either remove this or make it less sketch
-        'mode': ['distillation'],  # collection or distillation
+        'mode': ['collection'],  # collection or distillation
         'level': [22],
-        "n_itr": [10000],
-        'num_batches': [677],
+        "n_itr": [1000],
+        'num_batches': [100],
         'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
-        'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
+        'reward_predictor_type': ['discrete'],  # TODO: change to gaussian for distillation
 
         # Saving/loading/finetuning
-        'saved_path': [base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#base_path + "SIZECOMPARISONORACLEL22distillationSS128_batches677_4/latest.pkl"],#None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -310,7 +312,7 @@ if __name__ == '__main__':
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
-        "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],

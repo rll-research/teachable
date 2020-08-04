@@ -269,4 +269,4 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
             break
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError(cmd)
