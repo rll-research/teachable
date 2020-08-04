@@ -39,8 +39,7 @@ def get_exp_name(config):
     EXP_NAME += config['mode']
     if config['mode'] == 'distillation':
         EXP_NAME += "_batches" + str(config['num_batches'])
-    source = 'agent' if config['self_distill'] else 'teacher'
-    EXP_NAME += source
+    EXP_NAME += config['source']
 
 
     # EXP_NAME += '_teacher' + str(config['feedback_type'])
@@ -187,12 +186,10 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        source = 'agent' if config['self_distill'] else 'teacher'
-
         algo = PPO(
             policy=policy,
             supervised_model=None,
-            supervised_ground_truth=source,
+            supervised_ground_truth=config['source'],
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
@@ -244,7 +241,7 @@ def run_experiment(**config):
             num_batches=config['num_batches'],
             data_path=config['data_path'],
             il_trainer=il_trainer,
-            source=source,
+            source=config['source'],
             batch_size=config['meta_batch_size'],
         )
         trainer.train()
@@ -258,12 +255,12 @@ if __name__ == '__main__':
         'level': [4],
         "n_itr": [10000],
         'num_batches': [677],
-        'data_path': [base_path + 'JUSTSUPLEARNINGL4collection_4'],
+        'data_path': [base_path + 'FINALJUSTSUPLEARNINGL4collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
+        'source': ['teacher'],  # options are agent or teacher
 
         # Saving/loading/finetuning
-        'saved_path': [base_path + 'EASYL4distillation_batches677teacher_4/latest.pkl'],
-        # 'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -315,7 +312,7 @@ if __name__ == '__main__':
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
         'backprop_steps': [20, 50, 100, 200],
-        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        "parallel": [True],
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],

@@ -219,9 +219,11 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
+        # log["Count"] = float(total_frames)
         for i, (correct, count) in enumerate(zip(per_token_correct, per_token_count)):
             if count > 0:
                 log[f'Accuracy_{i}'] = correct/count
+                # log[f'Count_{i}'] = count
         return log
 
     def starting_indexes(self, num_frames):

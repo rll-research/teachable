@@ -35,7 +35,8 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         success_writer = None
         failure_writer = None
 
-
+    correct = 0
+    count = 0
     render = animated or save_video
     for i in range(num_rollouts):
         # print("Rollout", i)
@@ -61,9 +62,15 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if np.argmax(o[160:167]) == 7:
                 print("No advice!")
 
+            count += 1
+
             if not stochastic:
                 a = np.array([np.argmax(agent_info[0][0]['probs'])])
             next_o, r, d, env_info = env.step(a)
+
+
+            if env_info['teacher_action'] == a:
+                correct += 1
 
             if reward_predictor is not None:
                 reward_obs = np.stack([env_info['next_obs_rewardfree']] * batch_size)
@@ -149,5 +156,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
 
     end = time.time()
     print("total time spent on rollouts", end - start)
+    print("ACCURACY", correct / count)
     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
     return paths

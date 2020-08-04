@@ -254,8 +254,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return action, probs
 
     def get_instr(self, obs):
+        # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
+        #    This version breaks for anything other than preactionadvice
         instr_indices = list(range(150, 161))
-        instruction_vector = obs[:, instr_indices].long() + 1  # TODO: the +1 is b/c torch doesn't like -1 indices.  But we should change this later.
+        instruction_vector = obs[:, instr_indices].long()
         return instruction_vector
 
     def get_img(self, obs):

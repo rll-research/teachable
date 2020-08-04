@@ -167,6 +167,7 @@ class Trainer(object):
 
                 if self.mode == 'distillation':
                     samples_data = self.load_data(0, self.num_train_batches)
+                    print("DATA LOADED")
                     distill_log = self.distill(samples_data, is_training=True)
                     for k, v in distill_log.items():
                         logger.logkv(f"Distilled/{k}_Train", v)
@@ -187,11 +188,12 @@ class Trainer(object):
 
                     if itr % self.save_videos_every == 0:
                         with torch.no_grad():
-                            self.save_videos(itr, save_name='video', num_rollouts=3)
+                            self.sampler.supervised_model.reset(dones=[True])
+                            self.save_videos(itr, self.il_trainer.acmodel, save_name='video', num_rollouts=10)
 
                     if itr % self.save_every == 0 or itr == self.n_itr - 1:
                         params = self.get_itr_snapshot(itr)
-                        logger.save_itr_params(itr, self.curriculum_step, params)
+                        # logger.save_itr_params(itr, self.curriculum_step, params)
 
                 elif self.mode == 'collection':
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
@@ -233,9 +235,10 @@ class Trainer(object):
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
 
-    def save_videos(self, step, save_name='sample_video', num_rollouts=2):
-        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=False,
-                        batch_size=self.sampler.meta_batch_size, record_teacher=True,
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2):
+        policy.eval()
+        paths = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
+                        batch_size=1, record_teacher=True,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
