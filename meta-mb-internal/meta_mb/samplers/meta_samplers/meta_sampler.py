@@ -111,7 +111,7 @@ class MetaSampler(BaseSampler):
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
-        self.vec_env.set_dropout(dropout_proportion)
+        # self.vec_env.set_dropout(dropout_proportion)
         self.update_tasks()
         obses = self.vec_env.reset()
         num_paths = 0

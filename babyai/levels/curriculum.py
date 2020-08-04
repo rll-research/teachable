@@ -51,21 +51,21 @@ class Curriculum(Serializable):
             Level_PutNextLocalS5N3(**kwargs), #20
             Level_PutNextLocalS6N4(**kwargs),#21
             Level_PutNextLocal(**kwargs),#22
-            Level_OpenLocalS5N3(**kwargs),#23
-            Level_OpenLocalS6N4(**kwargs),#24
-            Level_OpenLocal(**kwargs),#25
-            Level_GoToObjMazeOpen(**kwargs),#26
-            Level_GoToOpen(**kwargs),#27
-            Level_GoToObjMazeS4R2(**kwargs),#28
-            Level_GoToObjMazeS5(**kwargs),#29
-            Level_GoToObjMaze(**kwargs),#30
-            Level_Open(**kwargs),#31
-            Level_GoTo(**kwargs),#32
-            Level_Pickup(**kwargs),#33
-            Level_Unlock(**kwargs),#34
-            Level_GoToImpUnlock(**kwargs),#35
-            Level_PutNext(**kwargs),#36
-            Level_UnblockPickup(**kwargs),#37
+            # Level_OpenLocalS5N3(**kwargs),#23
+            # Level_OpenLocalS6N4(**kwargs),#24
+            # Level_OpenLocal(**kwargs),#25
+            # Level_GoToObjMazeOpen(**kwargs),#26
+            # Level_GoToOpen(**kwargs),#27
+            # Level_GoToObjMazeS4R2(**kwargs),#28
+            # Level_GoToObjMazeS5(**kwargs),#29
+            # Level_GoToObjMaze(**kwargs),#30
+            # Level_Open(**kwargs),#31
+            # Level_GoTo(**kwargs),#32
+            # Level_Pickup(**kwargs),#33
+            # Level_Unlock(**kwargs),#34
+            # Level_GoToImpUnlock(**kwargs),#35
+            # Level_PutNext(**kwargs),#36
+            # Level_UnblockPickup(**kwargs),#37
         ]
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
