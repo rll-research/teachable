@@ -59,7 +59,8 @@ class Trainer(object):
         eval_every=100,
         save_every=100,
         log_every=10,
-        save_videos_every=1000):
+        save_videos_every=1000,
+        distill_with_teacher=False):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -96,6 +97,7 @@ class Trainer(object):
         self.save_every = save_every
         self.save_videos_every = save_videos_every
         self.log_every = log_every
+        self.distill_with_teacher = distill_with_teacher
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -188,16 +190,18 @@ class Trainer(object):
                     if itr % self.save_videos_every == 0:
                         with torch.no_grad():
                             self.sampler.supervised_model.reset(dones=[True])
-                            self.save_videos(itr, self.il_trainer.acmodel, save_name='video', num_rollouts=10)
+                            self.save_videos(itr, self.il_trainer.acmodel, save_name='video', num_rollouts=10,
+                                             use_teacher=self.distill_with_teacher)
 
                     if itr % self.save_every == 0 or itr == self.n_itr - 1:
                         params = self.get_itr_snapshot(itr)
-                        # logger.save_itr_params(itr, self.curriculum_step, params)
+                        logger.save_itr_params(itr, self.curriculum_step, params)
 
                 elif self.mode == 'collection':
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
-                                                        dropout_proportion=dropout_proportion)
+                                                        dropout_proportion=dropout_proportion,
+                                                        use_teacher=True)
 
                     """ ----------------- Processing Samples ---------------------"""
 
@@ -229,15 +233,16 @@ class Trainer(object):
 
     def run_supervised(self):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.il_trainer.acmodel,
-                                            feedback_list=self.teacher_info, max_action=True)
+                                            feedback_list=self.teacher_info, max_action=True,
+                                            use_teacher=self.distill_with_teacher)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
 
-    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2):
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False):
         policy.eval()
         paths = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
-                        batch_size=1, record_teacher=True,
+                        batch_size=1, record_teacher=True, use_teacher=use_teacher,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))

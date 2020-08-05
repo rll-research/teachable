@@ -374,7 +374,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def to_vocab_index(self, mission, pad_length=None):  # TODO: turn this into an embedding
         """
         Take a mission string, and return a fixed-length vector where each index is the index of the nth word in the
-        mission.  The end is padded with -1
+        mission.  The end is padded with 0
         :param mission: mission text as a string
         :param pad_length: length to pad the mission string to
         :return: list of integer indices of length pad_length (or len(mission.split(" ")) if pad_length is not provided)
@@ -479,7 +479,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 print("ERROR!!!!!", e)
                 teacher_copy.step([action])
         else:
-            info['teacher_action'] = np.array([-1], dtype=np.int32)
+            info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
         reward_total = rew*1000
         # reward_total = np.ceil(rew)  # TODO: :(

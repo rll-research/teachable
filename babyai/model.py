@@ -63,7 +63,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, obs_space, action_space, env,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None):
+                 arch="bow_endpool_res", aux_info=None, advice_dim=128,
+                 advice_start_index=-1, advice_end_index=-1):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -87,6 +88,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.action_space = action_space
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.advice_dim = advice_dim
+        self.advice_start_index = advice_start_index
+        self.advice_end_index = advice_end_index
+        self.advice_size = advice_end_index - advice_start_index
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -111,6 +116,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
         self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
+
+        if self.advice_size > 0:
+            self.advice_embedding = nn.Linear(self.advice_size, self.advice_dim)
 
         # Define instruction embedding
         if self.use_instr:
@@ -221,7 +229,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         batch_len = 1 if dones is None else len(dones)
         self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
 
-    def get_actions(self, obs, training=False):
+    def get_actions(self, obs, training=False, use_teacher=False):
         if training:
             self.train()
         else:
@@ -238,15 +246,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         probs_list = [[] for _ in range(len(obs))]
         for t in range(len(obs[0])):
             obs_t = obs[:, t]
-            action, probs = self.get_actions_t(obs_t)
+            action, probs = self.get_actions_t(obs_t, use_teacher)
             for i in range(len(probs_list)):
                 action_list[i].append(action[i])
                 probs_list[i].append(probs[i])
         actions = np.array(action_list)
         return actions, probs_list
 
-    def get_actions_t(self, obs):
-        probs, memory, dist = self(obs, self.memory)
+    def get_actions_t(self, obs, use_teacher):
+        probs, memory, dist = self(obs, self.memory, use_teacher=use_teacher)
         self.memory = memory
         probs = probs.data.cpu().numpy()
         action = [[np.random.choice(self.action_space.n, p=p)] for p in probs]
@@ -255,10 +263,18 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
     def get_instr(self, obs):
         # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
-        #    This version breaks for anything other than preactionadvice
         instr_indices = list(range(150, 161))
         instruction_vector = obs[:, instr_indices].long()
         return instruction_vector
+
+    def get_advice(self, obs, use_teacher):
+        # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
+        #    This version breaks for anything other than preactionadvice
+        instr_indices = list(range(self.advice_start_index, self.advice_end_index))
+        advice_vector = obs[:, instr_indices].long()
+        if not use_teacher:
+            advice_vector = advice_vector * 0 + self.env.action_space.n
+        return advice_vector
 
     def get_img(self, obs):
         img_indices = list(range(3, 150))
@@ -269,9 +285,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             assert False
         return img_vector
 
-    def forward(self, obs, memory, instr_embedding=None):
+    def forward(self, obs, memory, instr_embedding=None, use_teacher=False):
         # Expect obs to be [batch, obs_dim]
         instruction_vector = self.get_instr(obs)
+        if self.advice_size > 0:
+            advice_vector = self.get_advice(obs, use_teacher)
+            advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = self.get_img(obs)
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
@@ -294,6 +313,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             pre_softmax = (keys[:, None, :] * instr_embedding).sum(2) + 1000 * mask
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
+
+            # Add the teacher's advice onto the instruction
+            if self.advice_size > 0:
+                instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
 
         x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
@@ -365,3 +388,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         else:
             ValueError("Undefined instruction architecture: {}".format(self.use_instr))
+
+
+    def _get_advice_embedding(self, advice):
+        return self.advice_embedding(advice.float())

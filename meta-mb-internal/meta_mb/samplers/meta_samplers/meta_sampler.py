@@ -76,7 +76,7 @@ class MetaSampler(BaseSampler):
 
 
     def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, dropout_proportion=1,
-                       policy=None, feedback_list=[], max_action=False):
+                       policy=None, feedback_list=[], max_action=False, use_teacher=False):
         """
         Collect batch_size trajectories from each task
 
@@ -125,7 +125,7 @@ class MetaSampler(BaseSampler):
                 agent_infos = [[{'mean': np.zeros_like(self.env.action_space.sample()),
                                  'log_std': np.zeros_like(self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
-                actions, agent_infos = policy.get_actions(obs_per_task)
+                actions, agent_infos = policy.get_actions(obs_per_task, use_teacher)
                 if max_action:
                     original_action_shape = actions.shape
                     actions = [[[np.argmax(d['probs'])] for d in agent_info] for agent_info in agent_infos]

@@ -9,7 +9,7 @@ class PreActionAdvice(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.array([-1])
+        return np.array([self.env.action_space.n])
 
     def random_feedback(self):
         """

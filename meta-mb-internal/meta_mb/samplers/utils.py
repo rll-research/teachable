@@ -11,7 +11,7 @@ def write_video(writer, frames, show_last=None):
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
-            num_save=None, record_teacher=False, reward_predictor=None):
+            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False):
     if num_save is None:
         num_save = num_rollouts
     start = time.time()
@@ -57,7 +57,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             _ = env.render(mode)
         while path_length < max_path_length:
             obs_big = np.stack([o] * batch_size)
-            a, agent_info = agent.get_actions(obs_big)
+            a, agent_info = agent.get_actions(obs_big, use_teacher=use_teacher)
             a = a[0][0]
             if np.argmax(o[160:167]) == 7:
                 print("No advice!")
@@ -74,7 +74,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
 
             if reward_predictor is not None:
                 reward_obs = np.stack([env_info['next_obs_rewardfree']] * batch_size)
-                pred_reward = reward_predictor.get_actions(reward_obs)
+                pred_reward = reward_predictor.get_actions(reward_obs, use_teacher=use_teacher)
 
 
             observations.append(o)

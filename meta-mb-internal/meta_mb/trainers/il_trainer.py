@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class ImitationLearning(object):
-    def __init__(self, model, env, args, ):
+    def __init__(self, model, env, args, distill_with_teacher):
         self.args = args
+        self.distill_with_teacher = distill_with_teacher
 
         utils.seed(self.args.seed)
         self.env = env
@@ -149,7 +150,7 @@ class ImitationLearning(object):
                 # taking the memory till len(inds), as demos beyond that have already finished
                 new_memory = self.acmodel(
                     preprocessed_obs,
-                    memory[:len(inds), :], instr_embedding[:len(inds)])[1]
+                    memory[:len(inds), :], instr_embedding[:len(inds)], self.distill_with_teacher)[1]
 
             memories[inds, :] = memory[:len(inds), :]
             memory[:len(inds), :] = new_memory
@@ -183,7 +184,7 @@ class ImitationLearning(object):
             mask_step = mask[indexes]
             model_results = self.acmodel(
                 preprocessed_obs, memory * mask_step,
-                instr_embedding[episode_ids[indexes]])
+                instr_embedding[episode_ids[indexes]], self.distill_with_teacher)
             dist = model_results[2]
             memory = model_results[1]
 

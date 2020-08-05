@@ -150,9 +150,14 @@ def run_experiment(**config):
                 instr_arch = 'bigru'
                 use_mem = True
                 arch = 'bow_endpool_res'
+                advice_start_index = 160
+                advice_end_index = advice_start_index + env.action_space.n + 1
                 supervised_model = ACModel(obs_dim, env.action_space, env,
-                                       image_dim, memory_dim, instr_dim,
-                                       use_instr, instr_arch, use_mem, arch)
+                                           image_dim, memory_dim, instr_dim,
+                                           use_instr, instr_arch, use_mem, arch,
+                                           advice_dim=128,
+                                           advice_start_index=advice_start_index,
+                                           advice_end_index=advice_end_index)
             elif config['self_distill']:
                 supervised_model = policy
             else:
@@ -164,7 +169,7 @@ def run_experiment(**config):
         args = parser.parse_args()
         args.model = 'default_il'
         args.recurrence = config['backprop_steps']
-        il_trainer = ImitationLearning(supervised_model, env, args)
+        il_trainer = ImitationLearning(supervised_model, env, args, config['distill_with_teacher'])
 
         sampler = MetaSampler(
             env=env,
@@ -243,6 +248,7 @@ def run_experiment(**config):
             il_trainer=il_trainer,
             source=config['source'],
             batch_size=config['meta_batch_size'],
+            distill_with_teacher=config['distill_with_teacher'],
         )
         trainer.train()
 
@@ -258,6 +264,7 @@ if __name__ == '__main__':
         'data_path': [base_path + 'FINALJUSTSUPLEARNINGL4collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
         'source': ['teacher'],  # options are agent or teacher
+        'distill_with_teacher': [True],
 
         # Saving/loading/finetuning
         'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
@@ -303,7 +310,6 @@ if __name__ == '__main__':
         # Distillation
         'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
-        'distill_with_teacher': [False],
 
         # Arguments we basically never change
         'algo': ['rl2'],
