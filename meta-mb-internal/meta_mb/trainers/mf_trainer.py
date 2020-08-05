@@ -167,7 +167,6 @@ class Trainer(object):
 
                 if self.mode == 'distillation':
                     samples_data = self.load_data(0, self.num_train_batches)
-                    print("DATA LOADED")
                     distill_log = self.distill(samples_data, is_training=True)
                     for k, v in distill_log.items():
                         logger.logkv(f"Distilled/{k}_Train", v)
