@@ -31,7 +31,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'EASY'
+PREFIX = 'FIXEDITHINK'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -40,7 +40,8 @@ def get_exp_name(config):
     if config['mode'] == 'distillation':
         EXP_NAME += "_batches" + str(config['num_batches'])
     EXP_NAME += config['source']
-
+    if config['distill_with_teacher']:
+        EXP_NAME += 'wTeacher'
 
     # EXP_NAME += '_teacher' + str(config['feedback_type'])
     # EXP_NAME += '_persist'
@@ -258,13 +259,13 @@ if __name__ == '__main__':
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['distillation'],  # collection or distillation
-        'level': [4],
+        'level': [22],
         "n_itr": [10000],
         'num_batches': [677],
-        'data_path': [base_path + 'FINALJUSTSUPLEARNINGL4collection_4'],
+        'data_path': [base_path + 'FINALJUSTSUPLEARNINGL22collection_4'],
         'reward_predictor_type': ['gaussian'],  # TODO: change to gaussian for distillation
         'source': ['teacher'],  # options are agent or teacher
-        'distill_with_teacher': [True],
+        'distill_with_teacher': [False],
 
         # Saving/loading/finetuning
         'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
