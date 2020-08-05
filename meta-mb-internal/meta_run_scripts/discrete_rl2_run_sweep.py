@@ -255,7 +255,7 @@ if __name__ == '__main__':
 
         # TODO: at some point either remove this or make it less sketch
         'mode': ['collection'],  # collection or distillation
-        'level': [32],
+        'level': [22],
         "n_itr": [1000],
         'num_batches': [100],
         'data_path': [base_path + 'JUSTSUPLEARNINGL22collection_4'],
@@ -292,7 +292,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(hidden_size, hidden_size), (128,)],
+        "hidden_sizes": [(hidden_size, hidden_size),],
         "discount": [0.95],
 
         # Reward
@@ -311,7 +311,7 @@ if __name__ == '__main__':
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        'backprop_steps': [50, 100, 200],
+        'backprop_steps': [50],
         "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
@@ -321,6 +321,6 @@ if __name__ == '__main__':
         "cell_type": ["lstm"],
         "num_minibatches": [1],
         'exp_tag': ['v0'],
-        'log_rand': [0, 1, 2, 3],
+        'log_rand': [0],
     }
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
