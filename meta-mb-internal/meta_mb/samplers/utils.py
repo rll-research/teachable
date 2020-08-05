@@ -11,7 +11,7 @@ def write_video(writer, frames, show_last=None):
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
             video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
-            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False):
+            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, dense_rewards=True):
     if num_save is None:
         num_save = num_rollouts
     start = time.time()
@@ -28,7 +28,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
 
     img = env.render(mode='rgb_array')
     height, width, channels = img.shape
-    size = (width, height + 100)
+    size = (width * 2, height * 2)
     fps = int(speedup / timestep)
     if save_video:
         all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
@@ -92,20 +92,21 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
 
             if save_video and i < num_save:
                 image = env.render(mode='rgb_array')[:, :, ::-1] # RGB --> BGR
-                title_block = np.zeros((100, image.shape[1], 3), np.uint8) + 255
+                h, w, c = image.shape
+                background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
 
                 # If we have a reward predictor, the background color is based on whether the reward predictor is correct
                 if reward_predictor is not None:
                     pred_reward = np.round(pred_reward[0][0][0][0])
                     if pred_reward == 0 and r == 1:
-                        title_block[:, :, 1] = 0
+                        background[:, :, 1] = 0
                     elif pred_reward == 1 and r == 0:
-                        title_block[:, :, 2] = 0
+                        background[:, :, 2] = 0
                 # Otherwise, the background color is based on whether the action taken is correct
                 else:
                     if not env_info['teacher_action'] == a:
-                        title_block[:, :, 0] = 0
-                image = cv2.vconcat((title_block, image))
+                        background[:, :, 0] = 0
+                background[h:, w:] = image
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 label_str = ""
                 if hasattr(env, "teacher") and env.teacher is not None:
@@ -114,11 +115,11 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                     else:
                         label_str += f"Teacher on: {env.teacher.feedback_type}   "
                 label_str += "Run: " + str(i % reset_every)
-                cv2.putText(image, env.mission, (30, 30), font, 0.5, (0, 0, 0), 3, 0)
-                cv2.putText(image, label_str, (30, 90), font, 0.5, (0, 0, 0), 3, 0)
-                cv2.putText(image, "Action " + str(a[0]), (30, 60), font, 0.5, (0, 0, 0), 3, 0)
+                cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 3, 0)
+                cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 3, 0)
+                cv2.putText(background, "Action " + str(a[0]), (30, 60), font, 0.5, (0, 0, 0), 3, 0)
 
-                curr_images.append(image)
+                curr_images.append(background)
 
             if d and not ignore_done:
                 break
@@ -126,7 +127,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         if save_video and i < num_save:
             # Add a few blank frames at the end to indicate success (white) or failure (black)
             sample_img = np.zeros_like(curr_images[-1])
-            if r > 0:
+            if (dense_rewards and r > 10) or (not dense_rewards and r > 0):
                 curr_images += [sample_img + 255] * 3
                 if success_writer is None:
                     success_writer = cv2.VideoWriter(video_filename[:-4] + "success" + video_filename[-4:], cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
