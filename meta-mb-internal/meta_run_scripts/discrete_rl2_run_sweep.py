@@ -297,7 +297,7 @@ if __name__ == '__main__':
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(512, 512), (128,)],
+        "hidden_sizes": [(512, 512)],
         "memory_dim": [1024],  # 2048
         "instr_dim": [128],  # 256
         "discount": [0.95],
@@ -317,7 +317,7 @@ if __name__ == '__main__':
         'baseline': [LinearFeatureBaseline],
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
-        'backprop_steps': [20, 50, 100, 200],
+        'backprop_steps': [20],
         "parallel": [True],
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
