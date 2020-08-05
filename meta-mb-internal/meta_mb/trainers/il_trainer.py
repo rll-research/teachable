@@ -80,9 +80,8 @@ class ImitationLearning(object):
         num_demos = len(demos['actions'])
         for i in range(num_demos):
             new_demo = []
-            done = False
-            t = 0
-            while not done:
+            end_index = np.where(demos['dones'][i])[0][-1]
+            for t in range(end_index + 1):
                 obs = demos['observations'][i, t]
                 if source == 'agent':
                     action = demos['actions'][i, t]
@@ -92,7 +91,6 @@ class ImitationLearning(object):
                     raise NotImplementedError(source)
                 done = demos['dones'][i, t]
                 new_demo.append((obs, action, done))
-                t += 1
             new_demos.append(new_demo)
         return new_demos
 
