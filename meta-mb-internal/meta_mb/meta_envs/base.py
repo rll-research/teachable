@@ -1,5 +1,4 @@
 from gym.core import Env
-from gym.envs.mujoco import MujocoEnv
 import numpy as np
 
 
