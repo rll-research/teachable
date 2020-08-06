@@ -159,4 +159,4 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
     print("total time spent on rollouts", end - start)
     print("ACCURACY", correct / count)
     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
-    return paths
+    return paths, correct / count

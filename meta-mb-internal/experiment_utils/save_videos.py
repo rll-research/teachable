@@ -140,7 +140,7 @@ if __name__ == "__main__":
                         env = rl2env(normalize(e_new))
 
                     video_filename = os.path.join(args.path, 'video.mp4')
-                    paths = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
+                    paths, accuracy = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
                                         stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every,
                                     record_teacher=True, reward_predictor=reward_predictor)

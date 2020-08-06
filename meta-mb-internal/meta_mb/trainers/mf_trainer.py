@@ -187,11 +187,11 @@ class Trainer(object):
                             logger.log('Evaluating supervised')
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
 
-                    if itr % self.save_videos_every == 0:
-                        with torch.no_grad():
+                            should_save_video = itr % self.save_videos_every == 0
                             self.sampler.supervised_model.reset(dones=[True])
-                            self.save_videos(itr, self.il_trainer.acmodel, save_name='video', num_rollouts=10,
-                                             use_teacher=self.distill_with_teacher)
+                            paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='video', num_rollouts=10,
+                                             use_teacher=self.distill_with_teacher, save_video=should_save_video)
+                            logger.logkv("Distill/RolloutAcc", accuracy)
 
                     if itr % self.save_every == 0 or itr == self.n_itr - 1:
                         params = self.get_itr_snapshot(itr)
@@ -239,14 +239,15 @@ class Trainer(object):
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
 
-    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False):
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
         policy.eval()
-        paths = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
-                        batch_size=1, record_teacher=True, use_teacher=use_teacher,
+        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
+                        batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
         print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+        return paths, accuracy
 
     def get_itr_snapshot(self, itr):
         """
