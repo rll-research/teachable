@@ -28,7 +28,6 @@ kiwisolver==1.0.1
 matplotlib==2.2.3
 moviepy==0.2.3.5
 mpi4py==3.0.0
-mujoco-py==1.50.1.56
 nbformat==4.4.0
 nose==1.3.7
 numpy==1.15.1

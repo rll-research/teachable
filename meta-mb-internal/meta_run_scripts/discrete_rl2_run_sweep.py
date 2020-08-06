@@ -1,5 +1,4 @@
 from meta_mb.baselines.linear_baseline import LinearFeatureBaseline
-from meta_mb.meta_envs.point.point_env_1d import MetaPointEnv
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
 from meta_mb.algos.ppo import PPO
@@ -219,7 +218,7 @@ def run_experiment(**config):
 
 if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
-    base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
+    base_path = 'data/'
     sweep_params = {
 
         # Saving/loading/finetuning
@@ -272,7 +271,6 @@ if __name__ == '__main__':
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
-        'env': [MetaPointEnv],
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
         "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
