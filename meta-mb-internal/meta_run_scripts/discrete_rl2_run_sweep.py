@@ -218,6 +218,7 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
+    DEBUG = True  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
@@ -286,4 +287,15 @@ if __name__ == '__main__':
         'exp_tag': ['v0'],
         'log_rand': [0, 1, 2, 3],
     }
+
+    # DEBUG HPARAMS
+    if DEBUG:
+        sweep_params['meta_batch_size'] = [1]
+        sweep_params['success_threshold'] = [0]
+        sweep_params['accuracy_threshold'] = [0]
+        sweep_params['hidden_sizes'] = [(2,)]
+        sweep_params['backprop_steps'] = [1]
+        sweep_params['max_path_length'] = [3]
+        # sweep_params['parallel'] = [False]
+
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
