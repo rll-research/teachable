@@ -81,7 +81,10 @@ class Trainer(object):
         num_total_episodes = data['dones'].sum()
         num_successes = data['env_infos']['success'].sum()
         avg_success = num_successes / num_total_episodes
-        avg_accuracy = (data['actions'] == data['env_infos']['teacher_action']).sum() / np.prod(data['actions'].shape)
+        # Episode length contains the timestep, starting at 1.  Padding values are 0.
+        pad_steps = (data['env_infos']['episode_length'] == 0).sum()
+        correct_actions = (data['actions'] == data['env_infos']['teacher_action']).sum() - pad_steps
+        avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         # We take the max since runs which end early will be 0-padded
         dropout_level = np.max(data['env_infos']['dropout_proportion'])
         should_advance_curriculum = (avg_success >= self.success_threshold) and (dropout_level == 1) and (avg_accuracy >= self.accuracy_threshold)
