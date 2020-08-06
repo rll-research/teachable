@@ -35,7 +35,8 @@ class Trainer(object):
             sess=None,
             use_rp_inner=False,
             use_rp_outer=False,
-            reward_threshold=0.8,
+            success_threshold=0.95,
+            accuracy_threshold=0.9,
             exp_name="",
             videos_every=5,
             curriculum_step=0,
@@ -62,7 +63,8 @@ class Trainer(object):
         self.sess = sess
         self.use_rp_inner = use_rp_inner
         self.use_rp_outer = use_rp_outer
-        self.reward_threshold = reward_threshold
+        self.success_threshold = success_threshold
+        self.accuracy_threshold = accuracy_threshold
         self.curriculum_step = curriculum_step
         self.exp_name = exp_name
         self.videos_every = videos_every
@@ -78,11 +80,12 @@ class Trainer(object):
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
         num_successes = data['env_infos']['success'].sum()
-        avg_reward = num_successes / num_total_episodes
+        avg_success = num_successes / num_total_episodes
+        avg_accuracy = (data['actions'] == data['env_infos']['teacher_action']).sum() / np.prod(data['actions'].shape)
         # We take the max since runs which end early will be 0-padded
         dropout_level = np.max(data['env_infos']['dropout_proportion'])
-        should_advance_curriculum = (avg_reward >= self.reward_threshold) and (dropout_level == 1)
-        should_increase_dropout = avg_reward >= self.increase_dropout_threshold
+        should_advance_curriculum = (avg_success >= self.success_threshold) and (dropout_level == 1) and (avg_accuracy >= self.accuracy_threshold)
+        should_increase_dropout = avg_success >= self.increase_dropout_threshold
         return should_advance_curriculum, should_increase_dropout
 
     def train(self):

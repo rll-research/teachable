@@ -52,7 +52,7 @@ def get_exp_name(config):
     EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
     EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
     EXP_NAME += '_disc' + str(config['discount'])
-    EXP_NAME += '_thresh' + str(config['reward_threshold'])
+    EXP_NAME += '_thresh' + str(config['success_threshold'])
     EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
     EXP_NAME += 'corr' + str(config['dropout_correction'])
@@ -203,7 +203,8 @@ def run_experiment(**config):
             n_itr=config['n_itr'],
             sess=sess,
             start_itr=start_itr,
-            reward_threshold=config['reward_threshold'],
+            success_threshold=config['success_threshold'],
+            accuracy_threshold=config['accuracy_threshold'],
             exp_name=exp_dir,
             curriculum_step=curriculum_step,
             config=config,
@@ -256,12 +257,13 @@ if __name__ == '__main__':
 
         # Reward
         'reward_predictor_type': ['gaussian'],
-        'intermediate_reward': [False], # This turns the intermediate rewards on or off
-        'reward_threshold': [.95],
+        'intermediate_reward': [True], # This turns the intermediate rewards on or off
+        'success_threshold': [.95],
+        'accuracy_threshold': [.9],
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
         'distill_with_teacher': [False],
 
@@ -272,7 +274,7 @@ if __name__ == '__main__':
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
-        "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
