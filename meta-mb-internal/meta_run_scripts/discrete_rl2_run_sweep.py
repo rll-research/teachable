@@ -218,7 +218,7 @@ def run_experiment(**config):
         trainer.train()
 
 if __name__ == '__main__':
-    DEBUG = True  # Make this true to run a really quick run designed to sanity check the code runs
+    DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = '/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/'
     sweep_params = {
 
