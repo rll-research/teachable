@@ -171,7 +171,7 @@ class Trainer(object):
                     samples_data = self.load_data(0, self.num_train_batches)
                     distill_log = self.distill(samples_data, is_training=True)
                     for k, v in distill_log.items():
-                        logger.logkv(f"Distilled/{k}_Train", v)
+                        logger.logkv(f"Distill/{k}_Train", v)
 
                     if itr % self.eval_every == 0 or itr == self.n_itr - 1:
                         with torch.no_grad():
@@ -180,7 +180,7 @@ class Trainer(object):
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
                             distill_log = self.distill(samples_data, is_training=False)
                             for k, v in distill_log.items():
-                                logger.logkv(f"Distilled/{k}_Validation", v)
+                                logger.logkv(f"Distill/{k}_Validation", v)
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
                             logger.log("Running supervised model")
                             self.run_supervised()
@@ -235,7 +235,7 @@ class Trainer(object):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.il_trainer.acmodel,
                                             feedback_list=self.teacher_info, max_action=True,
                                             use_teacher=self.distill_with_teacher)
-        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distill/")
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
 
