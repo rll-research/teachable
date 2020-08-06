@@ -641,28 +641,34 @@ class Bot:
         # Reason
         subgoal_reason_idx = reason_names.index(subgoal.reason)
 
-        # Datum
-        if type(subgoal.datum) == int:
-            subgoal_type = 0
-            # Repeat the datum twice
-            subgoal_val  = np.array([subgoal.datum, subgoal.datum])
-        elif type(subgoal.datum) == tuple:
-            subgoal_type = 1
-            # Position to go to
-            subgoal_val = np.array(subgoal.datum)
-        elif type(subgoal.datum) == ObjDesc:
-            subgoal_type = 2
-            color_idx = COLOR_NAMES.index(subgoal.datum.color)
-            type_idx = OBJ_TYPES.index(subgoal.datum.type)
-            subgoal_val = np.array([color_idx, type_idx])
-        elif subgoal.datum is None:
-            subgoal_type = 3
-            subgoal_val = np.array([-1, -1])
-        else:
-            subgoal_type = 2
-            color_idx = COLOR_NAMES.index(subgoal.datum.color)
-            type_idx = OBJ_TYPES.index(subgoal.datum.type)
-            subgoal_val = np.array([color_idx, type_idx])
+        try:
+            # Datum
+            if type(subgoal.datum) == int:
+                subgoal_type = 0
+                # Repeat the datum twice
+                subgoal_val = np.array([subgoal.datum, subgoal.datum])
+            elif type(subgoal.datum) == tuple or type(subgoal.datum) == list or type(subgoal.datum) == np.ndarray:
+                subgoal_type = 1
+                # Position to go to
+                subgoal_val = np.array(subgoal.datum)
+            elif type(subgoal.datum) == ObjDesc:
+                subgoal_type = 2
+                color_idx = COLOR_NAMES.index(subgoal.datum.color)
+                type_idx = OBJ_TYPES.index(subgoal.datum.type)
+                subgoal_val = np.array([color_idx, type_idx])
+            elif subgoal.datum is None:
+                subgoal_type = 3
+                subgoal_val = np.array([-1, -1])
+            else:
+                # Object type
+                subgoal_type = 2
+                color_idx = COLOR_NAMES.index(subgoal.datum.color)
+                type_idx = OBJ_TYPES.index(subgoal.datum.type)
+                subgoal_val = np.array([color_idx, type_idx])
+        except Exception as e:
+            print("EXCEPTION IN BOT")
+            import IPython
+            IPython.embed()
 
         subgoal_idx_all = np.zeros(len(subgoal_names) + len(reason_names) + 3)
         # Index the subgoal type
