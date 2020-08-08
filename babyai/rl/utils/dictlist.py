@@ -1,5 +1,8 @@
+import numpy as np
+import torch
+
 class DictList(dict):
-    """A dictionnary of lists of same size. Dictionnary items can be
+    """A dictionary of lists of same size. Dictionary items can be
     accessed using `.` notation and list items using `[]` notation.
 
     Example:

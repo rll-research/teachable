@@ -62,7 +62,8 @@ class Trainer(object):
         log_every=10,
         save_videos_every=1000,
         distill_with_teacher=False,
-        supervised_model=None):
+        supervised_model=None,
+        reward_predictor=None):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -102,6 +103,7 @@ class Trainer(object):
         self.log_every = log_every
         self.distill_with_teacher = distill_with_teacher
         self.supervised_model = supervised_model
+        self.reward_predictor = reward_predictor
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -189,19 +191,19 @@ class Trainer(object):
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
-                r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                if self.supervised_model is not None:
-                    self.log_supervised(samples_data)
-                if self.sparse_rewards:
-                    self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
-                # Splice into the inference process
-                if self.use_rp_inner:
-                    samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
-                # Splice into the meta-learning process
-                if self.use_rp_outer:
-                    samples_data['rewards'] = r_discrete[:, :, 0]
-                if 'teacher_action' in samples_data['env_infos']:
-                    samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
+                # r_discrete, logprobs = self.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                # if self.supervised_model is not None:
+                #     self.log_supervised(samples_data)
+                # if self.sparse_rewards:
+                #     self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
+                # # Splice into the inference process
+                # if self.use_rp_inner:
+                #     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
+                # # Splice into the meta-learning process
+                # if self.use_rp_outer:
+                #     samples_data['rewards'] = r_discrete[:, :, 0]
+                # if 'teacher_action' in samples_data['env_infos']:
+                #     samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -217,7 +219,7 @@ class Trainer(object):
                 time_optimization_step_start = time.time()
                 if not self.distill_only:
                     self.algo.optimize_policy(samples_data)
-                    self.algo.optimize_reward(samples_data)
+                    # self.algo.optimize_reward(samples_data)
                 if self.supervised_model is not None and advance_curriculum:
                     samples_data = self.load_data(0, self.num_train_batches)
                     distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
@@ -336,8 +338,8 @@ class Trainer(object):
                         baseline=self.baseline,
                         config=self.config,
                         curriculum_step=self.curriculum_step,)
-        if self.algo.reward_predictor is not None:
-            d['reward_predictor'] = self.algo.reward_predictor
+        if self.reward_predictor is not None:
+            d['reward_predictor'] = self.reward_predictor
         if self.il_trainer.acmodel is not None:
             d['supervised_model'] = self.il_trainer.acmodel
         return d
@@ -353,8 +355,8 @@ class Trainer(object):
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far
         self.env.log_diagnostics(paths, prefix)
-        self.policy.log_diagnostics(paths, prefix)
-        self.baseline.log_diagnostics(paths, prefix)
+        # self.policy.log_diagnostics(paths, prefix)
+        # self.baseline.log_diagnostics(paths, prefix)
 
     def _log_rew_pred(self, r_discrete, rewards, log_prefix):
         correct = rewards == r_discrete

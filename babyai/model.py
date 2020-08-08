@@ -167,7 +167,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define critic's model
         self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 1)
         )
@@ -243,23 +243,36 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             obs = obs.unsqueeze(0)
         assert len(obs.shape) == 3, obs.shape
         action_list = [[] for _ in range(len(obs))]
-        probs_list = [[] for _ in range(len(obs))]
+        info_list = [[] for _ in range(len(obs))]
         for t in range(len(obs[0])):
             obs_t = obs[:, t]
-            action, probs = self.get_actions_t(obs_t, use_teacher)
-            for i in range(len(probs_list)):
-                action_list[i].append(action[i])
-                probs_list[i].append(probs[i])
+            action, info = self.get_actions_t(obs_t, use_teacher)
+            for i in range(len(info_list)):
+                action_list[i].append([action[i]])
+                info_list[i].append(info[i])
         actions = np.array(action_list)
-        return actions, probs_list
+        return actions, info_list
 
-    def get_actions_t(self, obs, use_teacher):
-        probs, memory, dist = self(obs, self.memory, use_teacher=use_teacher)
-        self.memory = memory
-        probs = probs.data.cpu().numpy()
-        action = [[np.random.choice(self.action_space.n, p=p)] for p in probs]
-        probs = [{"probs": p} for p in probs]
-        return action, probs
+    def get_actions_t(self, obs, use_teacher):  # TODO: this feels like a good place for a DictList
+        dist, info = self(obs, self.memory, use_teacher=use_teacher)
+        self.memory = info['memory']
+        info_list = []
+        probs = info['probs'].detach().cpu().numpy()
+        actions = dist.sample()
+        log_probs = dist.log_prob(actions).detach().cpu().numpy()
+        values = info['value'].detach().cpu().numpy()
+        memory = info['memory'].detach().cpu().numpy()
+        actions = actions.detach().cpu().numpy()
+
+
+        for i in range(len(probs)):
+            info_list.append({
+                "memory": memory[i],
+                "value": values[i],
+                "log_prob": log_probs[i],
+                "probs": probs[i],
+            })
+        return actions, info_list
 
     def get_instr(self, obs):
         # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
@@ -345,7 +358,17 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         x = self.actor(embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
-        return probs, memory, dist
+
+        x = self.critic(embedding)
+        value = x.squeeze(1)
+
+        info = {
+            "probs": probs,
+            "value": value,
+            "memory": memory,
+        }
+
+        return dist, info
 
     def _get_instr_embedding(self, instr):
         lengths = (instr != 0).sum(1).long()

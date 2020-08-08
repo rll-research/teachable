@@ -2,6 +2,7 @@ from meta_mb.baselines.linear_baseline import LinearFeatureBaseline
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
 from meta_mb.algos.ppo import PPO
+from meta_mb.algos.ppo_torch import PPOAlgo
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
@@ -32,6 +33,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'FIXEDITHINK'
 
+
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
@@ -61,6 +63,7 @@ def get_exp_name(config):
     EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
+
 
 def run_experiment(**config):
     set_seed(config['seed'])
@@ -116,22 +119,30 @@ def run_experiment(**config):
                                               pre_levels=config['pre_levels'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
-            policy = DiscreteRNNPolicy(
-                    name="meta-policy",
-                    action_dim=np.prod(env.action_space.n),
-                    obs_dim=obs_dim,
-                    meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
-                    cell_type=config['cell_type']
-                )
-            reward_predictor = GaussianRNNPolicy(
-                name="reward-predictor",
-                obs_dim=obs_dim - 1,
-                action_dim=1,
-                meta_batch_size=config['meta_batch_size'],
-                hidden_sizes=config['hidden_sizes'],
-                cell_type=config['cell_type']
-            )
+            image_dim = 128
+            memory_dim = config['memory_dim']
+            instr_dim = config['memory_dim']
+            use_instr = True
+            instr_arch = 'bigru'
+            use_mem = True
+            arch = 'bow_endpool_res'
+            advice_start_index = 160
+            advice_end_index = advice_start_index + env.action_space.n + 1
+            policy = ACModel(obs_dim, env.action_space, env,
+                             image_dim, memory_dim, instr_dim,
+                             use_instr, instr_arch, use_mem, arch,
+                             advice_dim=128,
+                             advice_start_index=advice_start_index,
+                             advice_end_index=advice_end_index)
+            reward_predictor = None
+            # reward_predictor = GaussianRNNPolicy(
+            #     name="reward-predictor",
+            #     obs_dim=obs_dim - 1,
+            #     action_dim=1,
+            #     meta_batch_size=config['meta_batch_size'],
+            #     hidden_sizes=config['hidden_sizes'],
+            #     cell_type=config['cell_type']
+            # )
             assert not (config['il_comparison'] and config['self_distill'])
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
@@ -183,18 +194,10 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        algo = PPO(
-            policy=policy,
-            supervised_model=None,
-            supervised_ground_truth=config['source'],
-            learning_rate=config['learning_rate'],
-            max_epochs=config['max_epochs'],
-            backprop_steps=config['backprop_steps'],
-            reward_predictor=reward_predictor,
-            reward_predictor_type=config['reward_predictor_type'],
-            entropy_bonus=config['entropy_bonus'],
-            grad_clip_threshold=config['grad_clip_threshold'],
-        )
+        algo = PPOAlgo(policy, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
+                       config['gae_lambda'],
+                       args.entropy_coef, .5, .5, args.recurrence,
+                       args.optim_eps, .2, 4, config['meta_batch_size'])
 
         EXP_NAME = get_exp_name(config)
         exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
@@ -229,8 +232,10 @@ def run_experiment(**config):
             exp_name=exp_dir,
             curriculum_step=curriculum_step,
             config=config,
-            increase_dropout_threshold=float('inf') if config['dropout_incremental'] is None else config['dropout_incremental'][0],
-            increase_dropout_increment=None if config['dropout_incremental'] is None else config['dropout_incremental'][1],
+            increase_dropout_threshold=float('inf') if config['dropout_incremental'] is None else
+            config['dropout_incremental'][0],
+            increase_dropout_increment=None if config['dropout_incremental'] is None else config['dropout_incremental'][
+                1],
             advance_without_teacher=True,
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
@@ -242,8 +247,10 @@ def run_experiment(**config):
             batch_size=config['meta_batch_size'],
             distill_with_teacher=config['distill_with_teacher'],
             supervised_model=supervised_model,
+            reward_predictor=reward_predictor,
         )
         trainer.train()
+
 
 if __name__ == '__main__':
     DEBUG = True  # Make this true to run a really quick run designed to sanity check the code runs
@@ -257,7 +264,8 @@ if __name__ == '__main__':
         'distill_with_teacher': [False],
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'saved_path': [None],
+        # base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -265,18 +273,20 @@ if __name__ == '__main__':
         'persist_goal': [True],
         'persist_objs': [True],
         'persist_agent': [True],
-        "rollouts_per_meta_task": [2],
+        "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Dropout
         'dropout_goal': [0],
         'dropout_correction': [0],
-        'dropout_type': ['step'], # Options are [step, rollout, meta_rollout, meta_rollout_start]
-        'dropout_incremental': [None],#[(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
-                                   # and increment is the proportion of the total dropout rate which gets added each time
+        'dropout_type': ['step'],  # Options are [step, rollout, meta_rollout, meta_rollout_start]
+        'dropout_incremental': [None],
+        # [(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
+        # and increment is the proportion of the total dropout rate which gets added each time
         'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
 
         # Teacher
-        "feedback_type": ["PreActionAdvice"],  # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
+        "feedback_type": ["PreActionAdvice"],
+        # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [True],
 
         # Curriculum
@@ -294,13 +304,13 @@ if __name__ == '__main__':
 
         # Reward
         'reward_predictor_type': ['gaussian'],
-        'intermediate_reward': [True], # This turns the intermediate rewards on or off
+        'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
         'accuracy_threshold': [.9],
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'il_comparison': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
 
         # Arguments we basically never change
@@ -320,7 +330,7 @@ if __name__ == '__main__':
 
     # DEBUG HPARAMS
     if DEBUG:
-        sweep_params['meta_batch_size'] = [1]
+        sweep_params['meta_batch_size'] = [2]
         sweep_params['success_threshold'] = [0]
         sweep_params['accuracy_threshold'] = [0]
         sweep_params['hidden_sizes'] = [(2,)]

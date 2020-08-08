@@ -148,9 +148,10 @@ class ImitationLearning(object):
 
             with torch.no_grad():
                 # taking the memory till len(inds), as demos beyond that have already finished
-                new_memory = self.acmodel(
+                dist, info = self.acmodel(
                     preprocessed_obs,
-                    memory[:len(inds), :], instr_embedding[:len(inds)], self.distill_with_teacher)[1]
+                    memory[:len(inds), :], instr_embedding[:len(inds)], self.distill_with_teacher)
+                new_memory = info['memory']
 
             memories[inds, :] = memory[:len(inds), :]
             memory[:len(inds), :] = new_memory
@@ -183,11 +184,10 @@ class ImitationLearning(object):
             action_step = action_step[:, 0]
 
             mask_step = mask[indexes]
-            model_results = self.acmodel(
+            dist, info = self.acmodel(
                 preprocessed_obs, memory * mask_step,
                 instr_embedding[episode_ids[indexes]], self.distill_with_teacher)
-            dist = model_results[2]
-            memory = model_results[1]
+            memory = info["memory"]
 
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
