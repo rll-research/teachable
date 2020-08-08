@@ -666,7 +666,7 @@ class Bot:
                 type_idx = OBJ_TYPES.index(subgoal.datum.type)
                 subgoal_val = np.array([color_idx, type_idx])
         except Exception as e:
-            print("EXCEPTION IN BOT")
+            print("EXCEPTION IN BOT, bot.py line 669")
             import IPython
             IPython.embed()
 
@@ -737,8 +737,6 @@ class Bot:
                         print("position", obj_pos)
                         print("VisMask", self.vis_mask)
                         self.mission.render('human')
-                        while True:
-                            x = 3
                         print("???")
 
                     assert shortest_path_to_obj is not None

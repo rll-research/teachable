@@ -184,8 +184,8 @@ class MetaParallelEnvExecutor(object):
         """
         for remote in self.remotes:
             remote.send(('set_dropout_proportion', dropout_proportion))
-        [remote.recv() for remote in self.remotes]
-        return None
+        for remote in self.remotes:
+            remote.recv()
 
     def set_tasks(self, tasks=None):
         """

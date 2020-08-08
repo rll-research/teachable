@@ -1,10 +1,12 @@
 import tensorflow as tf
+import torch
 import numpy as np
-import time
-import os
-import psutil
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
+import os.path as osp
+import joblib
+import time
+import psutil
 
 class Trainer(object):
     """
@@ -23,32 +25,42 @@ class Trainer(object):
         sess (tf.Session) : current tf session (if we loaded policy, for example)
     """
     def __init__(
-            self,
-            algo,
-            env,
-            sampler,
-            sample_processor,
-            policy,
-            n_itr,
-            start_itr=0,
-            task=None,
-            sess=None,
-            use_rp_inner=False,
-            use_rp_outer=False,
-            success_threshold=0.95,
-            accuracy_threshold=0.9,
-            exp_name="",
-            videos_every=5,
-            curriculum_step=0,
-            config=None,
-            log_and_save=True,
-            increase_dropout_threshold=float('inf'),
-            increase_dropout_increment=None,
-            advance_without_teacher=False,
-            teacher_info=[],
-            sparse_rewards=True,
-            distill_only=False,
-            ):
+        self,
+        algo,
+        env,
+        sampler,
+        sample_processor,
+        policy,
+        n_itr,
+        start_itr=0,
+        task=None,
+        sess=None,
+        use_rp_inner=False,
+        use_rp_outer=False,
+        success_threshold=0.95,
+        accuracy_threshold=0.9,
+        exp_name="",
+        videos_every=5,
+        curriculum_step=0,
+        config=None,
+        log_and_save=True,
+        increase_dropout_threshold=float('inf'),
+        increase_dropout_increment=None,
+        advance_without_teacher=False,
+        teacher_info=[],
+        sparse_rewards=True,
+        distill_only=False,
+        mode='collection',
+        num_batches=None,
+        data_path=None,
+        il_trainer=None,
+        source='agent',
+        batch_size=100,
+        eval_every=100,
+        save_every=100,
+        log_every=10,
+        save_videos_every=1000,
+        distill_with_teacher=False):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -76,6 +88,21 @@ class Trainer(object):
         self.teacher_info = teacher_info
         self.sparse_rewards = sparse_rewards
         self.distill_only = distill_only
+        self.mode = mode
+        self.num_batches = num_batches
+        self.data_path = data_path
+        self.il_trainer = il_trainer
+        self.source = source
+        self.batch_size = batch_size
+        self.eval_every = eval_every
+        self.save_every = save_every
+        self.save_videos_every = save_videos_every
+        self.log_every = log_every
+        self.distill_with_teacher = distill_with_teacher
+        if self.num_batches is not None:
+            self.num_train_batches = (self.num_batches * 0.9)
+            self.num_val_batches = self.num_batches - self.num_train_batches
+            assert self.num_train_batches > 0
 
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
@@ -90,6 +117,30 @@ class Trainer(object):
         should_advance_curriculum = (avg_success >= self.success_threshold) and (dropout_level == 1) and (avg_accuracy >= self.accuracy_threshold)
         should_increase_dropout = avg_success >= self.increase_dropout_threshold
         return should_advance_curriculum, should_increase_dropout
+
+    def load_data(self, start_index, end_index):
+        batch_index = np.random.randint(start_index, end_index)
+        batch_path = osp.join(self.data_path, 'batch_%d.pkl' % batch_index)
+        samples_data = joblib.load(batch_path)
+        curr_batch_len = len(samples_data['observations'])
+        if curr_batch_len < self.batch_size:
+            print(f'Found batch of length {curr_batch_len}, which is smaller than desired batch size {self.batch_size}')
+        elif curr_batch_len > self.batch_size:
+            diff = curr_batch_len - self.batch_size
+            start_index = np.random.choice(diff + 1)
+            samples_data2 = {}
+            for k, v in samples_data.items():
+                if type(v) is np.ndarray:
+                    samples_data2[k] = v[start_index: start_index + self.batch_size]
+                elif type(v) is dict:
+                    v2 = {}
+                    for vk, vv in v.items():
+                        v2[vk] = vv[start_index: start_index + self.batch_size]
+                    samples_data2[k] = v2
+                else:
+                    samples_data2[k] = v
+            samples_data = samples_data2
+        return samples_data
 
     def train(self):
         """
@@ -110,8 +161,8 @@ class Trainer(object):
             sess.run(tf.variables_initializer(uninit_vars))
             advance_curriculum = False
             dropout_proportion = 1 if self.increase_dropout_increment is None else 0  # TODO: remember 2 reset
-
             start_time = time.time()
+
             for itr in range(self.start_itr, self.n_itr):
                 itr_start_time = time.time()
                 logger.log("\n ---------------- Iteration %d ----------------" % itr)
@@ -218,48 +269,42 @@ class Trainer(object):
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
-
                     logger.dumpkvs()
 
-
-                # Save videos of the progress periodically, or right before we advance levels
-                # if advance_curriculum:
-                #     # Save a video of the original level
-                #     self.save_videos(step, save_name='ending_video', num_rollouts=10)
-                #     # Save a video of the new level
-                #     self.save_videos(step + 1, save_name='beginning_video', num_rollouts=10)
-                # elif itr % self.videos_every == 0:
-                #     self.env.set_level_distribution(step)
-                #     self.save_videos(step, save_name='intermediate_video', num_rollouts=5)
-
-                # if itr == 0:
-                #     sess.graph.finalize()
 
         logger.log("Training finished")
         # self.sess.close()  # TODO: is this okay?
 
 
-    def distill(self, samples):
+    def save_data(self, data, itr):
+        file_name = osp.join(self.exp_name, 'batch_%d.pkl' % itr)
+        joblib.dump(data, file_name, compress=3)
+
+
+    def distill(self, samples, is_training=False):
         cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
         samples['observations'] = cleaned_obs
-        self.algo.supervised_model.reset(dones=[True] * 100)
-        self.algo.optimize_supervised(samples)
+        log = self.il_trainer.distill(samples, source=self.source, is_training=is_training)
+        return log
 
 
     def run_supervised(self):
-        paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.algo.supervised_model,
-                                            feedback_list=self.teacher_info)
-        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distilled/")
+        paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.il_trainer.acmodel,
+                                            feedback_list=self.teacher_info, max_action=True,
+                                            use_teacher=self.distill_with_teacher)
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix="Distill/")
         advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
         return advance_curriculum, increase_dropout
 
-    def save_videos(self, step, save_name='sample_video', num_rollouts=2):
-        paths = rollout(self.env, self.policy, max_path_length=200, reset_every=2, show_last=5, stochastic=True,
-                        batch_size=100,# step=step,  # TODO: THIS!!!
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
+        policy.eval()
+        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
+                        batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
                         video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
         print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+        return paths, accuracy
 
     def get_itr_snapshot(self, itr):
         """
@@ -273,13 +318,13 @@ class Trainer(object):
                         curriculum_step=self.curriculum_step,)
         if self.algo.reward_predictor is not None:
             d['reward_predictor'] = self.algo.reward_predictor
-        if self.algo.supervised_model is not None:
-            d['supervised_model'] = self.algo.supervised_model
+        if self.il_trainer.acmodel is not None:
+            d['supervised_model'] = self.il_trainer.acmodel
         return d
 
 
     def log_supervised(self, samples_data):
-        pred_actions, _ = self.algo.supervised_model.get_actions(samples_data['observations'])
+        pred_actions, _ = self.il_trainer.acmodel.get_actions(samples_data['observations'])
         real_actions = samples_data['env_infos']['teacher_action']
         matches = pred_actions == real_actions
         log_prefix = "Supervised"

@@ -7,6 +7,10 @@ from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
 from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
 from meta_mb.policies.gaussian_rnn_policy import GaussianRNNPolicy
+from babyai.model import ACModel
+from meta_mb.trainers.il_trainer import ImitationLearning
+from babyai.arguments import ArgumentParser
+
 import os
 import shutil
 from meta_mb.logger import logger
@@ -26,8 +30,7 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-# PREFIX = 'debug22'
-PREFIX = 'CURRICULUMDISTILLATION'
+PREFIX = 'FIXEDITHINK'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -72,6 +75,9 @@ def run_experiment(**config):
             if 'config' in saved_model:
                 if not config['override_old_config']:
                     config = saved_model['config']
+                    config['intermediate_reward'] = False  # TODO
+                    config['reward_predictor_type'] = 'discrete'
+                    config['grad_clip_threshold'] = None
         arguments = {
             "start_loc": 'all',
             "include_holdout_obj": False,
@@ -90,13 +96,15 @@ def run_experiment(**config):
         if original_saved_path is not None:
             set_seed(config['seed'])
             policy = saved_model['policy']
+            policy.hidden_state = None
             baseline = saved_model['baseline']
-            curriculum_step = saved_model['curriculum_step']
+            curriculum_step = config['level']
             env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                               **arguments)),
                          ceil_reward=config['ceil_reward'])
             start_itr = saved_model['itr']
             reward_predictor = saved_model['reward_predictor']
+            reward_predictor.hidden_state = None
             if 'supervised_model' in saved_model:
                 supervised_model = saved_model['supervised_model']
             else:
@@ -104,7 +112,7 @@ def run_experiment(**config):
 
         else:
             baseline = config['baseline']()
-            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'],
+            env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'],
                                               pre_levels=config['pre_levels'], **arguments)),
                          ceil_reward=config['ceil_reward'])
             obs_dim = env.reset().shape[0]
@@ -126,20 +134,34 @@ def run_experiment(**config):
             )
             assert not (config['il_comparison'] and config['self_distill'])
             if config['il_comparison']:
-                supervised_model = DiscreteRNNPolicy(
-                    name="supervised-policy",
-                    action_dim=np.prod(env.action_space.n),
-                    obs_dim=obs_dim,
-                    meta_batch_size=config['meta_batch_size'],
-                    hidden_sizes=config['hidden_sizes'],
-                    cell_type=config['cell_type'],
-                )
+                obs_dim = env.reset().shape[0]
+                image_dim = 128
+                memory_dim = config['memory_dim']
+                instr_dim = config['memory_dim']
+                use_instr = True
+                instr_arch = 'bigru'
+                use_mem = True
+                arch = 'bow_endpool_res'
+                advice_start_index = 160
+                advice_end_index = advice_start_index + env.action_space.n + 1
+                supervised_model = ACModel(obs_dim, env.action_space, env,
+                                           image_dim, memory_dim, instr_dim,
+                                           use_instr, instr_arch, use_mem, arch,
+                                           advice_dim=128,
+                                           advice_start_index=advice_start_index,
+                                           advice_end_index=advice_end_index)
             elif config['self_distill']:
                 supervised_model = policy
             else:
                 supervised_model = None
             start_itr = 0
             curriculum_step = env.index
+
+        parser = ArgumentParser()
+        args = parser.parse_args()
+        args.model = 'default_il'
+        args.recurrence = config['backprop_steps']
+        il_trainer = ImitationLearning(supervised_model, env, args, config['distill_with_teacher'])
 
         sampler = MetaSampler(
             env=env,
@@ -163,8 +185,8 @@ def run_experiment(**config):
 
         algo = PPO(
             policy=policy,
-            supervised_model=supervised_model,
-            supervised_ground_truth='agent',# if config['self_distill'] else 'teacher',
+            supervised_model=None,
+            supervised_ground_truth=config['source'],
             learning_rate=config['learning_rate'],
             max_epochs=config['max_epochs'],
             backprop_steps=config['backprop_steps'],
@@ -213,6 +235,13 @@ def run_experiment(**config):
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
             distill_only=config['distill_only'],
+            mode=config['mode'],
+            num_batches=config['num_batches'],
+            data_path=config['data_path'],
+            il_trainer=il_trainer,
+            source=config['source'],
+            batch_size=config['meta_batch_size'],
+            distill_with_teacher=config['distill_with_teacher'],
         )
         trainer.train()
 
@@ -220,10 +249,16 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
+        # 'level': [22],
+        "n_itr": [10000],
+        'num_batches': [677],
+        'data_path': [base_path + 'FINALJUSTSUPLEARNINGL22collection_4'],
+        'source': ['teacher'],  # options are agent or teacher
+        'distill_with_teacher': [False],
 
         # Saving/loading/finetuning
-        'saved_path': [None],#base_path + 'OGPARAMS_teacherPreActionAdvice_persistgoa_droptypestep_dropincNone_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],
-        'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
+        'saved_path': [None],#base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
+        'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
         # Meta
@@ -245,14 +280,16 @@ if __name__ == '__main__':
         'feedback_always': [True],
 
         # Curriculum
-        'advance_curriculum_func': ['smooth'],
+        'advance_curriculum_func': ['one_hot'],
         'pre_levels': [False],
 
         # Model/Optimization
         'entropy_bonus': [1e-2],  # 1e-2
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
-        "hidden_sizes": [(512, 512,), (128,)],
+        "hidden_sizes": [(512, 512)],
+        "memory_dim": [1024],  # 2048
+        "instr_dim": [128],  # 256
         "discount": [0.95],
 
         # Reward
@@ -265,25 +302,20 @@ if __name__ == '__main__':
         # Distillation
         'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
-        'distill_with_teacher': [False],
 
         # Arguments we basically never change
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'meta_batch_size': [100],
-        'backprop_steps': [50, 100, 200],
-        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        'backprop_steps': [20],
+        "parallel": [True],
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
         "max_epochs": [5],
         "cell_type": ["lstm"],
-        "num_minibatches": [1],
-        "n_itr": [10000],
-        'exp_tag': ['v0'],
-        'log_rand': [0, 1, 2, 3],
     }
 
     # DEBUG HPARAMS
