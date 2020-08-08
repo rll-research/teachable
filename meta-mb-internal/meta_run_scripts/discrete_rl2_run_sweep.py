@@ -241,11 +241,12 @@ def run_experiment(**config):
             source=config['source'],
             batch_size=config['meta_batch_size'],
             distill_with_teacher=config['distill_with_teacher'],
+            supervised_model=supervised_model,
         )
         trainer.train()
 
 if __name__ == '__main__':
-    DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
+    DEBUG = True  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
         'level': [4],
@@ -325,6 +326,6 @@ if __name__ == '__main__':
         sweep_params['hidden_sizes'] = [(2,)]
         sweep_params['backprop_steps'] = [1]
         sweep_params['max_path_length'] = [3]
-        # sweep_params['parallel'] = [False]
+        sweep_params['parallel'] = [False]
 
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)

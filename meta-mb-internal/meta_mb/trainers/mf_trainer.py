@@ -61,7 +61,8 @@ class Trainer(object):
         save_every=100,
         log_every=10,
         save_videos_every=1000,
-        distill_with_teacher=False):
+        distill_with_teacher=False,
+        supervised_model=None):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -100,6 +101,7 @@ class Trainer(object):
         self.save_videos_every = save_videos_every
         self.log_every = log_every
         self.distill_with_teacher = distill_with_teacher
+        self.supervised_model = supervised_model
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -188,7 +190,7 @@ class Trainer(object):
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
                 r_discrete, logprobs = self.algo.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                if self.algo.supervised_model is not None:
+                if self.supervised_model is not None:
                     self.log_supervised(samples_data)
                 if self.sparse_rewards:
                     self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
@@ -216,22 +218,39 @@ class Trainer(object):
                 if not self.distill_only:
                     self.algo.optimize_policy(samples_data)
                     self.algo.optimize_reward(samples_data)
-                if self.algo.supervised_model is not None and advance_curriculum:
-                    logger.log("Distillation...")
-                    for _ in range(20):
-                        self.distill(samples_data)
-                    advance_curriculum_s, increase_dropout_s = self.run_supervised()
-                    logger.log('Evaluating supervised')
-                    self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                    actions, logprobs = self.algo.supervised_model.get_actions(samples_data['observations'])
-                    mask = np.expand_dims(np.sum(samples_data['agent_infos']['probs'], axis=2), 2)
-                    original_actions = samples_data['env_infos']['teacher_action']
-                    correct = (actions == original_actions) * mask
-                    accuracy = np.sum(correct) / np.sum(mask)
-                    logger.logkv("Distilled/Accuracy", accuracy)
-                    if self.advance_without_teacher:
-                        advance_curriculum = advance_curriculum_s
-                        increase_dropout = increase_dropout_s
+                if self.supervised_model is not None and advance_curriculum:
+                    samples_data = self.load_data(0, self.num_train_batches)
+                    distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
+                    for k, v in distill_log.items():
+                        logger.logkv(f"Distill/{k}_Train", v)
+
+                    if itr % self.eval_every == 0 or itr == self.n_itr - 1:
+                        with torch.no_grad():
+                            # Accuracy on the validation set
+                            # samples_data = self.load_data(self.num_train_batches, self.num_batches)  # TODO: collect differently
+                            # self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            distill_log = self.distill(samples_data, is_training=False)
+                            for k, v in distill_log.items():
+                                logger.logkv(f"Distill/{k}_Validation", v)
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            logger.log("Running supervised model")
+                            advance_curriculum_s, increase_dropout_s = self.run_supervised()
+                            if self.advance_without_teacher:
+                                advance_curriculum = advance_curriculum_s
+                                increase_dropout = increase_dropout_s
+                            logger.log('Evaluating supervised')
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+
+                            should_save_video = itr % self.save_videos_every == 0
+                            self.sampler.supervised_model.reset(dones=[True])
+                            paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='video',
+                                                               num_rollouts=10,
+                                                               use_teacher=self.distill_with_teacher,
+                                                               save_video=should_save_video)
+                            logger.logkv("Distill/RolloutAcc", accuracy)
+                    else:
+                        if self.advance_without_teacher:
+                            advance_curriculum = False
 
                 if advance_curriculum:
                     self.curriculum_step += 1
