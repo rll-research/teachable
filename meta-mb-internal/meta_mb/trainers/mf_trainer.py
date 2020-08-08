@@ -218,8 +218,8 @@ class Trainer(object):
                     self.algo.optimize_reward(samples_data)
                 if self.algo.supervised_model is not None and advance_curriculum:
                     logger.log("Distillation...")
-                    # for _ in range(20):
-                    #     self.distill(samples_data)
+                    for _ in range(20):
+                        self.distill(samples_data)
                     advance_curriculum_s, increase_dropout_s = self.run_supervised()
                     logger.log('Evaluating supervised')
                     self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))
@@ -288,7 +288,6 @@ class Trainer(object):
         log = self.il_trainer.distill(samples, source=self.source, is_training=is_training)
         return log
 
-
     def run_supervised(self):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=self.il_trainer.acmodel,
                                             feedback_list=self.teacher_info, max_action=True,
@@ -300,8 +299,9 @@ class Trainer(object):
     def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
         policy.eval()
         paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
-                        batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
-                        video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4', num_rollouts=num_rollouts)
+                                  batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
+                                  video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4',
+                                  num_rollouts=num_rollouts)
         print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
         print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
         print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
