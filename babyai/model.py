@@ -160,7 +160,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define actor's model
         self.actor = nn.Sequential(
-            nn.Linear(self.embedding_size, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )
@@ -340,10 +340,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
 
-        if hasattr(self, 'aux_info') and self.aux_info:
-            extra_predictions = {info: self.extra_heads[info](embedding) for info in self.extra_heads}
-        else:
-            extra_predictions = dict()
+        embedding = torch.cat([embedding, advice_embedding], dim=1)
 
         x = self.actor(embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))
