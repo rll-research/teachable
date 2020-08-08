@@ -100,7 +100,7 @@ class DiscreteRNNPolicy(Policy):
         return np.asarray(k)
 
 
-    def get_actions(self, observations):
+    def get_actions(self, observations, use_teacher=None):  # TODO: actually use this!
         """
         Runs each set of observations through each task specific policy
 

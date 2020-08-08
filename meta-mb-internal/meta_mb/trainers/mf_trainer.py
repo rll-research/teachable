@@ -7,6 +7,7 @@ import os.path as osp
 import joblib
 import time
 import psutil
+import os
 
 class Trainer(object):
     """
@@ -217,8 +218,8 @@ class Trainer(object):
                     self.algo.optimize_reward(samples_data)
                 if self.algo.supervised_model is not None and advance_curriculum:
                     logger.log("Distillation...")
-                    for _ in range(20):
-                        self.distill(samples_data)
+                    # for _ in range(20):
+                    #     self.distill(samples_data)
                     advance_curriculum_s, increase_dropout_s = self.run_supervised()
                     logger.log('Evaluating supervised')
                     self.algo.supervised_model.reset(dones=[True] * len(samples_data['observations']))

@@ -235,7 +235,6 @@ def run_experiment(**config):
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
             distill_only=config['distill_only'],
-            mode=config['mode'],
             num_batches=config['num_batches'],
             data_path=config['data_path'],
             il_trainer=il_trainer,
@@ -249,7 +248,7 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
-        # 'level': [22],
+        'level': [4],
         "n_itr": [10000],
         'num_batches': [677],
         'data_path': [base_path + 'FINALJUSTSUPLEARNINGL22collection_4'],
@@ -300,7 +299,7 @@ if __name__ == '__main__':
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [False], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'il_comparison': [True], #'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
 
         # Arguments we basically never change
