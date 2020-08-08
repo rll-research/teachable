@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class ImitationLearning(object):
-    def __init__(self, model, env, args, distill_with_teacher):
+    def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
+        self.reward_predictor = reward_predictor
 
         utils.seed(self.args.seed)
         self.env = env
@@ -81,10 +82,14 @@ class ImitationLearning(object):
         num_demos = len(demos['actions'])
         for i in range(num_demos):
             new_demo = []
-            end_index = np.where(demos['dones'][i])[0][-1]
+            dones = demos['dones']
+            end_index = np.where(dones[i])[0][-1]
             for t in range(end_index + 1):
                 obs = demos['observations'][i, t]
-                if source == 'agent':
+                if self.reward_predictor:
+                    obs = demos['env_infos']['next_obs_rewardfree'][i, t]
+                    action = np.array([demos['rewards'][i, t]])
+                elif source == 'agent':
                     action = demos['actions'][i, t]
                 elif source == 'teacher':
                     action = demos['env_infos']['teacher_action'][i, t]

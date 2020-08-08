@@ -17,6 +17,7 @@ import shutil
 from meta_mb.logger import logger
 import json
 import numpy as np
+from gym import spaces
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 import tensorflow as tf
@@ -134,15 +135,12 @@ def run_experiment(**config):
                              advice_dim=128,
                              advice_start_index=advice_start_index,
                              advice_end_index=advice_end_index)
-            reward_predictor = None
-            # reward_predictor = GaussianRNNPolicy(
-            #     name="reward-predictor",
-            #     obs_dim=obs_dim - 1,
-            #     action_dim=1,
-            #     meta_batch_size=config['meta_batch_size'],
-            #     hidden_sizes=config['hidden_sizes'],
-            #     cell_type=config['cell_type']
-            # )
+            reward_predictor = ACModel(obs_dim - 1, spaces.Discrete(2), env,  # TODO: change into Discrete(3) and do 3-way classification
+                             image_dim, memory_dim, instr_dim,
+                             use_instr, instr_arch, use_mem, arch,
+                             advice_dim=128,
+                             advice_start_index=advice_start_index,
+                             advice_end_index=advice_end_index)
             assert not (config['il_comparison'] and config['self_distill'])
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
@@ -173,6 +171,7 @@ def run_experiment(**config):
         args.model = 'default_il'
         args.recurrence = config['backprop_steps']
         il_trainer = ImitationLearning(supervised_model, env, args, config['distill_with_teacher'])
+        rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
         sampler = MetaSampler(
             env=env,
@@ -248,6 +247,7 @@ def run_experiment(**config):
             distill_with_teacher=config['distill_with_teacher'],
             supervised_model=supervised_model,
             reward_predictor=reward_predictor,
+            rp_trainer=rp_trainer,
         )
         trainer.train()
 

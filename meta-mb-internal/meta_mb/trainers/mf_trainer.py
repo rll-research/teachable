@@ -8,6 +8,7 @@ import joblib
 import time
 import psutil
 import os
+import copy
 
 class Trainer(object):
     """
@@ -63,7 +64,9 @@ class Trainer(object):
         save_videos_every=1000,
         distill_with_teacher=False,
         supervised_model=None,
-        reward_predictor=None):
+        reward_predictor=None,
+        rp_trainer=None,
+    ):
         self.algo = algo
         self.env = env
         self.sampler = sampler
@@ -104,6 +107,7 @@ class Trainer(object):
         self.distill_with_teacher = distill_with_teacher
         self.supervised_model = supervised_model
         self.reward_predictor = reward_predictor
+        self.rp_trainer = rp_trainer
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -191,19 +195,19 @@ class Trainer(object):
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
-                # r_discrete, logprobs = self.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                # if self.supervised_model is not None:
-                #     self.log_supervised(samples_data)
-                # if self.sparse_rewards:
-                #     self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
-                # # Splice into the inference process
-                # if self.use_rp_inner:
-                #     samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
-                # # Splice into the meta-learning process
-                # if self.use_rp_outer:
-                #     samples_data['rewards'] = r_discrete[:, :, 0]
-                # if 'teacher_action' in samples_data['env_infos']:
-                #     samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
+                r_discrete, logprobs = self.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+                if self.supervised_model is not None:
+                    self.log_supervised(samples_data)
+                if self.sparse_rewards:
+                    self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
+                # Splice into the inference process
+                if self.use_rp_inner:
+                    samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
+                # Splice into the meta-learning process
+                if self.use_rp_outer:
+                    samples_data['rewards'] = r_discrete[:, :, 0]
+                if 'teacher_action' in samples_data['env_infos']:
+                    samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -218,8 +222,8 @@ class Trainer(object):
                 # This needs to take all samples_data so that it can construct graph for meta-optimization.
                 time_optimization_step_start = time.time()
                 if not self.distill_only:
-                    self.algo.optimize_policy(samples_data)
-                    # self.algo.optimize_reward(samples_data)
+                    self.algo.optimize_policy(copy.deepcopy(samples_data), use_teacher=True)  # TODO: later, pass in an object indicating which feedback should be visible to the teacher
+                    self.train_rp(samples_data)
                 if self.supervised_model is not None and advance_curriculum:
                     samples_data = self.load_data(0, self.num_train_batches)
                     distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
@@ -303,9 +307,13 @@ class Trainer(object):
         joblib.dump(data, file_name, compress=3)
 
 
+    def train_rp(self, samples, is_training=False):
+        log = self.rp_trainer.distill(samples, source=self.source, is_training=is_training)
+        return log
+
     def distill(self, samples, is_training=False):
-        cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
-        samples['observations'] = cleaned_obs
+        # cleaned_obs = self.sampler.mask_teacher(samples["observations"], self.teacher_info)
+        # samples['observations'] = cleaned_obs
         log = self.il_trainer.distill(samples, source=self.source, is_training=is_training)
         return log
 
