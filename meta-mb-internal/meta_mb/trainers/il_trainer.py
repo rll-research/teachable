@@ -168,6 +168,7 @@ class ImitationLearning(object):
         final_loss = 0
         per_token_correct = [0, 0, 0, 0, 0, 0, 0]
         per_token_count = [0, 0, 0, 0, 0, 0, 0]
+        per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
         final_entropy, final_policy_loss, final_value_loss = 0, 0, 0
 
         indexes = self.starting_indexes(num_frames)
@@ -206,6 +207,7 @@ class ImitationLearning(object):
                 correct = np.sum(action_step[token_indices] == action_pred[token_indices])
                 per_token_correct[j] += correct
                 per_token_count[j] += count
+                per_token_agent_count[j] += len(np.where(action_pred == j)[0])
 
         final_loss /= self.args.recurrence
 

@@ -1,9 +1,6 @@
 import tensorflow as tf
 import torch
 import numpy as np
-import time
-import os
-import psutil
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
 import os.path as osp
