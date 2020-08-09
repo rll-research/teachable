@@ -88,7 +88,10 @@ class ImitationLearning(object):
                 obs = demos['observations'][i, t]
                 if self.reward_predictor:
                     obs = demos['env_infos']['next_obs_rewardfree'][i, t]
-                    action = np.array([demos['rewards'][i, t]])
+                    reward = demos['rewards'][i, t]
+                    if reward > 1:
+                        reward = 2
+                    action = np.array([reward])
                 elif source == 'agent':
                     action = demos['actions'][i, t]
                 elif source == 'teacher':

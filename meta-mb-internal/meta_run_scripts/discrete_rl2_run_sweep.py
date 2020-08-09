@@ -122,43 +122,66 @@ def run_experiment(**config):
             obs_dim = env.reset().shape[0]
             image_dim = 128
             memory_dim = config['memory_dim']
-            instr_dim = config['memory_dim']
+            instr_dim = config['instr_dim']
             use_instr = True
             instr_arch = 'bigru'
             use_mem = True
             arch = 'bow_endpool_res'
             advice_start_index = 160
             advice_end_index = advice_start_index + env.action_space.n + 1
-            policy = ACModel(obs_dim, env.action_space, env,
-                             image_dim, memory_dim, instr_dim,
-                             use_instr, instr_arch, use_mem, arch,
+            policy = ACModel(obs_space=obs_dim,
+                             action_space=env.action_space,
+                             env=env,
+                             image_dim=image_dim,
+                             memory_dim=memory_dim,
+                             instr_dim=instr_dim,
+                             lang_model=instr_arch,
+                             use_instr=use_instr,
+                             use_memory=use_mem,
+                             arch=arch,
                              advice_dim=128,
                              advice_start_index=advice_start_index,
                              advice_end_index=advice_end_index)
-            reward_predictor = ACModel(obs_dim - 1, spaces.Discrete(2), env,  # TODO: change into Discrete(3) and do 3-way classification
-                             image_dim, memory_dim, instr_dim,
-                             use_instr, instr_arch, use_mem, arch,
-                             advice_dim=128,
-                             advice_start_index=advice_start_index,
-                             advice_end_index=advice_end_index)
+
+
+            reward_predictor = ACModel(obs_space=obs_dim - 1,  # TODO: change into Discrete(3) and do 3-way classification
+                                     action_space=spaces.Discrete(2),
+                                     env=env,
+                                     image_dim=image_dim,
+                                     memory_dim=memory_dim,
+                                     instr_dim=instr_dim,
+                                     lang_model=instr_arch,
+                                     use_instr=use_instr,
+                                     use_memory=use_mem,
+                                     arch=arch,
+                                     advice_dim=128,
+                                     advice_start_index=advice_start_index,
+                                     advice_end_index=advice_end_index)
             assert not (config['il_comparison'] and config['self_distill'])
             if config['il_comparison']:
                 obs_dim = env.reset().shape[0]
                 image_dim = 128
                 memory_dim = config['memory_dim']
-                instr_dim = config['memory_dim']
+                instr_dim = config['instr_dim']
                 use_instr = True
                 instr_arch = 'bigru'
                 use_mem = True
                 arch = 'bow_endpool_res'
                 advice_start_index = 160
                 advice_end_index = advice_start_index + env.action_space.n + 1
-                supervised_model = ACModel(obs_dim, env.action_space, env,
-                                           image_dim, memory_dim, instr_dim,
-                                           use_instr, instr_arch, use_mem, arch,
-                                           advice_dim=128,
-                                           advice_start_index=advice_start_index,
-                                           advice_end_index=advice_end_index)
+                supervised_model = ACModel(obs_space=obs_dim,
+                                         action_space=env.action_space,
+                                         env=env,
+                                         image_dim=image_dim,
+                                         memory_dim=memory_dim,
+                                         instr_dim=instr_dim,
+                                         lang_model=instr_arch,
+                                         use_instr=use_instr,
+                                         use_memory=use_mem,
+                                         arch=arch,
+                                         advice_dim=128,
+                                         advice_start_index=advice_start_index,
+                                         advice_end_index=advice_end_index)
             elif config['self_distill']:
                 supervised_model = policy
             else:
@@ -239,8 +262,6 @@ def run_experiment(**config):
             teacher_info=teacher_info,
             sparse_rewards=not config['intermediate_reward'],
             distill_only=config['distill_only'],
-            num_batches=config['num_batches'],
-            data_path=config['data_path'],
             il_trainer=il_trainer,
             source=config['source'],
             batch_size=config['meta_batch_size'],
@@ -253,14 +274,12 @@ def run_experiment(**config):
 
 
 if __name__ == '__main__':
-    DEBUG = True  # Make this true to run a really quick run designed to sanity check the code runs
+    DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
         'level': [4],
         "n_itr": [10000],
-        'num_batches': [677],
-        'data_path': [base_path + 'FINALJUSTSUPLEARNINGL22collection_4'],
-        'source': ['teacher'],  # options are agent or teacher
+        'source': ['teacher'],  # options are agent or teacher (do we distill from the agent or the teacher?)
         'distill_with_teacher': [False],
 
         # Saving/loading/finetuning
@@ -277,6 +296,7 @@ if __name__ == '__main__':
 
         # Dropout
         'dropout_goal': [0],
+
         'dropout_correction': [0],
         'dropout_type': ['step'],  # Options are [step, rollout, meta_rollout, meta_rollout_start]
         'dropout_incremental': [None],
@@ -304,7 +324,7 @@ if __name__ == '__main__':
 
         # Reward
         'reward_predictor_type': ['gaussian'],
-        'intermediate_reward': [True],  # This turns the intermediate rewards on or off
+        'intermediate_reward': [False],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
         'accuracy_threshold': [.9],
         'ceil_reward': [False],
@@ -337,5 +357,7 @@ if __name__ == '__main__':
         sweep_params['backprop_steps'] = [1]
         sweep_params['max_path_length'] = [3]
         sweep_params['parallel'] = [False]
+        sweep_params["memory_dim"] = [3]  # 2048
+        sweep_params["instr_dim"] = [4]  # 256
 
     run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)

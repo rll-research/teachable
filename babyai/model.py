@@ -276,7 +276,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
     def get_instr(self, obs):
         # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
-        instr_indices = list(range(150, 161))
+        instr_indices = list(range(150, 160))
         instruction_vector = obs[:, instr_indices].long()
         return instruction_vector
 
@@ -379,6 +379,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         elif self.lang_model in ['bigru', 'attgru']:
             masks = (instr != 0).float()
+            # Make sure we don't have an entire trajectory of zeros.
+            # doing this doesn't matter since we should be masking out these transitions anyway.
+            all_zeros = masks.sum(dim=1) == 0
+            instr[all_zeros] = instr[all_zeros] + 1
+            lengths = (instr != 0).sum(1).long()
 
             if lengths.shape[0] > 1:
                 seq_lengths, perm_idx = lengths.sort(0, descending=True)
@@ -389,7 +394,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
                 inputs = self.word_embedding(instr)
                 inputs = inputs[perm_idx]
-
                 inputs = pack_padded_sequence(inputs, seq_lengths.data.cpu().numpy(), batch_first=True)
 
                 outputs, final_states = self.instr_rnn(inputs)

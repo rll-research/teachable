@@ -225,7 +225,6 @@ class Trainer(object):
                     self.algo.optimize_policy(copy.deepcopy(samples_data), use_teacher=True)  # TODO: later, pass in an object indicating which feedback should be visible to the teacher
                     self.train_rp(samples_data)
                 if self.supervised_model is not None and advance_curriculum:
-                    samples_data = self.load_data(0, self.num_train_batches)
                     distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
                     for k, v in distill_log.items():
                         logger.logkv(f"Distill/{k}_Train", v)

@@ -481,11 +481,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         else:
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
-        reward_total = rew*1000
         # reward_total = np.ceil(rew)  # TODO: :(
         if self.intermediate_reward:
+            reward_total = rew * 1000
             reward_total += int(followed_opt_action)
-        rew = reward_total
+            rew = reward_total
         return obs, rew, done, info
 
     def reset(self):
