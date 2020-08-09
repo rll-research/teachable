@@ -337,7 +337,7 @@ if __name__ == '__main__':
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
-        'meta_batch_size': [100],
+        'meta_batch_size': [20],
         'backprop_steps': [20],
         "parallel": [True],
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
