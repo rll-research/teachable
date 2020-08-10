@@ -37,7 +37,7 @@ class SubgoalCorrections(Teacher):
         # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
         # This is kind of sketchy since multiple paths can be optimal.
 
-        return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
+        return True
 
 
 

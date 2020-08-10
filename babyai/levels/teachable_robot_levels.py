@@ -71,6 +71,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
         else:
             teacher = None
+        self.oracle = Bot(self)
         self.teacher = teacher
 
     def sample_object(self):
@@ -468,7 +469,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 # We can log what action is the next one on this path (currently in teacher.next_action).
                 info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
 
-                self.teacher.step([action])
+                self.oracle = self.teacher.step([action], self.oracle)
                 # Update the observation with the teacher's new feedback
                 obs = self.gen_obs()
 
@@ -477,7 +478,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 IPython.embed()
                 # self.render('human')
                 print("ERROR!!!!!", e)
-                teacher_copy.step([action])
+                teacher_copy.step([action], self.oracle)
         else:
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
@@ -508,7 +509,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
-            self.teacher.reset()
+            self.oracle = self.teacher.reset(self.oracle)
 
         obs = self.gen_obs()
 

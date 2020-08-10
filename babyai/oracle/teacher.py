@@ -16,15 +16,12 @@ class Teacher:
         # TODO: this is pretty sketchy.  To stop the bot from failing, we
         #  reinitialize the oracle every timestep  Later it would be better to fix the bot, or at least
         #  figure out what situations it fails and not generate those.
-        self.oracle = botclass(env)
-        self.env = env
+        oracle = botclass(env)
         self.botclass = botclass
         self.last_action = -1
-        self.next_action, self.next_subgoal = self.oracle.replan(-1)
+        self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
-        self.next_state = self.env.gen_obs()
-        self.agent_actions = []
-        self.oracle_actions = []
+        self.next_state = env.gen_obs()
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
         self.device = device
@@ -38,17 +35,18 @@ class Teacher:
         """
         self.feedback_type = feedback_type
 
-    def step(self, agent_action):
+    def step(self, agent_action, oracle):
         """
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        new_oracle = self.botclass(self.env)
-        new_oracle.vis_mask = self.oracle.vis_mask
-        new_oracle.step = self.oracle.step
-        self.oracle = new_oracle
+        new_oracle = self.botclass(oracle.mission)
+        new_oracle.vis_mask = oracle.vis_mask
+        new_oracle.step = oracle.step
+        oracle = new_oracle
         self.last_action = self.next_action
-        self.next_action, self.next_subgoal = self.oracle.replan(-1)
+        self.next_action, self.next_subgoal = oracle.replan(-1)
+        return oracle
 
 
     def compute_full_path(self, steps):
@@ -118,7 +116,8 @@ class Teacher:
         """
         raise NotImplementedError
 
-    def reset(self):
-        self.oracle = self.botclass(self.env)
-        self.next_action, self.next_subgoal = self.oracle.replan()
+    def reset(self, oracle):
+        oracle = self.botclass(oracle.mission)
+        self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
+        return oracle

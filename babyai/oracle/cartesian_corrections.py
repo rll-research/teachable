@@ -30,14 +30,16 @@ class CartesianCorrections(Teacher):
         # return np.array(feedback)
         return np.array(self.next_state)
 
-    def step(self, agent_action):
-        super().step(agent_action)
-        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
-        self.env_copy1.teacher = None
+    def step(self, agent_action, oracle):
+        env = oracle.mission
+        oracle = super().step(agent_action, oracle)
+        env_copy1 = pickle.loads(pickle.dumps(env))
+        env_copy1.teacher = None
         if self.next_action == -1:
-            self.next_state = self.env.gen_obs()
+            self.next_state = env.gen_obs()
         else:
-            self.next_state, _, _, _ = self.env_copy1.step(self.next_action)
+            self.next_state, _, _, _ = env_copy1.step(self.next_action)
+        return oracle
         
     def feedback_condition(self):
         """
@@ -47,7 +49,7 @@ class CartesianCorrections(Teacher):
         # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
         # This is kind of sketchy since multiple paths can be optimal.
 
-        return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
+        return True
 
 
 

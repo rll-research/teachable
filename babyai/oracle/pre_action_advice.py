@@ -5,17 +5,21 @@ from babyai.oracle.teacher import Teacher
 
 class PreActionAdvice(Teacher):
 
-    def empty_feedback(self):
+    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False):
+        super().__init__(botclass, env, device, feedback_type, feedback_always)
+        self.null_action = env.action_space.n
+
+    def empty_feedback(self, env):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.array([self.env.action_space.n])
+        return np.array([self.null_action])
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.array([self.env.action_space.sample()])
+        return np.array([self.null_action])
 
     def compute_feedback(self):
         """
@@ -26,11 +30,8 @@ class PreActionAdvice(Teacher):
     def feedback_condition(self):
         """
         Returns true when we should give feedback.
-        Currently returns true when the agent's past action did not match the oracle's action.
         """
-        # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
-        # This is kind of sketchy since multiple paths can be optimal.
-        return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
+        return True
 
 
 
