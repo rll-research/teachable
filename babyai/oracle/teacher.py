@@ -43,20 +43,13 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        self.agent_actions.append(agent_action)
-        self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(self.env)
         new_oracle.vis_mask = self.oracle.vis_mask
         new_oracle.step = self.oracle.step
         self.oracle = new_oracle
         self.last_action = self.next_action
         self.next_action, self.next_subgoal = self.oracle.replan(-1)
-        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
-        self.env_copy1.teacher = None
-        if self.next_action == -1:
-            self.next_state = self.env.gen_obs()
-        else:
-            self.next_state,  _,  _,  _ = self.env_copy1.step(self.next_action)
+
 
     def compute_full_path(self, steps):
         # Settings steps to -1 computes the full path forward
@@ -129,5 +122,3 @@ class Teacher:
         self.oracle = self.botclass(self.env)
         self.next_action, self.next_subgoal = self.oracle.replan()
         self.last_action = -1
-        self.agent_actions = []
-        self.oracle_actions = []

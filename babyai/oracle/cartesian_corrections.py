@@ -1,5 +1,6 @@
 import numpy as np
 from babyai.oracle.teacher import Teacher
+import pickle
 
 class CartesianCorrections(Teacher):
 
@@ -28,6 +29,15 @@ class CartesianCorrections(Teacher):
         #     feedback = -1*np.ones(self.obs_size)
         # return np.array(feedback)
         return np.array(self.next_state)
+
+    def step(self, agent_action):
+        super().step(agent_action)
+        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
+        self.env_copy1.teacher = None
+        if self.next_action == -1:
+            self.next_state = self.env.gen_obs()
+        else:
+            self.next_state, _, _, _ = self.env_copy1.step(self.next_action)
         
     def feedback_condition(self):
         """
