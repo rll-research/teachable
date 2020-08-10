@@ -195,19 +195,9 @@ class Trainer(object):
                 proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
-                r_discrete, logprobs = self.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
-                if self.supervised_model is not None:
-                    self.log_supervised(samples_data)
-                if self.sparse_rewards:
-                    self.log_rew_pred(r_discrete[:,:,0], samples_data['rewards'], samples_data['env_infos'])
-                # Splice into the inference process
-                if self.use_rp_inner:
-                    samples_data['observations'][:,:, -2] = r_discrete[:, :, 0]
-                # Splice into the meta-learning process
-                if self.use_rp_outer:
-                    samples_data['rewards'] = r_discrete[:, :, 0]
-                if 'teacher_action' in samples_data['env_infos']:
-                    samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
+                rp_start_time = time.time()
+                samples_data = self.use_reward_predictor(samples_data)
+                rp_time = time.time() - rp_start_time
                 
                 """ ------------------ End Reward Predictor Splicing ---------------------"""
 
@@ -223,39 +213,61 @@ class Trainer(object):
                 time_optimization_step_start = time.time()
                 if not self.distill_only:
                     self.algo.optimize_policy(copy.deepcopy(samples_data), use_teacher=True)  # TODO: later, pass in an object indicating which feedback should be visible to the teacher
+                    policy_train_time = time.time() - time_optimization_step_start
+                    time_rp_train_start = time.time()
                     self.train_rp(samples_data)
-                if self.supervised_model is not None and advance_curriculum:
+                    rp_train_time = time.time() - time_rp_train_start
+
+                """ ------------------ Distillation ---------------------"""
+
+                # if self.supervised_model is not None and advance_curriculum:
+                if True:  #  TODO: remove
+                    time_distill_start = time.time()
                     distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
                     for k, v in distill_log.items():
                         logger.logkv(f"Distill/{k}_Train", v)
+                    distill_time = time.time() - time_distill_start
 
-                    if itr % self.eval_every == 0 or itr == self.n_itr - 1:
+                # """ ------------------ Policy rollouts ---------------------"""
+                    if (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                         with torch.no_grad():
-                            # Accuracy on the validation set
-                            # samples_data = self.load_data(self.num_train_batches, self.num_batches)  # TODO: collect differently
-                            # self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                            distill_log = self.distill(samples_data, is_training=False)
-                            for k, v in distill_log.items():
-                                logger.logkv(f"Distill/{k}_Validation", v)
+
+                            time_run_supervised_start = time.time()
+
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
                             logger.log("Running supervised model")
                             advance_curriculum_s, increase_dropout_s = self.run_supervised()
                             if self.advance_without_teacher:
                                 advance_curriculum = advance_curriculum_s
                                 increase_dropout = increase_dropout_s
+                            run_supervised_time = time.time() - time_run_supervised_start
                             logger.log('Evaluating supervised')
                             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-
-                            should_save_video = itr % self.save_videos_every == 0
-                            self.sampler.supervised_model.reset(dones=[True])
-                            paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='video',
-                                                               num_rollouts=10,
-                                                               use_teacher=self.distill_with_teacher,
-                                                               save_video=should_save_video)
-                            logger.logkv("Distill/RolloutAcc", accuracy)
                     else:
+                        run_supervised_time = 0
                         if self.advance_without_teacher:
                             advance_curriculum = False
+                else:
+                    distill_time = 0
+                    run_supervised_time = 0
+
+                """ ------------------ Video Saving ---------------------"""
+
+                should_save_video = (itr % self.save_videos_every == 0) or (itr == self.n_itr - 1)
+                if should_save_video:
+                    time_rollout_start = time.time()
+                    self.sampler.supervised_model.reset(dones=[True])
+                    paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='video',
+                                                       num_rollouts=10,
+                                                       use_teacher=self.distill_with_teacher,
+                                                       save_video=should_save_video)
+                    logger.logkv("Distill/RolloutAcc", accuracy)
+                    logger.logkv("Distill/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
+                    logger.logkv("Distill/RolloutPathLength", np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                    logger.logkv("Distill/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
+                    rollout_time = time.time() - time_rollout_start
+                else:
+                    rollout_time = 0
 
                 if advance_curriculum:
                     self.curriculum_step += 1
@@ -268,9 +280,18 @@ class Trainer(object):
                 logger.logkv('Itr', itr)
                 logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
 
-                logger.logkv('Time/Optimization', time.time() - time_optimization_step_start)
+                logger.dumpkvs()
+
                 logger.logkv('Time/SampleProc', np.sum(proc_samples_time))
                 logger.logkv('Time/Sampling', sampling_time)
+                logger.logkv('Time/PolicyTrain', policy_train_time)
+                logger.logkv('Time/RPTrain', rp_train_time)
+                logger.logkv('Time/RPUse', rp_time)
+                logger.logkv('Time/Distillation', distill_time)
+                logger.logkv('Time/RunSupervised', run_supervised_time)
+                logger.logkv('Time/Rollout', rollout_time)
+
+                logger.dumpkvs()
 
                 logger.logkv('Time/Total', time.time() - start_time)
                 logger.logkv('Time/Itr', time.time() - itr_start_time)
@@ -291,14 +312,33 @@ class Trainer(object):
                     step -= 1
 
                 if self.log_and_save:
-                    logger.log("Saving snapshot...")
-                    logger.save_itr_params(itr, step, params)
-                    logger.log("Saved")
+                    if (itr % self.save_every == 0) or (itr == self.n_itr - 1):
+                        logger.log("Saving snapshot...")
+                        logger.save_itr_params(itr, step, params)
+                        logger.log("Saved")
                     logger.dumpkvs()
+
 
 
         logger.log("Training finished")
         # self.sess.close()  # TODO: is this okay?
+
+    def use_reward_predictor(self, samples_data):
+        with torch.no_grad():
+            r_discrete, logprobs = self.reward_predictor.get_actions(samples_data['env_infos']['next_obs_rewardfree'])
+            if self.supervised_model is not None:
+                self.log_supervised(samples_data)
+            if self.sparse_rewards:
+                self.log_rew_pred(r_discrete[:, :, 0], samples_data['rewards'], samples_data['env_infos'])
+            # Splice into the inference process
+            if self.use_rp_inner:
+                samples_data['observations'][:, :, -2] = r_discrete[:, :, 0]
+            # Splice into the meta-learning process
+            if self.use_rp_outer:
+                samples_data['rewards'] = r_discrete[:, :, 0]
+            if 'teacher_action' in samples_data['env_infos']:
+                samples_data['env_infos']['teacher_action'] = samples_data['env_infos']['teacher_action'].astype(np.int32)
+            return samples_data
 
 
     def save_data(self, data, itr):

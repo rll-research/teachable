@@ -233,6 +233,7 @@ class ImitationLearning(object):
             if count > 0:
                 log[f'Accuracy_{i}'] = correct/count
                 # log[f'Count_{i}'] = count
+
         return log
 
     def starting_indexes(self, num_frames):

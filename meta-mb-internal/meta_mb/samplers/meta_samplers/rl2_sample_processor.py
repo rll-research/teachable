@@ -46,7 +46,6 @@ class RL2SampleProcessor(SampleProcessor):
 
         # 8) log statistics if desired
         self._log_path_stats(all_paths, log=log, log_prefix=log_prefix)
-
         samples_data = dict(
             observations=observations,
             actions=actions,
