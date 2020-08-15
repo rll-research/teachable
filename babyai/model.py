@@ -159,15 +159,25 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.embedding_size = self.semi_memory_size
 
         # Define actor's model
+        # self.actor = nn.Sequential(
+        #     nn.Linear(self.embedding_size + self.advice_dim, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, action_space.n)
+        # )
         self.actor = nn.Sequential(
-            nn.Linear(self.embedding_size + self.advice_dim, 64),
+            nn.Linear(8, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )
 
         # Define critic's model
+        # self.critic = nn.Sequential(
+        #     nn.Linear(self.embedding_size + self.advice_dim, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, 1)
+        # )
         self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size + self.advice_dim, 64),
+            nn.Linear(1, 64),
             nn.Tanh(),
             nn.Linear(64, 1)
         )
@@ -306,6 +316,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = self.get_img(obs)
         if self.use_instr and instr_embedding is None:
+            # print("INSTR VCTOR", instruction_vector.shape)
             instr_embedding = self._get_instr_embedding(instruction_vector)
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
@@ -355,11 +366,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         embedding = torch.cat([embedding, advice_embedding], dim=1)
 
-        x = self.actor(embedding)
+        # x = self.actor(embedding)
+        x = self.actor(advice_vector.float())
         dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
 
-        x = self.critic(embedding)
+        x = self.critic(embedding[:, 0:1].detach())
         value = x.squeeze(1)
 
         info = {

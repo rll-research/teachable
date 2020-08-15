@@ -10,27 +10,31 @@ import time
 from babyai.rl.algos.base import BaseAlgo
 
 
-class PPOAlgo:
+class PPOAlgo(BaseAlgo):
     """The class for the Proximal Policy Optimization algorithm
     ([Schulman et al., 2015](https://arxiv.org/abs/1707.06347))."""
 
-    def __init__(self, acmodel, num_frames_per_proc=None, discount=0.99, lr=7e-4, beta1=0.9, beta2=0.999,
+    def __init__(self, acmodel, envs, num_frames_per_proc=None, discount=0.99, lr=7e-4, beta1=0.9, beta2=0.999,
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None):
+
+        super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
+                         value_loss_coef, max_grad_norm, recurrence, self.obss_preprocessor, None,
+                         aux_info)
+
         num_frames_per_proc = num_frames_per_proc or 128
         self.acmodel = acmodel
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
-        self.lr = lr
+        self.lr = lr * 10
         self.gae_lambda = gae_lambda
         self.entropy_coef = entropy_coef
         self.value_loss_coef = value_loss_coef
         self.max_grad_norm = max_grad_norm
         self.recurrence = recurrence
         self.aux_info = aux_info
-        self.num_procs = 1 #TODO: what?S this
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.acmodel.to(self.device)
@@ -44,11 +48,15 @@ class PPOAlgo:
 
         assert self.batch_size % self.recurrence == 0
 
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), lr, (beta1, beta2), eps=adam_eps)
+        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (beta1, beta2), eps=adam_eps)
         self.batch_num = 0
 
+    def obss_preprocessor(self, obs, device=None):
+        obs_arr = np.stack(obs, 0)
+        return torch.FloatTensor(obs_arr).to(device)
+
     def update_parameters(self):
-        pass
+        return self.optimize_policy(None, True)
 
     def preprocess_samples(self, samples_data):
 
@@ -89,12 +97,6 @@ class PPOAlgo:
 
 
     def optimize_policy(self, samples_data, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
-        # Collect experiences
-        setup_start = time.time()
-        samples_data['mask'] = samples_data['agent_infos']['probs'].sum(axis=2, keepdims=True)  # TODO: compute this earlier
-        self.compute_advantage(samples_data)
-        batch_size, timesteps, _ = samples_data['actions'].shape
-        exps = self.preprocess_samples(samples_data)
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -107,25 +109,38 @@ class PPOAlgo:
         being the added information. They are either (n_procs * n_frames_per_proc) 1D tensors or
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
+        self.acmodel.train()
 
-        time_setup = time.time() - setup_start
-        # print("TIME SETUP", time_setup)
-        training_start = time.time()
+        exps, logs = self.collect_experiences()
         model_running_time = 0
         backward_time = 0
 
         self.acmodel.train()
+        # self.epochs = 10000000
 
-        for _ in range(self.epochs):
+        self.recurrence = 1
+
+        for e in range(self.epochs):
+            exps, logs = self.collect_experiences()
+            o = exps.obs.detach().cpu().numpy()
+            teacher = o[:, 160:168]
+            teacher_max = np.argmax(teacher, axis=1)
+
             # Initialize log values
-
-            itr_start = time.time()
+            training_start = time.time()
 
             log_entropies = []
             log_values = []
             log_policy_losses = []
             log_value_losses = []
             log_grad_norms = []
+            log_0 = []
+            log_1 = []
+            log_2 = []
+            log_3 = []
+            log_4 = []
+            log_5 = []
+            log_6 = []
 
             log_losses = []
             model_calls = 0
@@ -138,11 +153,10 @@ class PPOAlgo:
             list of frames is random thanks to self._get_batches_starting_indexes().
             '''
 
-            inds = numpy.arange(0, batch_size * timesteps, self.recurrence)
+            inds = numpy.arange(0, len(exps.action), self.recurrence)
             # inds is a numpy array of indices that correspond to the beginning of a sub-batch
             # there are as many inds as there are batches
             # Initialize batch values
-            index_start = time.time()
 
             batch_entropy = 0
             batch_value = 0
@@ -150,60 +164,47 @@ class PPOAlgo:
             batch_value_loss = 0
             batch_loss = 0
 
-
             # Initialize memory
 
-            memory = exps.agent_infos.memory[inds]
+            memory = exps.memory[inds]
 
             for i in range(self.recurrence):
-                recurrence_start = time.time()
 
                 # Create a sub-batch of experience
-                sb = exps[inds + i]
+                sb = exps[inds]
 
                 # Compute loss
-
                 model_running = time.time()
-                dist, agent_info = self.acmodel(sb.observations, memory * sb.mask, use_teacher=use_teacher)
+                dist, agent_info = self.acmodel(sb.obs, memory * sb.mask, use_teacher=use_teacher)
                 model_calls += 1
-                model_samples_calls += len(sb.observations)
+                model_samples_calls += len(sb.obs)
                 model_running_end = time.time() - model_running
                 model_running_time += model_running_end
 
-
                 value = agent_info['value']
                 memory = agent_info['memory']
-                advantage = sb.advantages
-
-
                 entropy = dist.entropy().mean()
 
-                ratio = torch.exp(dist.log_prob(sb.actions) - sb.agent_infos.log_prob)
-                surr1 = ratio * advantage
-                surr2 = torch.clamp(ratio, 1.0 - self.clip_eps, 1.0 + self.clip_eps) * advantage
-                policy_loss = -torch.min(surr1, surr2).mean()
+                ratio = torch.exp(dist.log_prob(sb.action) - sb.log_prob)
+                surrr1 = ratio * sb.advantage
+                surrr2 = torch.clamp(ratio, 1.0 - self.clip_eps, 1.0 + self.clip_eps) * sb.advantage
+                policy_loss = -torch.min(surrr1, surrr2).mean()
 
-                value_clipped = sb.agent_infos.value + torch.clamp(value - sb.agent_infos.value, -self.clip_eps, self.clip_eps)
-                surr1 = (value - sb.returns).pow(2)
-                surr2 = (value_clipped - sb.returns).pow(2)
+                value_clipped = sb.value + torch.clamp(value - sb.value, -self.clip_eps, self.clip_eps)
+                surr1 = (value - sb.returnn).pow(2)
+                surr2 = (value_clipped - sb.returnn).pow(2)
                 value_loss = torch.max(surr1, surr2).mean()
-
                 loss = policy_loss - self.entropy_coef * entropy + self.value_loss_coef * value_loss
-
-                # Update batch values
 
                 batch_entropy += entropy.item()
                 batch_value += value.mean().item()
                 batch_policy_loss += policy_loss.item()
                 batch_value_loss += value_loss.item()
-                batch_loss += loss
+                batch_loss = loss
 
                 # Update memories for next epoch
-
                 if i < self.recurrence - 1:
-                    exps.agent_infos.memory[inds + i + 1] = memory.detach()
-
-                recurrence_end = time.time() - recurrence_start
+                    exps.memory[inds + i + 1] = memory.detach()
 
             # Update batch values
 
@@ -216,10 +217,29 @@ class PPOAlgo:
             # Update actor-critic
 
             backward_start = time.time()
-
             self.optimizer.zero_grad()
             batch_loss.backward()
             grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.acmodel.parameters() if p.grad is not None) ** 0.5
+            training_time = time.time() - training_start
+            probs = dist.probs.detach().cpu().numpy()
+            temp = dist.log_prob(sb.action * 0 + 5).mean().item()
+            desired_action = np.argmax(sb.obs.detach().cpu().numpy()[:, 160:168], axis=1)
+            accuracy = np.mean(dist.sample().detach().cpu().numpy() == desired_action)
+            assert np.min(desired_action) == np.max(desired_action) == 5
+            assert len(desired_action) > 0
+            # if not e % 5:
+            #     d = dist.sample()
+            #     print("LOSS", batch_loss.item(), training_time)
+            #     print("    Policy loss", policy_loss.item())
+            #     print("    Entropy loss", self.entropy_coef * entropy.item())
+            #     print("    Value loss", self.value_loss_coef * value_loss.item())
+            #     print("    Accuracy", accuracy)
+            #     print("    Log Prob 0", dist.log_prob(sb.action * 0 + 0).mean().item())
+            #     print("    Log Prob 1", dist.log_prob(sb.action * 0 + 1).mean().item())
+            #     print("    Log Prob 5", dist.log_prob(sb.action * 0 + 5).mean().item())
+            #     print("    Grad norm", grad_norm.item())
+            #     print(probs[0], np.argmax(sb.obs.detach().cpu().numpy()[0, 160:168]))
+
             torch.nn.utils.clip_grad_norm_(self.acmodel.parameters(), self.max_grad_norm)
             self.optimizer.step()
 
@@ -234,20 +254,38 @@ class PPOAlgo:
             log_value_losses.append(batch_value_loss)
             log_grad_norms.append(grad_norm.item())
             log_losses.append(batch_loss.item())
+            d = dist.sample().detach().cpu().numpy()
+            log_0.append(np.mean(d == 0))
+            log_1.append(np.mean(d == 1))
+            log_2.append(np.mean(d == 2))
+            log_3.append(np.mean(d == 3))
+            log_4.append(np.mean(d == 4))
+            log_5.append(np.mean(d == 5))
+            log_6.append(np.mean(d == 6))
 
-            index_end = time.time() - index_start
-
-            itr_end = time.time() - itr_start
         # Log some values
-        training_time = time.time() - training_start
 
-        logs = {}
+        # logs = {}
+
+        logs['accuracy'] = accuracy
+        logs['correct'] = temp
+
         logs["entropy"] = numpy.mean(log_entropies)
         logs["value"] = numpy.mean(log_values)
         logs["policy_loss"] = numpy.mean(log_policy_losses)
         logs["value_loss"] = numpy.mean(log_value_losses)
         logs["grad_norm"] = numpy.mean(log_grad_norms)
         logs["loss"] = numpy.mean(log_losses)
+        logs['Took0'] = np.mean(log_0)
+        logs['Took1'] = np.mean(log_1)
+        logs['Took2'] = np.mean(log_2)
+        logs['Took3'] = np.mean(log_3)
+        logs['Took4'] = np.mean(log_4)
+        logs['Took5'] = np.mean(log_5)
+        logs['Took6'] = np.mean(log_6)
+
+        for k, v in logs.items():
+            logger.logkv(f"Train/{k}", v)
 
         return logs
 

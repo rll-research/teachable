@@ -33,8 +33,8 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'FIXEDITHINK'
-
-
+PREFIX = 'DEBUGDUMMYONEBATCH'
+# PREFIX = 'debug22'
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
@@ -216,7 +216,8 @@ def run_experiment(**config):
             positive_adv=config['positive_adv'],
         )
 
-        algo = PPOAlgo(policy, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
+        envs = [env, env, env, env, env, env, env, env]
+        algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                        config['gae_lambda'],
                        args.entropy_coef, .5, .5, args.recurrence,
                        args.optim_eps, .2, 4, config['meta_batch_size'])
@@ -277,7 +278,7 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
-        'level': [4],
+        'level': [0],
         "n_itr": [10000],
         'source': ['teacher'],  # options are agent or teacher (do we distill from the agent or the teacher?)
         'distill_with_teacher': [False],
@@ -318,8 +319,8 @@ if __name__ == '__main__':
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
         "learning_rate": [1e-3],
         "hidden_sizes": [(512, 512)],
-        "memory_dim": [1024],  # 2048
-        "instr_dim": [128],  # 256
+        "memory_dim": [1024],  #1024, 2048
+        "instr_dim": [128],  #128, 256
         "discount": [0.95],
 
         # Reward
@@ -337,10 +338,10 @@ if __name__ == '__main__':
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
-        'meta_batch_size': [20],
-        'backprop_steps': [20],
+        'meta_batch_size': [100],
+        'backprop_steps': [1],  # In the babyai paper, they use 20 for the small model, 80 for the big model
         "parallel": [True],
-        "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
+        "max_path_length": [1],#[float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],

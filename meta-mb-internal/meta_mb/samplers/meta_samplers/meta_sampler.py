@@ -1,5 +1,6 @@
 from meta_mb.samplers.base import BaseSampler
-from meta_mb.samplers.meta_samplers.meta_vectorized_env_executor import MetaParallelEnvExecutor, MetaIterativeEnvExecutor
+from meta_mb.samplers.meta_samplers.meta_vectorized_env_executor import MetaParallelEnvExecutor, \
+    MetaIterativeEnvExecutor
 from meta_mb.logger import logger
 from meta_mb.utils import utils
 from collections import OrderedDict
@@ -25,17 +26,17 @@ class MetaSampler(BaseSampler):
     """
 
     def __init__(
-            self,
-            env,
-            policy,
-            rollouts_per_meta_task,
-            meta_batch_size,
-            max_path_length,
-            envs_per_task=None,
-            parallel=False,
-            reward_predictor=None,
-            supervised_model=None
-            ):
+        self,
+        env,
+        policy,
+        rollouts_per_meta_task,
+        meta_batch_size,
+        max_path_length,
+        envs_per_task=None,
+        parallel=False,
+        reward_predictor=None,
+        supervised_model=None
+    ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
 
@@ -48,10 +49,15 @@ class MetaSampler(BaseSampler):
         self.reward_predictor = reward_predictor
         self.supervised_model = supervised_model
         # setup vectorized environment
+        self.parallel = False  # TODO: remove
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
         else:
             self.vec_env = MetaIterativeEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
+        first = self.vec_env.envs[0]
+        matches = [e is first for e in self.vec_env.envs]
+        obs = np.array(self.vec_env.reset())[:, 160:168]
+        x = 3
 
     def update_tasks(self):
         """
@@ -60,8 +66,7 @@ class MetaSampler(BaseSampler):
         # We can reset tasks internally within the envs, so we don't need to sample them here.
         self.vec_env.set_tasks([None] * self.meta_batch_size)
 
-
-    def mask_teacher(self, obs, feedback_list = []):
+    def mask_teacher(self, obs, feedback_list=[]):
         for feedback_type in feedback_list:
             indices = feedback_type['indices']
             null_value = feedback_type['null']
@@ -73,7 +78,6 @@ class MetaSampler(BaseSampler):
                 assert len(obs.shape) == 3
                 obs[:, :, indices] = null_value
         return obs
-
 
     def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, dropout_proportion=1,
                        policy=None, feedback_list=[], max_action=False, use_teacher=False):
@@ -102,7 +106,7 @@ class MetaSampler(BaseSampler):
         policy_time, env_time = 0, 0
 
         if policy is None:
-          policy = self.policy
+            policy = self.policy
         policy.reset(dones=[True] * self.meta_batch_size)
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
@@ -113,7 +117,17 @@ class MetaSampler(BaseSampler):
             self.vec_env.advance_curriculum()
         # self.vec_env.set_dropout(dropout_proportion)
         self.update_tasks()
+
         obses = self.vec_env.reset()
+        first = self.vec_env.envs[0]
+        matches = [e is first for e in self.vec_env.envs]
+        obs = np.array(obses)[:, 160:168]
+        if np.max(obs) == np.min(obs):
+            print("weirdness")
+            import IPython
+            IPython.embed()
+
+
         num_paths = 0
         while num_paths < total_paths:
             obses = self.mask_teacher(obses, feedback_list)
@@ -123,7 +137,8 @@ class MetaSampler(BaseSampler):
             if random:
                 actions = np.stack([[self.env.action_space.sample()] for _ in range(len(obses))], axis=0)
                 agent_infos = [[{'mean': np.zeros_like(self.env.action_space.sample()),
-                                 'log_std': np.zeros_like(self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
+                                 'log_std': np.zeros_like(
+                                     self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
                 actions, agent_infos = policy.get_actions(obs_per_task, use_teacher=use_teacher)
                 if max_action:
@@ -137,7 +152,7 @@ class MetaSampler(BaseSampler):
 
             # step environments
             t = time.time()
-            actions = np.concatenate(actions) # stack meta batch
+            actions = np.concatenate(actions)  # stack meta batch
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
             env_time += time.time() - t
 
@@ -199,7 +214,8 @@ class MetaSampler(BaseSampler):
             assert len(agent_infos[0]) == self.envs_per_task
             agent_infos = sum(agent_infos, [])  # stack agent_infos
 
-        assert len(agent_infos) == self.meta_batch_size * self.envs_per_task == len(env_infos), (len(agent_infos), self.meta_batch_size, self.envs_per_task, len(env_infos))
+        assert len(agent_infos) == self.meta_batch_size * self.envs_per_task == len(env_infos), (
+        len(agent_infos), self.meta_batch_size, self.envs_per_task, len(env_infos))
         return agent_infos, env_infos
 
 

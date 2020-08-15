@@ -329,10 +329,10 @@ class SampleProcessor(object):
             all_actions = np.array([step[0] for path in paths for step in path['actions']])
             logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
 
-            logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
-            if len(same_room_end) > 0:
-                logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
-                logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
+            # logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
+            # if len(same_room_end) > 0:
+            #     logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
+            #     logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
 
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
@@ -342,6 +342,8 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
 
             logger.logkv(log_prefix + 'AverageSuccess', np.mean(success))
+            if np.mean(total_success) > .6:
+                print("hi")
             logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))

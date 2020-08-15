@@ -437,9 +437,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param action: action to take
         :return: results of stepping the env
         """
+        try:
+            action = action[0]
+        except:
+            action = action  # TODO: sketchy
         if hasattr(self, 'teacher') and self.teacher is not None:
             opt_action = int(self.teacher.next_action)
-            followed_opt_action = (opt_action == action[0])
+            followed_opt_action = (opt_action == action)
         else:
             followed_opt_action = False
 
@@ -487,6 +491,28 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             reward_total = rew * 1000
             reward_total += int(followed_opt_action)
             rew = reward_total
+
+        if TASK == 2:
+            # IF 2 TASK
+            if self.teacher.next_action > 2:
+                rew = 1 if action == 5 else 0
+                desired_action = 5
+            else:
+                rew = 1 if action == 0 else 0
+                desired_action = 0
+        elif TASK == 5:
+            # IF 5 TASK
+            rew = 1 if action == 5 else 0
+            desired_action = 5
+
+
+
+        info['teacher_action'] = np.array([desired_action])
+        import copy
+        tmp = copy.deepcopy(obs[160:168])
+        obs[160:168] = 0
+        obs[160 + desired_action] = 1
+        tmp2 = copy.deepcopy(obs[160:168])
         return obs, rew, done, info
 
     def reset(self):
@@ -512,6 +538,24 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.oracle = self.teacher.reset(self.oracle)
 
         obs = self.gen_obs()
+        try:
+            if TASK == 5:
+                # IF 5 task:
+                desired_action = 5
+                obs[160:168] = 0
+                obs[160 + desired_action] = 1
+            elif TASK == 2:
+                # IF 2 TASK
+                if self.teacher.next_action > 2:
+                    desired_action = 5
+                else:
+                    desired_action = 0
+            obs[160:168] = 0
+            obs[160 + desired_action] = 1
+        except:
+            x = 3
+
+        # IF FOLLOW TASK, COMMENT ALL OUT
 
         self.itr += 1
         return obs
@@ -521,3 +565,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if not dropout_proportion == 1:  # TODO: remove
             print("???", dropout_proportion)
         return None
+
+
+TASK = 5

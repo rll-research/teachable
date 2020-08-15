@@ -22,6 +22,8 @@ from babyai.arguments import ArgumentParser
 from babyai.model import ACModel
 from babyai.evaluate import batch_evaluate
 from babyai.utils.agent import ModelAgent
+from meta_mb.algos.ppo_torch import PPOAlgo
+from babyai.levels.iclr19_levels import *
 
 
 # Parse arguments
@@ -51,7 +53,8 @@ utils.seed(args.seed)
 # Generate environments
 envs = []
 for i in range(args.procs):
-    env = gym.make(args.env)
+    env = Level_IntroPrimitivesD0Strict(feedback_type='PreActionAdvice', feedback_always=True)
+    # env = gym.make(args.env)
     env.seed(100 * args.seed + i)
     envs.append(env)
 
@@ -89,9 +92,14 @@ if acmodel is None:
     if args.pretrained_model:
         acmodel = utils.load_model(args.pretrained_model, raise_not_found=True)
     else:
-        acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
+        advice_start_index = 160
+        advice_end_index = advice_start_index + env.action_space.n + 1
+        acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space, envs[0],
                           args.image_dim, args.memory_dim, args.instr_dim,
-                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch)
+                          not args.no_instr, args.instr_arch, not args.no_mem,
+                             advice_dim=128,
+                             advice_start_index=advice_start_index,
+                             advice_end_index=advice_end_index)
 
 obss_preprocessor.vocab.save()
 utils.save_model(acmodel, args.model)
@@ -103,11 +111,10 @@ if torch.cuda.is_available():
 
 reshape_reward = lambda _0, _1, reward, _2: args.reward_scale * reward
 if args.algo == "ppo":
-    algo = babyai.rl.PPOAlgo(envs, acmodel, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
-                             args.gae_lambda,
-                             args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
-                             args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size, obss_preprocessor,
-                             reshape_reward)
+    algo = PPOAlgo(acmodel, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+                 args.gae_lambda,
+                 args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                 args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size)
 else:
     raise ValueError("Incorrect algorithm name: {}".format(args.algo))
 
@@ -191,6 +198,7 @@ while status['num_frames'] < args.frames:
 
     if status['i'] % args.log_interval == 0:
         total_ellapsed_time = int(time.time() - total_start_time)
+        fps = -1
         fps = logs["num_frames"] / (update_end_time - update_start_time)
         duration = datetime.timedelta(seconds=total_ellapsed_time)
         return_per_episode = utils.synthesize(logs["return_per_episode"])
@@ -220,30 +228,30 @@ while status['num_frames'] < args.frames:
 
     # Save obss preprocessor vocabulary and model
 
-    if args.save_interval > 0 and status['i'] % args.save_interval == 0:
-        obss_preprocessor.vocab.save()
-        with open(status_path, 'w') as dst:
-            json.dump(status, dst)
-            utils.save_model(acmodel, args.model)
-
-        # Testing the model before saving
-        agent = ModelAgent(args.model, obss_preprocessor, argmax=True)
-        agent.model = acmodel
-        agent.model.eval()
-        logs = batch_evaluate(agent, test_env_name, args.val_seed, args.val_episodes)
-        agent.model.train()
-        mean_return = np.mean(logs["return_per_episode"])
-        success_rate = np.mean([1 if r > 0 else 0 for r in logs['return_per_episode']])
-        save_model = False
-        if success_rate > best_success_rate:
-            best_success_rate = success_rate
-            save_model = True
-        elif (success_rate == best_success_rate) and (mean_return > best_mean_return):
-            best_mean_return = mean_return
-            save_model = True
-        if save_model:
-            utils.save_model(acmodel, args.model + '_best')
-            obss_preprocessor.vocab.save(utils.get_vocab_path(args.model + '_best'))
-            logger.info("Return {: .2f}; best model is saved".format(mean_return))
-        else:
-            logger.info("Return {: .2f}; not the best model; not saved".format(mean_return))
+    # if args.save_interval > 0 and status['i'] % args.save_interval == 0:
+    #     obss_preprocessor.vocab.save()
+    #     with open(status_path, 'w') as dst:
+    #         json.dump(status, dst)
+    #         utils.save_model(acmodel, args.model)
+    #
+    #     # Testing the model before saving
+    #     agent = ModelAgent(args.model, obss_preprocessor, argmax=True)
+    #     agent.model = acmodel
+    #     agent.model.eval()
+    #     logs = batch_evaluate(agent, test_env_name, args.val_seed, args.val_episodes)
+    #     agent.model.train()
+    #     mean_return = np.mean(logs["return_per_episode"])
+    #     success_rate = np.mean([1 if r > 0 else 0 for r in logs['return_per_episode']])
+    #     save_model = False
+    #     if success_rate > best_success_rate:
+    #         best_success_rate = success_rate
+    #         save_model = True
+    #     elif (success_rate == best_success_rate) and (mean_return > best_mean_return):
+    #         best_mean_return = mean_return
+    #         save_model = True
+    #     if save_model:
+    #         utils.save_model(acmodel, args.model + '_best')
+    #         obss_preprocessor.vocab.save(utils.get_vocab_path(args.model + '_best'))
+    #         logger.info("Return {: .2f}; best model is saved".format(mean_return))
+    #     else:
+    #         logger.info("Return {: .2f}; not the best model; not saved".format(mean_return))
