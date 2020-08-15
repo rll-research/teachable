@@ -118,7 +118,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
         if self.advice_size > 0:
-            self.advice_embedding = nn.Linear(self.advice_size, self.advice_dim)
+            self.advice_embedding = nn.Sequential(
+                nn.Linear(self.advice_size, self.advice_dim),
+                nn.Sigmoid(),
+            )
 
         # Define instruction embedding
         if self.use_instr:
@@ -160,27 +163,37 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define actor's model
         # self.actor = nn.Sequential(
-        #     nn.Linear(self.embedding_size + self.advice_dim, 64),
+        #     nn.Linear(self.embedding_size, 64),
         #     nn.Tanh(),
         #     nn.Linear(64, action_space.n)
         # )
         self.actor = nn.Sequential(
-            nn.Linear(8, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )
+        # self.actor = nn.Sequential(
+        #     nn.Linear(8, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, action_space.n)
+        # )
 
         # Define critic's model
-        # self.critic = nn.Sequential(
-        #     nn.Linear(self.embedding_size + self.advice_dim, 64),
-        #     nn.Tanh(),
-        #     nn.Linear(64, 1)
-        # )
         self.critic = nn.Sequential(
-            nn.Linear(1, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 1)
         )
+        # self.critic = nn.Sequential(
+        #     nn.Linear(self.embedding_size, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, 1)
+        # )
+        # self.critic = nn.Sequential(
+        #     nn.Linear(1, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, 1)
+        # )
 
         # Initialize parameters correctly
         self.apply(initialize_parameters)
@@ -365,13 +378,20 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             embedding = x
 
         embedding = torch.cat([embedding, advice_embedding], dim=1)
+        # print("STUFF", torch.mean(embedding).detach().cpu().numpy(), torch.mean(advice_embedding).detach().cpu().numpy())
+        # print("STUFF2", torch.std(embedding).detach().cpu().numpy(),
+        #       torch.std(advice_embedding).detach().cpu().numpy())
+        # print("STUFFMAX", torch.max(embedding).detach().cpu().numpy(),
+        #       torch.max(advice_embedding).detach().cpu().numpy())
+        # print("STUFFMEAN", torch.min(embedding).detach().cpu().numpy(),
+        #       torch.min(advice_embedding).detach().cpu().numpy())
 
-        # x = self.actor(embedding)
-        x = self.actor(advice_vector.float())
+        x = self.actor(embedding)
+        # x = self.actor(advice_vector.float())
         dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
 
-        x = self.critic(embedding[:, 0:1].detach())
+        x = self.critic(embedding)
         value = x.squeeze(1)
 
         info = {

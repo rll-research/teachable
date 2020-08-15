@@ -225,7 +225,6 @@ class PPOAlgo(BaseAlgo):
             temp = dist.log_prob(sb.action * 0 + 5).mean().item()
             desired_action = np.argmax(sb.obs.detach().cpu().numpy()[:, 160:168], axis=1)
             accuracy = np.mean(dist.sample().detach().cpu().numpy() == desired_action)
-            assert np.min(desired_action) == np.max(desired_action) == 5
             assert len(desired_action) > 0
             # if not e % 5:
             #     d = dist.sample()

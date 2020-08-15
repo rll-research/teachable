@@ -504,15 +504,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # IF 5 TASK
             rew = 1 if action == 5 else 0
             desired_action = 5
-
-
-
-        info['teacher_action'] = np.array([desired_action])
-        import copy
-        tmp = copy.deepcopy(obs[160:168])
-        obs[160:168] = 0
-        obs[160 + desired_action] = 1
-        tmp2 = copy.deepcopy(obs[160:168])
+        if TASK is not None:
+            info['teacher_action'] = np.array([desired_action])
+            import copy
+            tmp = copy.deepcopy(obs[160:168])
+            obs[160:168] = 0
+            obs[160 + desired_action] = 1
+            tmp2 = copy.deepcopy(obs[160:168])
         return obs, rew, done, info
 
     def reset(self):
@@ -550,8 +548,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     desired_action = 5
                 else:
                     desired_action = 0
-            obs[160:168] = 0
-            obs[160 + desired_action] = 1
+            if TASK is not None:
+                obs[160:168] = 0
+                obs[160 + desired_action] = 1
         except:
             x = 3
 
@@ -567,4 +566,4 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return None
 
 
-TASK = 5
+TASK = None

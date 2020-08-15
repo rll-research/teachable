@@ -206,17 +206,30 @@ while status['num_frames'] < args.frames:
             [1 if r > 0 else 0 for r in logs["return_per_episode"]])
         num_frames_per_episode = utils.synthesize(logs["num_frames_per_episode"])
 
-        data = [status['i'], status['num_episodes'], status['num_frames'],
-                fps, total_ellapsed_time,
-                *return_per_episode.values(),
+        # data = [status['i'], status['num_episodes'], status['num_frames'],
+        #         fps, total_ellapsed_time,
+        #         *return_per_episode.values(),
+        #         success_per_episode['mean'],
+        #         *num_frames_per_episode.values(),
+        #         logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"],
+        #         logs["loss"], logs["grad_norm"]]
+        #
+        # format_str = ("U {} | E {} | F {:06} | FPS {:04.0f} | D {} | R:xsmM {: .2f} {: .2f} {: .2f} {: .2f} | "
+        #               "S {:.2f} | F:xsmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | "
+        #               "pL {: .3f} | vL {:.3f} | L {:.3f} | gN {:.3f} | ")
+
+        data = [list(return_per_episode.values())[0],
                 success_per_episode['mean'],
                 *num_frames_per_episode.values(),
                 logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"],
                 logs["loss"], logs["grad_norm"]]
 
-        format_str = ("U {} | E {} | F {:06} | FPS {:04.0f} | D {} | R:xsmM {: .2f} {: .2f} {: .2f} {: .2f} | "
+        format_str = ("R:xsmM {: .2f} | "
                       "S {:.2f} | F:xsmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | "
                       "pL {: .3f} | vL {:.3f} | L {:.3f} | gN {:.3f} | ")
+
+        data2 = [logs['Took0'], logs['Took1'], logs['Took2'], logs['Took3'], logs['Took4'], logs['Took5'], logs['Took6'], ]
+        print(data2)
 
         logger.info(format_str.format(*data))
         if args.tb:
