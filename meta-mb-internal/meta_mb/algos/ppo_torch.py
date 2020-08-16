@@ -115,6 +115,8 @@ class PPOAlgo(BaseAlgo):
         model_running_time = 0
         backward_time = 0
 
+        t = exps.obs.detach().cpu().numpy()[:, 160:168]
+
         self.acmodel.train()
         # self.epochs = 10000000
 
@@ -264,7 +266,7 @@ class PPOAlgo(BaseAlgo):
 
         # Log some values
 
-        # logs = {}
+        logs = {}
 
         logs['accuracy'] = accuracy
         logs['correct'] = temp

@@ -447,6 +447,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         else:
             followed_opt_action = False
 
+        if self.teacher.next_action > 2:
+            desired_action = 5
+        else:
+            desired_action = 0
+
         if self.dropout_type == 'step':
             self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
             self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
@@ -493,13 +498,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             rew = reward_total
 
         if TASK == 2:
+            rew = 1 if action == desired_action else 0
+            desired_action = self.teacher.next_action
             # IF 2 TASK
-            if self.teacher.next_action > 2:
-                rew = 1 if action == 5 else 0
-                desired_action = 5
-            else:
-                rew = 1 if action == 0 else 0
-                desired_action = 0
+            # if self.teacher.next_action > 2:
+            #     rew = 1 if action == 5 else 0
+            #     desired_action = 5
+            # else:
+            #     rew = 1 if action == 0 else 0
+            #     desired_action = 0
         elif TASK == 5:
             # IF 5 TASK
             rew = 1 if action == 5 else 0
@@ -566,4 +573,4 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return None
 
 
-TASK = None
+TASK = 2
