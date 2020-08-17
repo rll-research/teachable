@@ -123,7 +123,6 @@ class PPOAlgo(BaseAlgo):
         # self.recurrence = 1
 
         for e in range(self.epochs):
-            # exps, logs = self.collect_experiences()
             o = exps.obs.detach().cpu().numpy()
             teacher = o[:, 160:168]
             teacher_max = np.argmax(teacher, axis=1)
