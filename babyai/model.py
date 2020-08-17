@@ -134,13 +134,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.instr_rnn = nn.GRU(
                         self.instr_dim, gru_dim, batch_first=True,
                         bidirectional=(self.lang_model in ['bigru', 'attgru']))
-                    self.final_instr_dim = self.instr_dim + self.advice_dim# * 4
+                    self.final_instr_dim = self.instr_dim# + self.advice_dim# * 4
                 else:
                     kernel_dim = 64
                     kernel_sizes = [3, 4]
                     self.instr_convs = nn.ModuleList([
                         nn.Conv2d(1, kernel_dim, (K, self.instr_dim)) for K in kernel_sizes])
-                    self.final_instr_dim = kernel_dim * len(kernel_sizes) + self.advice_dim# * 4
+                    self.final_instr_dim = kernel_dim * len(kernel_sizes)# + self.advice_dim# * 4
 
             if self.lang_model == 'attgru':
                 self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim)
@@ -190,7 +190,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Linear(64, 1)
         )
         # self.critic = nn.Sequential(
-        #     nn.Linear(1, 64),
+        #     nn.Linear(self.embedding_size, 64),
         #     nn.Tanh(),
         #     nn.Linear(64, 1)
         # )
@@ -352,8 +352,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
         # Add the teacher's advice onto the instruction
-        if self.use_instr and self.advice_size > 0:
-            instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
+        # if self.use_instr and self.advice_size > 0:
+        #     instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
             # instr_embedding = torch.cat(
             #     [instr_embedding, advice_embedding, advice_embedding, advice_embedding, advice_embedding], dim=1)
 
@@ -379,6 +379,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
 
+        e = embedding.detach().cpu().numpy()
+        a = advice_embedding.detach().cpu().numpy()
+        # print("embedding", np.min(e), np.max(e), np.mean(e))
+        # print("advice em", np.min(a), np.max(a), np.mean(a))
         embedding = torch.cat([embedding, advice_embedding], dim=1)
         # embedding = torch.cat([embedding, advice_embedding, advice_embedding, advice_embedding, advice_embedding],
         #                       dim=1)
@@ -418,9 +422,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             masks = (instr != 0).float()
             # Make sure we don't have an entire trajectory of zeros.
             # doing this doesn't matter since we should be masking out these transitions anyway.
-            all_zeros = masks.sum(dim=1) == 0
-            instr[all_zeros] = instr[all_zeros] + 1
-            lengths = (instr != 0).sum(1).long()
+            # all_zeros = masks.sum(dim=1) == 0
+            # instr[all_zeros] = instr[all_zeros] + 1
+            # lengths = (instr != 0).sum(1).long()
 
             if lengths.shape[0] > 1:
                 seq_lengths, perm_idx = lengths.sort(0, descending=True)

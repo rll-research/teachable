@@ -339,9 +339,9 @@ if __name__ == '__main__':
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
         'meta_batch_size': [100],
-        'backprop_steps': [1],  # In the babyai paper, they use 20 for the small model, 80 for the big model
+        'backprop_steps': [20],  # In the babyai paper, they use 20 for the small model, 80 for the big model
         "parallel": [True],
-        "max_path_length": [1],#[float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
+        "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],

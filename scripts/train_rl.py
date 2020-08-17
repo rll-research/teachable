@@ -47,6 +47,7 @@ parser.add_argument("--ppo-epochs", type=int, default=4,
 parser.add_argument("--save-interval", type=int, default=50,
                     help="number of updates between two saves (default: 50, 0 means no saving)")
 parser.add_argument("--description", type=str, default="")
+parser.add_argument("--tb-dir", type=str, default=None)
 args = parser.parse_args()
 
 utils.seed(args.seed)
@@ -145,8 +146,13 @@ header = (["update", "episodes", "frames", "FPS", "duration"]
           + ["entropy", "value", "policy_loss", "value_loss", "loss", "grad_norm"])
 if args.tb:
     from tensorboardX import SummaryWriter
+    if args.tb_dir is not None:
+        os.mkdir("tb_dir/" + args.tb_dir)
+        writer = SummaryWriter(args.tb_dir)
+    else:
+        writer = SummaryWriter(utils.get_log_dir(args.model))
 
-    writer = SummaryWriter(utils.get_log_dir(args.model))
+
 csv_path = os.path.join(utils.get_log_dir(args.model), 'log.csv')
 first_created = not os.path.exists(csv_path)
 # we don't buffer data going in the csv log, cause we assume
@@ -208,13 +214,13 @@ while status['num_frames'] < args.frames:
             [1 if r > 0 else 0 for r in logs["return_per_episode"]])
         num_frames_per_episode = utils.synthesize(logs["num_frames_per_episode"])
 
-        # data = [status['i'], status['num_episodes'], status['num_frames'],
-        #         fps, total_ellapsed_time,
-        #         *return_per_episode.values(),
-        #         success_per_episode['mean'],
-        #         *num_frames_per_episode.values(),
-        #         logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"],
-        #         logs["loss"], logs["grad_norm"]]
+        og_data = [status['i'], status['num_episodes'], status['num_frames'],
+                fps, total_ellapsed_time,
+                *return_per_episode.values(),
+                success_per_episode['mean'],
+                *num_frames_per_episode.values(),
+                logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"],
+                logs["loss"], logs["grad_norm"]]
         #
         # format_str = ("U {} | E {} | F {:06} | FPS {:04.0f} | D {} | R:xsmM {: .2f} {: .2f} {: .2f} {: .2f} | "
         #               "S {:.2f} | F:xsmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | "
@@ -235,9 +241,10 @@ while status['num_frames'] < args.frames:
 
         logger.info(format_str.format(*data))
         if args.tb:
-            assert len(header) == len(data)
-            for key, value in zip(header, data):
+            assert len(header) == len(og_data)
+            for key, value in zip(header, og_data):
                 writer.add_scalar(key, float(value), status['num_frames'])
+                print("wrote scalar")
 
         csv_writer.writerow(data)
 
