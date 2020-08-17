@@ -120,7 +120,7 @@ class PPOAlgo(BaseAlgo):
         self.acmodel.train()
         # self.epochs = 10000000
 
-        self.recurrence = 1
+        # self.recurrence = 1
 
         for e in range(self.epochs):
             # exps, logs = self.collect_experiences()
@@ -204,7 +204,7 @@ class PPOAlgo(BaseAlgo):
                 batch_value += value.mean().item()
                 batch_policy_loss += policy_loss.item()
                 batch_value_loss += value_loss.item() * self.value_loss_coef
-                batch_loss = loss
+                batch_loss += loss
 
                 # Update memories for next epoch
                 if i < self.recurrence - 1:

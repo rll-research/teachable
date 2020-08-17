@@ -54,7 +54,7 @@ utils.seed(args.seed)
 # Generate environments
 envs = []
 for i in range(args.procs):
-    env = Level_IntroPrimitivesD0Strict(feedback_type='PreActionAdvice', feedback_always=True)
+    env = Level_GoToRedBallNoDists(feedback_type='PreActionAdvice', feedback_always=True)
     # env = gym.make(args.env)
     env.seed(100 * args.seed + i)
     envs.append(env)
