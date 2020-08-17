@@ -46,6 +46,7 @@ parser.add_argument("--ppo-epochs", type=int, default=4,
                     help="number of epochs for PPO (default: 4)")
 parser.add_argument("--save-interval", type=int, default=50,
                     help="number of updates between two saves (default: 50, 0 means no saving)")
+parser.add_argument("--description", type=str, default="")
 args = parser.parse_args()
 
 utils.seed(args.seed)

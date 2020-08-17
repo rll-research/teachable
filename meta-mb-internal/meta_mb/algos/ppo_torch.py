@@ -123,7 +123,7 @@ class PPOAlgo(BaseAlgo):
         self.recurrence = 1
 
         for e in range(self.epochs):
-            exps, logs = self.collect_experiences()
+            # exps, logs = self.collect_experiences()
             o = exps.obs.detach().cpu().numpy()
             teacher = o[:, 160:168]
             teacher_max = np.argmax(teacher, axis=1)
@@ -271,7 +271,7 @@ class PPOAlgo(BaseAlgo):
 
         # Log some values
 
-        logs = {}
+        # logs = {}
 
         logs['accuracy'] = accuracy
         logs['correct'] = temp
