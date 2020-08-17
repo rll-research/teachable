@@ -28,7 +28,7 @@ class PPOAlgo(BaseAlgo):
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
-        self.lr = lr * 10
+        self.lr = lr
         self.gae_lambda = gae_lambda
         self.entropy_coef = entropy_coef
         self.value_loss_coef = value_loss_coef
@@ -143,6 +143,8 @@ class PPOAlgo(BaseAlgo):
             log_4 = []
             log_5 = []
             log_6 = []
+            teacher_0 = []
+            teacher_5 = []
 
             log_losses = []
             model_calls = 0
@@ -198,10 +200,10 @@ class PPOAlgo(BaseAlgo):
                 value_loss = torch.max(surr1, surr2).mean()
                 loss = policy_loss - self.entropy_coef * entropy + self.value_loss_coef * value_loss
 
-                batch_entropy += entropy.item()
+                batch_entropy -= entropy.item() * self.entropy_coef
                 batch_value += value.mean().item()
                 batch_policy_loss += policy_loss.item()
-                batch_value_loss += value_loss.item()
+                batch_value_loss += value_loss.item() * self.value_loss_coef
                 batch_loss = loss
 
                 # Update memories for next epoch
@@ -264,6 +266,9 @@ class PPOAlgo(BaseAlgo):
             log_5.append(np.mean(d == 5))
             log_6.append(np.mean(d == 6))
 
+            teacher_0.append(np.mean(teacher_max == 0))
+            teacher_5.append(np.mean(teacher_max == 5))
+
         # Log some values
 
         logs = {}
@@ -271,6 +276,7 @@ class PPOAlgo(BaseAlgo):
         logs['accuracy'] = accuracy
         logs['correct'] = temp
 
+        logs["entropy_loss"] = numpy.mean(log_entropies)
         logs["entropy"] = numpy.mean(log_entropies)
         logs["value"] = numpy.mean(log_values)
         logs["policy_loss"] = numpy.mean(log_policy_losses)
@@ -284,6 +290,8 @@ class PPOAlgo(BaseAlgo):
         logs['Took4'] = np.mean(log_4)
         logs['Took5'] = np.mean(log_5)
         logs['Took6'] = np.mean(log_6)
+        logs['Teacher0'] = np.mean(teacher_0)
+        logs['Teacher5'] = np.mean(teacher_5)
 
         for k, v in logs.items():
             logger.logkv(f"Train/{k}", v)

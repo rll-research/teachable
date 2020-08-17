@@ -58,7 +58,7 @@ class Trainer(object):
         il_trainer=None,
         source='agent',
         batch_size=100,
-        eval_every=100,
+        eval_every=25,
         save_every=100,
         log_every=10,
         save_videos_every=1000,
@@ -179,22 +179,23 @@ class Trainer(object):
 
                 """ -------------------- Sampling --------------------------"""
 
-                logger.log("Obtaining samples...")
-                time_env_sampling_start = time.time()
-                advance_curriculum = False  # TODO: remove!
-                # paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
-                #                                     advance_curriculum=advance_curriculum,
-                #                                     dropout_proportion=dropout_proportion)
-                sampling_time = time.time() - time_env_sampling_start
+                if itr % 25 == 0:
+                    logger.log("Obtaining samples...")
+                    time_env_sampling_start = time.time()
+                    advance_curriculum = False  # TODO: remove!
+                    paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
+                                                        advance_curriculum=advance_curriculum,
+                                                        dropout_proportion=dropout_proportion)
+                    sampling_time = time.time() - time_env_sampling_start
 
-                """ ----------------- Processing Samples ---------------------"""
+                    """ ----------------- Processing Samples ---------------------"""
 
-                logger.log("Processing samples...")
-                time_proc_samples_start = time.time()
-                samples_data = None
-                # samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
-                # advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
-                proc_samples_time = time.time() - time_proc_samples_start
+                    logger.log("Processing samples...")
+                    time_proc_samples_start = time.time()
+                    samples_data = None
+                    samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix='train/')
+                    advance_curriculum, increase_dropout = self.check_advance_curriculum(samples_data)
+                    proc_samples_time = time.time() - time_proc_samples_start
 
                 """ ------------------ Reward Predictor Splicing ---------------------"""
                 rp_start_time = time.time()
@@ -226,35 +227,35 @@ class Trainer(object):
 
                 if self.supervised_model is not None and advance_curriculum:
                 # if True:  #  TODO: remove
-                    time_distill_start = time.time()
+                #     time_distill_start = time.time()
                     # distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
                     # for k, v in distill_log.items():
                     #     logger.logkv(f"Distill/{k}_Train", v)
-                    distill_time = time.time() - time_distill_start
+                    # distill_time = time.time() - time_distill_start
 
                     # logger.dumpkvs()
                 #
                 # # """ ------------------ Policy rollouts ---------------------"""
-                #     if (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
-                #         with torch.no_grad():
-                #
-                #             time_run_supervised_start = time.time()
-                #
-                #             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                #             logger.log("Running supervised model")
-                #             advance_curriculum_s, increase_dropout_s = self.run_supervised()
-                #             if self.advance_without_teacher:
-                #                 advance_curriculum = advance_curriculum_s
-                #                 increase_dropout = increase_dropout_s
-                #             run_supervised_time = time.time() - time_run_supervised_start
-                #             logger.log('Evaluating supervised')
-                #             self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
-                #
-                #             logger.dumpkvs()
-                #     else:
-                #         run_supervised_time = 0
-                #         if self.advance_without_teacher:
-                #             advance_curriculum = False
+                    if (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+                        with torch.no_grad():
+
+                            time_run_supervised_start = time.time()
+
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+                            logger.log("Running supervised model")
+                            advance_curriculum_s, increase_dropout_s = self.run_supervised()
+                            if self.advance_without_teacher:
+                                advance_curriculum = advance_curriculum_s
+                                increase_dropout = increase_dropout_s
+                            run_supervised_time = time.time() - time_run_supervised_start
+                            logger.log('Evaluating supervised')
+                            self.sampler.supervised_model.reset(dones=[True] * len(samples_data['observations']))
+
+                            logger.dumpkvs()
+                    else:
+                        run_supervised_time = 0
+                        if self.advance_without_teacher:
+                            advance_curriculum = False
                 else:
                     distill_time = 0
                 run_supervised_time = 0

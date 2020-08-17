@@ -518,6 +518,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             obs[160:168] = 0
             obs[160 + desired_action] = 1
             tmp2 = copy.deepcopy(obs[160:168])
+
+        # if len(obs) > 160:
+        #     teacher = obs[160:168]
+        #     obs = np.concatenate([obs, teacher, teacher, teacher, teacher, teacher, teacher, teacher, teacher])
+
         return obs, rew, done, info
 
     def reset(self):
@@ -564,6 +569,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         # IF FOLLOW TASK, COMMENT ALL OUT
 
         self.itr += 1
+
+        # if len(obs) > 160:
+        #     teacher = obs[160:168]
+        #     obs = np.concatenate([obs, teacher, teacher, teacher, teacher, teacher, teacher, teacher, teacher])
+
+
+
         return obs
 
     def set_dropout_proportion(self, dropout_proportion):
@@ -573,4 +585,4 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return None
 
 
-TASK = 2
+TASK = None

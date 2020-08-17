@@ -134,13 +134,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.instr_rnn = nn.GRU(
                         self.instr_dim, gru_dim, batch_first=True,
                         bidirectional=(self.lang_model in ['bigru', 'attgru']))
-                    self.final_instr_dim = self.instr_dim
+                    self.final_instr_dim = self.instr_dim + self.advice_dim# * 4
                 else:
                     kernel_dim = 64
                     kernel_sizes = [3, 4]
                     self.instr_convs = nn.ModuleList([
                         nn.Conv2d(1, kernel_dim, (K, self.instr_dim)) for K in kernel_sizes])
-                    self.final_instr_dim = kernel_dim * len(kernel_sizes)
+                    self.final_instr_dim = kernel_dim * len(kernel_sizes) + self.advice_dim# * 4
 
             if self.lang_model == 'attgru':
                 self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim)
@@ -173,22 +173,22 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Linear(64, action_space.n)
         )
         # self.actor = nn.Sequential(
-        #     nn.Linear(8, 64),
+        #     nn.Linear(self.advice_dim, 64),
         #     nn.Tanh(),
         #     nn.Linear(64, action_space.n)
         # )
 
         # Define critic's model
+        # self.critic = nn.Sequential(
+        #     nn.Linear(self.advice_dim, 64),
+        #     nn.Tanh(),
+        #     nn.Linear(64, 1)
+        # )
         self.critic = nn.Sequential(
             nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 1)
         )
-        # self.critic = nn.Sequential(
-        #     nn.Linear(self.embedding_size, 64),
-        #     nn.Tanh(),
-        #     nn.Linear(64, 1)
-        # )
         # self.critic = nn.Sequential(
         #     nn.Linear(1, 64),
         #     nn.Tanh(),
@@ -351,9 +351,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-            # Add the teacher's advice onto the instruction
-            if self.advice_size > 0:
-                instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
+        # Add the teacher's advice onto the instruction
+        if self.use_instr and self.advice_size > 0:
+            instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
+            # instr_embedding = torch.cat(
+            #     [instr_embedding, advice_embedding, advice_embedding, advice_embedding, advice_embedding], dim=1)
 
         x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
@@ -378,6 +380,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             embedding = x
 
         embedding = torch.cat([embedding, advice_embedding], dim=1)
+        # embedding = torch.cat([embedding, advice_embedding, advice_embedding, advice_embedding, advice_embedding],
+        #                       dim=1)
         # print("STUFF", torch.mean(embedding).detach().cpu().numpy(), torch.mean(advice_embedding).detach().cpu().numpy())
         # print("STUFF2", torch.std(embedding).detach().cpu().numpy(),
         #       torch.std(advice_embedding).detach().cpu().numpy())
@@ -387,11 +391,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         #       torch.min(advice_embedding).detach().cpu().numpy())
 
         x = self.actor(embedding)
-        # x = self.actor(advice_vector.float())
+        # x = self.actor(advice_embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
 
         x = self.critic(embedding)
+        # x = self.critic(advice_embedding)
         value = x.squeeze(1)
 
         info = {
