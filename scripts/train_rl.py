@@ -198,6 +198,7 @@ while status['num_frames'] < args.frames:
     # Print logs
 
     if status['i'] % args.log_interval == 0:
+        print(args.description)
         total_ellapsed_time = int(time.time() - total_start_time)
         fps = -1
         fps = logs["num_frames"] / (update_end_time - update_start_time)
