@@ -278,7 +278,7 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
-        'level': [0],
+        'level': [4],
         "n_itr": [10000],
         'source': ['teacher'],  # options are agent or teacher (do we distill from the agent or the teacher?)
         'distill_with_teacher': [False],

@@ -185,7 +185,8 @@ class Trainer(object):
                     advance_curriculum = False  # TODO: remove!
                     paths = self.sampler.obtain_samples(log=True, log_prefix='train/',
                                                         advance_curriculum=advance_curriculum,
-                                                        dropout_proportion=dropout_proportion)
+                                                        dropout_proportion=dropout_proportion,
+                                                        use_teacher=True)
                     sampling_time = time.time() - time_env_sampling_start
 
                     """ ----------------- Processing Samples ---------------------"""

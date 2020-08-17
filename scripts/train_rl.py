@@ -55,7 +55,7 @@ utils.seed(args.seed)
 # Generate environments
 envs = []
 for i in range(args.procs):
-    env = Level_GoToRedBallNoDists(feedback_type='PreActionAdvice', feedback_always=True)
+    env = Level_GoToLocal(feedback_type='PreActionAdvice', feedback_always=True, intermediate_reward=True)
     # env = gym.make(args.env)
     env.seed(100 * args.seed + i)
     envs.append(env)
@@ -211,7 +211,7 @@ while status['num_frames'] < args.frames:
         duration = datetime.timedelta(seconds=total_ellapsed_time)
         return_per_episode = utils.synthesize(logs["return_per_episode"])
         success_per_episode = utils.synthesize(
-            [1 if r > 0 else 0 for r in logs["return_per_episode"]])
+            [1 if r > 2 else 0 for r in logs["return_per_episode"]])  # TODO: change based on dense rewards or not
         num_frames_per_episode = utils.synthesize(logs["num_frames_per_episode"])
 
         og_data = [status['i'], status['num_episodes'], status['num_frames'],
@@ -221,10 +221,6 @@ while status['num_frames'] < args.frames:
                 *num_frames_per_episode.values(),
                 logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"],
                 logs["loss"], logs["grad_norm"]]
-        #
-        # format_str = ("U {} | E {} | F {:06} | FPS {:04.0f} | D {} | R:xsmM {: .2f} {: .2f} {: .2f} {: .2f} | "
-        #               "S {:.2f} | F:xsmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | "
-        #               "pL {: .3f} | vL {:.3f} | L {:.3f} | gN {:.3f} | ")
 
         data = [list(return_per_episode.values())[0],
                 success_per_episode['mean'],
@@ -244,7 +240,7 @@ while status['num_frames'] < args.frames:
             assert len(header) == len(og_data)
             for key, value in zip(header, og_data):
                 writer.add_scalar(key, float(value), status['num_frames'])
-                print("wrote scalar")
+                # print("wrote scalar")
 
         csv_writer.writerow(data)
 

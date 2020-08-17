@@ -107,7 +107,7 @@ class BaseAlgo(ABC):
         self.log_reshaped_return = [0] * self.num_procs
         self.log_num_frames = [0] * self.num_procs
 
-    def collect_experiences(self):
+    def collect_experiences(self, use_teacher=False):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -133,18 +133,16 @@ class BaseAlgo(ABC):
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
 
             with torch.no_grad():
-                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
-                # dist = model_results['dist']
+                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)
                 value = model_results['value']
                 memory = model_results['memory']
-                extra_predictions = None#model_results['extra_predictions']
+                extra_predictions = None
 
             action = dist.sample()
 
             obs, reward, done, env_info = self.env.step(action.cpu().numpy())
             if self.aux_info:
                 env_info = self.aux_info_collector.process(env_info)
-                # env_info = self.process_aux_info(env_info)
 
             # Update experiences values
 
@@ -191,7 +189,7 @@ class BaseAlgo(ABC):
 
         preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
         with torch.no_grad():
-            next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
+            next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)[1]['value']
 
         for i in reversed(range(self.num_frames_per_proc)):
             next_mask = self.masks[i+1] if i < self.num_frames_per_proc - 1 else self.mask
