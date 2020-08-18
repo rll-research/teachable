@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
-import numpy
+import numpy as np
 
 from babyai.rl.format import default_preprocess_obss
 from babyai.rl.utils import DictList, ParallelEnv
@@ -92,6 +92,8 @@ class BaseAlgo(ABC):
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
         self.log_probs = torch.zeros(*shape, device=self.device)
+        self.teacher_actions = torch.zeros(*shape, device=self.device)
+        self.dones = torch.zeros(*shape, device=self.device)
 
         if self.aux_info:
             self.aux_info_collector = ExtraInfoCollector(self.aux_info, shape, self.device)
@@ -141,13 +143,12 @@ class BaseAlgo(ABC):
             action = dist.sample()
 
             obs, reward, done, env_info = self.env.step(action.cpu().numpy())
-            if self.aux_info:
-                env_info = self.aux_info_collector.process(env_info)
 
             # Update experiences values
 
             self.obss[i] = self.obs
             self.obs = obs
+            self.teacher_actions[i] = torch.FloatTensor([np.argmax(o[160:168]) for o in obs]).to(self.device)  # TODO: this is specific to PreActionAdvice!!
 
             self.memories[i] = self.memory
             self.memory = memory
@@ -156,6 +157,7 @@ class BaseAlgo(ABC):
             self.mask = 1 - torch.tensor(done, device=self.device, dtype=torch.float)
             self.actions[i] = action
             self.values[i] = value
+            self.dones[i] = torch.FloatTensor(done).to(self.device)
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
                     self.reshape_reward(obs_, action_, reward_, done_)
@@ -206,6 +208,14 @@ class BaseAlgo(ABC):
         exps.obs = [self.obss[i][j]
                     for j in range(self.num_procs)
                     for i in range(self.num_frames_per_proc)]
+        env_info_dict = DictList()
+        for k in env_info[0].keys():
+            temp = [t[k] for t in env_info]
+            st = np.stack([t[k] for t in env_info])
+            # env_info_dict[k] = [3]
+            # env_info_dict[k] = np.stack([t[k] for t in env_info])
+            setattr(env_info_dict, k, st)
+        exps.env_infos = env_info_dict
         # In commments below T is self.num_frames_per_proc, P is self.num_procs,
         # D is the dimensionality
 
@@ -221,6 +231,8 @@ class BaseAlgo(ABC):
         exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
         exps.returnn = exps.value + exps.advantage
         exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
+        exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
+        exps.done = self.dones.transpose(0, 1).reshape(-1)
 
         if self.aux_info:
             exps = self.aux_info_collector.end_collection(exps)

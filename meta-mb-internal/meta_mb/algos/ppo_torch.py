@@ -96,7 +96,7 @@ class PPOAlgo(BaseAlgo):
         return samples_data
 
 
-    def optimize_policy(self, samples_data, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
+    def optimize_policy(self, eps, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -111,7 +111,6 @@ class PPOAlgo(BaseAlgo):
         '''
         self.acmodel.train()
 
-        exps, logs = self.collect_experiences(use_teacher=use_teacher)
         model_running_time = 0
         backward_time = 0
 
