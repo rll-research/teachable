@@ -300,7 +300,7 @@ if __name__ == '__main__':
         'feedback_always': [True],
 
         # Curriculum
-        'advance_curriculum_func': ['one_hot'],
+        'advance_curriculum_func': ['smooth'],
         'pre_levels': [False],
 
         # Model/Optimization

@@ -230,7 +230,8 @@ class Trainer(object):
                     advance_curriculum_policy = self.run_supervised(self.algo.acmodel, True, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
-                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
+                    # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
+                    advance_curriculum = advance_curriculum_sup
 
                     logger.logkv('Itr', itr)
                     logger.logkv('Curriculum Step', self.curriculum_step)
