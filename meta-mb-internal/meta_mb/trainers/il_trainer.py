@@ -78,29 +78,27 @@ class ImitationLearning(object):
         i.e. each demo is a tuple (mission, blosc.pack_array(np.array(images)), directions, actions)
         returns demos as a list of lists. Each demo is a list of (obs, action, done) tuples
         '''
+        obs = demos.obs.detach().cpu().numpy()
+        if self.reward_predictor:
+            obs = demos.env_infos.next_obs_rewardfree
+            reward = demos.reward
+            action = torch.clamp(reward, 0, 2).long().detach().cpu().numpy()
+        elif source == 'agent':
+            action = demos.action.detach().cpu().numpy()
+        elif source == 'teacher':
+            action = demos.env_infos.teacher_action
+        else:
+            raise NotImplementedError(source)
+        action = action
+        done = (1 - demos.mask).detach().cpu().numpy()
+        done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
+        split_indices = np.where(done == 1)[0]
         new_demos = []
-        num_demos = len(demos['actions'])
-        for i in range(num_demos):
-            new_demo = []
-            dones = demos['dones']
-            end_index = np.where(dones[i])[0][-1]
-            for t in range(end_index + 1):
-                obs = demos['observations'][i, t]
-                if self.reward_predictor:
-                    obs = demos['env_infos']['next_obs_rewardfree'][i, t]
-                    reward = demos['rewards'][i, t]
-                    if reward > 1:
-                        reward = 2
-                    action = np.array([reward])
-                elif source == 'agent':
-                    action = demos['actions'][i, t]
-                elif source == 'teacher':
-                    action = demos['env_infos']['teacher_action'][i, t]
-                else:
-                    raise NotImplementedError(source)
-                done = demos['dones'][i, t]
-                new_demo.append((obs, action, done))
-            new_demos.append(new_demo)
+        for i in range(len(split_indices) - 1):
+            o = obs[split_indices[i]:split_indices[i+1]]
+            a = action[split_indices[i]:split_indices[i+1]]
+            d = done[split_indices[i]:split_indices[i+1]]
+            new_demos.append((o, a, d))
         return new_demos
 
     def obss_preprocessor(self, obs, device=None):
@@ -118,29 +116,34 @@ class ImitationLearning(object):
         batch = self.transform_demos(batch, source)
         batch.sort(key=len, reverse=True)
         # Constructing flat batch and indices pointing to start of each demonstration
-        flat_batch = []
+        obss = []
+        action_true = []
+        done = []
         inds = [0]
 
         for demo in batch:
-            flat_batch += demo
+            obss.append(demo[0])
+            action_true.append(demo[1])
+            done.append(demo[2])
             inds.append(inds[-1] + len(demo))
 
         # (batch size * avg demo length , 3), where 3 is for (state, action, done)
-        flat_batch = np.array(flat_batch, dtype=object)
+        obss = np.concatenate(obss)
+        action_true = np.concatenate(action_true)
+        done = np.concatenate(done)
         inds = inds[:-1]
-        num_frames = len(flat_batch)
+        num_frames = len(obss)
 
-        mask = np.ones([len(flat_batch)], dtype=np.float64)
+        mask = np.ones([len(obss)], dtype=np.float64)
         mask[inds] = 0
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
 
         # Observations, true action, values and done for each of the stored demostration
-        obss, action_true, done = flat_batch[:, 0], flat_batch[:, 1], flat_batch[:, 2]
         action_true = torch.tensor([action for action in action_true], device=self.device, dtype=torch.long)
 
         # Memory to be stored
-        memories = torch.zeros([len(flat_batch), self.acmodel.memory_size], device=self.device)
-        episode_ids = np.zeros(len(flat_batch))
+        memories = torch.zeros([len(obss), self.acmodel.memory_size], device=self.device)
+        episode_ids = np.zeros(len(obss))
         memory = torch.zeros([len(batch), self.acmodel.memory_size], device=self.device)
 
         preprocessed_first_obs = self.obss_preprocessor(obss[inds], self.device)
@@ -189,7 +192,6 @@ class ImitationLearning(object):
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
 
             action_step = action_true[indexes]
-            action_step = action_step[:, 0]
 
             mask_step = mask[indexes]
             dist, info = self.acmodel(
@@ -228,11 +230,9 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
-        # log["Count"] = float(total_frames)
         for i, (correct, count) in enumerate(zip(per_token_correct, per_token_count)):
             if count > 0:
                 log[f'Accuracy_{i}'] = correct/count
-                # log[f'Count_{i}'] = count
 
         return log
 

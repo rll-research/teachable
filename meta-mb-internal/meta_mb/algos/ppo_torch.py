@@ -35,6 +35,7 @@ class PPOAlgo(BaseAlgo):
         self.max_grad_norm = max_grad_norm
         self.recurrence = recurrence
         self.aux_info = aux_info
+        self.single_env = envs[0]
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.acmodel.to(self.device)
@@ -96,7 +97,7 @@ class PPOAlgo(BaseAlgo):
         return samples_data
 
 
-    def optimize_policy(self, eps, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
+    def optimize_policy(self, exps, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -118,6 +119,7 @@ class PPOAlgo(BaseAlgo):
             o = exps.obs.detach().cpu().numpy()
             teacher = o[:, 160:168]
             teacher_max = np.argmax(teacher, axis=1)
+            orig_actions = exps.action.detach().cpu().numpy()
 
             # Initialize log values
             log_entropies = []
@@ -125,16 +127,14 @@ class PPOAlgo(BaseAlgo):
             log_policy_losses = []
             log_value_losses = []
             log_grad_norms = []
-            log_0 = []
-            log_1 = []
-            log_2 = []
-            log_3 = []
-            log_4 = []
-            log_5 = []
-            log_6 = []
-            teacher_0 = []
-            teacher_5 = []
-
+            num_actions = self.single_env.action_space.n
+            log_actions_taken = {}
+            log_teacher_actions_taken = {}
+            log_teacher_following = {}
+            for i in range(num_actions):
+                log_actions_taken[i] = []
+                log_teacher_actions_taken[i] = []
+                log_teacher_following[i] = []
             log_losses = []
             model_calls = 0
             model_samples_calls = 0
@@ -149,7 +149,7 @@ class PPOAlgo(BaseAlgo):
             # Currently we process everything as one batch, but if we ever are running into memory errors
             # we could split this up.
             inds = numpy.arange(0, len(exps.action), self.recurrence)
-            for inds in [inds]:
+            for inds in [inds[:-1]]:
             # for inds in self._get_batches_starting_indexes():
                 # inds is a numpy array of indices that correspond to the beginning of a sub-batch
                 # there are as many inds as there are batches
@@ -234,40 +234,30 @@ class PPOAlgo(BaseAlgo):
                 log_grad_norms.append(grad_norm.item())
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
-                log_0.append(np.mean(d == 0))
-                log_1.append(np.mean(d == 1))
-                log_2.append(np.mean(d == 2))
-                log_3.append(np.mean(d == 3))
-                log_4.append(np.mean(d == 4))
-                log_5.append(np.mean(d == 5))
-                log_6.append(np.mean(d == 6))
-
-                teacher_0.append(np.mean(teacher_max == 0))
-                teacher_5.append(np.mean(teacher_max == 5))
+                for i in range(num_actions):
+                    log_actions_taken[i].append(np.mean(d == i))
+                    teacher_i = teacher_max == i
+                    if np.sum(teacher_i) > 0:
+                        actions_i = orig_actions[teacher_i]
+                        log_teacher_following[i].append(np.mean(actions_i == i))
+                        log_teacher_actions_taken[i].append(np.mean(teacher_max == i))
 
             # Log some values
             logs = {}
 
-            logs['accuracy'] = accuracy
-            logs["entropy_loss"] = numpy.mean(log_entropies)
-            logs["entropy"] = numpy.mean(log_entropies)
-            logs["value"] = numpy.mean(log_values)
-            logs["policy_loss"] = numpy.mean(log_policy_losses)
-            logs["value_loss"] = numpy.mean(log_value_losses)
-            logs["grad_norm"] = numpy.mean(log_grad_norms)
-            logs["loss"] = numpy.mean(log_losses)
-            logs['Took0'] = np.mean(log_0)
-            logs['Took1'] = np.mean(log_1)
-            logs['Took2'] = np.mean(log_2)
-            logs['Took3'] = np.mean(log_3)
-            logs['Took4'] = np.mean(log_4)
-            logs['Took5'] = np.mean(log_5)
-            logs['Took6'] = np.mean(log_6)
-            logs['Teacher0'] = np.mean(teacher_0)
-            logs['Teacher5'] = np.mean(teacher_5)
-
-        for k, v in logs.items():
-            logger.logkv(f"Train/{k}", v)
+            logs['Accuracy'] = accuracy
+            logs["Entropy_loss"] = numpy.mean(log_entropies)
+            logs["Entropy"] = numpy.mean(log_entropies)
+            logs["Value"] = numpy.mean(log_values)
+            logs["Policy_loss"] = numpy.mean(log_policy_losses)
+            logs["Value_loss"] = numpy.mean(log_value_losses)
+            logs["Grad_norm"] = numpy.mean(log_grad_norms)
+            logs["Loss"] = numpy.mean(log_losses)
+            for i in range(num_actions):
+                logs[f'Took{i}'] = np.mean(log_actions_taken[i])
+                if len(log_teacher_following[i]) > 0:
+                    logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
+                    logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
 
         return logs
 

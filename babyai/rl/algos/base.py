@@ -94,6 +94,7 @@ class BaseAlgo(ABC):
         self.log_probs = torch.zeros(*shape, device=self.device)
         self.teacher_actions = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
+        self.env_infos = []
 
         if self.aux_info:
             self.aux_info_collector = ExtraInfoCollector(self.aux_info, shape, self.device)
@@ -146,6 +147,7 @@ class BaseAlgo(ABC):
 
             # Update experiences values
 
+            self.env_infos.append(env_info)
             self.obss[i] = self.obs
             self.obs = obs
             self.teacher_actions[i] = torch.FloatTensor([np.argmax(o[160:168]) for o in obs]).to(self.device)  # TODO: this is specific to PreActionAdvice!!
@@ -208,13 +210,17 @@ class BaseAlgo(ABC):
         exps.obs = [self.obss[i][j]
                     for j in range(self.num_procs)
                     for i in range(self.num_frames_per_proc)]
-        env_info_dict = DictList()
-        for k in env_info[0].keys():
-            temp = [t[k] for t in env_info]
-            st = np.stack([t[k] for t in env_info])
-            # env_info_dict[k] = [3]
-            # env_info_dict[k] = np.stack([t[k] for t in env_info])
-            setattr(env_info_dict, k, st)
+        keys = list(env_info[0].keys())
+        batch = len(env_info)
+        timesteps = len(self.env_infos)
+        env_info_dict = {}
+        for k in keys:
+            arr = []
+            for b in range(batch):
+                for t in range(timesteps):
+                    arr.append(self.env_infos[t][b][k])
+            env_info_dict[k] = np.stack(arr)
+        env_info_dict = DictList(env_info_dict)
         exps.env_infos = env_info_dict
         # In commments below T is self.num_frames_per_proc, P is self.num_procs,
         # D is the dimensionality
