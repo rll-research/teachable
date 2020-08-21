@@ -31,9 +31,10 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'FIXEDITHINK'
-PREFIX = 'DEBUGDUMMYONEBATCH'
-# PREFIX = 'debug22'
+PREFIX = 'CURRICULUMMAYBEFIXED2'
+PREFIX = 'MOREVIDS3'
+# PREFIX = 'debug22??'
+
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])

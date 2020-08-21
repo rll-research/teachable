@@ -63,6 +63,8 @@ if __name__ == "__main__":
                         help='Number of distractors')
     parser.add_argument('--use-teacher', action='store_true',
                         help='Whether to use a teacher')
+    parser.add_argument('--dense_rewards', action='store_true',
+                        help='Use intermediate rewards')
     parser.add_argument('--max_pkl', type=int, default=None,
                         help='Maximum value of the pkl policies')
     parser.add_argument('--prompt', type=bool, default=False,
@@ -117,6 +119,7 @@ if __name__ == "__main__":
                           "feedback_type": config["feedback_type"],
                           "feedback_always": config["feedback_always"],
                           "num_meta_tasks": config["rollouts_per_meta_task"],
+                          "intermediate_reward": config['intermediate_reward'],
                         }
                         # if not args.use_teacher:
                         #     arguments['feedback_type'] = None
@@ -139,11 +142,11 @@ if __name__ == "__main__":
                             e_new.teacher.set_feedback_type(args.feedback_type)
                         env = rl2env(normalize(e_new))
 
-                    video_filename = os.path.join(args.path, 'video.mp4')
+                    video_filename = os.path.join(args.path, 'saved_video.mp4')
                     paths, accuracy = rollout(env, policy, max_path_length=max_path_length, animated=args.animated, speedup=args.speedup,
                                     video_filename=video_filename, save_video=True, ignore_done=args.ignore_done, batch_size=1,
                                         stochastic=args.stochastic, num_rollouts=args.num_rollouts, reset_every=args.reset_every,
-                                    record_teacher=True, reward_predictor=reward_predictor)
+                                    record_teacher=True, reward_predictor=reward_predictor, dense_rewards=args.dense_rewards)
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))

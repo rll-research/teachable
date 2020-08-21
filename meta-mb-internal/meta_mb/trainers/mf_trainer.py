@@ -56,7 +56,7 @@ class Trainer(object):
         eval_every=25,
         save_every=100,
         log_every=10,
-        save_videos_every=1000,
+        save_videos_every=100,
         distill_with_teacher=False,
         supervised_model=None,
         reward_predictor=None,
@@ -207,7 +207,6 @@ class Trainer(object):
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
                 logger.logkv('Itr', itr)
-                logger.logkv('Curriculum Step', self.curriculum_step)
                 logger.dumpkvs()
                 advance_curriculum = distill_log['Accuracy'] >= self.accuracy_threshold
             else:
@@ -232,9 +231,10 @@ class Trainer(object):
 
                     # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
                     advance_curriculum = advance_curriculum_sup
+                    print("ADvancing curriculum???", advance_curriculum)
 
                     logger.logkv('Itr', itr)
-                    logger.logkv('Curriculum Step', self.curriculum_step)
+                    logger.logkv('AdvanceCurriculum',advance_curriculum)
                     logger.dumpkvs()
             else:
                 run_supervised_time = 0
@@ -255,15 +255,13 @@ class Trainer(object):
                 logger.logkv("VidRollout/RolloutPathLength", np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                 logger.logkv("VidRollout/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
                 logger.logkv('Itr', itr)
-                logger.logkv('Curriculum Step', self.curriculum_step)
                 rollout_time = time.time() - time_rollout_start
             else:
                 rollout_time = 0
 
             if advance_curriculum:
-                print("ADVANCING", "!" * 100)
-                print(advance_curriculum, advance_curriculum_sup, advance_curriculum_policy)
                 self.curriculum_step += 1
+                self.sampler.advance_curriculum()
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
@@ -272,7 +270,6 @@ class Trainer(object):
             logger.logkv('Time/Total', time.time() - start_time)
             logger.logkv('Time/Itr', time.time() - itr_start_time)
 
-            logger.logkv('Curriculum Step', self.curriculum_step)
             logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
 
             process = psutil.Process(os.getpid())
@@ -283,8 +280,6 @@ class Trainer(object):
 
             params = self.get_itr_snapshot(itr)
             step = self.curriculum_step
-            if advance_curriculum:
-                step -= 1
 
             if self.log_and_save:
                 if (itr % self.save_every == 0) or (itr == self.n_itr - 1):
@@ -366,7 +361,7 @@ class Trainer(object):
 
     def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
         policy.eval()
-        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=2, stochastic=True,
+        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=True,
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
                                   video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4',
                                   num_rollouts=num_rollouts)
