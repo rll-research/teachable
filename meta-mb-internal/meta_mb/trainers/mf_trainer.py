@@ -194,13 +194,12 @@ class Trainer(object):
             logger.log("Optimizing policy...")
             # # This needs to take all samples_data so that it can construct graph for meta-optimization.
             time_rp_train_start = time.time()
-            self.train_rp(samples_data)
+            # self.train_rp(samples_data)
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
 
             if self.supervised_model is not None and advance_curriculum:
-            # if self.supervised_model is not None:
                 time_distill_start = time.time()
                 distill_log = self.distill(samples_data, is_training=True)  # TODO: do this more!
                 for k, v in distill_log.items():
@@ -229,12 +228,12 @@ class Trainer(object):
                     advance_curriculum_policy = self.run_supervised(self.algo.acmodel, True, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
-                    # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
-                    advance_curriculum = advance_curriculum_sup
+                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
+                    # advance_curriculum = advance_curriculum_sup
                     print("ADvancing curriculum???", advance_curriculum)
 
                     logger.logkv('Itr', itr)
-                    logger.logkv('AdvanceCurriculum',advance_curriculum)
+                    logger.logkv('AdvanceCurriculum', advance_curriculum)
                     logger.dumpkvs()
             else:
                 run_supervised_time = 0
@@ -245,14 +244,25 @@ class Trainer(object):
             should_save_video = (itr % self.save_videos_every == 0) or (itr == self.n_itr - 1)
             if should_save_video:
                 time_rollout_start = time.time()
-                self.sampler.supervised_model.reset(dones=[True])
-                paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='video',
+                self.il_trainer.acmodel.reset(dones=[True])
+                paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video',
                                                    num_rollouts=5,
-                                                   use_teacher=self.distill_with_teacher,
+                                                   use_teacher=False,
+                                                   save_video=should_save_video)
+                logger.logkv("DVidRollout/RolloutAcc", accuracy)
+                logger.logkv("DVidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
+                logger.logkv("DVidRollout/RolloutPathLength", np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                logger.logkv("DVidRollout/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
+
+                self.algo.acmodel.reset(dones=[True])
+                paths, accuracy = self.save_videos(itr, self.algo.acmodel, save_name='withTeacher_video',
+                                                   num_rollouts=5,
+                                                   use_teacher=True,
                                                    save_video=should_save_video)
                 logger.logkv("VidRollout/RolloutAcc", accuracy)
                 logger.logkv("VidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
-                logger.logkv("VidRollout/RolloutPathLength", np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+                logger.logkv("VidRollout/RolloutPathLength",
+                             np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                 logger.logkv("VidRollout/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
                 logger.logkv('Itr', itr)
                 rollout_time = time.time() - time_rollout_start

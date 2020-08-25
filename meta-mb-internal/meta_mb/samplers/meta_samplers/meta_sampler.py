@@ -130,7 +130,8 @@ class MetaSampler(BaseSampler):
 
         num_paths = 0
         while num_paths < total_paths:
-            obses = self.mask_teacher(obses, feedback_list)
+            if not use_teacher:
+                obses = self.mask_teacher(obses, feedback_list)
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)

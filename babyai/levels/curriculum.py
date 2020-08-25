@@ -25,12 +25,6 @@ class Curriculum(Serializable):
             Level_IntroPrimitivesD5Strict(**kwargs),
             Level_IntroPrimitivesD10Strict(**kwargs),
         ]
-        # self.pre_levels_list = [
-        #     Level_IntroPrimitivesD0(**kwargs),
-        #     Level_IntroPrimitivesD1(**kwargs),
-        #     Level_IntroPrimitivesD5(**kwargs),
-        #     Level_IntroPrimitivesD10(**kwargs),
-        # ]
         self.normal_levels_list = [
             Level_GoToRedBallNoDists(**kwargs),
             Level_GoToRedBallGrey(**kwargs),

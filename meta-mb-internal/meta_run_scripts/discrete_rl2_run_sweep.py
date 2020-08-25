@@ -33,7 +33,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'CURRICULUMMAYBEFIXED2'
 PREFIX = 'MOREVIDS3'
-# PREFIX = 'debug22??'
+PREFIX = 'debug23_nodistill'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -315,7 +315,7 @@ if __name__ == '__main__':
 
         # Reward
         'reward_predictor_type': ['gaussian'],
-        'intermediate_reward': [False],  # This turns the intermediate rewards on or off
+        'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
         'accuracy_threshold': [.9],
         'ceil_reward': [False],
