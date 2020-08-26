@@ -33,34 +33,35 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'CURRICULUMMAYBEFIXED2'
 PREFIX = 'MOREVIDS3'
-PREFIX = 'debug23_nodistill'
+PREFIX = 'T002'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
-    EXP_NAME += '_persist'
-    if config['persist_goal']:
-        EXP_NAME += "g"
-    if config['persist_objs']:
-        EXP_NAME += "o"
-    if config['persist_agent']:
-        EXP_NAME += "a"
-    if config['pre_levels']:
-        EXP_NAME += '_pre'
+    #EXP_NAME += '_persist'
+    #if config['persist_goal']:
+    #    EXP_NAME += "g"
+    #if config['persist_objs']:
+    #    EXP_NAME += "o"
+    #if config['persist_agent']:
+    #    EXP_NAME += "a"
+    #if config['pre_levels']:
+    #    EXP_NAME += '_pre'
     if config['il_comparison']:
         EXP_NAME += '_IL'
     if config['self_distill']:
         EXP_NAME += '_SD'
     if config['intermediate_reward']:
         EXP_NAME += '_dense'
-    EXP_NAME += '_droptype' + str(config['dropout_type'])
-    EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
-    EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
-    EXP_NAME += '_disc' + str(config['discount'])
-    EXP_NAME += '_thresh' + str(config['success_threshold'])
-    EXP_NAME += '_ent' + str(config['entropy_bonus'])
+    #EXP_NAME += '_droptype' + str(config['dropout_type'])
+    #EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
+    #EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
+    #EXP_NAME += '_disc' + str(config['discount'])
+    EXP_NAME += '_threshS' + str(config['success_threshold'])
+    EXP_NAME += '_threshA' + str(config['accuracy_threshold'])
+    #EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
-    EXP_NAME += 'corr' + str(config['dropout_correction'])
+    #EXP_NAME += 'corr' + str(config['dropout_correction'])
     EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
@@ -321,8 +322,8 @@ if __name__ == '__main__':
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [False],
+        'il_comparison': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'self_distill': [True],
 
         # Arguments we basically never change
         'algo': ['rl2'],
