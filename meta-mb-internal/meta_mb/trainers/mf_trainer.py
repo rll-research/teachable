@@ -221,7 +221,7 @@ class Trainer(object):
                     time_run_supervised_start = time.time()
                     self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running supervised model")
-                    advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, False, "DistillRollout/")
+                    advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, False, "DRollout/")
                     run_supervised_time = time.time() - time_run_supervised_start
 
                     # Original Policy
