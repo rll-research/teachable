@@ -13,6 +13,7 @@ from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 
 import os
+import copy
 import shutil
 from meta_mb.logger import logger
 import json
@@ -33,7 +34,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'CURRICULUMMAYBEFIXED2'
 PREFIX = 'MOREVIDS3'
-PREFIX = 'debug23_nodistill'
+PREFIX = 'debugagain35'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -187,8 +188,9 @@ def run_experiment(**config):
     parser = ArgumentParser()
     args = parser.parse_args()
     args.model = 'default_il'
+    args.lr = args.lr * 0.1
     args.recurrence = config['backprop_steps']
-    il_trainer = ImitationLearning(supervised_model, env, args, config['distill_with_teacher'])
+    il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
     sampler = MetaSampler(
@@ -211,7 +213,14 @@ def run_experiment(**config):
         positive_adv=config['positive_adv'],
     )
 
-    envs = [env, env, env, env, env, env, env, env]
+    envs = [copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env)]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, .5, .5, args.recurrence,
@@ -317,7 +326,7 @@ if __name__ == '__main__':
         'reward_predictor_type': ['gaussian'],
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.9],
+        'accuracy_threshold': [.5],
         'ceil_reward': [False],
 
         # Distillation

@@ -173,7 +173,10 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             samples_data, episode_logs = self.algo.collect_experiences(use_teacher=True)
+            time_collection = time.time() - time_env_sampling_start
+            time_training_start = time.time()
             summary_logs = self.algo.optimize_policy(samples_data, use_teacher=True)
+            time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Itr', itr)
             logger.logkv('Curriculum Step', self.curriculum_step)
@@ -218,7 +221,7 @@ class Trainer(object):
                     time_run_supervised_start = time.time()
                     self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running supervised model")
-                    advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, False, "Distill/")
+                    advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, False, "DistillRollout/")
                     run_supervised_time = time.time() - time_run_supervised_start
 
                     # Original Policy
@@ -272,6 +275,7 @@ class Trainer(object):
             if advance_curriculum:
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
+                self.algo.advance_curriculum()
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
@@ -299,12 +303,21 @@ class Trainer(object):
                 logger.dumpkvs()
 
             logger.logkv('Time/Sampling', time_env_sampling)
+            logger.logkv('Time/Training', time_training)
+            logger.logkv('Time/Collection', time_collection)
             logger.logkv('Time/RPUse', rp_splice_time)
             logger.logkv('Time/RPTrain', time_rp_train)
             logger.logkv('Time/RunSupervised', run_policy_time)
             logger.logkv('Time/Distillation', distill_time)
             logger.logkv('Time/RunSupervised', run_supervised_time)
             logger.logkv('Time/VidRollout', rollout_time)
+
+            step_time = time.time()
+            self.env.reset()
+            for _ in range(100):
+                self.env.step(0)
+            step_time = time.time() - step_time
+            logger.logkv('Time/Step', step_time)
 
             logger.dumpkvs()
 
@@ -371,6 +384,7 @@ class Trainer(object):
 
     def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
         policy.eval()
+        self.env.set_level(self.curriculum_step)
         paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=True,
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
                                   video_filename=self.exp_name + '/' + save_name + str(step) + '.mp4',
