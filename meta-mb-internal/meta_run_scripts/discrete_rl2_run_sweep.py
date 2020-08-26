@@ -13,6 +13,7 @@ from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 
 import os
+import copy
 import shutil
 from meta_mb.logger import logger
 import json
@@ -33,7 +34,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'CURRICULUMMAYBEFIXED2'
 PREFIX = 'MOREVIDS3'
-PREFIX = 'T002'
+PREFIX = 'T0000'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -188,8 +189,9 @@ def run_experiment(**config):
     parser = ArgumentParser()
     args = parser.parse_args()
     args.model = 'default_il'
+    args.lr = args.lr * 0.1
     args.recurrence = config['backprop_steps']
-    il_trainer = ImitationLearning(supervised_model, env, args, config['distill_with_teacher'])
+    il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
     sampler = MetaSampler(
@@ -212,7 +214,14 @@ def run_experiment(**config):
         positive_adv=config['positive_adv'],
     )
 
-    envs = [env, env, env, env, env, env, env, env]
+    envs = [copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env)]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, .5, .5, args.recurrence,
@@ -322,8 +331,8 @@ if __name__ == '__main__':
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [True],
+        'il_comparison': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'self_distill': [False],
 
         # Arguments we basically never change
         'algo': ['rl2'],

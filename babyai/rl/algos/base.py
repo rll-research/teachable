@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import torch
 import numpy as np
+from meta_mb.logger import logger
+import time
 
 from babyai.rl.format import default_preprocess_obss
 from babyai.rl.utils import DictList, ParallelEnv
@@ -94,7 +96,7 @@ class BaseAlgo(ABC):
         self.log_probs = torch.zeros(*shape, device=self.device)
         self.teacher_actions = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
-        self.env_infos = []
+        self.env_infos = [None]  * len(self.dones)
 
         if self.aux_info:
             self.aux_info_collector = ExtraInfoCollector(self.aux_info, shape, self.device)
@@ -131,6 +133,7 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        self.env.update_tasks()
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
@@ -147,7 +150,7 @@ class BaseAlgo(ABC):
 
             # Update experiences values
 
-            self.env_infos.append(env_info)
+            self.env_infos[i] = env_info
             self.obss[i] = self.obs
             self.obs = obs
             self.teacher_actions[i] = torch.FloatTensor([np.argmax(o[160:168]) for o in obs]).to(self.device)  # TODO: this is specific to PreActionAdvice!!
@@ -200,7 +203,7 @@ class BaseAlgo(ABC):
             next_value = self.values[i+1] if i < self.num_frames_per_proc - 1 else next_value
             next_advantage = self.advantages[i+1] if i < self.num_frames_per_proc - 1 else 0
 
-            delta = self.rewards[i] + self.discount * next_value * next_mask - self.values[i]  # TODO: remove
+            delta = self.rewards[i] + self.discount * next_value * next_mask - self.values[i]
             self.advantages[i] = delta + self.discount * self.gae_lambda * next_advantage * next_mask
 
         # Flatten the data correctly, making sure that

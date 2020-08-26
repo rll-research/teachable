@@ -278,3 +278,7 @@ class PPOAlgo(BaseAlgo):
         batches_starting_indexes = [indexes[i:i + num_indexes] for i in range(0, len(indexes), num_indexes)]
 
         return batches_starting_indexes
+
+    def advance_curriculum(self):
+        for env in self.env:
+            env.advance_curriculum()

@@ -51,6 +51,10 @@ class ParallelEnv(gym.Env):
         results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
         return results
 
+    def update_tasks(self):
+        for env in self.envs:
+            env.set_task(None)
+
     def render(self):
         raise NotImplementedError
 
