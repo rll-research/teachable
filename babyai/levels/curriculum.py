@@ -20,46 +20,46 @@ class Curriculum(Serializable):
         # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
         # also some harder levels with multiple instructions chained together.
         self.pre_levels_list = [
-            Level_IntroPrimitivesD0Strict(**kwargs),
-            Level_IntroPrimitivesD1Strict(**kwargs),
-            Level_IntroPrimitivesD5Strict(**kwargs),
-            Level_IntroPrimitivesD10Strict(**kwargs),
+            Level_IntroPrimitivesD0Strict(**kwargs),  # 0
+            Level_IntroPrimitivesD1Strict(**kwargs),  # 1
+            Level_IntroPrimitivesD5Strict(**kwargs),  # 2
+            Level_IntroPrimitivesD10Strict(**kwargs),  # 3
         ]
         self.normal_levels_list = [
-            Level_GoToRedBallNoDists(**kwargs),
-            Level_GoToRedBallGrey(**kwargs),
-            Level_GoToRedBall(**kwargs),
-            Level_GoToObjS4(**kwargs),
-            Level_GoToObjS6(**kwargs),
-            Level_GoToObj(**kwargs),
-            Level_GoToLocalS5N2(**kwargs),
-            Level_GoToLocalS6N3(**kwargs),
-            Level_GoToLocalS7N4(**kwargs),
-            Level_GoToLocalS8N7(**kwargs),
-            Level_GoToLocal(**kwargs),
-            Level_PickupLocalS5N2(**kwargs), # hard even with action teacher
-            Level_PickupLocalS6N3(**kwargs),
-            Level_PickupLocalS7N4(**kwargs),
-            Level_PickupLocalS8N7(**kwargs),
-            Level_PickupLocal(**kwargs), # hard with postaction teacher
-            Level_PutNextLocalS5N3(**kwargs), # hard even with preaction teacher
-            Level_PutNextLocalS6N4(**kwargs),
-            Level_PutNextLocal(**kwargs),
-            Level_OpenLocalS5N3(**kwargs),
-            Level_OpenLocalS6N4(**kwargs),
-            Level_OpenLocal(**kwargs),
-            Level_GoToObjMazeOpen(**kwargs),
-            Level_GoToOpen(**kwargs),
-            Level_GoToObjMazeS4R2(**kwargs),
-            Level_GoToObjMazeS5(**kwargs),
-            Level_GoToObjMaze(**kwargs),
-            Level_Open(**kwargs),
-            Level_GoTo(**kwargs),
-            Level_Pickup(**kwargs),
-            Level_Unlock(**kwargs),
-            Level_GoToImpUnlock(**kwargs),
-            Level_PutNext(**kwargs),
-            Level_UnblockPickup(**kwargs),
+            Level_GoToRedBallNoDists(**kwargs),  # 4
+            Level_GoToRedBallGrey(**kwargs),  # 5
+            Level_GoToRedBall(**kwargs),  # 6
+            Level_GoToObjS4(**kwargs),  # 7
+            Level_GoToObjS6(**kwargs),  # 8
+            Level_GoToObj(**kwargs),  # 9
+            Level_GoToLocalS5N2(**kwargs),  # 10
+            Level_GoToLocalS6N3(**kwargs),  # 11
+            Level_GoToLocalS7N4(**kwargs),  # 12
+            Level_GoToLocalS8N7(**kwargs),  # 13
+            Level_GoToLocal(**kwargs),  # 14
+            Level_PickupLocalS5N2(**kwargs),  # 15
+            Level_PickupLocalS6N3(**kwargs),  # 16
+            Level_PickupLocalS7N4(**kwargs),  # 17
+            Level_PickupLocalS8N7(**kwargs),  # 18
+            Level_PickupLocal(**kwargs), #  19
+            Level_PutNextLocalS5N3(**kwargs), # 20
+            Level_PutNextLocalS6N4(**kwargs),  # 21
+            Level_PutNextLocal(**kwargs),  # 22
+            Level_OpenLocalS5N3(**kwargs),  # 23
+            Level_OpenLocalS6N4(**kwargs),  # 24
+            Level_OpenLocal(**kwargs),  # 25
+            Level_GoToObjMazeOpen(**kwargs),  # 26
+            Level_GoToOpen(**kwargs),  # 27
+            Level_GoToObjMazeS4R2(**kwargs),  # 28
+            Level_GoToObjMazeS5(**kwargs),  # 29
+            Level_GoToObjMaze(**kwargs),  # 30
+            Level_Open(**kwargs),  # 31
+            Level_GoTo(**kwargs),  # 32
+            Level_Pickup(**kwargs),  # 33
+            Level_Unlock(**kwargs),  # 34
+            Level_GoToImpUnlock(**kwargs),  # 35
+            Level_PutNext(**kwargs),  # 36
+            Level_UnblockPickup(**kwargs),  # 37
         ]
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
