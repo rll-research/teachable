@@ -87,6 +87,8 @@ class BaseAlgo(ABC):
         self.memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
         self.memories = torch.zeros(*shape, self.acmodel.memory_size, device=self.device)
 
+        self.images = torch.zeros(*shape, 64, 64, 3, device=self.device)
+
         self.mask = torch.ones(shape[1], device=self.device)
         self.masks = torch.zeros(*shape, device=self.device)
         self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
@@ -104,13 +106,17 @@ class BaseAlgo(ABC):
         # Initialize log values
 
         self.log_episode_return = torch.zeros(self.num_procs, device=self.device)
+        self.log_episode_success = torch.zeros(self.num_procs, device=self.device)
         self.log_episode_reshaped_return = torch.zeros(self.num_procs, device=self.device)
         self.log_episode_num_frames = torch.zeros(self.num_procs, device=self.device)
+        self.log_episode_images = [[] for _ in range(self.num_procs)]
 
         self.log_done_counter = 0
         self.log_return = [0] * self.num_procs
         self.log_reshaped_return = [0] * self.num_procs
         self.log_num_frames = [0] * self.num_procs
+        self.log_images = [[]] * self.num_procs
+        self.log_success = [0] * self.num_procs
 
     def collect_experiences(self, use_teacher=False):
         """Collects rollouts and computes advantages.
@@ -133,7 +139,9 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
-        self.env.update_tasks()
+        # TODO: Make this handle the case where the meta_rollout length > 1
+        self.env.update_tasks()  # TODO: we want to update these at the end of each rollout (or meta_rollout.  Maybe not like this???
+        print("LEVELS After", [e._wrapped_env._wrapped_env._wrapped_env.__class__.__name__ for e in self.env.envs])
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
@@ -157,6 +165,9 @@ class BaseAlgo(ABC):
 
             self.memories[i] = self.memory
             self.memory = memory
+            # images = self.env.render()
+            images = np.zeros(self.images[i].shape)
+            # self.images[i] = images
 
             self.masks[i] = self.mask
             self.mask = 1 - torch.tensor(done, device=self.device, dtype=torch.float)
@@ -177,20 +188,29 @@ class BaseAlgo(ABC):
 
             # Update log values
 
+            for j in range(len(images)):
+                self.log_episode_images[j].append(images[j])
             self.log_episode_return += torch.tensor(reward, device=self.device, dtype=torch.float)
+            self.log_episode_success += torch.tensor([e['success'] for e in env_info], device=self.device, dtype=torch.float)
             self.log_episode_reshaped_return += self.rewards[i]
             self.log_episode_num_frames += torch.ones(self.num_procs, device=self.device)
 
             for i, done_ in enumerate(done):
                 if done_:
                     self.log_done_counter += 1
+                    self.log_images.append(self.log_episode_images)
                     self.log_return.append(self.log_episode_return[i].item())
+                    self.log_success.append(self.log_episode_success[i].item())
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())
                     self.log_num_frames.append(self.log_episode_num_frames[i].item())
 
             self.log_episode_return *= self.mask
+            self.log_episode_success *= self.mask
             self.log_episode_reshaped_return *= self.mask
             self.log_episode_num_frames *= self.mask
+            for i in range(len(self.mask)):
+                if self.mask[i] == 0:
+                    self.log_episode_images[i] = []
 
         # Add advantage and return to experiences
 
@@ -256,6 +276,7 @@ class BaseAlgo(ABC):
 
         log = {
             "return_per_episode": self.log_return[-keep:],
+            "success_per_episode": self.log_success[-keep:],
             "reshaped_return_per_episode": self.log_reshaped_return[-keep:],
             "num_frames_per_episode": self.log_num_frames[-keep:],
             "num_frames": self.num_frames,
@@ -264,8 +285,10 @@ class BaseAlgo(ABC):
 
         self.log_done_counter = 0
         self.log_return = self.log_return[-self.num_procs:]
+        self.log_success = self.log_success[-self.num_procs:]
         self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
         self.log_num_frames = self.log_num_frames[-self.num_procs:]
+        self.log_images = self.log_images[-self.num_procs:]
 
         return exps, log
 

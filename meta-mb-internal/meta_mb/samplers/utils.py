@@ -4,6 +4,7 @@ import cv2
 
 
 def write_video(writer, frames, show_last=None):
+    print("WRITING", len(frames))
     if show_last is not None:
         frames = frames[-show_last:]
     for frame in frames:

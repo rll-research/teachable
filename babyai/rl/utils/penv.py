@@ -12,6 +12,12 @@ def worker(conn, env):
         elif cmd == "reset":
             obs = env.reset()
             conn.send(obs)
+        elif cmd == "set_task":
+            obs = env.set_task(None)
+            conn.send(obs)
+        elif cmd == "render":
+            obs = env.render(mode='rgb_array')
+            conn.send(obs)
         else:
             raise NotImplementedError
 
@@ -24,7 +30,12 @@ class ParallelEnv(gym.Env):
         self.envs = envs
         self.observation_space = self.envs[0].observation_space
         self.action_space = self.envs[0].action_space
+        self.locals = []
+        self.reset_processes()
 
+    def reset_processes(self):
+        if len(self.locals) > 0:
+            self.end_processes()
         self.locals = []
         self.processes = []
         for env in self.envs[1:]:
@@ -44,7 +55,7 @@ class ParallelEnv(gym.Env):
 
     def step(self, actions):
         for local, action in zip(self.locals, actions[1:]):
-            local.send(("step", action))
+            local.send(("step", action))  # TODO: does this reset?
         obs, reward, done, info = self.envs[0].step(actions[0])
         if done:
             obs = self.envs[0].reset()
@@ -54,10 +65,17 @@ class ParallelEnv(gym.Env):
     def update_tasks(self):
         for env in self.envs:
             env.set_task(None)
+        self.reset_processes()
 
     def render(self):
-        raise NotImplementedError
+        for local in self.locals:
+            local.send(("render", None))
+        results = [self.envs[0].render(mode='rgb_array')] + [local.recv() for local in self.locals]
+        return results
 
     def __del__(self):
+        self.end_processes()
+
+    def end_processes(self):
         for p in self.processes:
             p.terminate()

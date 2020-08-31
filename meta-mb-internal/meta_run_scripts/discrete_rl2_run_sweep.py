@@ -32,9 +32,9 @@ from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'CURRICULUMMAYBEFIXED2'
-PREFIX = 'MOREVIDS3'
-PREFIX = 'debugagain35'
+PREFIX = 'NOD_MAYBEFIXED3'
+PREFIX = 'debug2'
+# PREFIX = 'L20WORKING?'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -184,13 +184,16 @@ def run_experiment(**config):
             supervised_model = None
         start_itr = 0
         curriculum_step = env.index
-
     parser = ArgumentParser()
     args = parser.parse_args()
+    args.entropy_coef = config['entropy_bonus']
     args.model = 'default_il'
-    args.lr = args.lr * 0.1
+    args.lr = config['learning_rate']
     args.recurrence = config['backprop_steps']
-    il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
+    if supervised_model is not None:
+        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
+    else:
+        il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
     sampler = MetaSampler(
@@ -310,7 +313,7 @@ if __name__ == '__main__':
         'feedback_always': [True],
 
         # Curriculum
-        'advance_curriculum_func': ['smooth'],
+        'advance_curriculum_func': ['one_hot'],
         'pre_levels': [False],
 
         # Model/Optimization
@@ -330,7 +333,7 @@ if __name__ == '__main__':
         'ceil_reward': [False],
 
         # Distillation
-        'il_comparison': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'il_comparison': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
         'self_distill': [False],
 
         # Arguments we basically never change
