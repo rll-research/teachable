@@ -3,29 +3,20 @@ from babyai.levels.iclr19_levels import *
 
 
 class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, start_index=None, pre_levels=False, **kwargs):
+    def __init__(self, advance_curriculum_func, start_index=None, **kwargs):
         """
 
         :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
         curriculum to be a single environment or a distribution over past environments
         :param start_index: what index of the curriculum to start on
-        :param pre_levels: Whether or not to first run the 'pre_levels' which are designed to just introduce the
-        different actions the agent can take and the teacher's feedback
         :param kwargs: arguments for the environment
         """
         Serializable.quick_init(self, locals())
         self.advance_curriculum_func = advance_curriculum_func
-        self.pre_levels = pre_levels
         # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
         # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
         # also some harder levels with multiple instructions chained together.
-        self.pre_levels_list = [
-            Level_IntroPrimitivesD0Strict(**kwargs),  # 0
-            Level_IntroPrimitivesD1Strict(**kwargs),  # 1
-            Level_IntroPrimitivesD5Strict(**kwargs),  # 2
-            Level_IntroPrimitivesD10Strict(**kwargs),  # 3
-        ]
-        self.normal_levels_list = [
+        self.levels_list = [
             Level_GoToRedBallNoDists(**kwargs),  # 4
             Level_GoToRedBallGrey(**kwargs),  # 5
             Level_GoToRedBall(**kwargs),  # 6
@@ -64,11 +55,7 @@ class Curriculum(Serializable):
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
         if start_index is None:
-            if pre_levels:
-                start_index = 0
-            else:
-                start_index = len(self.pre_levels_list)
-        self.levels_list = self.pre_levels_list + self.normal_levels_list
+            start_index = 0
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[start_index] = 1
         self._wrapped_env = self.levels_list[start_index]
@@ -113,13 +100,9 @@ class Curriculum(Serializable):
             # Advance curriculum by assigning 0.9 probability to the new environment and 0.1 to all past environments.
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[index] = 0.9
-            if self.pre_levels:
-                prev_env_prob = 0.1 / index
-                self.distribution[:index] = prev_env_prob
-            else:
-                num_past_levels = index if self.pre_levels else index - len(self.pre_levels_list)
-                prev_env_prob = 0.1 / num_past_levels
-                self.distribution[len(self.pre_levels_list):index] = prev_env_prob
+            num_past_levels = index
+            prev_env_prob = 0.1 / num_past_levels
+            self.distribution[:index] = prev_env_prob
         else:
             raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
         self.index = index
@@ -151,4 +134,5 @@ class Curriculum(Serializable):
         """
         env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
         self._wrapped_env = self.levels_list[env_index]
-        # return self._wrapped_env.set_task(args)
+        print("SET TASK")
+        return self._wrapped_env.set_task(args)

@@ -84,8 +84,7 @@ def run_experiment(**config):
 
     else:
         baseline = config['baseline']()
-        env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'],
-                                          pre_levels=config['pre_levels'], **arguments)),
+        env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
         obs_dim = env.reset().shape[0]
         image_dim = 128
@@ -276,7 +275,6 @@ if __name__ == '__main__':
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
-        'pre_levels': [False],  # TODO: remove these?
 
         # Model/Optimization
         'entropy_bonus': [1e-2],
