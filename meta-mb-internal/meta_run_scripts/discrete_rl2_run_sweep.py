@@ -243,6 +243,7 @@ def run_experiment(**config):
         supervised_model=supervised_model,
         reward_predictor=reward_predictor,
         rp_trainer=rp_trainer,
+        advance_levels=config['advance_levels'],
     )
     trainer.train()
 
@@ -255,6 +256,7 @@ if __name__ == '__main__':
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
         'distill_with_teacher': [False],
+        'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
         'saved_path': [None],  # TODO: double check we can still save and load things

@@ -61,6 +61,7 @@ class Trainer(object):
         supervised_model=None,
         reward_predictor=None,
         rp_trainer=None,
+        advance_levels=True,
     ):
         self.algo = algo
         self.env = copy.deepcopy(env)
@@ -98,6 +99,7 @@ class Trainer(object):
         self.supervised_model = supervised_model
         self.reward_predictor = reward_predictor
         self.rp_trainer = rp_trainer
+        self.advance_levels = advance_levels
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -107,7 +109,7 @@ class Trainer(object):
         avg_success = np.mean(episode_logs["success_per_episode"])
         avg_accuracy = summary_logs['Accuracy']
         should_advance_curriculum = (avg_success >= self.success_threshold) and (avg_accuracy >= self.accuracy_threshold)
-        return should_advance_curriculum
+        return self.advance_levels and should_advance_curriculum
 
     def check_advance_curriculum_rollout(self, data):
         num_total_episodes = data['dones'].sum()
@@ -119,7 +121,7 @@ class Trainer(object):
         avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         # We take the max since runs which end early will be 0-padded
         should_advance_curriculum = (avg_success >= self.success_threshold) and (avg_accuracy >= self.accuracy_threshold)
-        return should_advance_curriculum, avg_success, avg_accuracy
+        return (self.advance_levels and should_advance_curriculum), avg_success, avg_accuracy
 
     def load_data(self, start_index, end_index):
         batch_index = np.random.randint(start_index, end_index)
