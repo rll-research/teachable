@@ -1,34 +1,24 @@
 from meta_mb.baselines.linear_baseline import LinearFeatureBaseline
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
-from meta_mb.algos.ppo import PPO
 from meta_mb.algos.ppo_torch import PPOAlgo
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-from meta_mb.policies.discrete_rnn_policy import DiscreteRNNPolicy
-from meta_mb.policies.gaussian_rnn_policy import GaussianRNNPolicy
 from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 
-import os
 import copy
 import shutil
 from meta_mb.logger import logger
 import json
-import numpy as np
 from gym import spaces
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
-from babyai.oracle.post_action_advice import PostActionAdvice
-from babyai.oracle.physical_correction import PhysicalCorrections
-from babyai.oracle.landmark_correction import LandmarkCorrection
-from babyai.oracle.demo_corrections import DemoCorrections
 
-from babyai.bot import Bot
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
@@ -39,30 +29,15 @@ PREFIX = 'debug2'
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
-    #EXP_NAME += '_persist'
-    #if config['persist_goal']:
-    #    EXP_NAME += "g"
-    #if config['persist_objs']:
-    #    EXP_NAME += "o"
-    #if config['persist_agent']:
-    #    EXP_NAME += "a"
-    #if config['pre_levels']:
-    #    EXP_NAME += '_pre'
     if config['il_comparison']:
         EXP_NAME += '_IL'
     if config['self_distill']:
         EXP_NAME += '_SD'
     if config['intermediate_reward']:
         EXP_NAME += '_dense'
-    #EXP_NAME += '_droptype' + str(config['dropout_type'])
-    #EXP_NAME += '_dropinc' + str(config['dropout_incremental'])
-    #EXP_NAME += '_dropgoal' + str(config['dropout_goal'])
-    #EXP_NAME += '_disc' + str(config['discount'])
     EXP_NAME += '_threshS' + str(config['success_threshold'])
     EXP_NAME += '_threshA' + str(config['accuracy_threshold'])
-    #EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
-    #EXP_NAME += 'corr' + str(config['dropout_correction'])
     EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
@@ -85,10 +60,6 @@ def run_experiment(**config):
         "persist_goal": config['persist_goal'],
         "persist_objs": config['persist_objs'],
         "persist_agent": config['persist_agent'],
-        "dropout_goal": config['dropout_goal'],
-        "dropout_correction": config['dropout_correction'],
-        "dropout_independently": config['dropout_independently'],
-        "dropout_type": config['dropout_type'],
         "feedback_type": config["feedback_type"],
         "feedback_always": config["feedback_always"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
@@ -287,7 +258,7 @@ if __name__ == '__main__':
         'distill_with_teacher': [False],
 
         # Saving/loading/finetuning
-        'saved_path': [None],
+        'saved_path': [None],  # TODO: double check we can still save and load things
         # base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
@@ -298,44 +269,32 @@ if __name__ == '__main__':
         'persist_agent': [True],
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
-        # Dropout
-        'dropout_goal': [0],
-
-        'dropout_correction': [0],
-        'dropout_type': ['step'],  # Options are [step, rollout, meta_rollout, meta_rollout_start]
-        'dropout_incremental': [None],
-        # [(0.8, 0.2)], # Options are None or (threshold, increment), where threshold is the accuracy level at which you increase the amount of dropout,
-        # and increment is the proportion of the total dropout rate which gets added each time
-        'dropout_independently': [True],  # Don't ensure we have at least one source of feedback
-
         # Teacher
-        "feedback_type": ["PreActionAdvice"],
+        "feedback_type": ["PreActionAdvice"],  # TODO: double check the new model can handle other types
         # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [True],
 
         # Curriculum
-        'advance_curriculum_func': ['one_hot'],
-        'pre_levels': [False],
+        'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
+        'pre_levels': [False],  # TODO: remove these?
 
         # Model/Optimization
-        'entropy_bonus': [1e-2],  # 1e-2
-        'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?
+        'entropy_bonus': [1e-2],
+        'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
         "learning_rate": [1e-3],
-        "hidden_sizes": [(512, 512)],
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
         "discount": [0.95],
 
         # Reward
-        'reward_predictor_type': ['gaussian'],
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
         'accuracy_threshold': [.9],
-        'ceil_reward': [False],
+        'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
         'il_comparison': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [False],
+        'self_distill': [False],  # TODO: collapse this into one
 
         # Arguments we basically never change
         'algo': ['rl2'],
@@ -348,8 +307,6 @@ if __name__ == '__main__':
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
-        "max_epochs": [5],
-        "cell_type": ["lstm"],
     }
 
     # DEBUG HPARAMS

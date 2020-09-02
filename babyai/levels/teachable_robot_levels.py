@@ -22,7 +22,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def __init__(self, start_loc='all',
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 dropout_goal=0, dropout_correction=0, dropout_independently=True, dropout_type='meta_rollout',
                  feedback_type=None, feedback_always=False, intermediate_reward=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
@@ -30,14 +29,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param persist_agent: Whether to keep agent position the same across runs within a meta-task
         :param persist_goal: Whether to keep the goal (i.e. textual mission string) the same across runs in a meta-task
         :param persist_objs: Whether to keep object positions the same across runs within a meta-task
-        :param dropout_goal: Proportion of the time to dropout the goal (i.e. textual mission string)
-        :param dropout_correction: Proportion of time to dropout corrections (chosen independently from goal dropout)
-        :param dropout_independently: Whether to sample instances of goal and correction dropout independently
-               If False, it drops out the goal normally, then only drops out the correction if the goal isn't dropped
-               out (so the probability that the correction is dropped out is actually (1 - goal_dropout) * corr_dropout
-        :param dropout_type: options are 'step' (dropout or not at each timestep), rollout (dropout or not each rollout)
-               meta_rollout (dropout or not each set of tasks in the 'inner loop', and meta_rollout_start (the first
-               half of the rollouts in the inner loop get the teacher, the second half don't)
         :param feedback_type: Type of teacher feedback, string
         :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
         :param kwargs: Additional arguments passed to the parent class
@@ -49,16 +40,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
         self.persist_objs = persist_objs
-        self.dropout_goal = dropout_goal
-        self.dropout_correction = dropout_correction
-        self.dropout_independently = dropout_independently
-        self.dropout_type = dropout_type
         self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
-        self.dropout_proportion = 1
-        self.dropout_current_goal = False
-        self.dropout_current_correction = False
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
@@ -129,8 +113,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 if self.persist_objs:
                     objs = self.add_objs(mission["task"])
                     task['objs'] = objs
-                task['dropout_goal'] = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
-                task['dropout_correction'] = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
 
                 # If we have placed all components in place, sanity check that the placement is valid.
                 if self.persist_goal and self.persist_agent and self.persist_objs:
@@ -275,8 +257,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def gen_mission(self):
         """
         Generate the mission for a single meta-task.  Any environment setup elements in the self.task dictionary
-        are loaded from there.  All others are randomly sampled. Also decides whether to dropout goal and/or
-        corrections for this meta-task.
+        are loaded from there.  All others are randomly sampled.
         """
 
         # First load anything provided in the task
@@ -312,18 +293,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             else:
                 goal_obj = goal_objs
             self.obj_pos = goal_obj.cur_pos
-
-        if self.dropout_type == 'meta_rollout':
-            if 'dropout_goal' in self.task:
-                self.dropout_current_goal = self.task['dropout_goal']
-            else:
-                self.dropout_current_goal = False
-            if self.dropout_independently and self.dropout_current_goal:
-                self.dropout_current_correction = False
-            elif 'dropout_correction' in self.task:
-                self.dropout_current_correction = self.task['dropout_correction']
-            else:
-                self.dropout_current_correction = False
 
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
@@ -407,8 +376,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         # self.compute_obj_infos()  # TODO: necessary?
         grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
-        if self.dropout_current_goal:
-            goal = -np.ones_like(goal)
         obs = np.concatenate([[self.agent_dir],
                                self.agent_pos,
                                grid_representation,
@@ -416,14 +383,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.obs_size = obs.shape
             if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
-                if self.dropout_current_correction:
-                    correction_index = self.teacher.empty_feedback()
-                else:
-                    correction_index = self.teacher.give_feedback([obs])
+                correction_index = self.teacher.give_feedback([obs])
                 correction = np.zeros((self.action_space.n + 1,))
                 correction[correction_index] = 1.0
             else:
-                if self.dropout_current_correction or self.reset_yet is False:
+                if self.reset_yet is False:
                     correction = self.teacher.empty_feedback()
                 else:
                     correction = self.teacher.give_feedback([obs])
@@ -447,22 +411,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         else:
             followed_opt_action = False
 
-        if self.teacher.next_action > 2:
-            desired_action = 5
-        else:
-            desired_action = 0
-
-        if self.dropout_type == 'step':
-            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
-            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
         info['agent_dir'] = self.agent_dir
         info['agent_room'] = self.room_from_pos(*self.agent_pos).top
         info['step'] = self.itr
-        info['dropout_goal'] = self.dropout_current_goal
-        info['dropout_corrections'] = self.dropout_current_correction
-        info['dropout_proportion'] = self.dropout_proportion
 
         if hasattr(self, "obj_pos"):
             info['goal_room'] = self.room_from_pos(*self.obj_pos).top
@@ -497,32 +450,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             reward_total += int(followed_opt_action)
             rew = reward_total
 
-        if TASK == 2:
-            rew = 1 if action == desired_action else 0
-            desired_action = self.teacher.next_action
-            # IF 2 TASK
-            # if self.teacher.next_action > 2:
-            #     rew = 1 if action == 5 else 0
-            #     desired_action = 5
-            # else:
-            #     rew = 1 if action == 0 else 0
-            #     desired_action = 0
-        elif TASK == 5:
-            # IF 5 TASK
-            rew = 1 if action == 5 else 0
-            desired_action = 5
-        if TASK is not None:
-            info['teacher_action'] = np.array([desired_action])
-            import copy
-            tmp = copy.deepcopy(obs[160:168])
-            obs[160:168] = 0
-            obs[160 + desired_action] = 1
-            tmp2 = copy.deepcopy(obs[160:168])
-
-        # if len(obs) > 160:
-        #     teacher = obs[160:168]
-        #     obs = np.concatenate([obs, teacher, teacher, teacher, teacher, teacher, teacher, teacher, teacher])
-
         return obs, rew, done, info
 
     def reset(self):
@@ -530,59 +457,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         Reset both the env and the teacher
         :return: observation from the env reset
         """
-
         super().reset()
-
-        if self.dropout_type == 'rollout':
-            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
-            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
-        elif self.dropout_type == 'meta_rollout_start':
-            should_dropout = int(self.itr == self.num_meta_tasks - 1) * self.dropout_proportion  # only dropout the last
-            self.dropout_current_goal = should_dropout
-            self.dropout_current_correction = should_dropout
-        if self.dropout_type == 'step':
-            self.dropout_current_goal = np.random.uniform() < (self.dropout_goal * self.dropout_proportion)
-            self.dropout_current_correction = np.random.uniform() < (self.dropout_correction * self.dropout_proportion)
-
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.oracle = self.teacher.reset(self.oracle)
 
         obs = self.gen_obs()
-        try:
-            if TASK == 5:
-                # IF 5 task:
-                desired_action = 5
-                obs[160:168] = 0
-                obs[160 + desired_action] = 1
-            elif TASK == 2:
-                # IF 2 TASK
-                if self.teacher.next_action > 2:
-                    desired_action = 5
-                else:
-                    desired_action = 0
-            if TASK is not None:
-                obs[160:168] = 0
-                obs[160 + desired_action] = 1
-        except:
-            x = 3
-
-        # IF FOLLOW TASK, COMMENT ALL OUT
-
         self.itr += 1
-
-        # if len(obs) > 160:
-        #     teacher = obs[160:168]
-        #     obs = np.concatenate([obs, teacher, teacher, teacher, teacher, teacher, teacher, teacher, teacher])
-
-
 
         return obs
 
-    def set_dropout_proportion(self, dropout_proportion):
-        self.dropout_proportion = dropout_proportion
-        if not dropout_proportion == 1:  # TODO: remove
-            print("???", dropout_proportion)
-        return None
-
-
-TASK = None
