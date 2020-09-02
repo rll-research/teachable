@@ -7,9 +7,11 @@ def worker(conn, env):
         if cmd == "step":
             obs, reward, done, info = env.step(data)
             if done:
+                env.set_task(None)
                 obs = env.reset()
             conn.send((obs, reward, done, info))
         elif cmd == "reset":
+            env.set_task(None)
             obs = env.reset()
             conn.send(obs)
         elif cmd == "set_task":
@@ -50,6 +52,7 @@ class ParallelEnv(gym.Env):
     def reset(self):
         for local in self.locals:
             local.send(("reset", None))
+        self.envs[0].set_task(None)
         results = [self.envs[0].reset()] + [local.recv() for local in self.locals]
         return results
 
@@ -58,6 +61,7 @@ class ParallelEnv(gym.Env):
             local.send(("step", action))  # TODO: does this reset?
         obs, reward, done, info = self.envs[0].step(actions[0])
         if done:
+            self.envs[0].set_task(None)
             obs = self.envs[0].reset()
         results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
         return results

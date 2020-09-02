@@ -134,5 +134,4 @@ class Curriculum(Serializable):
         """
         env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
         self._wrapped_env = self.levels_list[env_index]
-        print("SET TASK")
         return self._wrapped_env.set_task(args)
