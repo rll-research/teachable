@@ -9,6 +9,7 @@ from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
+from babyai.oracle.batch_teacher import BatchTeacher
 
 from babyai.bot import Bot
 
@@ -53,6 +54,19 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
         elif feedback_type == 'SubgoalCorrections':
             teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
+        elif isinstance(feedback_type, list):
+            teachers = []
+            for ft in feedback_type:
+                if ft == 'PostActionAdvice':
+                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always)
+                elif ft == 'PreActionAdvice':
+                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always)
+                elif ft == 'CartesianCorrections':
+                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always)
+                elif ft == 'SubgoalCorrections':
+                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
+                teachers.append(t)
+            teacher = BatchTeacher(teachers)
         else:
             teacher = None
         self.oracle = Bot(self)
@@ -381,7 +395,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                grid_representation,
                                goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
+            self.obs_shape = obs.shape
             self.teacher.obs_size = obs.shape
+            if isinstance(self.teacher, BatchTeacher):
+                for t in self.teacher.teachers:
+                    t.obs_size = obs.shape
             if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
                 correction_index = self.teacher.give_feedback([obs])
                 correction = np.zeros((self.action_space.n + 1,))
@@ -405,11 +423,47 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             action = action[0]
         except:
             action = action  # TODO: sketchy
+
         if hasattr(self, 'teacher') and self.teacher is not None:
-            opt_action = int(self.teacher.next_action)
-            followed_opt_action = (opt_action == action)
+            if isinstance(self.teacher, BatchTeacher):
+                give_reward = False
+                curr_teach = self.teacher
+                followed_opt_action = False
+                for teacher in curr_teach.teachers:
+                    if isinstance(teacher, CartesianCorrections):
+                        self.teacher = None
+                        ob_curr = self.gen_obs()
+                        self.teacher = curr_teach
+                        followed_opt_action = teacher.success_check(ob_curr)
+                    elif isinstance(teacher, PreActionAdvice):
+                        followed_opt_action = teacher.success_check(action)  
+                    elif isinstance(teacher, SubgoalCorrections):
+                        opt_action = int(teacher.next_action)
+                        followed_opt_action = (opt_action == action)
+                    give_reward = give_reward or followed_opt_action           
+            else:
+                give_reward = False
+                curr_teach = self.teacher
+                followed_opt_action = False
+                if isinstance(self.teacher, CartesianCorrections):
+                    self.teacher = None
+                    ob_curr = self.gen_obs()
+                    self.teacher = curr_teach
+                    followed_opt_action = self.teacher.success_check(ob_curr)
+                elif isinstance(self.teacher, PreActionAdvice):
+                    followed_opt_action = self.teacher.success_check(action)  
+                elif isinstance(self.teacher, SubgoalCorrections):
+                    # Hardcoded for subgoal corrections for now
+                    opt_action = int(self.teacher.next_action)
+                    followed_opt_action = (opt_action == action)
+                give_reward = followed_opt_action     
         else:
-            followed_opt_action = False
+            give_reward = False
+        # if hasattr(self, 'teacher') and self.teacher is not None:
+        #     opt_action = int(self.teacher.next_action)
+        #     followed_opt_action = (opt_action == action)
+        # else:
+        #     followed_opt_action = False
 
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
@@ -429,7 +483,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             try:
                 # Even if we use multiple teachers, presumably they all relate to one underlying path.
                 # We can log what action is the next one on this path (currently in teacher.next_action).
-                info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
+                if isinstance(self.teacher, BatchTeacher):
+                    info['teacher_action'] = np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
+                else:
+                    info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
 
                 self.oracle = self.teacher.step([action], self.oracle)
                 # Update the observation with the teacher's new feedback
@@ -445,11 +502,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
         # reward_total = np.ceil(rew)  # TODO: :(
+        reward_total = rew * 1000
         if self.intermediate_reward:
-            reward_total = rew * 1000
-            reward_total += int(followed_opt_action)
-            rew = reward_total
-
+            reward_total += int(give_reward)
+        rew = reward_total
         return obs, rew, done, info
 
     def reset(self):

@@ -22,8 +22,7 @@ from babyai.levels.curriculum import Curriculum
 import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'NOD_MAYBEFIXED3'
-PREFIX = 'debug2'
+PREFIX = 'cartesian_newmodel_adaptive_intermediate'
 # PREFIX = 'L20WORKING?'
 
 def get_exp_name(config):
@@ -95,7 +94,7 @@ def run_experiment(**config):
         use_mem = True
         arch = 'bow_endpool_res'
         advice_start_index = 160
-        advice_end_index = advice_start_index + env.action_space.n + 1
+        advice_end_index = advice_start_index + 160#env.action_space.n + 1
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -135,7 +134,7 @@ def run_experiment(**config):
             use_mem = True
             arch = 'bow_endpool_res'
             advice_start_index = 160
-            advice_end_index = advice_start_index + env.action_space.n + 1
+            advice_end_index = advice_start_index + 160 #env.action_space.n + 1
             supervised_model = ACModel(obs_space=obs_dim - 1,
                                      action_space=env.action_space,
                                      env=env,
@@ -217,7 +216,7 @@ def run_experiment(**config):
         null_val = np.zeros(action_dim)
         start_index = 160
         null_val[-1] = 1
-        teacher_info = [{"indices": np.arange(start_index, start_index + action_dim), "null": null_val}]
+        teacher_info = [{"indices": np.arange(start_index, start_index + 160), "null": null_val}]
 
     trainer = Trainer(
         algo=algo,
@@ -271,9 +270,9 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": ["PreActionAdvice"],  # TODO: double check the new model can handle other types
+        "feedback_type": ["CartesianCorrections"],  # TODO: double check the new model can handle other types
         # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
-        'feedback_always': [True],
+        'feedback_always': [False],
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth

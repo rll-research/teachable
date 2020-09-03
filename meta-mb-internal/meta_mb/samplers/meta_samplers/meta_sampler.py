@@ -121,11 +121,11 @@ class MetaSampler(BaseSampler):
         obses = self.vec_env.reset()
         first = self.vec_env.envs[0]
         matches = [e is first for e in self.vec_env.envs]
-        obs = np.array(obses)[:, 160:168]
-        if np.max(obs) == np.min(obs):
-            print("weirdness")
-            import IPython
-            IPython.embed()
+        obs = np.array(obses)[:, 160:320]
+        # if np.max(obs) == np.min(obs):
+        #     print("weirdness")
+        #     import IPython
+        #     IPython.embed()
 
 
         num_paths = 0

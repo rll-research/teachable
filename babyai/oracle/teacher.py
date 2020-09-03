@@ -1,12 +1,13 @@
 import numpy as np
 import pickle
 import copy
+import torch
 
 class Teacher:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
-    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False):
+    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False, cartesian_steps=5, feedback_frequency=1):
         """
         :param botclass: Oracle class
         :param env: babyai env
@@ -16,15 +17,29 @@ class Teacher:
         # TODO: this is pretty sketchy.  To stop the bot from failing, we
         #  reinitialize the oracle every timestep  Later it would be better to fix the bot, or at least
         #  figure out what situations it fails and not generate those.
+        self.cartesian_steps = cartesian_steps
         oracle = botclass(env)
+        self.env = env
         self.botclass = botclass
         self.last_action = -1
         self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
         self.next_state = env.gen_obs()
+        self.agent_actions = []
+        self.oracle_actions = []
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
+        self.steps_since_lastfeedback = 0
+        self.feedback_frequency = feedback_frequency
+        self.last_feedback = None
         self.device = device
+        if device is None:
+            if torch.cuda.is_available():
+                self.device = 'cuda'
+            else:
+                self.device = 'cpu'
+        else:
+            self.device = device
 
     def set_feedback_type(self, feedback_type):
         """
@@ -40,44 +55,33 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
+        self.agent_actions.append(agent_action)
+        self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(oracle.mission)
         new_oracle.vis_mask = oracle.vis_mask
         new_oracle.step = oracle.step
         oracle = new_oracle
         self.last_action = self.next_action
         self.next_action, self.next_subgoal = oracle.replan(-1)
+        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
+        self.env_copy1.teacher = None
+        self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
+        self.steps_since_lastfeedback += 1
         return oracle
 
-
-    def compute_full_path(self, steps):
-        # Settings steps to -1 computes the full path forward
-        before_pos = self.env.agent_pos.copy()
-        self.env_copy = pickle.loads(pickle.dumps(self.env))
-
-        new_oracle = self.botclass(self.env_copy)
-        new_oracle.vis_mask = copy.deepcopy(self.oracle.vis_mask)
-        self.oracle = new_oracle
-
-        # Do the full planning
-        env_states = []
-        env_rewards = []
-        agent_positions = []
-        done = False
-        self.oracle.mission.teacher = None
-        steps_taken = 0
-        while not done:
-            if steps_taken == steps:
-                break
-            action, _ = self.oracle.replan(-1)
-            obs, reward, done, info = self.oracle.mission.step(action)
-            env_states.append(obs)
-            env_rewards.append(reward)
-            agent_positions.append(self.oracle.mission.agent_pos.copy())
-            steps_taken += 1
-        after_pos = self.env.agent_pos.copy()
-        assert np.all(after_pos == before_pos), 'POSITION CHANGED'
-        return np.array(env_states), np.array(env_rewards), np.array(agent_positions)
-
+    def step_away_state(self, env_copy, oracle, steps):
+        for _ in range(steps):
+            new_oracle = self.botclass(env_copy)
+            new_oracle.vis_mask = oracle.vis_mask
+            new_oracle.step = oracle.step
+            oracle = new_oracle
+            next_action, _ = oracle.replan(-1)
+            env_copy.teacher = None
+            if next_action == -1:
+                next_state = env_copy.gen_obs()
+            else:
+                next_state,  _,  _,  _ = env_copy.step(next_action)            
+        return next_state
 
     def give_feedback(self, state):
         """
@@ -120,4 +124,8 @@ class Teacher:
         oracle = self.botclass(oracle.mission)
         self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
+        self.agent_actions = []
+        self.oracle_actions = []
+        self.steps_since_lastfeedback = 0
+        self.last_feedback = None
         return oracle

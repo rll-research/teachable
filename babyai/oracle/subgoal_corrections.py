@@ -2,6 +2,8 @@ import numpy as np
 from babyai.oracle.teacher import Teacher
 
 class SubgoalCorrections(Teacher):
+    def __init__(self, *args, **kwargs):
+        super(SubgoalCorrections, self).__init__(feedback_frequency=20, *args, **kwargs)
 
     def empty_feedback(self):
         """
@@ -36,8 +38,18 @@ class SubgoalCorrections(Teacher):
         """
         # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
         # This is kind of sketchy since multiple paths can be optimal.
+        if len(self.agent_actions) > 0 and (self.steps_since_lastfeedback % self.feedback_frequency == 0):
+            self.steps_since_lastfeedback = 0
+            return True
+        else:
+            return False
+        # Old condition
+        # return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
 
-        return True
-
-
-
+    def success_check(self, action):
+        # subgoal_val = self.subgoal_to_idx(state)
+        # followed_opt_action = np.allclose(subgoal_val, self.last_feedback)
+        # return followed_opt_action
+        opt_action = int(self.next_action)
+        followed_opt_action = (opt_action == action[0])
+        return followed_opt_action

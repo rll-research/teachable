@@ -1,8 +1,9 @@
 import numpy as np
 from babyai.oracle.teacher import Teacher
-import pickle
 
 class CartesianCorrections(Teacher):
+    def __init__(self, *args, **kwargs):
+        super(CartesianCorrections, self).__init__(feedback_frequency=5, *args, **kwargs)
 
     def empty_feedback(self):
         """
@@ -29,17 +30,6 @@ class CartesianCorrections(Teacher):
         #     feedback = -1*np.ones(self.obs_size)
         # return np.array(feedback)
         return np.array(self.next_state)
-
-    def step(self, agent_action, oracle):
-        env = oracle.mission
-        oracle = super().step(agent_action, oracle)
-        env_copy1 = pickle.loads(pickle.dumps(env))
-        env_copy1.teacher = None
-        if self.next_action == -1:
-            self.next_state = env.gen_obs()
-        else:
-            self.next_state, _, _, _ = env_copy1.step(self.next_action)
-        return oracle
         
     def feedback_condition(self):
         """
@@ -48,8 +38,20 @@ class CartesianCorrections(Teacher):
         """
         # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
         # This is kind of sketchy since multiple paths can be optimal.
+        # TODO NOW Fix this
+        if len(self.agent_actions) > 0 and (self.steps_since_lastfeedback % self.feedback_frequency == 0):
+            self.steps_since_lastfeedback = 0
+            return True
+        else:
+            return False
 
-        return True
+        # Old condition
+        # return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
 
-
-
+    def success_check(self, action):
+        if self.last_feedback is None:
+            return False
+        import IPython
+        IPython.embed()
+        followed_opt_action = np.allclose(state, self.last_feedback)
+        return followed_opt_action
