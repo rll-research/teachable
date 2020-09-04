@@ -24,7 +24,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'NOD_MAYBEFIXED3'
 PREFIX = 'debug2'
-# PREFIX = 'L20WORKING?'
+PREFIX = 'CURRICULUM?'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -38,6 +38,7 @@ def get_exp_name(config):
     EXP_NAME += '_threshS' + str(config['success_threshold'])
     EXP_NAME += '_threshA' + str(config['accuracy_threshold'])
     EXP_NAME += '_lr' + str(config['learning_rate'])
+    EXP_NAME += '_ent' + str(config['entropy_bonus'])
     EXP_NAME += '_currfn' + config['advance_curriculum_func']
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
@@ -279,7 +280,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [1e-2],
+        'entropy_bonus': [1],
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
         "learning_rate": [1e-3],
         "memory_dim": [1024],  #1024, 2048
@@ -289,7 +290,7 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.9],
+        'accuracy_threshold': [.8],
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
