@@ -109,7 +109,7 @@ class Trainer(object):
         avg_success = np.mean(episode_logs["success_per_episode"])
         avg_accuracy = summary_logs['Accuracy']
         should_advance_curriculum = (avg_success >= self.success_threshold) and (avg_accuracy >= self.accuracy_threshold)
-        return self.advance_levels and should_advance_curriculum
+        return should_advance_curriculum
 
     def check_advance_curriculum_rollout(self, data):
         num_total_episodes = data['dones'].sum()
@@ -121,7 +121,7 @@ class Trainer(object):
         avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         # We take the max since runs which end early will be 0-padded
         should_advance_curriculum = (avg_success >= self.success_threshold) and (avg_accuracy >= self.accuracy_threshold)
-        return (self.advance_levels and should_advance_curriculum), avg_success, avg_accuracy
+        return should_advance_curriculum, avg_success, avg_accuracy
 
     def load_data(self, start_index, end_index):
         batch_index = np.random.randint(start_index, end_index)
@@ -181,7 +181,7 @@ class Trainer(object):
             logger.logkv('Curriculum Step', self.curriculum_step)
             logger.dumpkvs()
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            logger.logkv('PossiblyAdvanceCurriculum', advance_curriculum)
+            logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -210,6 +210,7 @@ class Trainer(object):
                 logger.logkv('Itr', itr)
                 logger.dumpkvs()
                 advance_curriculum = distill_log['Accuracy'] >= self.accuracy_threshold
+                logger.logkv('Distill/AdvanceCurriculum', advance_curriculum)
             else:
                 distill_time = 0
 
@@ -276,7 +277,7 @@ class Trainer(object):
             else:
                 rollout_time = 0
 
-            if advance_curriculum:
+            if advance_curriculum and self.advance_levels:
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
