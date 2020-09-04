@@ -4,7 +4,6 @@ import cv2
 
 
 def write_video(writer, frames, show_last=None):
-    print("WRITING", len(frames))
     if show_last is not None:
         frames = frames[-show_last:]
     for frame in frames:
@@ -63,8 +62,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             a, agent_info = agent.get_actions(obs_big, use_teacher=use_teacher)
             a = a[0][0]
             agent_actions.append(a)
-            if np.argmax(o[160:167]) == 7:
-                print("No advice!")
 
             count += 1
 

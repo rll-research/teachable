@@ -116,9 +116,7 @@ class PPOAlgo(BaseAlgo):
         backward_time = 0
 
         for e in range(self.epochs):
-            o = exps.obs.detach().cpu().numpy()
-            teacher = o[:, 160:168]
-            teacher_max = np.argmax(teacher, axis=1)
+            teacher_max = exps.teacher_action.detach().cpu().numpy()
             orig_actions = exps.action.detach().cpu().numpy()
 
             # Initialize log values
@@ -217,8 +215,8 @@ class PPOAlgo(BaseAlgo):
                 self.optimizer.zero_grad()
                 batch_loss.backward()
                 grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.acmodel.parameters() if p.grad is not None) ** 0.5
-                desired_action = np.argmax(sb.obs.detach().cpu().numpy()[:, 160:168], axis=1)
-                accuracy = np.mean(dist.sample().detach().cpu().numpy() == desired_action)
+                desired_action = sb.teacher_action.int()
+                accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
 
                 torch.nn.utils.clip_grad_norm_(self.acmodel.parameters(), self.max_grad_norm)
                 self.optimizer.step()
@@ -247,7 +245,7 @@ class PPOAlgo(BaseAlgo):
 
             logs['Accuracy'] = accuracy
             logs["Entropy_loss"] = numpy.mean(log_entropies)
-            logs["Entropy"] = numpy.mean(log_entropies)
+            logs["Entropy"] = numpy.mean(log_entropies) / self.entropy_coef
             logs["Value"] = numpy.mean(log_values)
             logs["Policy_loss"] = numpy.mean(log_policy_losses)
             logs["Value_loss"] = numpy.mean(log_value_losses)

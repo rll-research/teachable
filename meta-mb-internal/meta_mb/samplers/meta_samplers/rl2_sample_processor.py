@@ -4,7 +4,7 @@ import copy
 
 class RL2SampleProcessor(SampleProcessor):
 
-    def process_samples(self, paths_meta_batch, log=False, log_prefix=''):
+    def process_samples(self, paths_meta_batch, log=False, log_prefix='', log_teacher=True):
         """
         Processes sampled paths. This involves:
             - computing discounted rewards (returns)
@@ -45,7 +45,7 @@ class RL2SampleProcessor(SampleProcessor):
             samples_data['adj_avg_rewards'] = (samples_data['rewards'] - overall_avg_reward) / (overall_avg_reward_std + 1e-8)
 
         # 8) log statistics if desired
-        self._log_path_stats(all_paths, log=log, log_prefix=log_prefix)
+        self._log_path_stats(all_paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher)
         samples_data = dict(
             observations=observations,
             actions=actions,

@@ -159,7 +159,7 @@ class SampleProcessor(object):
         self.normalize_adv = normalize_adv
         self.positive_adv = positive_adv
 
-    def process_samples(self, paths, log=False, log_prefix=''):
+    def process_samples(self, paths, log=False, log_prefix='', log_teacher=True):
         """
         Processes sampled paths. This involves:
             - computing discounted rewards (returns)
@@ -184,7 +184,7 @@ class SampleProcessor(object):
         samples_data, paths = self._compute_samples_data(paths)
 
         # 7) log statistics if desired
-        self._log_path_stats(paths, log=log, log_prefix=log_prefix)
+        self._log_path_stats(paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher)
 
         assert samples_data.keys() >= {'observations', 'actions', 'rewards', 'advantages', 'returns'}
         return samples_data
@@ -230,23 +230,14 @@ class SampleProcessor(object):
 
         return samples_data, paths
 
-    def _log_path_stats(self, paths, log=False, log_prefix='', return_avg_return=False):
+    def _log_path_stats(self, paths, log=False, log_prefix='', log_teacher=True):
         # compute log stats
-
-        has_teacher = 'teacher_action' in paths[0]['env_infos']
-
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
         path_length = [path['env_infos']['episode_length'][-1] for path in paths]
         success = [path['env_infos']['success'][-1] for path in paths]
         total_success = [np.sum(path['env_infos']['success']) for path in paths]
-        first_room = [path['env_infos']['agent_room'][-1] == (0, 0) for path in paths]
         action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
-        same_room_start = [path['env_infos']['agent_room'][0] == path['env_infos']['goal_room'][0] for path in paths
-                           if not (path['env_infos']['goal_room'][0] == -1).all()]
-        same_room_end = [path['env_infos']['agent_room'][-1] == path['env_infos']['goal_room'][-1] for path in paths
-                         if not (path['env_infos']['goal_room'][0] == -1).all()]
-        unique_steps = np.unique([path['env_infos']['step'][0] for path in paths])
 
         # # log by step in the meta-task
         # for i in unique_steps:
@@ -297,7 +288,7 @@ class SampleProcessor(object):
         #             mean_advice = np.mean(teacher_suggestions_i)
         #             logger.logkv(log_prefix_i + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
 
-        if has_teacher:
+        if log_teacher:
             actions_taken = np.array([step[0] for path in paths for step in path['actions']])
             actions_teacher = np.array([step[0] for path in paths for step in path['env_infos']['teacher_action']])
             probs = [probs for path in paths for probs in path['agent_infos']['probs']]
@@ -351,7 +342,7 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
 
             logger.logkv(log_prefix + 'AvgEntropy', np.mean(action_entropy))
-            if has_teacher:
+            if log_teacher:
                 logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions))
 
         return np.mean(undiscounted_returns)

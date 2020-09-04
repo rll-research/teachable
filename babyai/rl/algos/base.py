@@ -87,7 +87,6 @@ class BaseAlgo(ABC):
         self.memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
         self.memories = torch.zeros(*shape, self.acmodel.memory_size, device=self.device)
 
-        self.images = torch.zeros(*shape, 64, 64, 3, device=self.device)
 
         self.mask = torch.ones(shape[1], device=self.device)
         self.masks = torch.zeros(*shape, device=self.device)
@@ -109,13 +108,11 @@ class BaseAlgo(ABC):
         self.log_episode_success = torch.zeros(self.num_procs, device=self.device)
         self.log_episode_reshaped_return = torch.zeros(self.num_procs, device=self.device)
         self.log_episode_num_frames = torch.zeros(self.num_procs, device=self.device)
-        self.log_episode_images = [[] for _ in range(self.num_procs)]
 
         self.log_done_counter = 0
         self.log_return = [0] * self.num_procs
         self.log_reshaped_return = [0] * self.num_procs
         self.log_num_frames = [0] * self.num_procs
-        self.log_images = [[]] * self.num_procs
         self.log_success = [0] * self.num_procs
 
     def collect_experiences(self, use_teacher=False):
@@ -160,13 +157,10 @@ class BaseAlgo(ABC):
             self.env_infos[i] = env_info
             self.obss[i] = self.obs
             self.obs = obs
-            self.teacher_actions[i] = torch.FloatTensor([np.argmax(o[160:168]) for o in obs]).to(self.device)  # TODO: this is specific to PreActionAdvice!!
+            self.teacher_actions[i] = torch.FloatTensor([i['teacher_action'][0] for i in env_info]).to(self.device)
 
             self.memories[i] = self.memory
             self.memory = memory
-            # images = self.env.render()
-            images = np.zeros(self.images[i].shape)
-            # self.images[i] = images
 
             self.masks[i] = self.mask
             self.mask = 1 - torch.tensor(done, device=self.device, dtype=torch.float)
@@ -187,8 +181,6 @@ class BaseAlgo(ABC):
 
             # Update log values
 
-            for j in range(len(images)):
-                self.log_episode_images[j].append(images[j])
             self.log_episode_return += torch.tensor(reward, device=self.device, dtype=torch.float)
             self.log_episode_success += torch.tensor([e['success'] for e in env_info], device=self.device, dtype=torch.float)
             self.log_episode_reshaped_return += self.rewards[i]
@@ -197,7 +189,6 @@ class BaseAlgo(ABC):
             for i, done_ in enumerate(done):
                 if done_:
                     self.log_done_counter += 1
-                    self.log_images.append(self.log_episode_images)
                     self.log_return.append(self.log_episode_return[i].item())
                     self.log_success.append(self.log_episode_success[i].item())
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())
@@ -207,9 +198,6 @@ class BaseAlgo(ABC):
             self.log_episode_success *= self.mask
             self.log_episode_reshaped_return *= self.mask
             self.log_episode_num_frames *= self.mask
-            for i in range(len(self.mask)):
-                if self.mask[i] == 0:
-                    self.log_episode_images[i] = []
 
         # Add advantage and return to experiences
 
@@ -287,7 +275,6 @@ class BaseAlgo(ABC):
         self.log_success = self.log_success[-self.num_procs:]
         self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
         self.log_num_frames = self.log_num_frames[-self.num_procs:]
-        self.log_images = self.log_images[-self.num_procs:]
 
         return exps, log
 

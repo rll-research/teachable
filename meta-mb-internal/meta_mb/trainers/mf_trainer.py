@@ -57,6 +57,7 @@ class Trainer(object):
         save_every=100,
         log_every=10,
         save_videos_every=50,#100,
+        train_with_teacher=True,
         distill_with_teacher=False,
         supervised_model=None,
         reward_predictor=None,
@@ -95,6 +96,7 @@ class Trainer(object):
         self.save_every = save_every
         self.save_videos_every = save_videos_every
         self.log_every = log_every
+        self.train_with_teacher = train_with_teacher
         self.distill_with_teacher = distill_with_teacher
         self.supervised_model = supervised_model
         self.reward_predictor = reward_predictor
@@ -171,17 +173,17 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            samples_data, episode_logs = self.algo.collect_experiences(use_teacher=True)
+            samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=True)
+            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Itr', itr)
             logger.logkv('Curriculum Step', self.curriculum_step)
-            logger.dumpkvs()
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
+            logger.dumpkvs()
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -218,13 +220,14 @@ class Trainer(object):
             run_policy_time = 0
             run_supervised_time = 0
             if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+                train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
                         # Distilled model
                         time_run_supervised_start = time.time()
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                         logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, False, "DRollout/")
+                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.distill_with_teacher, "DRollout/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
@@ -233,10 +236,10 @@ class Trainer(object):
                     time_run_policy_start = time.time()
                     self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running supervised model")
-                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, True, "Rollout/")
+                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
-                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup
+                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
                     print("ADvancing curriculum???", advance_curriculum)
 
                     logger.logkv('Itr', itr)
@@ -255,7 +258,7 @@ class Trainer(object):
                     self.il_trainer.acmodel.reset(dones=[True])
                     paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video',
                                                        num_rollouts=5,
-                                                       use_teacher=False,
+                                                       use_teacher=self.distill_with_teacher,
                                                        save_video=should_save_video)
                     logger.logkv("DVidRollout/RolloutAcc", accuracy)
                     logger.logkv("DVidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
@@ -265,7 +268,7 @@ class Trainer(object):
                 self.algo.acmodel.reset(dones=[True])
                 paths, accuracy = self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video',
                                                    num_rollouts=5,
-                                                   use_teacher=True,
+                                                   use_teacher=self.train_with_teacher,
                                                    save_video=should_save_video)
                 logger.logkv("VidRollout/RolloutAcc", accuracy)
                 logger.logkv("VidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
@@ -323,18 +326,11 @@ class Trainer(object):
         logger.log("Training finished")
 
     def _log(self, episode_logs, summary_logs, tag=""):
-
-        if self.env.intermediate_reward:
-            avg_success = np.mean([1 if r > 100 else 0 for r in episode_logs["return_per_episode"]])
-        else:
-            avg_success = np.mean([1 if r > 0 else 0 for r in episode_logs["return_per_episode"]])
         avg_return = np.mean(episode_logs['return_per_episode'])
         avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
-        avg_success_orig = np.mean(episode_logs['success_per_episode'])
+        avg_success = np.mean(episode_logs['success_per_episode'])
 
         logger.logkv(f"{tag}/Success", avg_success)
-        logger.logkv(f"{tag}/Success_Orig", avg_success_orig)
-        logger.logkv(f"{tag}/SuccessDiff", avg_success - avg_success_orig)
         logger.logkv(f"{tag}/Return", avg_return)
         logger.logkv(f"{tag}/PathLength", avg_path_length)
         for k, v in summary_logs.items():
@@ -375,7 +371,7 @@ class Trainer(object):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                             feedback_list=self.teacher_info, max_action=True,
                                             use_teacher=use_teacher)
-        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag)
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag, log_teacher=self.train_with_teacher)
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data)
         logger.logkv(f"{tag}AdvanceCurriculum", advance_curriculum)
         logger.logkv(f"{tag}AvgSuccess", avg_success)

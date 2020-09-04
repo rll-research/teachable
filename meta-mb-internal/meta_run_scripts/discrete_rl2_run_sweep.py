@@ -24,7 +24,9 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
 PREFIX = 'L20WORKING?'
-PREFIX = 'debug3'
+PREFIX = 'LEFTTURN2'
+PREFIX = 'SUBGOAL2'
+# PREFIX = 'debug4'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -95,11 +97,17 @@ def run_experiment(**config):
         instr_arch = 'bigru'
         use_mem = True
         arch = 'bow_endpool_res'
+        advice_dim = 128
         advice_start_index = 160
         if config['feedback_type'] == 'PreActionAdvice':
             advice_end_index = advice_start_index + env.action_space.n + 1
         elif config['feedback_type'] == 'CartesianCorrections':
             advice_end_index = advice_start_index + 160
+        elif config['feedback_type'] == 'SubgoalCorrections':
+            advice_end_index = advice_start_index + 17
+        elif config['feedback_type'] is None:
+            advice_end_index = 160
+            advice_dim = 0
         else:
             raise NotImplementedError(config['feedback_type'])
         policy = ACModel(obs_space=obs_dim,
@@ -112,7 +120,7 @@ def run_experiment(**config):
                          use_instr=use_instr,
                          use_memory=use_mem,
                          arch=arch,
-                         advice_dim=128,
+                         advice_dim=advice_dim,
                          advice_start_index=advice_start_index,
                          advice_end_index=advice_end_index)
 
@@ -127,7 +135,7 @@ def run_experiment(**config):
                                  use_instr=use_instr,
                                  use_memory=use_mem,
                                  arch=arch,
-                                 advice_dim=128,
+                                 advice_dim=advice_dim,
                                  advice_start_index=advice_start_index,
                                  advice_end_index=advice_end_index)
         assert not (config['il_comparison'] and config['self_distill'])
@@ -140,8 +148,6 @@ def run_experiment(**config):
             instr_arch = 'bigru'
             use_mem = True
             arch = 'bow_endpool_res'
-            advice_start_index = 160
-            advice_end_index = advice_start_index + 160 #env.action_space.n + 1
             supervised_model = ACModel(obs_space=obs_dim - 1,
                                      action_space=env.action_space,
                                      env=env,
@@ -152,7 +158,7 @@ def run_experiment(**config):
                                      use_instr=use_instr,
                                      use_memory=use_mem,
                                      arch=arch,
-                                     advice_dim=128,
+                                     advice_dim=advice_dim,
                                      advice_start_index=advice_start_index,
                                      advice_end_index=advice_end_index)
         elif config['self_distill']:
@@ -200,7 +206,20 @@ def run_experiment(**config):
             copy.deepcopy(env),
             copy.deepcopy(env),
             copy.deepcopy(env),
-            copy.deepcopy(env)]
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            copy.deepcopy(env),
+            ]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, .5, .5, args.recurrence,
@@ -215,15 +234,13 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
-    action_dim = env.action_space.n + 1
-
-    if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types
+    if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types at once!
         teacher_info = []
     else:
-        null_val = np.zeros(action_dim)
-        start_index = 160
-        null_val[-1] = 1
-        teacher_info = [{"indices": np.arange(start_index, start_index + 160), "null": null_val}]
+        null_val = np.zeros(advice_end_index - advice_start_index)
+        if len(null_val) > 0:
+            null_val[-1] = 1
+        teacher_info = [{"indices": np.arange(advice_start_index, advice_end_index), "null": null_val}]
 
     trainer = Trainer(
         algo=algo,
@@ -245,6 +262,7 @@ def run_experiment(**config):
         il_trainer=il_trainer,
         source=config['source'],
         batch_size=config['meta_batch_size'],
+        train_with_teacher=config['feedback_type'] is not None,
         distill_with_teacher=config['distill_with_teacher'],
         supervised_model=supervised_model,
         reward_predictor=reward_predictor,
@@ -277,17 +295,17 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": ["PreActionAdvice"],  # TODO: double check the new model can handle other types
-        # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
+        "feedback_type": ["SubgoalCorrections"],
+        # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [1],
+        'entropy_bonus': [30],
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
-        "learning_rate": [1e-3],
+        "learning_rate": [1e-4],  # TODO: 1e-3
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
         "discount": [0.95],
@@ -295,7 +313,7 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.8],
+        'accuracy_threshold': [0],
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation

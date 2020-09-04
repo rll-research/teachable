@@ -356,7 +356,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
 
-        embedding = torch.cat([embedding, advice_embedding], dim=1)
+        if self.advice_size > 0:
+            embedding = torch.cat([embedding, advice_embedding], dim=1)
 
         x = self.actor(embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))

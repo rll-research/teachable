@@ -54,10 +54,6 @@ class MetaSampler(BaseSampler):
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
         else:
             self.vec_env = MetaIterativeEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
-        first = self.vec_env.envs[0]
-        matches = [e is first for e in self.vec_env.envs]
-        obs = np.array(self.vec_env.reset())[:, 160:168]
-        x = 3
 
     def update_tasks(self):
         """
@@ -119,14 +115,6 @@ class MetaSampler(BaseSampler):
         self.update_tasks()
 
         obses = self.vec_env.reset()
-        first = self.vec_env.envs[0]
-        matches = [e is first for e in self.vec_env.envs]
-        obs = np.array(obses)[:, 160:320]
-        # if np.max(obs) == np.min(obs):
-        #     print("weirdness")
-        #     import IPython
-        #     IPython.embed()
-
 
         num_paths = 0
         while num_paths < total_paths:
