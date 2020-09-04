@@ -23,7 +23,9 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
-# PREFIX = 'L20WORKING?'
+PREFIX = 'L20WORKING?'
+PREFIX = 'debug3'
+
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -94,7 +96,12 @@ def run_experiment(**config):
         use_mem = True
         arch = 'bow_endpool_res'
         advice_start_index = 160
-        advice_end_index = advice_start_index + 160#env.action_space.n + 1
+        if config['feedback_type'] == 'PreActionAdvice':
+            advice_end_index = advice_start_index + env.action_space.n + 1
+        elif config['feedback_type'] == 'CartesianCorrections':
+            advice_end_index = advice_start_index + 160
+        else:
+            raise NotImplementedError(config['feedback_type'])
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -270,7 +277,7 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": ["CartesianCorrections"],  # TODO: double check the new model can handle other types
+        "feedback_type": ["PreActionAdvice"],  # TODO: double check the new model can handle other types
         # Options are [None, "PreActionAdvice", "PostActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
 
@@ -288,7 +295,7 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.9],
+        'accuracy_threshold': [.8],
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
