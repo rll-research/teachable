@@ -9,6 +9,7 @@ from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 
+import torch
 import copy
 import shutil
 from meta_mb.logger import logger
@@ -25,14 +26,15 @@ INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
 PREFIX = 'L20WORKING?'
 PREFIX = 'LEFTTURN2'
-PREFIX = 'SUBGOAL2'
-# PREFIX = 'debug4'
+PREFIX = 'SUBACT2'
+PREFIX = 'DISTILLFROMORACLE_NewModel4'
+PREFIX = 'debug'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
     EXP_NAME += '_teacher' + str(config['feedback_type'])
-    if config['il_comparison']:
-        EXP_NAME += '_IL'
+    if config['distill_same_model']:
+        EXP_NAME += '_SAME'
     if config['self_distill']:
         EXP_NAME += '_SD'
     if config['intermediate_reward']:
@@ -45,6 +47,21 @@ def get_exp_name(config):
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
+def get_advice_index(advice_start_index, config, env):
+    advice_dim = 128
+    if config['feedback_type'] == 'PreActionAdvice':
+        advice_end_index = advice_start_index + env.action_space.n + 1
+    elif config['feedback_type'] == 'CartesianCorrections':
+        advice_end_index = advice_start_index + 160
+    elif config['feedback_type'] == 'SubgoalCorrections':
+        advice_end_index = advice_start_index + 17
+    elif config['feedback_type'] is None:
+        advice_end_index = 160
+        advice_dim = 0
+    else:
+        raise NotImplementedError(config['feedback_type'])
+    return advice_end_index, advice_dim
+
 
 def run_experiment(**config):
     set_seed(config['seed'])
@@ -54,9 +71,7 @@ def run_experiment(**config):
         if 'config' in saved_model:
             if not config['override_old_config']:
                 config = saved_model['config']
-                config['intermediate_reward'] = False  # TODO
-                config['reward_predictor_type'] = 'discrete'
-                config['grad_clip_threshold'] = None
+                config['distill_same_model'] = False  # TODO: remove!
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": False,
@@ -68,12 +83,15 @@ def run_experiment(**config):
         "num_meta_tasks": config["rollouts_per_meta_task"],
         "intermediate_reward": config["intermediate_reward"]
     }
+    advice_start_index = 160
     if original_saved_path is not None:
         set_seed(config['seed'])
         policy = saved_model['policy']
+        optimizer = saved_model['optimizer']
+        policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
         policy.hidden_state = None
         baseline = saved_model['baseline']
-        curriculum_step = config['level']
+        curriculum_step = saved_model['curriculum_step']
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                           **arguments)),
                      ceil_reward=config['ceil_reward'])
@@ -86,6 +104,7 @@ def run_experiment(**config):
             supervised_model = None
 
     else:
+        optimizer = None
         baseline = config['baseline']()
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
@@ -97,19 +116,7 @@ def run_experiment(**config):
         instr_arch = 'bigru'
         use_mem = True
         arch = 'bow_endpool_res'
-        advice_dim = 128
-        advice_start_index = 160
-        if config['feedback_type'] == 'PreActionAdvice':
-            advice_end_index = advice_start_index + env.action_space.n + 1
-        elif config['feedback_type'] == 'CartesianCorrections':
-            advice_end_index = advice_start_index + 160
-        elif config['feedback_type'] == 'SubgoalCorrections':
-            advice_end_index = advice_start_index + 17
-        elif config['feedback_type'] is None:
-            advice_end_index = 160
-            advice_dim = 0
-        else:
-            raise NotImplementedError(config['feedback_type'])
+        advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -138,8 +145,7 @@ def run_experiment(**config):
                                  advice_dim=advice_dim,
                                  advice_start_index=advice_start_index,
                                  advice_end_index=advice_end_index)
-        assert not (config['il_comparison'] and config['self_distill'])
-        if config['il_comparison']:
+        if config['self_distill'] and not config['distill_same_model']:
             obs_dim = env.reset().shape[0]
             image_dim = 128
             memory_dim = config['memory_dim']
@@ -224,6 +230,8 @@ def run_experiment(**config):
                    config['gae_lambda'],
                    args.entropy_coef, .5, .5, args.recurrence,
                    args.optim_eps, .2, 4, config['meta_batch_size'])
+    if optimizer is not None:
+        algo.optimizer.load_state_dict(optimizer)
 
     EXP_NAME = get_exp_name(config)
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(config['seed'])
@@ -234,6 +242,7 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
+    advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
     if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types at once!
         teacher_info = []
     else:
@@ -279,13 +288,14 @@ if __name__ == '__main__':
         'level': [0],
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
-        'distill_with_teacher': [False],
+        'distill_with_teacher': [True],
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
-        'saved_path': [None],  # TODO: double check we can still save and load things
+        'saved_path': [None],
+        # 'saved_path': [base_path + 'SUBACT_teacherPreActionAdvice_dense_threshS0.95_threshA0_lr0.0001_ent30_currfnone_hot_4/latest.pkl'],  # TODO: double check we can still save and load things
         # base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
-        'override_old_config': [True],  # only relevant when restarting a run; do we use the old config or the new?
+        'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
         # Meta
@@ -295,7 +305,7 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": ["SubgoalCorrections"],
+        "feedback_type": ["PreActionAdvice"],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
 
@@ -317,8 +327,8 @@ if __name__ == '__main__':
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
-        'il_comparison': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
-        'self_distill': [False],  # TODO: collapse this into one
+        'self_distill': [True],
+        'distill_same_model': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
 
         # Arguments we basically never change
         'algo': ['rl2'],

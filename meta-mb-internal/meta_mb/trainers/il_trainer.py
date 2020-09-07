@@ -79,6 +79,7 @@ class ImitationLearning(object):
         returns demos as a list of lists. Each demo is a list of (obs, action, done) tuples
         '''
         obs = demos.obs.detach().cpu().numpy()
+        teacher_action = demos.env_infos.teacher_action
         if self.reward_predictor:
             obs = demos.env_infos.next_obs_rewardfree
             reward = demos.reward
@@ -89,7 +90,6 @@ class ImitationLearning(object):
             action = demos.env_infos.teacher_action
         else:
             raise NotImplementedError(source)
-        action = action
         done = (1 - demos.mask).detach().cpu().numpy()
         done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
         split_indices = np.where(done == 1)[0]
@@ -97,8 +97,9 @@ class ImitationLearning(object):
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
             a = action[split_indices[i]:split_indices[i+1]]
+            a_t = teacher_action[split_indices[i]:split_indices[i+1]]
             d = done[split_indices[i]:split_indices[i+1]]
-            new_demos.append((o, a, d))
+            new_demos.append((o, a, d, a_t))
         return new_demos
 
     def obss_preprocessor(self, obs, device=None):
@@ -118,6 +119,7 @@ class ImitationLearning(object):
         # Constructing flat batch and indices pointing to start of each demonstration
         obss = []
         action_true = []
+        action_teacher = []
         done = []
         inds = [0]
 
@@ -125,12 +127,14 @@ class ImitationLearning(object):
             obss.append(demo[0])
             action_true.append(demo[1])
             done.append(demo[2])
+            action_teacher.append(demo[3])
             inds.append(inds[-1] + len(demo))
 
         # (batch size * avg demo length , 3), where 3 is for (state, action, done)
         obss = np.concatenate(obss)
         action_true = np.concatenate(action_true)
         done = np.concatenate(done)
+        action_teacher = np.concatenate(action_teacher)
         inds = inds[:-1]
         num_frames = len(obss)
 
@@ -179,6 +183,7 @@ class ImitationLearning(object):
         # Here, actual backprop upto args.recurrence happens
         final_loss = 0
         per_token_correct = [0, 0, 0, 0, 0, 0, 0]
+        per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
         per_token_count = [0, 0, 0, 0, 0, 0, 0]
         per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
         final_entropy, final_policy_loss, final_value_loss = 0, 0, 0
@@ -207,7 +212,6 @@ class ImitationLearning(object):
             final_loss += loss
             final_entropy += entropy
             final_policy_loss += policy_loss
-            indexes += 1
 
             action_step = action_step.detach().cpu().numpy()
             action_pred = action_pred.detach().cpu().numpy()
@@ -216,8 +220,11 @@ class ImitationLearning(object):
                 count = len(token_indices)
                 correct = np.sum(action_step[token_indices] == action_pred[token_indices])
                 per_token_correct[j] += correct
+                teacher_correct = np.sum(action_teacher[indexes, 0][token_indices] == action_pred[token_indices])
+                per_token_teacher_correct[j] += teacher_correct
                 per_token_count[j] += count
                 per_token_agent_count[j] += len(np.where(action_pred == j)[0])
+            indexes += 1
 
         final_loss /= self.args.recurrence
 
@@ -230,9 +237,10 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
-        for i, (correct, count) in enumerate(zip(per_token_correct, per_token_count)):
+        for i, (correct, count, teacher_correct) in enumerate(zip(per_token_correct, per_token_count, per_token_teacher_correct)):
             if count > 0:
                 log[f'Accuracy_{i}'] = correct/count
+                log[f'TeacherAccuracy_{i}'] = teacher_correct / count
 
         return log
 

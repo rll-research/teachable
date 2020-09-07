@@ -137,7 +137,6 @@ class BaseAlgo(ABC):
 
         """
         # TODO: Make this handle the case where the meta_rollout length > 1
-        print("LEVELS After", [e._wrapped_env._wrapped_env._wrapped_env.__class__.__name__ for e in self.env.envs])
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)

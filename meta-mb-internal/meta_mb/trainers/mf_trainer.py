@@ -56,7 +56,7 @@ class Trainer(object):
         eval_every=25,
         save_every=100,
         log_every=10,
-        save_videos_every=50,#100,
+        save_videos_every=100,
         train_with_teacher=True,
         distill_with_teacher=False,
         supervised_model=None,
@@ -183,7 +183,6 @@ class Trainer(object):
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
-            logger.dumpkvs()
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -210,7 +209,6 @@ class Trainer(object):
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
                 logger.logkv('Itr', itr)
-                logger.dumpkvs()
                 advance_curriculum = distill_log['Accuracy'] >= self.accuracy_threshold
                 logger.logkv('Distill/AdvanceCurriculum', advance_curriculum)
             else:
@@ -218,7 +216,6 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            run_supervised_time = 0
             if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
@@ -235,7 +232,7 @@ class Trainer(object):
                     # Original Policy
                     time_run_policy_start = time.time()
                     self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
-                    logger.log("Running supervised model")
+                    logger.log("Running model with teacher")
                     advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
@@ -244,7 +241,6 @@ class Trainer(object):
 
                     logger.logkv('Itr', itr)
                     logger.logkv('AdvanceCurriculum', advance_curriculum)
-                    logger.dumpkvs()
             else:
                 run_supervised_time = 0
                 advance_curriculum = False
@@ -308,21 +304,17 @@ class Trainer(object):
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
-                logger.dumpkvs()
 
             logger.logkv('Time/Sampling', time_env_sampling)
             logger.logkv('Time/Training', time_training)
             logger.logkv('Time/Collection', time_collection)
             logger.logkv('Time/RPUse', rp_splice_time)
             logger.logkv('Time/RPTrain', time_rp_train)
-            logger.logkv('Time/RunSupervised', run_policy_time)
+            logger.logkv('Time/RunwTeacher', run_policy_time)
             logger.logkv('Time/Distillation', distill_time)
-            logger.logkv('Time/RunSupervised', run_supervised_time)
+            logger.logkv('Time/RunDistilled', run_supervised_time)
             logger.logkv('Time/VidRollout', rollout_time)
             logger.dumpkvs()
-
-
-
         logger.log("Training finished")
 
     def _log(self, episode_logs, summary_logs, tag=""):
@@ -402,20 +394,13 @@ class Trainer(object):
                         env=self.env,
                         baseline=self.baseline,
                         config=self.config,
+                        optimizer=self.algo.optimizer.state_dict(),
                         curriculum_step=self.curriculum_step,)
         if self.reward_predictor is not None:
             d['reward_predictor'] = self.reward_predictor
         if self.il_trainer is not None:
             d['supervised_model'] = self.il_trainer.acmodel
         return d
-
-
-    def log_supervised(self, samples_data):
-        pred_actions, _ = self.il_trainer.acmodel.get_actions(samples_data['observations'])
-        real_actions = samples_data['env_infos']['teacher_action']
-        matches = pred_actions == real_actions
-        log_prefix = "Supervised"
-        logger.logkv(log_prefix + 'Accuracy', np.mean(matches))
 
     def log_diagnostics(self, paths, prefix):
         # TODO: we aren't using it so far
