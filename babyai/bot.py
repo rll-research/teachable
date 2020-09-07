@@ -738,6 +738,11 @@ class Bot:
                         print("VisMask", self.vis_mask)
                         self.mission.render('human')
                         print("???")
+                        shortest_path_to_obj, _, with_blockers = self._shortest_path(
+                            lambda pos, cell: pos == obj_pos,
+                            try_with_blockers=True
+                        )
+                        return
 
                     assert shortest_path_to_obj is not None
                     distance_to_obj = len(shortest_path_to_obj)

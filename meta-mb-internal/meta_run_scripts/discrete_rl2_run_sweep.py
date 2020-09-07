@@ -24,11 +24,11 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
-PREFIX = 'L20WORKING?'
-PREFIX = 'LEFTTURN2'
-PREFIX = 'SUBACT2'
-PREFIX = 'DISTILLFROMORACLE_NewModel4'
-PREFIX = 'debug'
+PREFIX = 'L19'
+# PREFIX = 'TRAIN+DISTILL'
+# PREFIX = 'SUBACT2'
+# PREFIX = 'DISTILLFROMORACLE_NewModel4'
+# PREFIX = 'debug'
 
 def get_exp_name(config):
     EXP_NAME = PREFIX
@@ -285,11 +285,11 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
-        'level': [0],
+        'level': [19],
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
-        'distill_with_teacher': [True],
-        'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
+        'distill_with_teacher': [False],
+        'advance_levels': [False],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
         'saved_path': [None],
@@ -327,8 +327,8 @@ if __name__ == '__main__':
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
-        'self_distill': [True],
-        'distill_same_model': [True],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
+        'self_distill': [False],
+        'distill_same_model': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
 
         # Arguments we basically never change
         'algo': ['rl2'],
