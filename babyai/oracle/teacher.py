@@ -65,7 +65,7 @@ class Teacher:
         self.next_action, self.next_subgoal = oracle.replan(-1)
         self.env_copy1 = pickle.loads(pickle.dumps(self.env))
         self.env_copy1.teacher = None
-        self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
+        # self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)  # TODO: uncomment
         self.steps_since_lastfeedback += 1
         return oracle
 
