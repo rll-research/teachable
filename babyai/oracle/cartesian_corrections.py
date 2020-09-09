@@ -51,7 +51,5 @@ class CartesianCorrections(Teacher):
     def success_check(self, action):
         if self.last_feedback is None:
             return False
-        import IPython
-        IPython.embed()
         followed_opt_action = np.allclose(state, self.last_feedback)
         return followed_opt_action
