@@ -92,13 +92,14 @@ class Teacher:
         """
         if self.feedback_always:
             feedback = self.compute_feedback()
+            self.last_feedback = feedback
         elif self.feedback_type == 'none' or not self.feedback_condition():
             feedback = self.empty_feedback()
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()
         elif self.feedback_type == 'oracle':
-
             feedback = self.compute_feedback()
+            self.last_feedback = feedback
         else:
             raise ValueError("Unsupported feedback type")
         return feedback

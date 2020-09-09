@@ -424,6 +424,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         except:
             action = action  # TODO: sketchy
 
+        # Off by one error potentially. 
         if hasattr(self, 'teacher') and self.teacher is not None:
             if isinstance(self.teacher, BatchTeacher):
                 give_reward = False
@@ -438,6 +439,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     elif isinstance(teacher, PreActionAdvice):
                         followed_opt_action = teacher.success_check(action)  
                     elif isinstance(teacher, SubgoalCorrections):
+                        # Not actually checking for subgoal
                         opt_action = int(teacher.next_action)
                         followed_opt_action = (opt_action == action)
                     give_reward = give_reward or followed_opt_action           
@@ -453,7 +455,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif isinstance(self.teacher, PreActionAdvice):
                     followed_opt_action = self.teacher.success_check(action)  
                 elif isinstance(self.teacher, SubgoalCorrections):
-                    # Hardcoded for subgoal corrections for now
+                    # Not actually checking for subgoal
                     opt_action = int(self.teacher.next_action)
                     followed_opt_action = (opt_action == action)
                 give_reward = followed_opt_action     

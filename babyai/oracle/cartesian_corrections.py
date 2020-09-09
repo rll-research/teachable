@@ -48,8 +48,10 @@ class CartesianCorrections(Teacher):
         # Old condition
         # return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
 
-    def success_check(self, action):
+    def success_check(self, state):
         if self.last_feedback is None:
             return False
         followed_opt_action = np.allclose(state, self.last_feedback)
         return followed_opt_action
+
+        # TODO: Check that success check works, no off by one error, and the feedback seems reasonable. 
