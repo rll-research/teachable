@@ -25,9 +25,9 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
 PREFIX = 'L19b'
-PREFIX = 'TRAINONLY6'
+PREFIX = 'TRAINONLY_GC.1'
 # PREFIX = 'SUBACT2'
-PREFIX = 'BADENVL1_again'
+# PREFIX = 'BADENVL1_again'
 # PREFIX = 'debug'
 
 def get_exp_name(config):
@@ -228,7 +228,7 @@ def run_experiment(**config):
             ]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
-                   args.entropy_coef, .5, .5, args.recurrence,
+                   args.entropy_coef, .5, .1, args.recurrence,
                    args.optim_eps, .2, 4, config['meta_batch_size'])
 
     if optimizer is not None:
@@ -322,7 +322,7 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [0],
+        'accuracy_threshold': [.9],
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillation
