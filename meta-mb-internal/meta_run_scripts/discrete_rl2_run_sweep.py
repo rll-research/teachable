@@ -24,10 +24,10 @@ import joblib
 
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
-PREFIX = 'L19'
-# PREFIX = 'TRAIN+DISTILL'
+PREFIX = 'L19b'
+PREFIX = 'TRAINONLY6'
 # PREFIX = 'SUBACT2'
-# PREFIX = 'DISTILLFROMORACLE_NewModel4'
+PREFIX = 'BADENVL1_again'
 # PREFIX = 'debug'
 
 def get_exp_name(config):
@@ -230,6 +230,7 @@ def run_experiment(**config):
                    config['gae_lambda'],
                    args.entropy_coef, .5, .5, args.recurrence,
                    args.optim_eps, .2, 4, config['meta_batch_size'])
+
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
 
@@ -285,16 +286,14 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
-        'level': [19],
+        'level': [0],
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
         'distill_with_teacher': [False],
-        'advance_levels': [False],  # can we advance levels, or do we have to stay on the current level?
+        'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
         'saved_path': [None],
-        # 'saved_path': [base_path + 'SUBACT_teacherPreActionAdvice_dense_threshS0.95_threshA0_lr0.0001_ent30_currfnone_hot_4/latest.pkl'],  # TODO: double check we can still save and load things
-        # base_path + 'THRESHOLD++_teacherPreActionAdvice_persistgoa_droptypestep_dropinc(0.8, 0.2)_dropgoal0_disc0.9_thresh0.95_ent0.001_lr0.01corr0_currfnsmooth_4/latest.pkl'],#base_path + 'JUSTSUPLEARNINGL13distillation_batches10_4/latest.pkl'],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
 
@@ -334,7 +333,7 @@ if __name__ == '__main__':
         'algo': ['rl2'],
         'seed': [4],
         'baseline': [LinearFeatureBaseline],
-        'meta_batch_size': [100],
+        'meta_batch_size': [20],
         'backprop_steps': [20],  # In the babyai paper, they use 20 for the small model, 80 for the big model
         "parallel": [True],
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)

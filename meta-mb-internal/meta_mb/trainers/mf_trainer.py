@@ -231,12 +231,12 @@ class Trainer(object):
                         advance_curriculum_sup = True
                     # Original Policy
                     time_run_policy_start = time.time()
-                    self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
+                    # self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running model with teacher")
-                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
+                    # advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
-                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
+                    # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
                     print("ADvancing curriculum???", advance_curriculum)
 
                     logger.logkv('Itr', itr)
@@ -276,6 +276,15 @@ class Trainer(object):
             else:
                 rollout_time = 0
 
+            params = self.get_itr_snapshot(itr)
+            step = self.curriculum_step
+
+            if self.log_and_save:
+                if (itr % self.save_every == 0) or (itr == self.n_itr - 1) or advance_curriculum:
+                    logger.log("Saving snapshot...")
+                    logger.save_itr_params(itr, step, params)
+                    logger.log("Saved")
+
             if advance_curriculum and self.advance_levels:
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
@@ -295,15 +304,6 @@ class Trainer(object):
             logger.logkv('Memory MiB', memory_use)
 
             logger.log(self.exp_name)
-
-            params = self.get_itr_snapshot(itr)
-            step = self.curriculum_step
-
-            if self.log_and_save:
-                if (itr % self.save_every == 0) or (itr == self.n_itr - 1):
-                    logger.log("Saving snapshot...")
-                    logger.save_itr_params(itr, step, params)
-                    logger.log("Saved")
 
             logger.logkv('Time/Sampling', time_env_sampling)
             logger.logkv('Time/Training', time_training)

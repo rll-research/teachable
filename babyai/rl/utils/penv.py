@@ -14,6 +14,9 @@ def worker(conn, env):
             env.set_task(None)
             obs = env.reset()
             conn.send(obs)
+        elif cmd == 'advance_curriculum':
+            result = env.advance_curriculum()
+            conn.send(result)
         elif cmd == "set_task":
             obs = env.set_task(None)
             conn.send(obs)
@@ -54,6 +57,12 @@ class ParallelEnv(gym.Env):
             local.send(("reset", None))
         self.envs[0].set_task(None)
         results = [self.envs[0].reset()] + [local.recv() for local in self.locals]
+        return results
+
+    def advance_curriculum(self):
+        for local in self.locals:
+            local.send(("advance_curriculum", None))
+        results = [self.envs[0].advance_curriculum()] + [local.recv() for local in self.locals]
         return results
 
     def step(self, actions):

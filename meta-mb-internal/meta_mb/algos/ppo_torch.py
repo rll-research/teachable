@@ -278,5 +278,4 @@ class PPOAlgo(BaseAlgo):
         return batches_starting_indexes
 
     def advance_curriculum(self):
-        for env in self.env.envs:
-            env.advance_curriculum()
+        self.env.advance_curriculum()
