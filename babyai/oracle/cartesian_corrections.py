@@ -3,7 +3,7 @@ from babyai.oracle.teacher import Teacher
 
 class CartesianCorrections(Teacher):
     def __init__(self, *args, **kwargs):
-        super(CartesianCorrections, self).__init__(feedback_frequency=5, *args, **kwargs)
+        super(CartesianCorrections, self).__init__(*args, **kwargs)
 
     def empty_feedback(self):
         """

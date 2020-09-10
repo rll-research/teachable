@@ -3,7 +3,7 @@ from babyai.oracle.teacher import Teacher
 
 class SubgoalCorrections(Teacher):
     def __init__(self, *args, **kwargs):
-        super(SubgoalCorrections, self).__init__(feedback_frequency=20, *args, **kwargs)
+        super(SubgoalCorrections, self).__init__(*args, **kwargs)
 
     def empty_feedback(self):
         """
