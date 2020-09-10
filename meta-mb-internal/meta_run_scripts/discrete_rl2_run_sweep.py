@@ -80,6 +80,7 @@ def run_experiment(**config):
         "persist_agent": config['persist_agent'],
         "feedback_type": config["feedback_type"],
         "feedback_always": config["feedback_always"],
+        "feedback_freq": config["feedback_freq"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
         "intermediate_reward": config["intermediate_reward"]
     }
@@ -179,6 +180,7 @@ def run_experiment(**config):
     args.model = 'default_il'
     args.lr = config['learning_rate']
     args.recurrence = config['backprop_steps']
+    args.clip_eps = config['clip_eps']
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
     else:
@@ -228,8 +230,8 @@ def run_experiment(**config):
             ]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
-                   args.entropy_coef, .5, .1, args.recurrence,
-                   args.optim_eps, .2, 4, config['meta_batch_size'])
+                   args.entropy_coef, .5, config['grad_clip_threshold'], args.recurrence,
+                   args.optim_eps, args.clip_eps, 4, config['meta_batch_size'])
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -307,13 +309,15 @@ if __name__ == '__main__':
         "feedback_type": ["PreActionAdvice"],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
+        'feedback_freq': [1],
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
         'entropy_bonus': [30],
-        'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
+        'clip_eps': [.2],
+        'grad_clip_threshold': [.1],
         "learning_rate": [1e-4],  # TODO: 1e-3
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
