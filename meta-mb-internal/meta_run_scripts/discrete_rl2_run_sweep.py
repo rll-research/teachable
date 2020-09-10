@@ -241,7 +241,7 @@ def run_experiment(**config):
     if original_saved_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level',
+    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode=config['save_option'],
                      snapshot_gap=50, step=start_itr)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
@@ -298,6 +298,7 @@ if __name__ == '__main__':
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
+        'save_option': ['level'],  # options include 'all', 'level', 'latest', 'none', 'gap'
 
         # Meta
         'persist_goal': [True],
