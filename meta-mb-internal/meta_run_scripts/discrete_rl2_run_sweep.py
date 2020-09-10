@@ -315,7 +315,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [30],
+        'entropy_bonus': [3],
         'clip_eps': [.2],
         'grad_clip_threshold': [.1],
         "learning_rate": [1e-4],  # TODO: 1e-3
