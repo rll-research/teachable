@@ -21,17 +21,25 @@ from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
 
 import joblib
+import argparse
+import pathlib
 
 INSTANCE_TYPE = 'c4.xlarge'
-PREFIX = 'cartesian_newmodel_adaptive_intermediate'
-PREFIX = 'L19b'
-PREFIX = 'T00012j_RESCALEDAGAINL'
-# PREFIX = 'SUBACT2'
-# PREFIX = 'BADENVL1_again'
-# PREFIX = 'debug'
+
+def args_type(default):
+  if isinstance(default, bool):
+    return lambda x: bool(['False', 'True'].index(x))
+  if isinstance(default, int):
+    return lambda x: float(x) if ('e' in x or '.' in x) else int(x)
+  if isinstance(default, pathlib.Path):
+    return lambda x: pathlib.Path(x).expanduser()
+  if default is None:
+    return str
+  return type(default)
+
 
 def get_exp_name(config):
-    EXP_NAME = PREFIX
+    EXP_NAME = config['prefix']
     EXP_NAME += '_teacher' + str(config['feedback_type'])
     if config['distill_same_model']:
         EXP_NAME += '_SAME'
@@ -174,7 +182,7 @@ def run_experiment(**config):
         start_itr = 0
         curriculum_step = env.index
     parser = ArgumentParser()
-    args = parser.parse_args()
+    args = parser.parse_args([])
     args.entropy_coef = config['entropy_bonus']
     args.model = 'default_il'
     args.lr = config['learning_rate']
@@ -293,6 +301,7 @@ if __name__ == '__main__':
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
+        'prefix': ['T00012m_RESCALEDAGAINL'],
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
@@ -313,8 +322,8 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [.05],
-        'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
+        'entropy_bonus': [.005],
+        'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],  # TODO: 1e-3
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
@@ -342,6 +351,16 @@ if __name__ == '__main__':
         "normalize_adv": [True],
         "positive_adv": [False],
     }
+    DEFAULT = 'DEFAULT'
+    parser = argparse.ArgumentParser()
+    for key, value in sweep_params.items():
+        parser.add_argument(f'--{key}', default=DEFAULT)
+    args = parser.parse_args()
+    for k in vars(args):
+        v = getattr(args, k)
+        if not v == DEFAULT:
+            arg_type = args_type(sweep_params[k][0])
+            sweep_params[k] = [arg_type(v)]
 
     # DEBUG HPARAMS
     if DEBUG:
@@ -355,4 +374,4 @@ if __name__ == '__main__':
         sweep_params["memory_dim"] = [3]  # 2048
         sweep_params["instr_dim"] = [4]  # 256
 
-    run_sweep(run_experiment, sweep_params, PREFIX, INSTANCE_TYPE)
+    run_sweep(run_experiment, sweep_params, sweep_params['prefix'][0], parser, INSTANCE_TYPE)
