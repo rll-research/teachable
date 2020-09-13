@@ -25,7 +25,7 @@ import joblib
 INSTANCE_TYPE = 'c4.xlarge'
 PREFIX = 'cartesian_newmodel_adaptive_intermediate'
 PREFIX = 'L19b'
-PREFIX = 'TRAINONLY_GC.1'
+PREFIX = 'T00012j_RESCALEDAGAINL'
 # PREFIX = 'SUBACT2'
 # PREFIX = 'BADENVL1_again'
 # PREFIX = 'debug'
@@ -239,7 +239,7 @@ def run_experiment(**config):
     if original_saved_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode='level',
+    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode=config['save_option'],
                      snapshot_gap=50, step=start_itr)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
@@ -296,6 +296,7 @@ if __name__ == '__main__':
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
+        'save_option': ['none'], # options include 'level', 'last', 'gap', 'none'
 
         # Meta
         'persist_goal': [True],
@@ -312,9 +313,9 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [30],
+        'entropy_bonus': [.05],
         'grad_clip_threshold': [None],  # TODO: ask A about this:  grad goes from 10 to 60k.  Normal?  TODO: not being used any more
-        "learning_rate": [1e-4],  # TODO: 1e-3
+        "learning_rate": [1e-3],  # TODO: 1e-3
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
         "discount": [0.95],
@@ -322,16 +323,16 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.9],
+        'accuracy_threshold': [0],
         'ceil_reward': [False],  # TODO: is this still being used?
 
-        # Distillation
+        # Distillations
         'self_distill': [False],
         'distill_same_model': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
 
         # Arguments we basically never change
         'algo': ['rl2'],
-        'seed': [4],
+        'seed': [2],
         'baseline': [LinearFeatureBaseline],
         'meta_batch_size': [20],
         'backprop_steps': [20],  # In the babyai paper, they use 20 for the small model, 80 for the big model

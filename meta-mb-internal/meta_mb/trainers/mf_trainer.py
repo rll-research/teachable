@@ -252,25 +252,26 @@ class Trainer(object):
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
                     self.il_trainer.acmodel.reset(dones=[True])
-                    paths, accuracy = self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video',
-                                                       num_rollouts=5,
-                                                       use_teacher=self.distill_with_teacher,
-                                                       save_video=should_save_video)
-                    logger.logkv("DVidRollout/RolloutAcc", accuracy)
-                    logger.logkv("DVidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
-                    logger.logkv("DVidRollout/RolloutPathLength", np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
-                    logger.logkv("DVidRollout/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
+                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch',
+                                   num_rollouts=5,
+                                   use_teacher=self.distill_with_teacher,
+                                   save_video=should_save_video, log_prefix="DVidRollout/Stoch", stochastic=True)
+                    self.il_trainer.acmodel.reset(dones=[True])
+                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_det',
+                                     num_rollouts=5,
+                                     use_teacher=self.distill_with_teacher,
+                                     save_video=should_save_video, log_prefix="DVidRollout/Det", stochastic=False)
 
                 self.algo.acmodel.reset(dones=[True])
-                paths, accuracy = self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video',
-                                                   num_rollouts=5,
-                                                   use_teacher=self.train_with_teacher,
-                                                   save_video=should_save_video)
-                logger.logkv("VidRollout/RolloutAcc", accuracy)
-                logger.logkv("VidRollout/RolloutReward", np.mean([sum(path['rewards']) for path in paths]))
-                logger.logkv("VidRollout/RolloutPathLength",
-                             np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
-                logger.logkv("VidRollout/RolloutSuccess", np.mean([path['env_infos'][-1]['success'] for path in paths]))
+                self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_stoch',
+                               num_rollouts=5,
+                               use_teacher=self.train_with_teacher,
+                               save_video=should_save_video, log_prefix="VidRollout/Stoch", stochastic=True)
+                self.algo.acmodel.reset(dones=[True])
+                self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_det',
+                                 num_rollouts=5,
+                                 use_teacher=self.train_with_teacher,
+                                 save_video=should_save_video, log_prefix="VidRollout/Det", stochastic=False)
                 logger.logkv('Itr', itr)
                 rollout_time = time.time() - time_rollout_start
             else:
@@ -370,19 +371,20 @@ class Trainer(object):
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
         return advance_curriculum
 
-    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False):
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False,
+                    log_prefix=None, stochastic=True):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
-        temp = self.env._wrapped_env._wrapped_env._wrapped_env
-        print(temp.__class__.__name__)
-        print("SET LEVEL", self.curriculum_step)
-        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=True,
+        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=stochastic,
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
                                   video_filename=self.exp_name + '/' + save_name + str(self.curriculum_step) + '.mp4',
                                   num_rollouts=num_rollouts)
-        print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
-        print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
-        print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+        if log_prefix is not None:
+            logger.logkv(log_prefix + "Acc", accuracy)
+            logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))
+            logger.logkv(log_prefix + "PathLength",
+                         np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
+            logger.logkv(log_prefix + "Success", np.mean([path['env_infos'][-1]['success'] for path in paths]))
         return paths, accuracy
 
     def get_itr_snapshot(self, itr):
