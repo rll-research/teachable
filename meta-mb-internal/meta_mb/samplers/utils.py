@@ -68,6 +68,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if not stochastic:
                 a = np.array([np.argmax(agent_info[0][0]['probs'])])
             next_o, r, d, env_info = env.step(a)
+            success = env_info['success']
 
             teacher_actions.append(env_info['teacher_action'])
             if env_info['teacher_action'] == a:
@@ -128,7 +129,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
         if save_video and i < num_save:
             # Add a few blank frames at the end to indicate success (white) or failure (black)
             sample_img = np.zeros_like(curr_images[-1])
-            if (dense_rewards and r > 10) or (not dense_rewards and r > 0):
+            if success:
                 curr_images += [sample_img + 255] * 3
                 if success_writer is None:
                     success_writer = cv2.VideoWriter(video_filename[:-4] + "success" + video_filename[-4:], cv2.VideoWriter_fourcc(*'mp4v'), fps, size)

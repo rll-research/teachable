@@ -290,6 +290,7 @@ class Trainer(object):
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
+                # self.algo.set_optimizer()
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)

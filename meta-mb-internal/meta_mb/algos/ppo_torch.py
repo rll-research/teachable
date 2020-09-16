@@ -47,10 +47,18 @@ class PPOAlgo(BaseAlgo):
         self.epochs = epochs
         self.batch_size = batch_size
 
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.adam_eps = adam_eps
+
         assert self.batch_size % self.recurrence == 0
 
         self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (beta1, beta2), eps=adam_eps)
         self.batch_num = 0
+
+    def set_optimizer(self):
+        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
+                                          eps=self.adam_eps)
 
     def obss_preprocessor(self, obs, device=None):
         obs_arr = np.stack(obs, 0)
