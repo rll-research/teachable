@@ -82,12 +82,12 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--val-episodes", type=int, default=500,
                             help="number of episodes used to evaluate the agent, and to evaluate validation accuracy")
 
-    def parse_args(self):
+    def parse_args(self, arg=None):
         """
         Parse the arguments and perform some basic validation
         """
 
-        args = super().parse_args()
+        args = super().parse_args(arg)
 
         # Set seed for all randomness sources
         if args.seed == 0:

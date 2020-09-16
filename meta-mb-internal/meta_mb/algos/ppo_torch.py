@@ -120,6 +120,14 @@ class PPOAlgo(BaseAlgo):
             orig_actions = exps.action.detach().cpu().numpy()
 
             # Initialize log values
+            log_returnn = []
+            log_advantage = []
+            log_value_clip = []
+            log_policy_clip = []
+            log_ratio = []
+            log_log_prob = []
+            log_sb_value = []
+
             log_entropies = []
             log_values = []
             log_policy_losses = []
@@ -148,7 +156,7 @@ class PPOAlgo(BaseAlgo):
             # we could split this up.
             inds = numpy.arange(0, len(exps.action), self.recurrence)
             for inds in [inds[:-1]]:
-            # for inds in self._get_batches_starting_indexes():
+                # for inds in self._get_batches_starting_indexes():
                 # inds is a numpy array of indices that correspond to the beginning of a sub-batch
                 # there are as many inds as there are batches
                 # Initialize batch values
@@ -158,6 +166,14 @@ class PPOAlgo(BaseAlgo):
                 batch_policy_loss = 0
                 batch_value_loss = 0
                 batch_loss = 0
+
+                batch_returnn = 0
+                batch_advantage = 0
+                batch_value_clip = 0
+                batch_policy_clip = 0
+                batch_ratio = 0
+                batch_log_prob = 0
+                batch_sb_value = 0
 
                 # Initialize memory
 
@@ -197,6 +213,16 @@ class PPOAlgo(BaseAlgo):
                     batch_value_loss += value_loss.item() * self.value_loss_coef
                     batch_loss += loss
 
+                    batch_returnn += sb.returnn.mean().item()
+                    batch_advantage += sb.advantage.mean().item()
+                    batch_value_clip += (surr1 - surr2).mean().item()
+                    batch_policy_clip += (surrr1 - surrr2).mean().item()
+                    batch_ratio += ratio.mean().item()
+                    batch_log_prob += sb.log_prob.mean().item()
+                    batch_sb_value += sb.value.mean().item()
+
+
+
                     # Update memories for next epoch
                     if i < self.recurrence - 1:
                         exps.memory[inds + i + 1] = memory.detach()
@@ -208,6 +234,14 @@ class PPOAlgo(BaseAlgo):
                 batch_policy_loss /= self.recurrence
                 batch_value_loss /= self.recurrence
                 batch_loss /= self.recurrence
+
+                batch_returnn /= self.recurrence
+                batch_advantage /= self.recurrence
+                batch_value_clip /= self.recurrence
+                batch_policy_clip /= self.recurrence
+                batch_ratio /= self.recurrence
+                batch_log_prob /= self.recurrence
+                batch_sb_value /= self.recurrence
 
                 # Update actor-critic
 
@@ -230,6 +264,15 @@ class PPOAlgo(BaseAlgo):
                 log_policy_losses.append(batch_policy_loss)
                 log_value_losses.append(batch_value_loss)
                 log_grad_norms.append(grad_norm.item())
+
+                log_returnn.append(batch_returnn)
+                log_advantage.append(batch_advantage)
+                log_value_clip.append(batch_value_clip)
+                log_policy_clip.append(batch_policy_clip)
+                log_ratio.append(batch_ratio)
+                log_log_prob.append(batch_log_prob)
+                log_sb_value.append(batch_sb_value)
+
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
                 for i in range(num_actions):
@@ -242,6 +285,17 @@ class PPOAlgo(BaseAlgo):
 
             # Log some values
             logs = {}
+
+            # DEBUG LOGS
+            logs['Advantage'] = numpy.mean(log_advantage)
+            logs['Ratio'] = numpy.mean(log_ratio)
+            logs['PolicyClip'] = numpy.mean(log_policy_clip)
+
+            logs['ValueClip'] = numpy.mean(log_value_clip)
+            logs['Returnn'] = numpy.mean(log_returnn)
+
+            logs['LogProb'] = numpy.mean(log_log_prob)
+            logs['Returnn'] = numpy.mean(log_sb_value)
 
             logs['Accuracy'] = accuracy
             logs["Entropy_loss"] = numpy.mean(log_entropies)

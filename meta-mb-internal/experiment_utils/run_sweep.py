@@ -17,8 +17,7 @@ from doodad.easy_sweep.hyper_sweep import Sweeper
 import time
 
 
-def run_sweep(run_experiment, sweep_params, exp_name, instance_type='c4.xlarge'):
-    parser = argparse.ArgumentParser()
+def run_sweep(run_experiment, sweep_params, exp_name, parser, instance_type='c4.xlarge'):
     parser.add_argument('--mode', type=str, default='local',
                         help='Mode for running the experiments - local: runs on local machine, '
                              'ec2: runs on AWS ec2 cluster (requires a proper configuration file)')

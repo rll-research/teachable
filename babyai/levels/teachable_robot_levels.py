@@ -506,7 +506,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         reward_total = rew * 1000
         if self.intermediate_reward:
             reward_total += int(give_reward)
-        rew = reward_total
+        rew = reward_total / 1000  # TODO: consider removing
         return obs, rew, done, info
 
     def reset(self):
