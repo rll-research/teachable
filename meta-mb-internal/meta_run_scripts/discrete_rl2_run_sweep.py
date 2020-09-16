@@ -79,7 +79,6 @@ def run_experiment(**config):
         if 'config' in saved_model:
             if not config['override_old_config']:
                 config = saved_model['config']
-                config['distill_same_model'] = False  # TODO: remove!
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": False,
@@ -301,7 +300,7 @@ if __name__ == '__main__':
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
-        'prefix': ['T00012m_RESCALEDAGAINL'],
+        'prefix': ['DEFAULT'],
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
@@ -322,12 +321,12 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [.005],
+        'entropy_bonus': [.01],
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],  # TODO: 1e-3
         "memory_dim": [1024],  #1024, 2048
         "instr_dim": [128],  #128, 256
-        "discount": [0.95],
+        "discount": [0.98],
 
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
