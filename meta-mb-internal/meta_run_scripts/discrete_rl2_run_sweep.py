@@ -302,7 +302,7 @@ if __name__ == '__main__':
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
-        'prefix': ['DEFAULT'],
+        'prefix': ['OPTRESTART2'],
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
@@ -324,7 +324,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [.01],
+        'entropy_bonus': [.001],
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],
         "memory_dim": [1024],
@@ -352,6 +352,8 @@ if __name__ == '__main__':
         "gae_lambda": [1.0],
         "normalize_adv": [True],
         "positive_adv": [False],
+
+        "clip_eps": [.2],
     }
     DEFAULT = 'DEFAULT'
     parser = argparse.ArgumentParser()
