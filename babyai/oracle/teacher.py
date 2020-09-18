@@ -33,6 +33,7 @@ class Teacher:
         self.feedback_frequency = feedback_frequency
         self.last_feedback = None
         self.device = device
+        self.last_step_error = False
         if device is None:
             if torch.cuda.is_available():
                 self.device = 'cuda'
@@ -62,11 +63,13 @@ class Teacher:
         new_oracle.step = oracle.step
         oracle = new_oracle
         self.last_action = self.next_action
+        self.last_step_error = False
         try:
             self.next_action, self.next_subgoal = oracle.replan(-1)
         except:
             self.next_action = -1
             print("NOT UPDATING ACTION AND SUBGOAL")
+            self.last_step_error = True
         self.env_copy1 = pickle.loads(pickle.dumps(self.env))
         self.env_copy1.teacher = None
         # self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)  # TODO: uncomment

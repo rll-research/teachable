@@ -295,6 +295,7 @@ class PPOAlgo(BaseAlgo):
             logs = {}
 
             # DEBUG LOGS
+            logs['TeacherError'] = numpy.mean(exps.env_infos.teacher_error)
             logs['Advantage'] = numpy.mean(log_advantage)
             logs['Ratio'] = numpy.mean(log_ratio)
             logs['PolicyClip'] = numpy.mean(log_policy_clip)

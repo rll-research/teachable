@@ -489,6 +489,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
 
                 self.oracle = self.teacher.step([action], self.oracle)
+                info['teacher_error'] = float(self.teacher.last_step_error)
                 # Update the observation with the teacher's new feedback
                 obs = self.gen_obs()
 
