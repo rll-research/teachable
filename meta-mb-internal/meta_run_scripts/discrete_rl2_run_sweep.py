@@ -233,7 +233,7 @@ def run_experiment(**config):
             copy.deepcopy(env),
             copy.deepcopy(env),
             ]
-    algo = PPOAlgo(policy, envs, args.frames_per_proc, config['discount'], args.lr, args.beta1, args.beta2,
+    algo = PPOAlgo(policy, envs, config['frames_per_proc'], config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
                    args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'])
@@ -332,6 +332,7 @@ if __name__ == '__main__':
         "max_grad_norm": [.5],  # .5 is default
         "clip_eps": [.2],  # .2 is default
         "epochs": [4],  # 4 is default
+        "frames_per_proc": [200],
 
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
