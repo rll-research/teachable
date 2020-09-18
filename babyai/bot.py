@@ -733,6 +733,7 @@ class Bot:
                         try_with_blockers=True
                     )
                     if shortest_path_to_obj is None:
+                        print("=" * 100)
                         print("finding object", obj_desc)
                         print("position", obj_pos)
                         print("VisMask", self.vis_mask)
