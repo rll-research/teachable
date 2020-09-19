@@ -332,7 +332,7 @@ if __name__ == '__main__':
         "max_grad_norm": [.5],  # .5 is default
         "clip_eps": [.2],  # .2 is default
         "epochs": [4],  # 4 is default
-        "frames_per_proc": [200],
+        "frames_per_proc": [40],
 
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
