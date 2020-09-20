@@ -161,8 +161,8 @@ class Trainer(object):
                 algo.optimize_policy()
                 sampler.update_goals()
         """
-        advance_curriculum = False
         start_time = time.time()
+        rollout_time = 0
 
         for itr in range(self.start_itr, self.n_itr):
             itr_start_time = time.time()
@@ -179,7 +179,6 @@ class Trainer(object):
             summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
-            logger.logkv('Itr', itr)
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
@@ -208,7 +207,6 @@ class Trainer(object):
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
-                logger.logkv('Itr', itr)
                 advance_curriculum = distill_log['Accuracy'] >= self.accuracy_threshold
                 logger.logkv('Distill/AdvanceCurriculum', advance_curriculum)
             else:
@@ -239,11 +237,36 @@ class Trainer(object):
                     # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
                     print("ADvancing curriculum???", advance_curriculum)
 
-                    logger.logkv('Itr', itr)
                     logger.logkv('AdvanceCurriculum', advance_curriculum)
             else:
                 run_supervised_time = 0
                 advance_curriculum = False
+
+            """ ------------------- Logging Stuff --------------------------"""
+            logger.logkv('Itr', itr)
+            logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
+
+            logger.logkv('Time/Total', time.time() - start_time)
+            logger.logkv('Time/Itr', time.time() - itr_start_time)
+
+            logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
+
+            process = psutil.Process(os.getpid())
+            memory_use = process.memory_info().rss / float(2 ** 20)
+            logger.logkv('Memory MiB', memory_use)
+
+            logger.log(self.exp_name)
+
+            logger.logkv('Time/Sampling', time_env_sampling)
+            logger.logkv('Time/Training', time_training)
+            logger.logkv('Time/Collection', time_collection)
+            logger.logkv('Time/RPUse', rp_splice_time)
+            logger.logkv('Time/RPTrain', time_rp_train)
+            logger.logkv('Time/RunwTeacher', run_policy_time)
+            logger.logkv('Time/Distillation', distill_time)
+            logger.logkv('Time/RunDistilled', run_supervised_time)
+            logger.logkv('Time/VidRollout', rollout_time)
+            logger.dumpkvs()
 
             """ ------------------ Video Saving ---------------------"""
 
@@ -272,7 +295,6 @@ class Trainer(object):
                                  num_rollouts=5,
                                  use_teacher=self.train_with_teacher,
                                  save_video=should_save_video, log_prefix="VidRollout/Det", stochastic=False)
-                logger.logkv('Itr', itr)
                 rollout_time = time.time() - time_rollout_start
             else:
                 rollout_time = 0
@@ -292,31 +314,7 @@ class Trainer(object):
                 self.algo.advance_curriculum()
                 # self.algo.set_optimizer()
 
-            """ ------------------- Logging Stuff --------------------------"""
-            logger.logkv('Itr', itr)
-            logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
 
-            logger.logkv('Time/Total', time.time() - start_time)
-            logger.logkv('Time/Itr', time.time() - itr_start_time)
-
-            logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
-
-            process = psutil.Process(os.getpid())
-            memory_use = process.memory_info().rss / float(2 ** 20)
-            logger.logkv('Memory MiB', memory_use)
-
-            logger.log(self.exp_name)
-
-            logger.logkv('Time/Sampling', time_env_sampling)
-            logger.logkv('Time/Training', time_training)
-            logger.logkv('Time/Collection', time_collection)
-            logger.logkv('Time/RPUse', rp_splice_time)
-            logger.logkv('Time/RPTrain', time_rp_train)
-            logger.logkv('Time/RunwTeacher', run_policy_time)
-            logger.logkv('Time/Distillation', distill_time)
-            logger.logkv('Time/RunDistilled', run_supervised_time)
-            logger.logkv('Time/VidRollout', rollout_time)
-            logger.dumpkvs()
         logger.log("Training finished")
 
     def _log(self, episode_logs, summary_logs, tag=""):
@@ -377,9 +375,9 @@ class Trainer(object):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
         paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=stochastic,
-                                  batch_size=1, record_teacher=True, use_teacher=use_teacher, save_video=save_video,
-                                  video_filename=self.exp_name + '/' + save_name + str(self.curriculum_step) + '.mp4',
-                                  num_rollouts=num_rollouts)
+                                  batch_size=1, record_teacher=True, use_teacher=use_teacher,
+                                  video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
+                                  num_rollouts=num_rollouts, save_wandb=save_video, save_locally=False)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))

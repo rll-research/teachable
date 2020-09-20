@@ -112,7 +112,7 @@ def run_experiment(**config):
 
     else:
         optimizer = None
-        baseline = config['baseline']()
+        baseline = None
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
         obs_dim = env.reset().shape[0]
@@ -246,8 +246,9 @@ def run_experiment(**config):
     if original_saved_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard'], snapshot_mode=config['save_option'],
-                     snapshot_gap=50, step=start_itr)
+    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard', 'wandb'],
+                     snapshot_mode=config['save_option'],
+                     snapshot_gap=50, step=start_itr, name=config['prefix'], config=config)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
     advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
@@ -300,7 +301,7 @@ if __name__ == '__main__':
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
-        'prefix': ['HIGH_A'],
+        'prefix': ['TEMP'],
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
@@ -345,9 +346,8 @@ if __name__ == '__main__':
         'distill_same_model': [False],  # 'full_dropout',#'meta_rollout_dropout',#'no_dropout'
 
         # Arguments we basically never change
-        'algo': ['rl2'],
         'seed': [2],
-        'baseline': [LinearFeatureBaseline],
+        'baseline': [None],
         'meta_batch_size': [20],  # TODO: big is default
         'backprop_steps': [20],  # In the babyai paper, they use 20 for the small model, 80 for the big model
         "parallel": [True],

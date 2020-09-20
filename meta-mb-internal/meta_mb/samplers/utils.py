@@ -1,7 +1,8 @@
 import numpy as np
 import time
 import cv2
-
+import wandb
+import os
 
 def write_video(writer, frames, show_last=None):
     if show_last is not None:
@@ -9,9 +10,11 @@ def write_video(writer, frames, show_last=None):
     for frame in frames:
         writer.write(frame)
 
-def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_video=True, reset_every=1, batch_size=1,
-            video_filename='sim_out.mp4', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
-            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, dense_rewards=True):
+def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset_every=1, batch_size=1,
+            video_directory="", video_name='sim_out', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
+            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, save_locally=True,
+            save_wandb=False):
+    video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
     start = time.time()
@@ -30,16 +33,20 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
     height, width, channels = img.shape
     size = (width * 2, height * 2)
     fps = int(speedup / timestep)
-    if save_video:
+    if save_locally:
         all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
         success_writer = None
         failure_writer = None
+    if save_wandb:
+        all_videos = []
+        success_videos = []
+        failure_videos = []
 
     correct = 0
     count = 0
     agent_actions = []
     teacher_actions = []
-    render = animated or save_video
+    render = animated or save_locally or save_locally
     for i in range(num_rollouts):
         # print("Rollout", i)
         observations = []
@@ -92,7 +99,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 env.render(mode)
                 time.sleep(timestep/speedup)
 
-            if save_video and i < num_save:
+            if (save_locally or save_wandb) and i < num_save:
                 image = env.render(mode='rgb_array')[:, :, ::-1] # RGB --> BGR
                 h, w, c = image.shape
                 background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
@@ -126,7 +133,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             if d and not ignore_done:
                 break
 
-        if save_video and i < num_save:
+        if save_locally and i < num_save:
             # Add a few blank frames at the end to indicate success (white) or failure (black)
             sample_img = np.zeros_like(curr_images[-1])
             if success:
@@ -140,6 +147,13 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                     failure_writer = cv2.VideoWriter(video_filename[:-4] + "failures" + video_filename[-4:], cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
                 write_video(failure_writer, curr_images)
             write_video(all_writer, curr_images, show_last)
+        if save_wandb and i < num_save:
+            sample_img = np.zeros_like(curr_images[-1])
+            all_videos += curr_images
+            if success:
+                success_videos += curr_images + [sample_img + 255] * 3
+            else:
+                failure_videos += curr_images + [sample_img + 255] * 3
 
         paths.append(dict(
                 observations=observations,
@@ -148,14 +162,22 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
                 agent_infos=agent_infos,
                 env_infos=env_infos
             ))
-    if save_video:
+    if save_locally:
         all_writer.release()
         if success_writer is not None:
             success_writer.release()
         if failure_writer is not None:
             failure_writer.release()
         print("Video saved at %s" % video_filename)
-
+    if save_wandb:
+        video = np.transpose(np.stack(all_videos), (0, 3, 1, 2))[:, ::-1]
+        wandb.log({video_name + '_all': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        if len(success_videos) > 0:
+            video = np.transpose(np.stack(success_videos), (0, 3, 1, 2))[:, ::-1]
+            wandb.log({video_name + '_success': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        if len(failure_videos) > 0:
+            video = np.transpose(np.stack(failure_videos), (0, 3, 1, 2))[:, ::-1]
+            wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
 
     end = time.time()
     print("total time spent on rollouts", end - start)
