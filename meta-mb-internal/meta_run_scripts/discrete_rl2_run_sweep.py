@@ -322,7 +322,7 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [.005],  # TODO: .01 default
+        'entropy_bonus': [.0005],  # TODO: .01 default
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],  # TODO: 1e-4 default
         "memory_dim": [1024],  #1024, 2048
@@ -338,7 +338,7 @@ if __name__ == '__main__':
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off
         'success_threshold': [.95],
-        'accuracy_threshold': [.8],
+        'accuracy_threshold': [.9],
         'ceil_reward': [False],  # TODO: is this still being used?
 
         # Distillations
