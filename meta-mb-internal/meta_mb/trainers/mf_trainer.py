@@ -63,6 +63,7 @@ class Trainer(object):
         reward_predictor=None,
         rp_trainer=None,
         advance_levels=True,
+        is_debug=False
     ):
         self.algo = algo
         self.env = copy.deepcopy(env)
@@ -102,6 +103,7 @@ class Trainer(object):
         self.reward_predictor = reward_predictor
         self.rp_trainer = rp_trainer
         self.advance_levels = advance_levels
+        self.is_debug = is_debug
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -163,8 +165,25 @@ class Trainer(object):
         """
         start_time = time.time()
         rollout_time = 0
+        success_rate = 0
+        itrs_on_level = 0
 
         for itr in range(self.start_itr, self.n_itr):
+
+            high_entropy = False
+            # At the very beginning of a new level, have high entropy
+            if itrs_on_level < 3:
+                high_entropy = True
+            # At the very beginning, have high entropy
+            if self.curriculum_step == 0 and itrs_on_level < 20:
+                high_entropy = True
+            # If the model never succeeds
+            if itrs_on_level > 20 and success_rate < .2:
+                high_entropy = True
+            logger.logkv("HighE", high_entropy)
+            logger.logkv("ItrsOnLEvel", itrs_on_level)
+            itrs_on_level += 1
+
             itr_start_time = time.time()
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
             logger.log("Sampling set of tasks/goals for this meta-batch...")
@@ -176,13 +195,18 @@ class Trainer(object):
             samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
+            if high_entropy:
+                entropy = self.algo.entropy_coef * 10
+            else:
+                entropy = self.algo.entropy_coef
+            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher, entropy_coef=entropy)
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
             time_env_sampling = time.time() - time_env_sampling_start
+            success_rate = np.mean(episode_logs['success_per_episode'])
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
             rp_start_time = time.time()
@@ -313,6 +337,7 @@ class Trainer(object):
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
                 # self.algo.set_optimizer()
+                itrs_on_level = 0
 
 
         logger.log("Training finished")
@@ -374,10 +399,11 @@ class Trainer(object):
                     log_prefix=None, stochastic=True):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
+        save_wandb = (save_video and not self.is_debug)
         paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=stochastic,
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
-                                  num_rollouts=num_rollouts, save_wandb=save_video, save_locally=False)
+                                  num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))

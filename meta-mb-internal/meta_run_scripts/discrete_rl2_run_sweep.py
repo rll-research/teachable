@@ -246,9 +246,15 @@ def run_experiment(**config):
     if original_saved_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
-    logger.configure(dir=exp_dir, format_strs=['stdout', 'log', 'csv', 'tensorboard', 'wandb'],
+    log_formats = ['stdout', 'log', 'csv']
+    is_debug = config['prefix'] == 'DEBUG'
+
+    if not is_debug:
+        log_formats.append('tensorboard')
+        log_formats.append('wandb')
+    logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=config['save_option'],
-                     snapshot_gap=50, step=start_itr, name=config['prefix'], config=config)
+                     snapshot_gap=50, step=start_itr, name=config['prefix'], config=config, description=config['description'])
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
     advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
@@ -286,6 +292,7 @@ def run_experiment(**config):
         reward_predictor=reward_predictor,
         rp_trainer=rp_trainer,
         advance_levels=config['advance_levels'],
+        is_debug=is_debug,
     )
     trainer.train()
 
@@ -301,7 +308,8 @@ if __name__ == '__main__':
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
-        'prefix': ['TEMP'],
+        'prefix': ['DEBUG'],
+        'description': ['yolo'],
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],

@@ -186,24 +186,23 @@ class WandBOutputFormat(KVWriter):
     """
     Dumps key/value pairs into TensorBoard's numeric format.
     """
-    def __init__(self, name, config):
+    def __init__(self, name, config, description=""):
         self.name = name
         self.config = config
         self.initialized = False
+        self.description = description
 
     def writekvs(self, kvs):
         if not self.initialized:
             self.initialized = True
             wandb.init(project="teachablerobot", config=self.config, name=self.name)
-            wandb.init()
-            wandb.run.name = self.name
-            wandb.run.save()
+            wandb.log({"description": self.description}, commit=False)
         wandb.log(kvs)
 
     def close(self):
         pass
 
-def make_output_format(format, ev_dir, log_suffix='', step=0, name="", config={}):
+def make_output_format(format, ev_dir, log_suffix='', step=0, name="", config={}, description=""):
     os.makedirs(ev_dir, exist_ok=True)
     if format == 'stdout':
         return HumanOutputFormat(sys.stdout)
@@ -216,7 +215,7 @@ def make_output_format(format, ev_dir, log_suffix='', step=0, name="", config={}
     elif format == 'tensorboard':
         return TensorBoardOutputFormat(osp.join(ev_dir, 'tb%s' % log_suffix), step)
     elif format == 'wandb':
-        return WandBOutputFormat(name, config)
+        return WandBOutputFormat(name, config, description)
     else:
         raise ValueError('Unknown format specified: %s' % (format,))
 
@@ -427,7 +426,7 @@ class Logger(object):
 Logger.DEFAULT = Logger.CURRENT = Logger(dir=None, output_formats=[HumanOutputFormat(sys.stdout)])
 
 
-def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1, step=0, name="", config={}):
+def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1, step=0, name="", config={}, description=""):
     if dir is None:
         dir = os.getenv('OPENAI_LOGDIR')
     if dir is None:
@@ -451,7 +450,7 @@ def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1, 
         else:
             format_strs = LOG_OUTPUT_FORMATS_MPI if rank>0 else LOG_OUTPUT_FORMATS
 
-    output_formats = [make_output_format(f, dir, log_suffix, step, config=config, name=name) for f in format_strs]
+    output_formats = [make_output_format(f, dir, log_suffix, step, config=config, name=name, description=description) for f in format_strs]
 
     Logger.CURRENT = Logger(dir=dir, output_formats=output_formats, snapshot_mode=snapshot_mode, snapshot_gap=snapshot_gap)
     log('Logging to %s' % dir)

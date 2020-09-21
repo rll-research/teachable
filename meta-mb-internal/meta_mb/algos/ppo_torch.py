@@ -105,7 +105,7 @@ class PPOAlgo(BaseAlgo):
         return samples_data
 
 
-    def optimize_policy(self, exps, use_teacher=False):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
+    def optimize_policy(self, exps, use_teacher=False, entropy_coef=None):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -119,6 +119,8 @@ class PPOAlgo(BaseAlgo):
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
         self.acmodel.train()
+        if entropy_coef is None:
+            entropy_coef = self.entropy_coef
 
         model_running_time = 0
         backward_time = 0
@@ -213,7 +215,7 @@ class PPOAlgo(BaseAlgo):
                     surr1 = (value - sb.returnn).pow(2)
                     surr2 = (value_clipped - sb.returnn).pow(2)
                     value_loss = torch.max(surr1, surr2).mean()
-                    loss = policy_loss - self.entropy_coef * entropy + self.value_loss_coef * value_loss
+                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss
 
                     batch_entropy -= entropy.item() * self.entropy_coef
                     batch_value += value.mean().item()
