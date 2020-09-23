@@ -5,7 +5,7 @@ from babyai.oracle.teacher import Teacher
 
 class PreActionAdvice(Teacher):
     def __init__(self, *args, **kwargs):
-        super(PreActionAdvice, self).__init__(feedback_frequency=1, *args, **kwargs)
+        super(PreActionAdvice, self).__init__(*args, **kwargs)
                         
     def empty_feedback(self):
         """

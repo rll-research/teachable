@@ -139,7 +139,12 @@ class ImitationLearning(object):
         num_frames = len(obss)
 
         mask = np.ones([len(obss)], dtype=np.float64)
-        mask[inds] = 0
+        try:
+            mask[inds] = 0
+        except:
+            print("???")
+            import IPython
+            IPython.embed()
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
 
         # Observations, true action, values and done for each of the stored demostration

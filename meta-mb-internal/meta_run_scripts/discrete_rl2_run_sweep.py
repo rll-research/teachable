@@ -87,6 +87,7 @@ def run_experiment(**config):
         "persist_agent": config['persist_agent'],
         "feedback_type": config["feedback_type"],
         "feedback_always": config["feedback_always"],
+        "feedback_freq": config["feedback_freq"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
         "intermediate_reward": config["intermediate_reward"]
     }
@@ -186,6 +187,7 @@ def run_experiment(**config):
     args.model = 'default_il'
     args.lr = config['learning_rate']
     args.recurrence = config['backprop_steps']
+    args.clip_eps = config['clip_eps']
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
     else:
@@ -313,7 +315,7 @@ if __name__ == '__main__':
         'saved_path': [None],
         'override_old_config': [False],  # only relevant when restarting a run; do we use the old config or the new?
         'distill_only': [False],
-        'save_option': ['none'], # options include 'level', 'last', 'gap', 'none'
+        'save_option': ['level'],  # options include 'all', 'level', 'latest', 'none', 'gap'
 
         # Meta
         'persist_goal': [True],
@@ -325,6 +327,7 @@ if __name__ == '__main__':
         "feedback_type": ["PreActionAdvice"],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
+        'feedback_freq': [1],
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
@@ -333,11 +336,11 @@ if __name__ == '__main__':
         'entropy_bonus': [.0005],  # TODO: .01 default
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],  # TODO: 1e-4 default
-        "memory_dim": [1024],  #1024, 2048
-        "instr_dim": [128],  #128, 256
-        "discount": [0.99],
+        "memory_dim": [512],  #1024, 2048
+        "instr_dim": [64],  #128, 256
+        "discount": [0.9],
 
-        "value_loss_coef": [.2],  # .5 is default
+        "value_loss_coef": [.05],  # .5 is default
         "max_grad_norm": [.5],  # .5 is default
         "clip_eps": [.2],  # .2 is default
         "epochs": [4],  # 4 is default
@@ -363,6 +366,7 @@ if __name__ == '__main__':
         "gae_lambda": [.99],
         "normalize_adv": [True],
         "positive_adv": [False],
+
     }
     DEFAULT = 'DEFAULT'
     parser = argparse.ArgumentParser()

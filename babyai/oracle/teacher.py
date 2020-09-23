@@ -72,17 +72,18 @@ class Teacher:
             self.last_step_error = True
         self.env_copy1 = pickle.loads(pickle.dumps(self.env))
         self.env_copy1.teacher = None
-        # self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)  # TODO: uncomment
+        self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
         self.steps_since_lastfeedback += 1
         return oracle
 
     def step_away_state(self, env_copy, oracle, steps):
+
         for _ in range(steps):
             new_oracle = self.botclass(env_copy)
-            new_oracle.vis_mask = oracle.vis_mask
+            new_oracle.vis_mask = oracle.vis_mask.copy()
             new_oracle.step = oracle.step
-            oracle = new_oracle
-            next_action, _ = oracle.replan(-1)
+            new_oracle._process_obs()
+            next_action, _ = new_oracle.replan(-1)
             env_copy.teacher = None
             if next_action == -1:
                 next_state = env_copy.gen_obs()
@@ -98,13 +99,14 @@ class Teacher:
         """
         if self.feedback_always:
             feedback = self.compute_feedback()
+            self.last_feedback = feedback
         elif self.feedback_type == 'none' or not self.feedback_condition():
             feedback = self.empty_feedback()
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()
         elif self.feedback_type == 'oracle':
-
             feedback = self.compute_feedback()
+            self.last_feedback = feedback
         else:
             raise ValueError("Unsupported feedback type")
         return feedback
