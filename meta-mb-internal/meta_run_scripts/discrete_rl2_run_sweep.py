@@ -324,7 +324,7 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": ["PreActionAdvice"],
+        "feedback_type": [None],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
         'feedback_freq': [1],
