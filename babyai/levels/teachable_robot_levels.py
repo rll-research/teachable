@@ -23,7 +23,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def __init__(self, start_loc='all',
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 feedback_type=None, feedback_always=False, intermediate_reward=False, **kwargs):
+                 feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -47,24 +47,24 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
-            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always)
+            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
         elif feedback_type == 'PreActionAdvice':
-            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always)
+            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
         elif feedback_type == 'CartesianCorrections':
-            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always)
+            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
         elif feedback_type == 'SubgoalCorrections':
-            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
+            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
         elif isinstance(feedback_type, list):
             teachers = []
             for ft in feedback_type:
                 if ft == 'PostActionAdvice':
-                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always)
+                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
                 elif ft == 'PreActionAdvice':
-                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always)
+                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
                 elif ft == 'CartesianCorrections':
-                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always)
+                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
                 elif ft == 'SubgoalCorrections':
-                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always)
+                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
                 teachers.append(t)
             teacher = BatchTeacher(teachers)
         else:
@@ -424,6 +424,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         except:
             action = action  # TODO: sketchy
 
+        # Off by one error potentially. 
         if hasattr(self, 'teacher') and self.teacher is not None:
             if isinstance(self.teacher, BatchTeacher):
                 give_reward = False
@@ -438,6 +439,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     elif isinstance(teacher, PreActionAdvice):
                         followed_opt_action = teacher.success_check(action)  
                     elif isinstance(teacher, SubgoalCorrections):
+                        # Not actually checking for subgoal
                         opt_action = int(teacher.next_action)
                         followed_opt_action = (opt_action == action)
                     give_reward = give_reward or followed_opt_action           
@@ -453,7 +455,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif isinstance(self.teacher, PreActionAdvice):
                     followed_opt_action = self.teacher.success_check(action)  
                 elif isinstance(self.teacher, SubgoalCorrections):
-                    # Hardcoded for subgoal corrections for now
+                    # Not actually checking for subgoal
                     opt_action = int(self.teacher.next_action)
                     followed_opt_action = (opt_action == action)
                 give_reward = followed_opt_action     
