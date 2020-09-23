@@ -333,11 +333,11 @@ if __name__ == '__main__':
         'entropy_bonus': [.0005],  # TODO: .01 default
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-3],  # TODO: 1e-4 default
-        "memory_dim": [1024],  #1024, 2048
-        "instr_dim": [128],  #128, 256
-        "discount": [0.99],
+        "memory_dim": [512],  #1024, 2048
+        "instr_dim": [64],  #128, 256
+        "discount": [0.9],
 
-        "value_loss_coef": [.2],  # .5 is default
+        "value_loss_coef": [.05],  # .5 is default
         "max_grad_norm": [.5],  # .5 is default
         "clip_eps": [.2],  # .2 is default
         "epochs": [4],  # 4 is default
