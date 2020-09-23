@@ -196,7 +196,7 @@ class Trainer(object):
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if high_entropy:
-                entropy = self.algo.entropy_coef * 10
+                entropy = self.algo.entropy_coef# * 10
             else:
                 entropy = self.algo.entropy_coef
             summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher, entropy_coef=entropy)

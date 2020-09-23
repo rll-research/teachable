@@ -254,7 +254,7 @@ def run_experiment(**config):
         log_formats.append('wandb')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=config['save_option'],
-                     snapshot_gap=50, step=start_itr, name=config['prefix'], config=config, description=config['description'])
+                     snapshot_gap=50, step=start_itr, name=config['prefix'] + str(config['seed']), config=config, description=config['description'])
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
     advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
