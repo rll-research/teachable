@@ -72,7 +72,11 @@ class Teacher:
             self.last_step_error = True
         self.env_copy1 = pickle.loads(pickle.dumps(self.env))
         self.env_copy1.teacher = None
-        self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
+        try:
+            self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
+        except:
+            self.next_state = self.next_state * 0
+            self.last_step_error = True
         self.steps_since_lastfeedback += 1
         return oracle
 
