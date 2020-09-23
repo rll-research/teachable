@@ -22,7 +22,7 @@ class RL2SampleProcessor(SampleProcessor):
             (list of dicts) : Processed sample data among the meta-batch; size: [meta_batch_size] x [7] x (batch_size x max_path_length)
         """
         assert isinstance(paths_meta_batch, dict), 'paths must be a dict'
-        assert self.baseline, 'baseline must be specified'
+        # assert self.baseline, 'baseline must be specified'
 
         samples_data_meta_batch = []
         all_paths = []
