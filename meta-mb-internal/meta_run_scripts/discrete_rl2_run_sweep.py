@@ -367,7 +367,6 @@ if __name__ == '__main__':
         "normalize_adv": [True],
         "positive_adv": [False],
 
-        "clip_eps": [.2],
     }
     DEFAULT = 'DEFAULT'
     parser = argparse.ArgumentParser()
