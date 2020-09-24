@@ -124,7 +124,7 @@ class Trainer(object):
         correct_actions = (data['actions'] == data['env_infos']['teacher_action']).sum() - pad_steps
         avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         # We take the max since runs which end early will be 0-padded
-        should_advance_curriculum = (avg_success >= self.success_threshold) and (avg_accuracy >= self.accuracy_threshold)
+        should_advance_curriculum = avg_success >= self.success_threshold
         return should_advance_curriculum, avg_success, avg_accuracy
 
     def load_data(self, start_index, end_index):
@@ -170,17 +170,17 @@ class Trainer(object):
 
         for itr in range(self.start_itr, self.n_itr):
 
-            high_entropy = False
-            # At the very beginning of a new level, have high entropy
-            if itrs_on_level < 3:
-                high_entropy = True
-            # At the very beginning, have high entropy
-            if self.curriculum_step == 0 and itrs_on_level < 20:
-                high_entropy = True
-            # If the model never succeeds
-            if itrs_on_level > 20 and success_rate < .2:
-                high_entropy = True
-            logger.logkv("HighE", high_entropy)
+            # high_entropy = False
+            # # At the very beginning of a new level, have high entropy
+            # if itrs_on_level < 3:
+            #     high_entropy = True
+            # # At the very beginning, have high entropy
+            # if self.curriculum_step == 0 and itrs_on_level < 20:
+            #     high_entropy = True
+            # # If the model never succeeds
+            # if itrs_on_level > 20 and success_rate < .2:
+            #     high_entropy = True
+            # logger.logkv("HighE", high_entropy)
             logger.logkv("ItrsOnLEvel", itrs_on_level)
             itrs_on_level += 1
 
@@ -195,11 +195,11 @@ class Trainer(object):
             samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if high_entropy:
-                entropy = self.algo.entropy_coef# * 10
-            else:
-                entropy = self.algo.entropy_coef
-            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher, entropy_coef=entropy)
+            # if high_entropy:
+            #     entropy = self.algo.entropy_coef# * 10
+            # else:
+            #     entropy = self.algo.entropy_coef
+            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
