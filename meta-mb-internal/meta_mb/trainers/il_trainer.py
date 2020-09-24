@@ -128,7 +128,7 @@ class ImitationLearning(object):
             action_true.append(demo[1])
             done.append(demo[2])
             action_teacher.append(demo[3])
-            inds.append(inds[-1] + len(demo))
+            inds.append(inds[-1] + len(demo[0]))
 
         # (batch size * avg demo length , 3), where 3 is for (state, action, done)
         obss = np.concatenate(obss)
@@ -143,6 +143,12 @@ class ImitationLearning(object):
             mask[inds] = 0
         except:
             print("???")
+            print("BATCH LENGTH", len(batch))
+            for demo in batch:
+                print("Obs", demo[0]. shape)
+                print("LEN", len(demo))
+            print("INDS", inds, inds.shape)
+            print("MASK", mask.shape)
             import IPython
             IPython.embed()
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
