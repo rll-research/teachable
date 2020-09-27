@@ -5,7 +5,7 @@ from meta_mb.logger import logger
 import time
 
 from babyai.rl.format import default_preprocess_obss
-from babyai.rl.utils import DictList, ParallelEnv
+from babyai.rl.utils import DictList, ParallelEnv, SequentialEnv
 from babyai.rl.utils.supervised_losses import ExtraInfoCollector
 
 
@@ -13,7 +13,7 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info):
+                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -53,7 +53,10 @@ class BaseAlgo(ABC):
         """
         # Store parameters
 
-        self.env = ParallelEnv(envs)
+        if parallel:
+            self.env = ParallelEnv(envs)
+        else:
+            self.env = SequentialEnv(envs)
         self.acmodel = acmodel
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc

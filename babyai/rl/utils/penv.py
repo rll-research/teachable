@@ -92,3 +92,47 @@ class ParallelEnv(gym.Env):
     def end_processes(self):
         for p in self.processes:
             p.terminate()
+
+
+class SequentialEnv(gym.Env):
+    """A concurrent execution of environments in multiple processes."""
+
+    def __init__(self, envs):
+        assert len(envs) >= 1, "No environment given."
+
+        self.envs = envs
+        self.observation_space = self.envs[0].observation_space
+        self.action_space = self.envs[0].action_space
+        self.locals = []
+
+    def reset(self):
+        results = []
+        for env in self.envs:
+            env.set_task(None)
+            results.append(env.reset())
+        return results
+
+    def advance_curriculum(self):
+        results = []
+        for env in self.envs:
+            results.append(env.advance_curriculum())
+        return results
+
+    def step(self, actions):
+        results = []
+        for env, action in zip(self.envs, actions):
+            obs, reward, done, info = env.step(action)
+            if done:
+                env.set_task(None)
+                obs = env.reset()
+            results.append((obs, reward, done, info))
+        results = zip(*results)
+        return results
+
+    def update_tasks(self):
+        for env in self.envs:
+            env.set_task(None)
+
+    def render(self):
+        results = [env.render(mode='rgb_array') for env in self.envs]
+        return results

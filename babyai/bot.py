@@ -737,7 +737,11 @@ class Bot:
                         print("finding object", obj_desc)
                         print("position", obj_pos)
                         print("VisMask", self.vis_mask)
-                        self.mission.render('human')
+                        import matplotlib.pyplot as plt
+                        plt.title("Inside VisMask")
+                        plt.imshow(self.mission.render('rgb_array'))
+                        plt.show()
+                        # self.mission.render('human')
                         print("???")
                         shortest_path_to_obj, _, with_blockers = self._shortest_path(
                             lambda pos, cell: pos == obj_pos,

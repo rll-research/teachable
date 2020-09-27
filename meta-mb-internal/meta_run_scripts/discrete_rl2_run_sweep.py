@@ -89,7 +89,7 @@ def run_experiment(**config):
         "feedback_always": config["feedback_always"],
         "feedback_freq": config["feedback_freq"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
-        "intermediate_reward": config["intermediate_reward"]
+        "intermediate_reward": config["intermediate_reward"],
     }
     advice_start_index = 160
     if original_saved_path is not None:
@@ -238,7 +238,8 @@ def run_experiment(**config):
     algo = PPOAlgo(policy, envs, config['frames_per_proc'], config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
-                   args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'])
+                   args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'],
+                   parallel=config['parallel'])
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)

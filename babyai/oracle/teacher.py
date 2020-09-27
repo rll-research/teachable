@@ -17,16 +17,14 @@ class Teacher:
         # TODO: this is pretty sketchy.  To stop the bot from failing, we
         #  reinitialize the oracle every timestep  Later it would be better to fix the bot, or at least
         #  figure out what situations it fails and not generate those.
+
         self.cartesian_steps = cartesian_steps
         oracle = botclass(env)
-        self.env = env
         self.botclass = botclass
         self.last_action = -1
         self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
         self.next_state = env.gen_obs()
-        self.agent_actions = []
-        self.oracle_actions = []
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
         self.steps_since_lastfeedback = 0
@@ -56,8 +54,6 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        self.agent_actions.append(agent_action)
-        self.oracle_actions.append(self.last_action)
         new_oracle = self.botclass(oracle.mission)
         new_oracle.vis_mask = oracle.vis_mask
         new_oracle.step = oracle.step
@@ -66,33 +62,41 @@ class Teacher:
         self.last_step_error = False
         try:
             self.next_action, self.next_subgoal = oracle.replan(-1)
-        except:
+        except Exception as e:
             self.next_action = -1
             print("NOT UPDATING ACTION AND SUBGOAL")
+            print(e)
+            print("CURRENT VISMASK", oracle.vis_mask)
             self.last_step_error = True
-        self.env_copy1 = pickle.loads(pickle.dumps(self.env))
-        self.env_copy1.teacher = None
+        original_vismask = oracle.vis_mask.copy()
+        oracle.mission.teacher = None
+        env_copy1 = pickle.loads(pickle.dumps(oracle.mission))
+        env_copy1.teacher = None
         try:
-            self.next_state = self.step_away_state(self.env_copy1, oracle, self.cartesian_steps)
-        except:
+            self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
+        except Exception as e:
+            print("STEP AWAY FAILED!")
+            print(e)
+            print("CURRENT VISMASK", oracle.vis_mask)
             self.next_state = self.next_state * 0
             self.last_step_error = True
         self.steps_since_lastfeedback += 1
+        oracle.mission.teacher = self
         return oracle
 
     def step_away_state(self, env_copy, oracle, steps):
-
-        for _ in range(steps):
+        for step in range(steps):
             new_oracle = self.botclass(env_copy)
             new_oracle.vis_mask = oracle.vis_mask.copy()
             new_oracle.step = oracle.step
             new_oracle._process_obs()
             next_action, _ = new_oracle.replan(-1)
+            oracle = new_oracle
             env_copy.teacher = None
-            if next_action == -1:
+            if next_action == -1:  # TODO: Is this ever triggered?  As far as I can tell, no.
                 next_state = env_copy.gen_obs()
             else:
-                next_state,  _,  _,  _ = env_copy.step(next_action)            
+                next_state,  rew,  done,  info = env_copy.step(next_action)
         return next_state
 
     def give_feedback(self, state):
@@ -137,8 +141,6 @@ class Teacher:
         oracle = self.botclass(oracle.mission)
         self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
-        self.agent_actions = []
-        self.oracle_actions = []
         self.steps_since_lastfeedback = 0
         self.last_feedback = None
         return oracle
