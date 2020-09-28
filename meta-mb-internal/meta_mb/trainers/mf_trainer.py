@@ -208,7 +208,6 @@ class Trainer(object):
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
             time_env_sampling = time.time() - time_env_sampling_start
-            success_rate = np.mean(episode_logs['success_per_episode'])
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
             rp_start_time = time.time()
@@ -255,12 +254,12 @@ class Trainer(object):
                         advance_curriculum_sup = True
                     # Original Policy
                     time_run_policy_start = time.time()
-                    # self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
+                    self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running model with teacher")
-                    # advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
+                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
-                    # advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
+                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
                     print("ADvancing curriculum???", advance_curriculum)
 
                     logger.logkv('AdvanceCurriculum', advance_curriculum)
