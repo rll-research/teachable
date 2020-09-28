@@ -239,7 +239,7 @@ def run_experiment(**config):
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
                    args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'],
-                   parallel=config['parallel'])
+                   parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'])
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -327,7 +327,7 @@ if __name__ == '__main__':
         # Teacher
         "feedback_type": [None],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
-        'feedback_always': [False],
+        'feedback_always': [True],
         'feedback_freq': [1],
 
         # Curriculum

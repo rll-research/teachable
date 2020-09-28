@@ -32,7 +32,7 @@ class PreActionAdvice(Teacher):
         """
         # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
         # This is kind of sketchy since multiple paths can be optimal.
-        if len(self.agent_actions) > 0 and (self.steps_since_lastfeedback % self.feedback_frequency == 0):
+        if (self.steps_since_lastfeedback % self.feedback_frequency == 0):
             self.steps_since_lastfeedback = 0
             return True
         else:

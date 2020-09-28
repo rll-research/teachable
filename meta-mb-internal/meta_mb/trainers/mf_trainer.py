@@ -63,7 +63,8 @@ class Trainer(object):
         reward_predictor=None,
         rp_trainer=None,
         advance_levels=True,
-        is_debug=False
+        is_debug=False,
+        rollouts_per_meta_task=1,
     ):
         self.algo = algo
         self.env = copy.deepcopy(env)
@@ -104,6 +105,7 @@ class Trainer(object):
         self.rp_trainer = rp_trainer
         self.advance_levels = advance_levels
         self.is_debug = is_debug
+        self.rollouts_per_meta_task = rollouts_per_meta_task
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -400,7 +402,10 @@ class Trainer(object):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
         save_wandb = (save_video and not self.is_debug)
-        paths, accuracy = rollout(self.env, policy, max_path_length=200, reset_every=1, stochastic=stochastic,
+        paths, accuracy = rollout(self.env, policy,
+                                  max_path_length=200,
+                                  reset_every=self.rollouts_per_meta_task,
+                                  stochastic=stochastic,
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
                                   num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False)

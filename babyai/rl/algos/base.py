@@ -13,7 +13,8 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel):
+                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
+                 rollouts_per_meta_task=1):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -54,9 +55,9 @@ class BaseAlgo(ABC):
         # Store parameters
 
         if parallel:
-            self.env = ParallelEnv(envs)
+            self.env = ParallelEnv(envs, rollouts_per_meta_task)
         else:
-            self.env = SequentialEnv(envs)
+            self.env = SequentialEnv(envs, rollouts_per_meta_task)
         self.acmodel = acmodel
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
@@ -70,6 +71,7 @@ class BaseAlgo(ABC):
         self.preprocess_obss = preprocess_obss or default_preprocess_obss
         self.reshape_reward = reshape_reward
         self.aux_info = aux_info
+        self.rollouts_per_meta_task = rollouts_per_meta_task
 
         # Store helpers values
 
@@ -100,6 +102,7 @@ class BaseAlgo(ABC):
         self.log_probs = torch.zeros(*shape, device=self.device)
         self.teacher_actions = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
+        self.done_index = torch.zeros(self.num_procs, device=self.device)
         self.env_infos = [None]  * len(self.dones)
 
         if self.aux_info:
@@ -165,10 +168,14 @@ class BaseAlgo(ABC):
             self.memory = memory
 
             self.masks[i] = self.mask
-            self.mask = 1 - torch.tensor(done, device=self.device, dtype=torch.float)
+            done_tensor = torch.FloatTensor(done).to(self.device)
+            self.done_index = done_tensor + self.done_index
+
+            done_meta = self.done_index == self.rollouts_per_meta_task
+            self.dones[i] = done_tensor
+            self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action
             self.values[i] = value
-            self.dones[i] = torch.FloatTensor(done).to(self.device)
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
                     self.reshape_reward(obs_, action_, reward_, done_)

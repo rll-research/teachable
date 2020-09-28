@@ -108,7 +108,7 @@ class Teacher:
         if self.feedback_always:
             feedback = self.compute_feedback()
             self.last_feedback = feedback
-        elif self.feedback_type == 'none' or not self.feedback_condition():
+        elif self.feedback_type == 'none':
             feedback = self.empty_feedback()
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()

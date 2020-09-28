@@ -1,13 +1,14 @@
 from multiprocessing import Process, Pipe
 import gym
 
-def worker(conn, env):
+def worker(conn, env, rollouts_per_meta_task):
     while True:
         cmd, data = conn.recv()
         if cmd == "step":
             obs, reward, done, info = env.step(data)
             if done:
-                env.set_task(None)
+                if env.itr == rollouts_per_meta_task:
+                    env.set_task(None)
                 obs = env.reset()
             conn.send((obs, reward, done, info))
         elif cmd == "reset":
@@ -29,13 +30,14 @@ def worker(conn, env):
 class ParallelEnv(gym.Env):
     """A concurrent execution of environments in multiple processes."""
 
-    def __init__(self, envs):
+    def __init__(self, envs, rollouts_per_meta_task):
         assert len(envs) >= 1, "No environment given."
 
         self.envs = envs
         self.observation_space = self.envs[0].observation_space
         self.action_space = self.envs[0].action_space
         self.locals = []
+        self.rollouts_per_meta_task = rollouts_per_meta_task
         self.reset_processes()
 
     def reset_processes(self):
@@ -46,7 +48,7 @@ class ParallelEnv(gym.Env):
         for env in self.envs[1:]:
             local, remote = Pipe()
             self.locals.append(local)
-            p = Process(target=worker, args=(remote, env))
+            p = Process(target=worker, args=(remote, env, self.rollouts_per_meta_task))
             p.daemon = True
             p.start()
             remote.close()
@@ -97,13 +99,14 @@ class ParallelEnv(gym.Env):
 class SequentialEnv(gym.Env):
     """A concurrent execution of environments in multiple processes."""
 
-    def __init__(self, envs):
+    def __init__(self, envs, rollouts_per_meta_task):
         assert len(envs) >= 1, "No environment given."
 
         self.envs = envs
         self.observation_space = self.envs[0].observation_space
         self.action_space = self.envs[0].action_space
         self.locals = []
+        self.rollouts_per_meta_task = rollouts_per_meta_task
 
     def reset(self):
         results = []
@@ -120,10 +123,11 @@ class SequentialEnv(gym.Env):
 
     def step(self, actions):
         results = []
-        for env, action in zip(self.envs, actions):
+        for i, (env, action) in enumerate(zip(self.envs, actions)):
             obs, reward, done, info = env.step(action)
             if done:
-                env.set_task(None)
+                if env.itr == self.rollouts_per_meta_task:
+                    env.set_task(None)
                 obs = env.reset()
             results.append((obs, reward, done, info))
         results = zip(*results)
