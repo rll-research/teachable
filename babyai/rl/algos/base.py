@@ -172,6 +172,7 @@ class BaseAlgo(ABC):
             self.done_index = done_tensor + self.done_index
 
             done_meta = self.done_index == self.rollouts_per_meta_task
+            self.done_index = torch.remainder(self.done_index, self.rollouts_per_meta_task)
             self.dones[i] = done_tensor
             self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action

@@ -68,7 +68,6 @@ class Teacher:
             print(e)
             print("CURRENT VISMASK", oracle.vis_mask)
             self.last_step_error = True
-        original_vismask = oracle.vis_mask.copy()
         oracle.mission.teacher = None
         env_copy1 = pickle.loads(pickle.dumps(oracle.mission))
         env_copy1.teacher = None

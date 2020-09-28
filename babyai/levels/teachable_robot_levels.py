@@ -23,7 +23,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     def __init__(self, start_loc='all',
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False, **kwargs):
+                 feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
+                 cartesian_steps=1, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -47,24 +48,24 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
-            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
         elif feedback_type == 'PreActionAdvice':
-            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
         elif feedback_type == 'CartesianCorrections':
-            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
         elif feedback_type == 'SubgoalCorrections':
-            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
         elif isinstance(feedback_type, list):
             teachers = []
             for ft in feedback_type:
                 if ft == 'PostActionAdvice':
-                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
-                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
-                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
-                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq)
+                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 teachers.append(t)
             teacher = BatchTeacher(teachers)
         else:

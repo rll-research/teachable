@@ -88,6 +88,7 @@ def run_experiment(**config):
         "feedback_type": config["feedback_type"],
         "feedback_always": config["feedback_always"],
         "feedback_freq": config["feedback_freq"],
+        "cartesian_steps": config["cartesian_steps"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
         "intermediate_reward": config["intermediate_reward"],
     }
@@ -329,6 +330,7 @@ if __name__ == '__main__':
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [True],
         'feedback_freq': [1],
+        'cartesian_steps': [1],
 
         # Curriculum
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
