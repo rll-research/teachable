@@ -338,7 +338,7 @@ if __name__ == '__main__':
         # Model/Optimization
         'entropy_bonus': [.0005],  # TODO: .01 default
         'grad_clip_threshold': [1],  # TODO: not being used any more
-        "learning_rate": [1e-3],  # TODO: 1e-4 default
+        "learning_rate": [1e-4],
         "memory_dim": [512],  #1024, 2048
         "instr_dim": [64],  #128, 256
         "discount": [0.9],
