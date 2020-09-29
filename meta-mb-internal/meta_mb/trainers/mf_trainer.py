@@ -206,7 +206,7 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            logger.logkv('Train/AdvanceCurriculum', advance_curriculum)
+            logger.logkv('Train/AdvanceCurriculum', int(advance_curriculum))
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -233,7 +233,7 @@ class Trainer(object):
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
                 advance_curriculum = distill_log['Accuracy'] >= self.accuracy_threshold
-                logger.logkv('Distill/AdvanceCurriculum', advance_curriculum)
+                logger.logkv('Distill/AdvanceCurriculum', int(advance_curriculum))
             else:
                 distill_time = 0
 
@@ -262,7 +262,7 @@ class Trainer(object):
                     advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
                     print("ADvancing curriculum???", advance_curriculum)
 
-                    logger.logkv('AdvanceCurriculum', advance_curriculum)
+                    logger.logkv('AdvanceCurriculum', int(advance_curriculum))
             else:
                 run_supervised_time = 0
                 advance_curriculum = False
@@ -391,7 +391,7 @@ class Trainer(object):
                                             use_teacher=use_teacher)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag, log_teacher=self.train_with_teacher)
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data)
-        logger.logkv(f"{tag}AdvanceCurriculum", advance_curriculum)
+        logger.logkv(f"{tag}AdvanceCurriculum", int(advance_curriculum))
         logger.logkv(f"{tag}AvgSuccess", avg_success)
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
         return advance_curriculum
