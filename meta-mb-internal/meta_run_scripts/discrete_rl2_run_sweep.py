@@ -138,7 +138,8 @@ def run_experiment(**config):
                          arch=arch,
                          advice_dim=advice_dim,
                          advice_start_index=advice_start_index,
-                         advice_end_index=advice_end_index)
+                         advice_end_index=advice_end_index,
+                         num_modules=config['num_modules'])
 
 
         reward_predictor = ACModel(obs_space=obs_dim - 1,  # TODO: change into Discrete(3) and do 3-way classification
@@ -153,7 +154,8 @@ def run_experiment(**config):
                                  arch=arch,
                                  advice_dim=advice_dim,
                                  advice_start_index=advice_start_index,
-                                 advice_end_index=advice_end_index)
+                                 advice_end_index=advice_end_index,
+                                 num_modules=config['num_modules'])
         if config['self_distill'] and not config['distill_same_model']:
             obs_dim = env.reset().shape[0]
             image_dim = 128
@@ -175,7 +177,8 @@ def run_experiment(**config):
                                      arch=arch,
                                      advice_dim=advice_dim,
                                      advice_start_index=advice_start_index,
-                                     advice_end_index=advice_end_index)
+                                     advice_end_index=advice_end_index,
+                                     num_modules=config['num_modules'])
         elif config['self_distill']:
             supervised_model = policy
         else:
@@ -308,7 +311,7 @@ if __name__ == '__main__':
         'level': [0],
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
-        'distill_with_teacher': [False],
+        'distill_with_teacher': [False],  # BAD BAD BAD never use this option!
         'advance_levels': [True],  # can we advance levels, or do we have to stay on the current level?
 
         # Saving/loading/finetuning
@@ -336,12 +339,13 @@ if __name__ == '__main__':
         'advance_curriculum_func': ['one_hot'],  # TODO: double success doesn't get messed up when we use smooth
 
         # Model/Optimization
-        'entropy_bonus': [.0005],  # TODO: .01 default
+        'entropy_bonus': [.001],  # TODO: consider .0005
         'grad_clip_threshold': [1],  # TODO: not being used any more
         "learning_rate": [1e-4],
         "memory_dim": [512],  #1024, 2048
         "instr_dim": [64],  #128, 256
         "discount": [0.9],
+        "num_modules": [1],  #2
 
         "value_loss_coef": [.05],  # .5 is default
         "max_grad_norm": [.5],  # .5 is default

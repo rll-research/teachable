@@ -64,7 +64,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
-                 advice_start_index=-1, advice_end_index=-1):
+                 advice_start_index=-1, advice_end_index=-1, num_modules=1):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -92,6 +92,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.advice_start_index = advice_start_index
         self.advice_end_index = advice_end_index
         self.advice_size = advice_end_index - advice_start_index
+        self.num_modules = num_modules
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -145,12 +146,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if self.lang_model == 'attgru':
                 self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim)
 
-            num_module = 2
             self.controllers = []
-            for ni in range(num_module):
+            for ni in range(self.num_modules):
                 mod = FiLM(
                     in_features=self.final_instr_dim,
-                    out_features=128 if ni < num_module-1 else self.image_dim,
+                    out_features=128 if ni < self.num_modules - 1 else self.image_dim,
                     in_channels=128, imm_channels=128)
                 self.controllers.append(mod)
                 self.add_module('FiLM_' + str(ni), mod)
