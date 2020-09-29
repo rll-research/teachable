@@ -106,6 +106,8 @@ class Trainer(object):
         self.advance_levels = advance_levels
         self.is_debug = is_debug
         self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.num_feedback_advice = 0
+        self.num_feedback_reward = 0
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -206,10 +208,7 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            logger.logkv('Train/AdvanceCurriculum', float(advance_curriculum))
             logger.logkv('Train/Advance', int(advance_curriculum))
-            logger.logkv('Train/TESTWHATEVER', 3)
-            logger.logkv('Train/TESTWHATEVER2', advance_curriculum)
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -350,6 +349,11 @@ class Trainer(object):
         avg_return = np.mean(episode_logs['return_per_episode'])
         avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
         avg_success = np.mean(episode_logs['success_per_episode'])
+        self.num_feedback_advice += summary_logs['num_feedback_advice']
+        self.num_feedback_reward += summary_logs['num_feedback_reward']
+        logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
+        logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
+        logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
 
         logger.logkv(f"{tag}/Success", avg_success)
         logger.logkv(f"{tag}/Return", avg_return)
