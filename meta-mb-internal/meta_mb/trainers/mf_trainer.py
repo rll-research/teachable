@@ -390,7 +390,7 @@ class Trainer(object):
 
     def run_supervised(self, policy, use_teacher, tag):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-                                            feedback_list=self.teacher_info, max_action=True,
+                                            feedback_list=self.teacher_info, max_action=False,  # TODO: consider adding a flag for max_action
                                             use_teacher=use_teacher)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag, log_teacher=self.train_with_teacher)
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data)
