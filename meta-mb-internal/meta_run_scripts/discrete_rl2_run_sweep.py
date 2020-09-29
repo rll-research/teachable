@@ -331,7 +331,7 @@ if __name__ == '__main__':
         # Teacher
         "feedback_type": [None],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
-        'feedback_always': [True],
+        'feedback_always': [False],
         'feedback_freq': [1],
         'cartesian_steps': [1],
 

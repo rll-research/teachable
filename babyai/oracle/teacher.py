@@ -112,7 +112,10 @@ class Teacher:
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()
         elif self.feedback_type == 'oracle':
-            feedback = self.compute_feedback()
+            if self.feedback_condition():
+                feedback = self.compute_feedback()
+            else:
+                feedback = self.empty_feedback()
             self.last_feedback = feedback
         else:
             raise ValueError("Unsupported feedback type")
@@ -132,9 +135,15 @@ class Teacher:
 
     def feedback_condition(self):
         """
-        Check whether we should give feedback.
+        Returns true when we should give feedback.
+        Currently gives feedback at a fixed interval, but we could use other strategies (e.g. whenever the agent messes up)
         """
-        raise NotImplementedError
+        # TODO NOW Fix this
+        if self.steps_since_lastfeedback % self.feedback_frequency == 0:
+            self.steps_since_lastfeedback = 0
+            return True
+        else:
+            return False
 
     def reset(self, oracle):
         oracle = self.botclass(oracle.mission)

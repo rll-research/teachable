@@ -113,7 +113,7 @@ class ImitationLearning(object):
         else:
             self.acmodel.eval()
 
-
+        batch_old = batch
         batch = self.transform_demos(batch, source)
         batch.sort(key=len, reverse=True)
         # Constructing flat batch and indices pointing to start of each demonstration
@@ -131,7 +131,12 @@ class ImitationLearning(object):
             inds.append(inds[-1] + len(demo[0]))
 
         # (batch size * avg demo length , 3), where 3 is for (state, action, done)
-        obss = np.concatenate(obss)
+        try:
+            obss = np.concatenate(obss)
+        except:
+            print("?")
+            import IPython
+            IPython.embed()
         action_true = np.concatenate(action_true)
         done = np.concatenate(done)
         action_teacher = np.concatenate(action_teacher)
@@ -196,6 +201,7 @@ class ImitationLearning(object):
         per_token_correct = [0, 0, 0, 0, 0, 0, 0]
         per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
         per_token_count = [0, 0, 0, 0, 0, 0, 0]
+        per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
         per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
         final_entropy, final_policy_loss, final_value_loss = 0, 0, 0
 
@@ -224,16 +230,22 @@ class ImitationLearning(object):
             final_entropy += entropy
             final_policy_loss += policy_loss
 
-            action_step = action_step.detach().cpu().numpy()
-            action_pred = action_pred.detach().cpu().numpy()
+            action_step = action_step.detach().cpu().numpy() # ground truth action
+            action_pred = action_pred.detach().cpu().numpy() # action we took
             for j in range(len(per_token_count)):
                 token_indices = np.where(action_step == j)[0]
                 count = len(token_indices)
                 correct = np.sum(action_step[token_indices] == action_pred[token_indices])
                 per_token_correct[j] += correct
-                teacher_correct = np.sum(action_teacher[indexes, 0][token_indices] == action_pred[token_indices])
-                per_token_teacher_correct[j] += teacher_correct
                 per_token_count[j] += count
+
+                action_teacher_index = action_teacher[indexes, 0]
+                teacher_token_indices = np.where(action_teacher_index == j)[0]
+                teacher_count = len(teacher_token_indices)
+                teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
+                per_token_teacher_correct[j] += teacher_correct
+                per_token_teacher_count[j] += teacher_count
+
                 per_token_agent_count[j] += len(np.where(action_pred == j)[0])
             indexes += 1
 
@@ -248,10 +260,24 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
-        for i, (correct, count, teacher_correct) in enumerate(zip(per_token_correct, per_token_count, per_token_teacher_correct)):
+        assert float(accuracy) <= 1, float(accuracy)
+        teacher_numerator = 0
+        teacher_denominator = 0
+        agent_numerator = 0
+        agent_denominator = 0
+        for i, (correct, count, teacher_correct, teacher_count) in enumerate(zip(per_token_correct, per_token_count, per_token_teacher_correct, per_token_teacher_count)):
             if count > 0:
+                assert correct <= count, (correct, count)
+                assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
                 log[f'Accuracy_{i}'] = correct/count
-                log[f'TeacherAccuracy_{i}'] = teacher_correct / count
+                log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
+                agent_numerator += correct
+                agent_denominator += count
+                teacher_numerator += teacher_correct
+                teacher_denominator += teacher_count
+        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_denominator)
+        assert abs(float(accuracy) - agent_numerator/agent_denominator) < .001, (accuracy, agent_numerator/agent_denominator)
+        log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
 
         return log
 

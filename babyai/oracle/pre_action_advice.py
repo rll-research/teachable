@@ -25,21 +25,6 @@ class PreActionAdvice(Teacher):
         """
         return np.array([self.next_action])
 
-    def feedback_condition(self):
-        """
-        Returns true when we should give feedback.
-        Currently returns true when the agent's past action did not match the oracle's action.
-        """
-        # For now, we're being lazy and correcting the agent any time it strays from the agent's optimal set of actions.
-        # This is kind of sketchy since multiple paths can be optimal.
-        if (self.steps_since_lastfeedback % self.feedback_frequency == 0):
-            self.steps_since_lastfeedback = 0
-            return True
-        else:
-            return False
-            
-        # return len(self.agent_actions) > 0 and (not self.agent_actions[-1] == self.oracle_actions[-1])
-
     def success_check(self, action):
         opt_action = int(self.next_action)
         followed_opt_action = (opt_action == action)
