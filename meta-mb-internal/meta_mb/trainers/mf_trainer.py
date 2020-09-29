@@ -206,7 +206,9 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            logger.logkv('Train/AdvanceCurriculum', int(advance_curriculum))
+            logger.logkv('Train/AdvanceCurriculum', float(advance_curriculum))
+            logger.logkv('Train/TESTWHATEVER', 3)
+            logger.logkv('Train/TESTWHATEVER2', 3.1)
             time_env_sampling = time.time() - time_env_sampling_start
             #
             # """ ------------------ Reward Predictor Splicing ---------------------"""
