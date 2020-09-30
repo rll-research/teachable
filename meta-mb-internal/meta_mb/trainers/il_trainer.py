@@ -93,6 +93,7 @@ class ImitationLearning(object):
         done = (1 - demos.mask).detach().cpu().numpy()
         done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
         split_indices = np.where(done == 1)[0]
+        split_indices = np.concatenate([[0], split_indices, [len(obs)]], axis=0)
         new_demos = []
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
@@ -210,6 +211,7 @@ class ImitationLearning(object):
         accuracy = 0
         total_frames = len(indexes) * self.args.recurrence
         accuracy_list = []
+        lengths_list = []
         for i in range(self.args.recurrence):
             obs = obss[indexes]
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
@@ -227,6 +229,7 @@ class ImitationLearning(object):
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=False)[1]
             accuracy_list.append(float((action_pred == action_step).sum()))
+            lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
             accuracy += float((action_pred == action_step).sum()) / total_frames
             final_loss += loss
             final_entropy += entropy
@@ -266,6 +269,7 @@ class ImitationLearning(object):
             print("?")
             print("Accuracy List", len(accuracy_list), total_frames, len(indexes))
             print(accuracy_list)
+            print(lengths_list)
             import IPython
             IPython.embed()
         assert float(accuracy) <= 1, float(accuracy)
