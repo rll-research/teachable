@@ -79,7 +79,7 @@ class ImitationLearning(object):
         returns demos as a list of lists. Each demo is a list of (obs, action, done) tuples
         '''
         obs = demos.obs.detach().cpu().numpy()
-        teacher_action = demos.teacher_action
+        teacher_action = demos.teacher_action.detach().cpu().numpy()
         if self.reward_predictor:
             obs = demos.env_infos.next_obs_rewardfree
             reward = demos.reward
@@ -88,7 +88,7 @@ class ImitationLearning(object):
             action = demos.action.detach().cpu().numpy()
             assert len(action.shape) == 1, action.shape
         elif source == 'teacher':
-            action = demos.teacher_action
+            action = demos.teacher_action.detach().cpu().numpy()
             assert len(action.shape) == 1, action.shape
         else:
             raise NotImplementedError(source)
@@ -141,7 +141,7 @@ class ImitationLearning(object):
             import IPython
             IPython.embed()
         action_true = np.concatenate(action_true)
-        assert len(action_true).shape == 1
+        assert len(action_true.shape) == 1
         done = np.concatenate(done)
         action_teacher = np.concatenate(action_teacher)
         inds = inds[:-1]
