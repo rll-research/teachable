@@ -266,6 +266,8 @@ class ImitationLearning(object):
             print("?")
             print("Accuracy List", len(accuracy_list), total_frames, len(indexes))
             print(accuracy_list)
+            import IPython
+            IPython.embed()
         assert float(accuracy) <= 1, float(accuracy)
         teacher_numerator = 0
         teacher_denominator = 0
