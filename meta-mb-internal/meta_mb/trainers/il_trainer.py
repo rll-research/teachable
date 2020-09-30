@@ -240,6 +240,8 @@ class ImitationLearning(object):
 
             action_step = action_step.detach().cpu().numpy() # ground truth action
             action_pred = action_pred.detach().cpu().numpy() # action we took
+            agent_running_count = 0
+            teacher_running_count = 0
             for j in range(len(per_token_count)):
                 token_indices = np.where(action_step == j)[0]
                 count = len(token_indices)
@@ -248,11 +250,22 @@ class ImitationLearning(object):
                 per_token_count[j] += count
 
                 action_teacher_index = action_teacher[indexes]
+                assert action_teacher_index.shape == action_pred.shape == action_step.shape, (action_teacher_index.shape, action_pred.shape, action_step.shape)
                 teacher_token_indices = np.where(action_teacher_index == j)[0]
                 teacher_count = len(teacher_token_indices)
                 teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
                 per_token_teacher_correct[j] += teacher_correct
                 per_token_teacher_count[j] += teacher_count
+                teacher_running_count += teacher_count
+                agent_running_count += count
+            if not agent_running_count == teacher_running_count:
+                print("COUNTS DIDN'T MATCH!", agent_running_count, teacher_running_count)
+                print("Teacher ", action_teacher_index)
+                print("Correct", action_step)
+                print("Pred", action_pred)
+                print("indices", indexes)
+                import IPython
+                IPython.embed()
 
                 per_token_agent_count[j] += len(np.where(action_pred == j)[0])
             indexes += 1
