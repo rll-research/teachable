@@ -281,8 +281,8 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
-        if not float(accuracy) <= 1:
-            print("?")
+        if not float(accuracy) <= 1.0001:
+            print("?", accuracy)
             print("Accuracy List", len(accuracy_list), total_frames, len(indexes))
             print(accuracy_list)
             print(lengths_list)
