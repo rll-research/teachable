@@ -197,6 +197,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
+            assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             # if high_entropy:
