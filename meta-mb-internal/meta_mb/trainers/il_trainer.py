@@ -79,15 +79,17 @@ class ImitationLearning(object):
         returns demos as a list of lists. Each demo is a list of (obs, action, done) tuples
         '''
         obs = demos.obs.detach().cpu().numpy()
-        teacher_action = demos.env_infos.teacher_action
+        teacher_action = demos.teacher_action
         if self.reward_predictor:
             obs = demos.env_infos.next_obs_rewardfree
             reward = demos.reward
             action = torch.clamp(reward, 0, 2).long().detach().cpu().numpy()
         elif source == 'agent':
             action = demos.action.detach().cpu().numpy()
+            assert len(action.shape) == 1, action.shape
         elif source == 'teacher':
-            action = demos.env_infos.teacher_action
+            action = demos.teacher_action
+            assert len(action.shape) == 1, action.shape
         else:
             raise NotImplementedError(source)
         done = (1 - demos.mask).detach().cpu().numpy()
@@ -98,7 +100,7 @@ class ImitationLearning(object):
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
             a = action[split_indices[i]:split_indices[i+1]]
-            a_t = teacher_action[split_indices[i]:split_indices[i+1]]
+            a_t = teacher_action[split_indices[i]:split_indices[i+1]][:]
             d = done[split_indices[i]:split_indices[i+1]]
             new_demos.append((o, a, d, a_t))
         return new_demos
@@ -139,6 +141,7 @@ class ImitationLearning(object):
             import IPython
             IPython.embed()
         action_true = np.concatenate(action_true)
+        assert len(action_true).shape == 1
         done = np.concatenate(done)
         action_teacher = np.concatenate(action_teacher)
         inds = inds[:-1]
@@ -244,7 +247,7 @@ class ImitationLearning(object):
                 per_token_correct[j] += correct
                 per_token_count[j] += count
 
-                action_teacher_index = action_teacher[indexes, 0]
+                action_teacher_index = action_teacher[indexes]
                 teacher_token_indices = np.where(action_teacher_index == j)[0]
                 teacher_count = len(teacher_token_indices)
                 teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
