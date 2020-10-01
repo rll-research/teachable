@@ -2,13 +2,13 @@ import numpy as np
 
 class BatchTeacher:
     """
-    Batched version of the Teacher class.  # TODO: I think there's a way to make it call the func on each teacher by default.
+    Batched version of the Teacher class.
     """
     def __init__(self, teachers):
         self.teachers = teachers
 
-    def step(self, action):
-        [teacher.step(action) for teacher in self.teachers]
+    def step(self, action, oracle):
+        return [teacher.step(action, o) for teacher, o in zip(self.teachers, oracle)]
 
     def give_feedback(self, state):
         return np.concatenate([teacher.give_feedback(state) for teacher in self.teachers])
@@ -25,5 +25,5 @@ class BatchTeacher:
     def set_feedback_type(self, feedback_type):
         return [teacher.set_feedback_type(feedback_type) for teacher in self.teachers]
 
-    def reset(self):
-        [teacher.reset() for teacher in self.teachers]
+    def reset(self, oracle):
+        return [teacher.reset(o) for teacher, o in zip(self.teachers, oracle)]
