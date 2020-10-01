@@ -20,6 +20,7 @@ class Teacher:
 
         self.cartesian_steps = cartesian_steps
         oracle = botclass(env)
+        self.action_space = env.action_space
         self.botclass = botclass
         self.last_action = -1
         self.next_action, self.next_subgoal = oracle.replan(-1)

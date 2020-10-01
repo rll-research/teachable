@@ -11,19 +11,24 @@ class PreActionAdvice(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.array([-1])
+        return self.one_hotify(-1)
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.array([self.env.action_space.sample()])
+        return self.one_hotify(self.action_space.sample())
 
     def compute_feedback(self):
         """
         Return the expert action from the previous timestep.
         """
-        return np.array([self.next_action])
+        return self.one_hotify(self.next_action)
+
+    def one_hotify(self, index):
+        correction = np.zeros((self.action_space.n + 1,))
+        correction[index] = 1.0
+        return correction
 
     def success_check(self, action):
         opt_action = int(self.next_action)

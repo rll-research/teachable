@@ -204,11 +204,12 @@ class Trainer(object):
             #     entropy = self.algo.entropy_coef# * 10
             # else:
             #     entropy = self.algo.entropy_coef
-            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
+            # summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
             time_training = time.time() - time_training_start
-            self._log(episode_logs, summary_logs, tag="Train")
+            # self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
+            # advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
+            advance_curriculum = False
             logger.logkv('Train/Advance', int(advance_curriculum))
             time_env_sampling = time.time() - time_env_sampling_start
             #
@@ -228,7 +229,8 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if self.supervised_model is not None and advance_curriculum:
+            if False:
+            # if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
                 for _ in range(3):  # TODO: tune this!
                     distill_log = self.distill(samples_data, is_training=True)
@@ -242,7 +244,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+            if False:
+            # if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
@@ -299,7 +302,8 @@ class Trainer(object):
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (itr == self.n_itr - 1) or advance_curriculum
-            if should_save_video:
+            if False:
+            # if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
                     self.il_trainer.acmodel.reset(dones=[True])
