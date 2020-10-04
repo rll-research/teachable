@@ -380,20 +380,21 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return deepcopy(obs)
 
     def compute_teacher_advice(self, obs):
-        self.obs_shape = obs.shape  # TODO: why?
-        self.teacher.obs_size = obs.shape
-        if isinstance(self.teacher, BatchTeacher):
-            for t in self.teacher.teachers:
-                t.obs_size = obs.shape  # TODO: why?
-        if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
-            correction_index = self.teacher.give_feedback([obs])  # TODO: why?
-            correction = np.zeros((self.action_space.n + 1,))  # TODO: move inside teacher
-            correction[correction_index] = 1.0
+        # TODO: ask Abhishek what this is for to make sure I'm not deleting anything important
+        # self.obs_shape = obs.shape
+        # self.teacher.obs_size = obs.shape
+        # if isinstance(self.teacher, BatchTeacher):
+        #     for t in self.teacher.teachers:
+        #         t.obs_size = obs.shape
+        # if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
+        #     correction_index = self.teacher.give_feedback([obs])
+        #     correction = np.zeros((self.action_space.n + 1,))
+        #     correction[correction_index] = 1.0
+        # else:
+        if self.reset_yet is False:
+            correction = self.teacher.empty_feedback()  # TODO: why is this necessary?
         else:
-            if self.reset_yet is False:
-                correction = self.teacher.empty_feedback()  # TODO: why is this necessary?
-            else:
-                correction = self.teacher.give_feedback([obs])
+            correction = self.teacher.give_feedback([obs])
         return correction
 
     def step(self, action):
