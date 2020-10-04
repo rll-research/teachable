@@ -381,16 +381,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
     def compute_teacher_advice(self, obs):
         # TODO: ask Abhishek what this is for to make sure I'm not deleting anything important
-        # self.obs_shape = obs.shape
-        # self.teacher.obs_size = obs.shape
-        # if isinstance(self.teacher, BatchTeacher):
-        #     for t in self.teacher.teachers:
-        #         t.obs_size = obs.shape
-        # if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
-        #     correction_index = self.teacher.give_feedback([obs])
-        #     correction = np.zeros((self.action_space.n + 1,))
-        #     correction[correction_index] = 1.0
-        # else:
+        self.obs_shape = obs.shape
+        self.teacher.obs_size = obs.shape
+        if isinstance(self.teacher, BatchTeacher):
+            for t in self.teacher.teachers:
+                t.obs_size = obs.shape
         if self.reset_yet is False:
             correction = self.teacher.empty_feedback()  # TODO: why is this necessary?
         else:
