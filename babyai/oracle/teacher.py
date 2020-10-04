@@ -69,6 +69,7 @@ class Teacher:
             print(e)
             print("CURRENT VISMASK", oracle.vis_mask)
             self.last_step_error = True
+        original_teacher = oracle.mission.teacher
         oracle.mission.teacher = None
         env_copy1 = pickle.loads(pickle.dumps(oracle.mission))
         env_copy1.teacher = None
@@ -81,7 +82,7 @@ class Teacher:
             self.next_state = self.next_state * 0
             self.last_step_error = True
         self.steps_since_lastfeedback += 1
-        oracle.mission.teacher = self
+        oracle.mission.teacher = original_teacher
         return oracle
 
     def step_away_state(self, env_copy, oracle, steps):

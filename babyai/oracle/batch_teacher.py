@@ -27,3 +27,8 @@ class BatchTeacher:
 
     def reset(self, oracle):
         return [teacher.reset(o) for teacher, o in zip(self.teachers, oracle)]
+
+    def get_last_step_error(self):
+        last_step_error = [t.last_step_error for t in self.teachers]
+        last_step_error = np.max(last_step_error)
+        return last_step_error

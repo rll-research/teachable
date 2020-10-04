@@ -55,22 +55,6 @@ def get_exp_name(config):
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
-def get_advice_index(advice_start_index, config, env):
-    advice_dim = 128
-    if config['feedback_type'] == 'PreActionAdvice':
-        advice_end_index = advice_start_index + env.action_space.n + 1
-    elif config['feedback_type'] == 'CartesianCorrections':
-        advice_end_index = advice_start_index + 160
-    elif config['feedback_type'] == 'SubgoalCorrections':
-        advice_end_index = advice_start_index + 17
-    elif config['feedback_type'] is None:
-        advice_end_index = 160
-        advice_dim = 0
-    else:
-        raise NotImplementedError(config['feedback_type'])
-    return advice_end_index, advice_dim
-
-
 def run_experiment(**config):
     set_seed(config['seed'])
     original_saved_path = config['saved_path']
@@ -125,7 +109,7 @@ def run_experiment(**config):
         instr_arch = 'bigru'
         use_mem = True
         arch = 'bow_endpool_res'
-        advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
+        advice_end_index, advice_dim = 161, 1
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -264,7 +248,7 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr, name=config['prefix'] + str(config['seed']), config=config)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
-    advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
+    advice_end_index, advice_dim = 161, 1
     if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types at once!
         teacher_info = []
     else:
@@ -329,7 +313,8 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": [None],
+        "feedback_type": [["PreActionAdvice"]],
+        # "feedback_type": [["PreActionAdvice", "CartesianCorrections"]],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
         'feedback_freq': [1],

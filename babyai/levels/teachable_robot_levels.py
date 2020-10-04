@@ -70,7 +70,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
-        self.oracle = Bot(self)
         self.teacher = teacher
 
     def sample_object(self):
@@ -433,7 +432,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['teacher_action'] = np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
 
             self.oracle = self.teacher.step([action], self.oracle)
-            info['teacher_error'] = float(self.teacher.last_step_error)
+            info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             obs = self.gen_obs()
 
@@ -452,10 +451,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         followed_opt_action = False
         for teacher in curr_teach.teachers:
             if isinstance(teacher, CartesianCorrections):
-                self.teacher = None
-                ob_curr = self.gen_obs()
-                self.teacher = curr_teach
-                followed_opt_action = teacher.success_check(ob_curr)
+                # self.teacher = None
+                # ob_curr = self.gen_obs()  # TODO: later, make this dictionaries
+                # self.teacher = curr_teach  # TODO: why did we have this?
+                # followed_opt_action = teacher.success_check(ob_curr)
+                followed_opt_action = True  # TODO: AAAAAAA
             elif isinstance(teacher, PreActionAdvice):
                 followed_opt_action = teacher.success_check(action)
             elif isinstance(teacher, SubgoalCorrections):
