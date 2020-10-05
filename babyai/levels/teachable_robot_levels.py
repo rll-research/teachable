@@ -49,8 +49,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type is not None:
-            self.oracle = [Bot(self) for _ in range(len(feedback_type))]
-            teachers = []
+            self.oracle = {}
+            teachers = {}
             for ft in feedback_type:
                 if ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
@@ -66,7 +66,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                                  feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 else:
                     raise NotImplementedError
-                teachers.append(teacher)
+                teachers[ft] = teacher
+                self.oracle[ft] = Bot(self)
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
@@ -375,6 +376,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                               goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
             correction = self.compute_teacher_advice(obs)
+            correction = np.concatenate(list(correction.values()))
             obs = np.concatenate([obs, correction])
 
         return deepcopy(obs)
@@ -384,7 +386,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.obs_shape = obs.shape
         self.teacher.obs_size = obs.shape
         if isinstance(self.teacher, BatchTeacher):
-            for t in self.teacher.teachers:
+            for t in self.teacher.teachers.values():
                 t.obs_size = obs.shape
         if self.reset_yet is False:
             correction = self.teacher.empty_feedback()  # TODO: why is this necessary?
@@ -425,7 +427,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, 'teacher') and self.teacher is not None:
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
-            info['teacher_action'] = np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
+            info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
 
             self.oracle = self.teacher.step([action], self.oracle)
             info['teacher_error'] = float(self.teacher.get_last_step_error())
@@ -445,7 +447,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         give_reward = False
         curr_teach = self.teacher
         followed_opt_action = False
-        for teacher in curr_teach.teachers:
+        for teacher in curr_teach.teachers.values():
             if isinstance(teacher, CartesianCorrections):
                 # self.teacher = None
                 # ob_curr = self.gen_obs()  # TODO: later, make this dictionaries
