@@ -312,13 +312,14 @@ class ImitationLearning(object):
         agent_numerator = 0
         agent_denominator = 0
         for i, (correct, count, teacher_correct, teacher_count) in enumerate(zip(per_token_correct, per_token_count, per_token_teacher_correct, per_token_teacher_count)):
+            assert correct <= count, (correct, count)
+            assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
             if count > 0:
-                assert correct <= count, (correct, count)
-                assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
                 log[f'Accuracy_{i}'] = correct/count
-                log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
                 agent_numerator += correct
                 agent_denominator += count
+            if teacher_count > 0:
+                log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
                 teacher_numerator += teacher_correct
                 teacher_denominator += teacher_count
         if not agent_denominator == teacher_denominator:
