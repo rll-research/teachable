@@ -215,6 +215,8 @@ class ImitationLearning(object):
         total_frames = len(indexes) * self.args.recurrence
         accuracy_list = []
         lengths_list = []
+        agent_running_count_long = 0
+        teacher_running_count_long = 0
         for i in range(self.args.recurrence):
             obs = obss[indexes]
             preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
@@ -258,8 +260,24 @@ class ImitationLearning(object):
                 per_token_teacher_count[j] += teacher_count
                 teacher_running_count += teacher_count
                 agent_running_count += count
+                agent_running_count_long += teacher_count
+                teacher_running_count_long += teacher_count
+            assert np.min(action_step) < len(per_token_count), (np.min(action_step), action_step)
+            assert np.max(action_step) >= 0, (np.max(action_step), action_step)
+            assert np.min(action_pred) < len(per_token_count), (np.min(action_pred), action_pred)
+            assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
+            assert np.min(action_teacher_index) < len(per_token_count), (np.min(action_teacher_index), action_teacher_index)
+            assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
             if not agent_running_count == teacher_running_count:
                 print("COUNTS DIDN'T MATCH!", agent_running_count, teacher_running_count)
+                print("Teacher ", action_teacher_index)
+                print("Correct", action_step)
+                print("Pred", action_pred)
+                print("indices", indexes)
+                import IPython
+                IPython.embed()
+            if not agent_running_count == len(action_step) == len(action_pred):
+                print("COUNTS DIDN'T MATCH! V2", agent_running_count, teacher_running_count)
                 print("Teacher ", action_teacher_index)
                 print("Correct", action_step)
                 print("Pred", action_pred)
@@ -304,11 +322,13 @@ class ImitationLearning(object):
                 teacher_numerator += teacher_correct
                 teacher_denominator += teacher_count
         if not agent_denominator == teacher_denominator:
-            print("AGENT DENOMINATOR AND TEACHER DENOMINATOR DON'T MATCH", agent_denominator, teacher_denominator)
+            print("AGENT DENOMINATOR AND TEACHER DENOMINATOR DON'T MATCH", agent_denominator, teacher_denominator, agent_running_count, teacher_running_count)
             print("PER TOKEN COUNT", per_token_count)
             print("PER TOKEN TEACHER COUNT", per_token_teacher_count)
             print("PER TOKEN CORRECT", per_token_correct)
             print("PER TOKEN TEACHER CORRECT", per_token_teacher_correct)
+            print("LONG AGENT", agent_running_count_long)
+            print("LONG TEACHER", teacher_running_count_long)
             import IPython
             IPython.embed()
 
