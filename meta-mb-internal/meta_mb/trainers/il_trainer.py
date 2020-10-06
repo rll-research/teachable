@@ -303,7 +303,16 @@ class ImitationLearning(object):
                 agent_denominator += count
                 teacher_numerator += teacher_correct
                 teacher_denominator += teacher_count
-        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_denominator)
+        if not agent_denominator == teacher_denominator:
+            print("AGENT DENOMINATOR AND TEACHER DENOMINATOR DON'T MATCH", agent_denominator, teacher_denominator)
+            print("PER TOKEN COUNT", per_token_count)
+            print("PER TOKEN TEACHER COUNT", per_token_teacher_count)
+            print("PER TOKEN CORRECT", per_token_correct)
+            print("PER TOKEN TEACHER CORRECT", per_token_teacher_correct)
+            import IPython
+            IPython.embed()
+
+        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_denominator, per_token_count, per_token_teacher_count)
         assert abs(float(accuracy) - agent_numerator/agent_denominator) < .001, (accuracy, agent_numerator/agent_denominator)
         log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
 
