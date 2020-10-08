@@ -15,11 +15,11 @@ class PPOAlgo(BaseAlgo):
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
-                 rollouts_per_meta_task=1, teacher_null_dict={}, obs_preprocessor=None):
+                 rollouts_per_meta_task=1, obs_preprocessor=None):
 
         super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                          value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
-                         aux_info, parallel, rollouts_per_meta_task, teacher_null_dict)
+                         aux_info, parallel, rollouts_per_meta_task)
 
         num_frames_per_proc = num_frames_per_proc or 128
         self.acmodel = acmodel
