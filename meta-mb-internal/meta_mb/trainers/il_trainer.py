@@ -268,24 +268,6 @@ class ImitationLearning(object):
             assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
             assert np.min(action_teacher_index) < len(per_token_count), (np.min(action_teacher_index), action_teacher_index)
             assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
-            if not agent_running_count == teacher_running_count:
-                print("COUNTS DIDN'T MATCH!", agent_running_count, teacher_running_count)
-                print("Teacher ", action_teacher_index)
-                print("Correct", action_step)
-                print("Pred", action_pred)
-                print("indices", indexes)
-                import IPython
-                IPython.embed()
-            if not agent_running_count == len(action_step) == len(action_pred):
-                print("COUNTS DIDN'T MATCH! V2", agent_running_count, teacher_running_count)
-                print("Teacher ", action_teacher_index)
-                print("Correct", action_step)
-                print("Pred", action_pred)
-                print("indices", indexes)
-                import IPython
-                IPython.embed()
-
-                per_token_agent_count[j] += len(np.where(action_pred == j)[0])
             indexes += 1
 
         final_loss /= self.args.recurrence
@@ -299,13 +281,6 @@ class ImitationLearning(object):
         log["Entropy"] = float(final_entropy / self.args.recurrence)
         log["Loss"] = float(final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(accuracy)
-        if not float(accuracy) <= 1.0001:
-            print("?", accuracy)
-            print("Accuracy List", len(accuracy_list), total_frames, len(indexes))
-            print(accuracy_list)
-            print(lengths_list)
-            import IPython
-            IPython.embed()
         assert float(accuracy) <= 1, float(accuracy)
         teacher_numerator = 0
         teacher_denominator = 0
@@ -322,16 +297,6 @@ class ImitationLearning(object):
                 log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
                 teacher_numerator += teacher_correct
                 teacher_denominator += teacher_count
-        if not agent_denominator == teacher_denominator:
-            print("AGENT DENOMINATOR AND TEACHER DENOMINATOR DON'T MATCH", agent_denominator, teacher_denominator, agent_running_count, teacher_running_count)
-            print("PER TOKEN COUNT", per_token_count)
-            print("PER TOKEN TEACHER COUNT", per_token_teacher_count)
-            print("PER TOKEN CORRECT", per_token_correct)
-            print("PER TOKEN TEACHER CORRECT", per_token_teacher_correct)
-            print("LONG AGENT", agent_running_count_long)
-            print("LONG TEACHER", teacher_running_count_long)
-            import IPython
-            IPython.embed()
 
         assert agent_denominator == teacher_denominator, (agent_denominator, teacher_denominator, per_token_count, per_token_teacher_count)
         assert abs(float(accuracy) - agent_numerator/agent_denominator) < .001, (accuracy, agent_numerator/agent_denominator)
