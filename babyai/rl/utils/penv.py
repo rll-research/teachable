@@ -75,6 +75,7 @@ class ParallelEnv(gym.Env):
             self.envs[0].set_task(None)
             obs = self.envs[0].reset()
         results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
+        results = list(results)
         return results
 
     def update_tasks(self):

@@ -368,18 +368,16 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
-        obs = np.concatenate([[self.agent_dir],
-                              self.agent_pos,
-                              grid_representation,
-                              goal])
+        obs_dict = {}
+        additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
+        obs_dict["obs"] = image
+        obs_dict['instr'] = goal
+        obs_dict['extra'] = additional
         if hasattr(self, 'teacher') and self.teacher is not None:
-            correction = self.compute_teacher_advice(obs)
-            correction = np.concatenate(list(correction.values()))
-            obs = np.concatenate([obs, correction])
-
-        return deepcopy(obs)
+            correction = self.compute_teacher_advice(image.flatten())
+            obs_dict.update(correction)
+        return obs_dict
 
     def compute_teacher_advice(self, obs):
         # TODO: ask Abhishek what this is for to make sure I'm not deleting anything important

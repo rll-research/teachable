@@ -8,6 +8,7 @@ from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcess
 from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
+from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
 import torch
 import copy
@@ -96,12 +97,24 @@ def run_experiment(**config):
         else:
             supervised_model = None
 
+        teacher_train_dict = {}
+        for teacher_name in config['feedback_type']:
+            teacher_train_dict[teacher_name] = True
+
     else:
+
+        teacher_train_dict = {}
+        for teacher_name in config['feedback_type']:
+            teacher_train_dict[teacher_name] = True
+
         optimizer = None
         baseline = None
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
-        obs_dim = env.reset().shape[0]
+        obs = env.reset()
+        obs_dim = 100  # TODO: consider changing this with 'additional' and adding it!
+        advice_size = sum([np.prod(obs[adv_k].shape) for adv_k in teacher_train_dict.keys()])
+
         image_dim = 128
         memory_dim = config['memory_dim']
         instr_dim = config['instr_dim']
@@ -109,7 +122,7 @@ def run_experiment(**config):
         instr_arch = 'bigru'
         use_mem = True
         arch = 'bow_endpool_res'
-        advice_end_index, advice_dim = 161, 1
+        advice_dim = 128  # TODO: move this to the config
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -121,8 +134,7 @@ def run_experiment(**config):
                          use_memory=use_mem,
                          arch=arch,
                          advice_dim=advice_dim,
-                         advice_start_index=advice_start_index,
-                         advice_end_index=advice_end_index,
+                         advice_size=advice_size,
                          num_modules=config['num_modules'])
 
 
@@ -137,11 +149,10 @@ def run_experiment(**config):
                                  use_memory=use_mem,
                                  arch=arch,
                                  advice_dim=advice_dim,
-                                 advice_start_index=advice_start_index,
-                                 advice_end_index=advice_end_index,
+                                 advice_size=advice_size,
                                  num_modules=config['num_modules'])
         if config['self_distill'] and not config['distill_same_model']:
-            obs_dim = env.reset().shape[0]
+            obs_dim = env.reset()['obs'].shape[0]
             image_dim = 128
             memory_dim = config['memory_dim']
             instr_dim = config['instr_dim']
@@ -160,8 +171,7 @@ def run_experiment(**config):
                                      use_memory=use_mem,
                                      arch=arch,
                                      advice_dim=advice_dim,
-                                     advice_start_index=advice_start_index,
-                                     advice_end_index=advice_end_index,
+                                     advice_size=advice_size,
                                      num_modules=config['num_modules'])
         elif config['self_distill']:
             supervised_model = policy
@@ -182,6 +192,9 @@ def run_experiment(**config):
         il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
+    teacher_null_dict = env.teacher.null_feedback()
+    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
     sampler = MetaSampler(
         env=env,
         policy=policy,
@@ -192,6 +205,7 @@ def run_experiment(**config):
         envs_per_task=1,
         reward_predictor=reward_predictor,
         supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
     )
 
     sample_processor = RL2SampleProcessor(
@@ -227,7 +241,8 @@ def run_experiment(**config):
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
                    args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'],
-                   parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'])
+                   parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'],
+                   obs_preprocessor=obs_preprocessor)
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -284,6 +299,8 @@ def run_experiment(**config):
         rp_trainer=rp_trainer,
         advance_levels=config['advance_levels'],
         is_debug=is_debug,
+        teacher_train_dict=teacher_train_dict,
+        obs_preprocessor=obs_preprocessor,
     )
     trainer.train()
 

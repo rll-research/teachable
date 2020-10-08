@@ -35,7 +35,8 @@ class MetaSampler(BaseSampler):
         envs_per_task=None,
         parallel=False,
         reward_predictor=None,
-        supervised_model=None
+        supervised_model=None,
+        obs_preprocessor=None
     ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
         assert hasattr(env, 'set_task')
@@ -43,6 +44,7 @@ class MetaSampler(BaseSampler):
         self.rollouts_per_meta_task = rollouts_per_meta_task
         self.max_path_length = max_path_length
         self.envs_per_task = rollouts_per_meta_task if envs_per_task is None else envs_per_task
+        assert self.envs_per_task == 1, "When we changed to the new model, we didn't check if the format could handle > 1 envs_per_task.  If it does, feel free to remove this."
         self.meta_batch_size = meta_batch_size
         self.parallel = parallel
         self.total_timesteps_sampled = 0
@@ -50,6 +52,7 @@ class MetaSampler(BaseSampler):
         self.supervised_model = supervised_model
         # setup vectorized environment
         self.parallel = False  # TODO: remove
+        self.obs_preprocessor = obs_preprocessor
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
         else:
@@ -75,8 +78,8 @@ class MetaSampler(BaseSampler):
                 obs[:, :, indices] = null_value
         return obs
 
-    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False, dropout_proportion=1,
-                       policy=None, feedback_list=[], max_action=False, use_teacher=False):
+    def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False,
+                       policy=None, teacher_dict={}, max_action=False):
         """
         Collect batch_size trajectories from each task
 
@@ -111,26 +114,26 @@ class MetaSampler(BaseSampler):
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
-        # self.vec_env.set_dropout(dropout_proportion)
         self.update_tasks()
 
         obses = self.vec_env.reset()
 
         num_paths = 0
+        itrs = 0
         while num_paths < total_paths:
-            if not use_teacher:
-                obses = self.mask_teacher(obses, feedback_list)
-            # execute policy
+            print("Loop", num_paths, total_paths, itrs)
+            itrs += 1
             t = time.time()
-            obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
+            obses = self.obs_preprocessor(obses, teacher_dict)
             if random:
                 actions = np.stack([[self.env.action_space.sample()] for _ in range(len(obses))], axis=0)
                 agent_infos = [[{'mean': np.zeros_like(self.env.action_space.sample()),
                                  'log_std': np.zeros_like(
                                      self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
-                actions, agent_infos = policy.get_actions(obs_per_task, use_teacher=use_teacher)
-                if max_action:
+                actions, agent_infos = policy.get_actions_t(obses)
+                if max_action:  # TODO: double check this still works
+                    assert False, "We haven't checked this still works with the new model; if it does, feel free to delete."
                     original_action_shape = actions.shape
                     actions = [[[np.argmax(d['probs'])] for d in agent_info] for agent_info in agent_infos]
                     actions = np.array(actions, dtype=np.int32)
@@ -141,12 +144,8 @@ class MetaSampler(BaseSampler):
 
             # step environments
             t = time.time()
-            actions = np.concatenate(actions)  # stack meta batch
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
             env_time += time.time() - t
-
-            #  stack agent_infos and if no infos were provided (--> None) create empty dicts
-            agent_infos, env_infos = self._handle_info_dicts(agent_infos, env_infos)
 
             new_samples = 0
             new_paths = 0
@@ -193,19 +192,6 @@ class MetaSampler(BaseSampler):
 
         return paths
 
-    def _handle_info_dicts(self, agent_infos, env_infos):
-        if not env_infos:
-            env_infos = [dict() for _ in range(self.vec_env.num_envs)]
-        if not agent_infos:
-            agent_infos = [dict() for _ in range(self.vec_env.num_envs)]
-        else:
-            assert len(agent_infos) == self.meta_batch_size
-            assert len(agent_infos[0]) == self.envs_per_task
-            agent_infos = sum(agent_infos, [])  # stack agent_infos
-
-        assert len(agent_infos) == self.meta_batch_size * self.envs_per_task == len(env_infos), (
-        len(agent_infos), self.meta_batch_size, self.envs_per_task, len(env_infos))
-        return agent_infos, env_infos
 
     def advance_curriculum(self):
         self.vec_env.advance_curriculum()

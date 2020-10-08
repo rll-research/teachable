@@ -25,7 +25,7 @@ class Teacher:
         self.last_action = -1
         self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
-        self.next_state = env.gen_obs()
+        self.next_state = env.gen_obs()['obs']
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
         self.steps_since_lastfeedback = 0
@@ -95,9 +95,10 @@ class Teacher:
             oracle = new_oracle
             env_copy.teacher = None
             if next_action == -1:  # TODO: Is this ever triggered?  As far as I can tell, no.
-                next_state = env_copy.gen_obs()
+                next_state = env_copy.gen_obs()['obs']
             else:
                 next_state,  rew,  done,  info = env_copy.step(next_action)
+                next_state = next_state['obs']
         return next_state
 
     def give_feedback(self, state):

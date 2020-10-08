@@ -65,6 +65,8 @@ class Trainer(object):
         advance_levels=True,
         is_debug=False,
         rollouts_per_meta_task=1,
+        teacher_train_dict={},
+        obs_preprocessor=None,
     ):
         self.algo = algo
         self.env = copy.deepcopy(env)
@@ -108,6 +110,17 @@ class Trainer(object):
         self.rollouts_per_meta_task = rollouts_per_meta_task
         self.num_feedback_advice = 0
         self.num_feedback_reward = 0
+        # Dict saying which teacher types the agent has access to for training.
+        self.teacher_train_dict = teacher_train_dict  # TODO: write a function where we can adjust this over time
+        # Dict saying which teacher types we should distill to.  Currently set to be identical, but could be different
+        # if we were training on a single teacher but distilling to a set, or something like that.
+        self.teacher_distill_dict = teacher_train_dict
+        # Dict specifying no teacher provided.
+        self.no_teacher_dict = copy.deepcopy(teacher_train_dict)
+        for k in self.no_teacher_dict.keys():
+            self.no_teacher_dict[k] = False
+        self.obs_preprocessor = obs_preprocessor
+
         if self.num_batches is not None:
             self.num_train_batches = (self.num_batches * 0.9)
             self.num_val_batches = self.num_batches - self.num_train_batches
@@ -196,7 +209,7 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
+            samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
             assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
@@ -204,12 +217,11 @@ class Trainer(object):
             #     entropy = self.algo.entropy_coef# * 10
             # else:
             #     entropy = self.algo.entropy_coef
-            # summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
+            summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
             time_training = time.time() - time_training_start
-            # self._log(episode_logs, summary_logs, tag="Train")
+            self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            # advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            advance_curriculum = False
+            advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/Advance', int(advance_curriculum))
             time_env_sampling = time.time() - time_env_sampling_start
             #
@@ -229,7 +241,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if False:
+            if False:  # TODO: remove False once I've checked things work with dictionaries
             # if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
                 for _ in range(3):  # TODO: tune this!
@@ -244,7 +256,7 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if False:
+            if False:  # TODO: remove False once I've checkeo things work with dictionaries
             # if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
@@ -253,7 +265,7 @@ class Trainer(object):
                         time_run_supervised_start = time.time()
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                         logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.distill_with_teacher, "DRollout/")
+                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict, "DRollout/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
@@ -262,7 +274,7 @@ class Trainer(object):
                     time_run_policy_start = time.time()
                     self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running model with teacher")
-                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
+                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.teacher_train_dict, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
                     advance_curriculum = advance_curriculum_policy and advance_curriculum_sup and train_advance_curriculum
@@ -271,7 +283,7 @@ class Trainer(object):
                     logger.logkv('Advance', int(advance_curriculum))
             else:
                 run_supervised_time = 0
-                advance_curriculum = False
+                # advance_curriculum = False
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
@@ -302,30 +314,30 @@ class Trainer(object):
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (itr == self.n_itr - 1) or advance_curriculum
-            if False:
-            # if should_save_video:
+            if should_save_video:
+            # TODO: consider generating videos with every element in the powerset of feedback types
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
                     self.il_trainer.acmodel.reset(dones=[True])
                     self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch',
                                    num_rollouts=5,
-                                   use_teacher=self.distill_with_teacher,
+                                   teacher_dict=self.teacher_train_dict,
                                    save_video=should_save_video, log_prefix="DVidRollout/Stoch", stochastic=True)
                     self.il_trainer.acmodel.reset(dones=[True])
                     self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_det',
                                      num_rollouts=5,
-                                     use_teacher=self.distill_with_teacher,
+                                   teacher_dict=self.no_teacher_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/Det", stochastic=False)
 
                 self.algo.acmodel.reset(dones=[True])
                 self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_stoch',
                                num_rollouts=5,
-                               use_teacher=self.train_with_teacher,
+                               teacher_dict=self.teacher_train_dict,
                                save_video=should_save_video, log_prefix="VidRollout/Stoch", stochastic=True)
                 self.algo.acmodel.reset(dones=[True])
                 self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_det',
                                  num_rollouts=5,
-                                 use_teacher=self.train_with_teacher,
+                                   teacher_dict=self.no_teacher_dict,
                                  save_video=should_save_video, log_prefix="VidRollout/Det", stochastic=False)
                 rollout_time = time.time() - time_rollout_start
             else:
@@ -397,10 +409,9 @@ class Trainer(object):
         log = self.il_trainer.distill(samples, source=self.source, is_training=is_training)
         return log
 
-    def run_supervised(self, policy, use_teacher, tag):
+    def run_supervised(self, policy, teacher_dict, tag):
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-                                            feedback_list=self.teacher_info, max_action=False,  # TODO: consider adding a flag for max_action
-                                            use_teacher=use_teacher)
+                                            teacher_dict=teacher_dict, max_action=False)  # TODO: consider adding a flag for max_action
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag, log_teacher=self.train_with_teacher)
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data)
         logger.logkv(f"{tag}Advance", int(advance_curriculum))
@@ -408,7 +419,7 @@ class Trainer(object):
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
         return advance_curriculum
 
-    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False,
+    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
                     log_prefix=None, stochastic=True):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
@@ -417,9 +428,10 @@ class Trainer(object):
                                   max_path_length=200,
                                   reset_every=self.rollouts_per_meta_task,
                                   stochastic=stochastic,
-                                  batch_size=1, record_teacher=True, use_teacher=use_teacher,
+                                  batch_size=1, record_teacher=True, teacher_dict=teacher_dict,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
-                                  num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False)
+                                  num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False,
+                                  obs_preprocessor=self.obs_preprocessor,)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))

@@ -1,9 +1,6 @@
 import numpy
 import numpy as np
 import torch
-import torch.nn.functional as F
-from babyai.rl import DictList
-from meta_mb.logger import logger
 import time
 
 
@@ -18,11 +15,11 @@ class PPOAlgo(BaseAlgo):
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
-                 rollouts_per_meta_task=1):
+                 rollouts_per_meta_task=1, teacher_null_dict={}, obs_preprocessor=None):
 
         super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                         value_loss_coef, max_grad_norm, recurrence, self.obss_preprocessor, None,
-                         aux_info, parallel, rollouts_per_meta_task)
+                         value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
+                         aux_info, parallel, rollouts_per_meta_task, teacher_null_dict)
 
         num_frames_per_proc = num_frames_per_proc or 128
         self.acmodel = acmodel
@@ -61,52 +58,11 @@ class PPOAlgo(BaseAlgo):
         self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
                                           eps=self.adam_eps)
 
-    def obss_preprocessor(self, obs, device=None):
-        obs_arr = np.stack(obs, 0)
-        return torch.FloatTensor(obs_arr).to(device)
-
     def update_parameters(self):
         return self.optimize_policy(None, True)
 
-    def preprocess_samples(self, samples_data):
 
-        del samples_data["avg_reward"]
-
-        b, t, _ = samples_data['actions'].shape
-        for k, v in samples_data.items():
-            if type(v) is np.ndarray:
-                samples_data[k] = torch.FloatTensor(v.reshape((b * t, -1))).to(self.device)
-            elif type(v) is dict:
-                for k2, v2 in v.items():
-                    v[k2] = torch.FloatTensor(v2.reshape(b * t, -1)).to(self.device)
-                samples_data[k] = DictList(v)
-            else:
-                print("can't flatten", k, v.shape)
-
-        return DictList(samples_data)
-
-
-    def compute_advantage(self, samples_data):  # TODO: move this to wherever we currently compute returns
-        values = samples_data['agent_infos']['value']
-        batch_size, timesteps = values.shape
-        rewards = samples_data['rewards']
-        masks = samples_data['mask'][:, :, 0]
-
-        next_value = values[:, -1]  # TODO: Check whether this is an off-by-one error
-
-        advantages = np.zeros((batch_size, timesteps))
-        for i in reversed(range(timesteps)):
-            next_mask = masks[:, i + 1] if i < timesteps - 1 else np.ones(batch_size)
-            next_value = values[:, i + 1] if i < timesteps - 1 else next_value
-            next_advantage = advantages[:, i + 1] if i < timesteps - 1 else np.zeros(batch_size)
-
-            delta = rewards[:, i] + self.discount * next_value * next_mask - values[:, i]
-            advantages[:, i] = delta + self.discount * self.gae_lambda * next_advantage * next_mask
-        samples_data['advantages'] = advantages
-        return samples_data
-
-
-    def optimize_policy(self, exps, use_teacher=False, entropy_coef=None):  # TODO: later generalize this to which kinds of teacher should be visible to the agent.
+    def optimize_policy(self, exps, teacher_dict={}, entropy_coef=None):
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -197,7 +153,7 @@ class PPOAlgo(BaseAlgo):
 
                     # Compute loss
                     model_running = time.time()
-                    dist, agent_info = self.acmodel(sb.obs, memory * sb.mask, use_teacher=use_teacher)
+                    dist, agent_info = self.acmodel(sb.obs, memory * sb.mask)
                     model_calls += 1
                     model_samples_calls += len(sb.obs)
                     model_running_end = time.time() - model_running
@@ -325,7 +281,8 @@ class PPOAlgo(BaseAlgo):
                 if len(log_teacher_following[i]) > 0:
                     logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
                     logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
-            logs["num_feedback_advice"] = len(exps.obs) if use_teacher else 0  # TODO: change this once we use multiple feedback types at once
+            num_feedback = sum(list(teacher_dict.values()))
+            logs["num_feedback_advice"] = len(exps.obs) * num_feedback
             logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
 
         return logs

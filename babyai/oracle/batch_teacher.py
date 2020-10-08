@@ -25,6 +25,13 @@ class BatchTeacher:
             return_dict[k] = v.empty_feedback()
         return return_dict
 
+    # TODO: do we really want null feedback to always be 0?  Maybe it should be noise?  Or some special token?
+    def null_feedback(self):
+        return_dict = {}
+        for k, v in self.teachers.items():
+            return_dict[k] = v.empty_feedback() * 0
+        return return_dict
+
     def compute_feedback(self):
         return_dict = {}
         for k, v in self.teachers.items():
