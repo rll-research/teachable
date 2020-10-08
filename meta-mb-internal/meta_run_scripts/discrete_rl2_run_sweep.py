@@ -8,6 +8,7 @@ from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcess
 from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
+from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
 import torch
 import copy
@@ -55,22 +56,6 @@ def get_exp_name(config):
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
-def get_advice_index(advice_start_index, config, env):
-    advice_dim = 128
-    if config['feedback_type'] == 'PreActionAdvice':
-        advice_end_index = advice_start_index + env.action_space.n + 1
-    elif config['feedback_type'] == 'CartesianCorrections':
-        advice_end_index = advice_start_index + 160
-    elif config['feedback_type'] == 'SubgoalCorrections':
-        advice_end_index = advice_start_index + 17
-    elif config['feedback_type'] is None:
-        advice_end_index = 160
-        advice_dim = 0
-    else:
-        raise NotImplementedError(config['feedback_type'])
-    return advice_end_index, advice_dim
-
-
 def run_experiment(**config):
     set_seed(config['seed'])
     original_saved_path = config['saved_path']
@@ -112,12 +97,24 @@ def run_experiment(**config):
         else:
             supervised_model = None
 
+        teacher_train_dict = {}
+        for teacher_name in config['feedback_type']:
+            teacher_train_dict[teacher_name] = True
+
     else:
+
+        teacher_train_dict = {}
+        for teacher_name in config['feedback_type']:
+            teacher_train_dict[teacher_name] = True
+
         optimizer = None
         baseline = None
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
-        obs_dim = env.reset().shape[0]
+        obs = env.reset()
+        obs_dim = 100  # TODO: consider changing this with 'additional' and adding it!
+        advice_size = sum([np.prod(obs[adv_k].shape) for adv_k in teacher_train_dict.keys()])
+
         image_dim = 128
         memory_dim = config['memory_dim']
         instr_dim = config['instr_dim']
@@ -125,7 +122,7 @@ def run_experiment(**config):
         instr_arch = 'bigru'
         use_mem = True
         arch = 'bow_endpool_res'
-        advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
+        advice_dim = 128  # TODO: move this to the config
         policy = ACModel(obs_space=obs_dim,
                          action_space=env.action_space,
                          env=env,
@@ -137,8 +134,7 @@ def run_experiment(**config):
                          use_memory=use_mem,
                          arch=arch,
                          advice_dim=advice_dim,
-                         advice_start_index=advice_start_index,
-                         advice_end_index=advice_end_index,
+                         advice_size=advice_size,
                          num_modules=config['num_modules'])
 
 
@@ -153,11 +149,10 @@ def run_experiment(**config):
                                  use_memory=use_mem,
                                  arch=arch,
                                  advice_dim=advice_dim,
-                                 advice_start_index=advice_start_index,
-                                 advice_end_index=advice_end_index,
+                                 advice_size=advice_size,
                                  num_modules=config['num_modules'])
         if config['self_distill'] and not config['distill_same_model']:
-            obs_dim = env.reset().shape[0]
+            obs_dim = env.reset()['obs'].shape[0]
             image_dim = 128
             memory_dim = config['memory_dim']
             instr_dim = config['instr_dim']
@@ -176,8 +171,7 @@ def run_experiment(**config):
                                      use_memory=use_mem,
                                      arch=arch,
                                      advice_dim=advice_dim,
-                                     advice_start_index=advice_start_index,
-                                     advice_end_index=advice_end_index,
+                                     advice_size=advice_size,
                                      num_modules=config['num_modules'])
         elif config['self_distill']:
             supervised_model = policy
@@ -198,6 +192,9 @@ def run_experiment(**config):
         il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
+    teacher_null_dict = env.teacher.null_feedback()
+    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
     sampler = MetaSampler(
         env=env,
         policy=policy,
@@ -208,6 +205,7 @@ def run_experiment(**config):
         envs_per_task=1,
         reward_predictor=reward_predictor,
         supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
     )
 
     sample_processor = RL2SampleProcessor(
@@ -243,7 +241,8 @@ def run_experiment(**config):
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
                    args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'],
-                   parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'])
+                   parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'],
+                   obs_preprocessor=obs_preprocessor)
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -264,7 +263,7 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr, name=config['prefix'] + str(config['seed']), config=config)
     json.dump(config, open(exp_dir + '/params.json', 'w'), indent=2, sort_keys=True, cls=ClassEncoder)
 
-    advice_end_index, advice_dim = get_advice_index(advice_start_index, config, env)
+    advice_end_index, advice_dim = 161, 1
     if config['distill_with_teacher']:  # TODO: generalize this for multiple feedback types at once!
         teacher_info = []
     else:
@@ -300,6 +299,8 @@ def run_experiment(**config):
         rp_trainer=rp_trainer,
         advance_levels=config['advance_levels'],
         is_debug=is_debug,
+        teacher_train_dict=teacher_train_dict,
+        obs_preprocessor=obs_preprocessor,
     )
     trainer.train()
 
@@ -329,7 +330,8 @@ if __name__ == '__main__':
         "rollouts_per_meta_task": [1],  # TODO: change this back to > 1
 
         # Teacher
-        "feedback_type": [None],
+        # "feedback_type": [["PreActionAdvice"]],
+        "feedback_type": [["PreActionAdvice", "CartesianCorrections"]],
         # Options are [None, "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"]
         'feedback_always': [False],
         'feedback_freq': [1],

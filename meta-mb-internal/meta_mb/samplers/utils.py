@@ -12,8 +12,8 @@ def write_video(writer, frames, show_last=None):
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset_every=1, batch_size=1,
             video_directory="", video_name='sim_out', ignore_done=False, stochastic=False, num_rollouts=1, show_last=None,
-            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, save_locally=True,
-            save_wandb=False):
+            num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
+            save_wandb=False, obs_preprocessor=None, teacher_dict={}):
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
@@ -56,24 +56,24 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
         env_infos = []
         curr_images = []
         if i % reset_every == 0:
-            agent.reset(dones=[True] * batch_size)
+            agent.reset()
             if reward_predictor is not None:
-                reward_predictor.reset(dones=[True] * batch_size)
+                reward_predictor.reset()
             env.set_task(None)
         path_length = 0
         o = env.reset()
         if render:
             _ = env.render(mode)
         while path_length < max_path_length:
-            obs_big = np.stack([o] * batch_size)
-            a, agent_info = agent.get_actions(obs_big, use_teacher=use_teacher)
-            a = a[0][0]
+            o = obs_preprocessor([o], teacher_dict)
+            a, agent_info = agent.get_actions_t(o)
+            a = a[0]
             agent_actions.append(a)
 
             count += 1
 
             if not stochastic:
-                a = np.array([np.argmax(agent_info[0][0]['probs'])])
+                a = np.array([np.argmax(agent_info[0]['probs'])])
             next_o, r, d, env_info = env.step(a)
             success = env_info['success']
 
@@ -82,8 +82,8 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
                 correct += 1
 
             if reward_predictor is not None:
-                reward_obs = np.stack([env_info['next_obs_rewardfree']] * batch_size)
-                pred_reward = reward_predictor.get_actions(reward_obs, use_teacher=use_teacher)
+                reward_obs = env_info['next_obs_rewardfree']
+                pred_reward = reward_predictor.get_actions_t(reward_obs)
 
 
             observations.append(o)

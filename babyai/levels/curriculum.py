@@ -22,35 +22,35 @@ class Curriculum(Serializable):
             Level_GoToRedBall(**kwargs),  # 2
             Level_GoToObjS4(**kwargs),  # 3
             Level_GoToObjS6(**kwargs),  # 4
-            Level_GoToObj(**kwargs),  # 5
-            Level_GoToLocalS5N2(**kwargs),  # 6
-            Level_GoToLocalS6N3(**kwargs),  # 7
-            Level_GoToLocalS7N4(**kwargs),  # 8
-            Level_GoToLocalS8N7(**kwargs),  # 9
-            Level_GoToLocal(**kwargs),  # 10
-            Level_PickupLocalS5N2(**kwargs),  # 11
-            Level_PickupLocalS6N3(**kwargs),  # 12
-            Level_PickupLocalS7N4(**kwargs),  # 13
-            Level_PickupLocalS8N7(**kwargs),  # 14
-            Level_PickupLocal(**kwargs), #  15
-            Level_PutNextLocalS5N3(**kwargs), # 16
-            Level_PutNextLocalS6N4(**kwargs),  # 17
-            Level_PutNextLocal(**kwargs),  # 18
-            Level_OpenLocalS5N3(**kwargs),  # 19
-            Level_OpenLocalS6N4(**kwargs),  # 20
-            Level_OpenLocal(**kwargs),  # 21
-            Level_GoToObjMazeOpen(**kwargs),  # 22
-            Level_GoToOpen(**kwargs),  # 23
-            Level_GoToObjMazeS4R2(**kwargs),  # 24
-            Level_GoToObjMazeS5(**kwargs),  # 25
-            Level_GoToObjMaze(**kwargs),  # 26
-            Level_Open(**kwargs),  # 27
-            Level_GoTo(**kwargs),  # 28
-            Level_Pickup(**kwargs),  # 29
-            Level_Unlock(**kwargs),  # 30
-            Level_GoToImpUnlock(**kwargs),  # 31
-            Level_PutNext(**kwargs),  # 32
-            Level_UnblockPickup(**kwargs),  # 33
+            # Level_GoToObj(**kwargs),  # 5
+            # Level_GoToLocalS5N2(**kwargs),  # 6
+            # Level_GoToLocalS6N3(**kwargs),  # 7
+            # Level_GoToLocalS7N4(**kwargs),  # 8
+            # Level_GoToLocalS8N7(**kwargs),  # 9
+            # Level_GoToLocal(**kwargs),  # 10
+            # Level_PickupLocalS5N2(**kwargs),  # 11
+            # Level_PickupLocalS6N3(**kwargs),  # 12
+            # Level_PickupLocalS7N4(**kwargs),  # 13
+            # Level_PickupLocalS8N7(**kwargs),  # 14
+            # Level_PickupLocal(**kwargs), #  15
+            # Level_PutNextLocalS5N3(**kwargs), # 16
+            # Level_PutNextLocalS6N4(**kwargs),  # 17
+            # Level_PutNextLocal(**kwargs),  # 18
+            # Level_OpenLocalS5N3(**kwargs),  # 19
+            # Level_OpenLocalS6N4(**kwargs),  # 20
+            # Level_OpenLocal(**kwargs),  # 21
+            # Level_GoToObjMazeOpen(**kwargs),  # 22
+            # Level_GoToOpen(**kwargs),  # 23
+            # Level_GoToObjMazeS4R2(**kwargs),  # 24
+            # Level_GoToObjMazeS5(**kwargs),  # 25
+            # Level_GoToObjMaze(**kwargs),  # 26
+            # Level_Open(**kwargs),  # 27
+            # Level_GoTo(**kwargs),  # 28
+            # Level_Pickup(**kwargs),  # 29
+            # Level_Unlock(**kwargs),  # 30
+            # Level_GoToImpUnlock(**kwargs),  # 31
+            # Level_PutNext(**kwargs),  # 32
+            # Level_UnblockPickup(**kwargs),  # 33
         ]
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.

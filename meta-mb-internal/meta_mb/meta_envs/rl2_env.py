@@ -81,8 +81,9 @@ class RL2Env(Serializable):
             return orig_attr
 
     def reset(self):
-        obs = self._wrapped_env.reset()
-        return np.concatenate([obs, self.prev_action, self.prev_reward, self.prev_done])
+        obs_dict = self._wrapped_env.reset()
+        obs_dict['extra'] = np.concatenate([obs_dict['extra'], self.prev_action, self.prev_reward, self.prev_done])
+        return obs_dict
 
     def __getstate__(self):
         d = Serializable.__getstate__(self)
@@ -93,20 +94,21 @@ class RL2Env(Serializable):
 
     def step(self, action):
         wrapped_step = self._wrapped_env.step(action)
-        next_obs, reward, done, info = wrapped_step
+        next_obs_dict, reward, done, info = wrapped_step
         if self.ceil_reward:
             reward = np.ceil(reward) # Send it to 1
         if isinstance(self._wrapped_env.action_space, Discrete):
             ac_idx = action
             action = np.zeros((self._wrapped_env.action_space.n,))
             action[ac_idx] = 1.0
-        next_obs_rewardfree = np.concatenate([next_obs, action, [done]]).copy()
-        next_obs = np.concatenate([next_obs, action, [reward], [done]]).copy()
+        next_obs_rewardfree = np.concatenate([next_obs_dict['extra'], action, [done]]).copy()
+        next_obs = np.concatenate([next_obs_dict['extra'], action, [reward], [done]]).copy()
+        next_obs_dict['extra'] = next_obs
         info['next_obs_rewardfree'] = next_obs_rewardfree
         self.prev_action = action
         self.prev_reward = [reward]
         self.prev_done = [done]
-        return next_obs, reward, done, info
+        return next_obs_dict, reward, done, info
 
     def set_task(self, args):
         self._wrapped_env.set_task(args)

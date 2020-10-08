@@ -103,7 +103,7 @@ class BaseAlgo(ABC):
         self.teacher_actions = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
         self.done_index = torch.zeros(self.num_procs, device=self.device)
-        self.env_infos = [None]  * len(self.dones)
+        self.env_infos = [None] * len(self.dones)
 
         if self.aux_info:
             self.aux_info_collector = ExtraInfoCollector(self.aux_info, shape, self.device)
@@ -121,7 +121,7 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
-    def collect_experiences(self, use_teacher=False):
+    def collect_experiences(self, teacher_dict):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -142,13 +142,16 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        teacher_keys = list(teacher_dict.keys())
+        all_teachers_dict = dict(zip(teacher_keys, [True] * len(teacher_keys)))
+
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-            preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
+            preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
 
             with torch.no_grad():
-                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)
+                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
                 value = model_results['value']
                 memory = model_results['memory']
                 extra_predictions = None
@@ -162,7 +165,7 @@ class BaseAlgo(ABC):
             self.env_infos[i] = env_info
             self.obss[i] = self.obs
             self.obs = obs
-            self.teacher_actions[i] = torch.FloatTensor([i['teacher_action'][0] for i in env_info]).to(self.device)
+            self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
 
             self.memories[i] = self.memory
             self.memory = memory
@@ -211,9 +214,9 @@ class BaseAlgo(ABC):
 
         # Add advantage and return to experiences
 
-        preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
+        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
         with torch.no_grad():
-            next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)[1]['value']
+            next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
 
         for i in reversed(range(self.num_frames_per_proc)):
             next_mask = self.masks[i+1] if i < self.num_frames_per_proc - 1 else self.mask
@@ -265,7 +268,7 @@ class BaseAlgo(ABC):
 
         # Preprocess experiences
 
-        exps.obs = self.preprocess_obss(exps.obs, device=self.device)
+        exps.obs = self.preprocess_obss(exps.obs, all_teachers_dict)
 
         # Log some values
 
