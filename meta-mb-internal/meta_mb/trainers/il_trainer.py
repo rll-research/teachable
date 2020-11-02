@@ -42,6 +42,17 @@ class ImitationLearning(object):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("DEVICE", self.device)
+        self.obs_input = []
+        self.memory_input = []
+        self.probs_output = []
+        self.instr_input = []
+        self.instr_input_embedding = []
+
+        self.obs_input_backprop = []
+        self.memory_input_backprop = []
+        self.probs_output_backprop = []
+        self.instr_input_backprop = []
+        self.instr_vecs = []
 
     def validate(self, episodes, verbose=True):
         # Seed needs to be reset for each validation, to ensure consistency
@@ -92,10 +103,11 @@ class ImitationLearning(object):
             assert len(action.shape) == 1, action.shape
         else:
             raise NotImplementedError(source)
-        done = (1 - demos.mask).detach().cpu().numpy()
-        done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
-        split_indices = np.where(done == 1)[0]
-        split_indices = np.concatenate([[0], split_indices, [len(obs)]], axis=0)
+        done = demos.done.detach().cpu().numpy()
+        # done = (1 - demos.mask).detach().cpu().numpy()
+        # done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
+        split_indices = np.where(done == 1)[0] + 1
+        split_indices = np.concatenate([[0], split_indices], axis=0)  # TODO: deal with partial trajectories!
         new_demos = []
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
@@ -150,7 +162,7 @@ class ImitationLearning(object):
         mask = np.ones([len(obss)], dtype=np.float64)
         try:
             mask[inds] = 0
-        except:
+        except Exception as e:
             print("???")
             print("BATCH LENGTH", len(batch))
             for demo in batch:
@@ -175,18 +187,27 @@ class ImitationLearning(object):
         instr_embedding = self.acmodel._get_instr_embedding(instr)
 
         # Loop terminates when every observation in the flat_batch has been handled
+        i = 0
         while True:
             # taking observations and done located at inds
+            print("Going through while loop", i, inds)
+            i += 1
             obs = obss[inds]
             done_step = done[inds]
             preprocessed_obs = self.obss_preprocessor(obs, self.device)
 
             with torch.no_grad():
                 # taking the memory till len(inds), as demos beyond that have already finished
+                self.obs_input.append(preprocessed_obs.detach().clone())
+                self.memory_input.append(memory[:len(inds), :].detach().clone())
+                self.instr_input_embedding.append(instr_embedding[:len(inds)].detach().clone())
+                self.instr_input.append(instr.detach().clone())
                 dist, info = self.acmodel(
                     preprocessed_obs,
-                    memory[:len(inds), :], instr_embedding[:len(inds)], self.distill_with_teacher)
+                    memory[:len(inds), :], instr_embedding[:len(inds)], True)
                 new_memory = info['memory']
+                self.probs_output.append(info['probs'].detach().clone())
+                self.instr_vecs.append(info['instr_vecs'])
 
             memories[inds, :] = memory[:len(inds), :]
             memory[:len(inds), :] = new_memory
@@ -224,10 +245,14 @@ class ImitationLearning(object):
             action_step = action_true[indexes]
 
             mask_step = mask[indexes]
+            self.obs_input_backprop.append(preprocessed_obs.detach().clone())
+            self.memory_input_backprop.append(memory * mask_step.detach().clone())
+            self.instr_input_backprop.append(instr_embedding[episode_ids[indexes]].detach().clone())
             dist, info = self.acmodel(
                 preprocessed_obs, memory * mask_step,
-                instr_embedding[episode_ids[indexes]], self.distill_with_teacher)
+                instr_embedding[episode_ids[indexes]], True)
             memory = info["memory"]
+            self.probs_output_backprop.append(info['probs'].detach().clone())
 
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
@@ -292,8 +317,8 @@ class ImitationLearning(object):
 
         if is_training:
             self.optimizer.zero_grad()
-            final_loss.backward()
-            self.optimizer.step()
+            # final_loss.backward()
+            # self.optimizer.step()
 
         log = {}
         log["Entropy"] = float(final_entropy / self.args.recurrence)

@@ -197,6 +197,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             samples_data, episode_logs = self.algo.collect_experiences(use_teacher=self.train_with_teacher)
+            self.samples_data = samples_data
             assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
@@ -204,11 +205,12 @@ class Trainer(object):
             #     entropy = self.algo.entropy_coef# * 10
             # else:
             #     entropy = self.algo.entropy_coef
-            summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
+            # summary_logs = self.algo.optimize_policy(samples_data, use_teacher=self.train_with_teacher)
             time_training = time.time() - time_training_start
-            self._log(episode_logs, summary_logs, tag="Train")
+            # self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
+            advance_curriculum = True
+            # advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/Advance', int(advance_curriculum))
             time_env_sampling = time.time() - time_env_sampling_start
             #
@@ -230,8 +232,8 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                for _ in range(3):  # TODO: tune this!
-                    distill_log = self.distill(samples_data, is_training=True)
+                # for _ in range(3):  # TODO: tune this!
+                distill_log = self.distill(samples_data, is_training=True)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
@@ -242,7 +244,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+            if False:
+            # if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
@@ -299,7 +302,8 @@ class Trainer(object):
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (itr == self.n_itr - 1) or advance_curriculum
-            if should_save_video:
+            if True:
+            # if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
                     self.il_trainer.acmodel.reset(dones=[True])
@@ -416,6 +420,13 @@ class Trainer(object):
                                   batch_size=1, record_teacher=True, use_teacher=use_teacher,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
                                   num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False)
+
+
+        import IPython
+        IPython.embed()
+
+
+
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))

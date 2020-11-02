@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import cv2
-import wandb
+# import wandb
 import os
 
 def write_video(writer, frames, show_last=None):
@@ -47,7 +47,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
     agent_actions = []
     teacher_actions = []
     render = animated or save_locally or save_locally
-    for i in range(num_rollouts):
+    for i in range(1):
         # print("Rollout", i)
         observations = []
         actions = []
@@ -66,14 +66,14 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
             _ = env.render(mode)
         while path_length < max_path_length:
             obs_big = np.stack([o] * batch_size)
-            a, agent_info = agent.get_actions(obs_big, use_teacher=use_teacher)
+            a, agent_info = agent.get_actions(obs_big, use_teacher=True)
             a = a[0][0]
             agent_actions.append(a)
 
             count += 1
 
-            if not stochastic:
-                a = np.array([np.argmax(agent_info[0][0]['probs'])])
+            # if not stochastic:
+            a = np.array([np.argmax(agent_info[0][0]['probs'])])
             next_o, r, d, env_info = env.step(a)
             success = env_info['success']
 
@@ -83,7 +83,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
 
             if reward_predictor is not None:
                 reward_obs = np.stack([env_info['next_obs_rewardfree']] * batch_size)
-                pred_reward = reward_predictor.get_actions(reward_obs, use_teacher=use_teacher)
+                pred_reward = reward_predictor.get_actions(reward_obs, use_teacher=True)
 
 
             observations.append(o)
@@ -171,13 +171,13 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
         print("Video saved at %s" % video_filename)
     if save_wandb:
         video = np.transpose(np.stack(all_videos), (0, 3, 1, 2))[:, ::-1]
-        wandb.log({video_name + '_all': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
-        if len(success_videos) > 0:
-            video = np.transpose(np.stack(success_videos), (0, 3, 1, 2))[:, ::-1]
-            wandb.log({video_name + '_success': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
-        if len(failure_videos) > 0:
-            video = np.transpose(np.stack(failure_videos), (0, 3, 1, 2))[:, ::-1]
-            wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        # wandb.log({video_name + '_all': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        # if len(success_videos) > 0:
+        #     video = np.transpose(np.stack(success_videos), (0, 3, 1, 2))[:, ::-1]
+        #     wandb.log({video_name + '_success': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        # if len(failure_videos) > 0:
+        #     video = np.transpose(np.stack(failure_videos), (0, 3, 1, 2))[:, ::-1]
+        #     wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
 
     end = time.time()
     print("total time spent on rollouts", end - start)

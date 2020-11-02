@@ -100,17 +100,25 @@ def run_experiment(**config):
         policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
         policy.hidden_state = None
         baseline = saved_model['baseline']
-        curriculum_step = saved_model['curriculum_step']
+        curriculum_step = 0#saved_model['curriculum_step']
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                           **arguments)),
                      ceil_reward=config['ceil_reward'])
+        # env.reset()
+        # env.render('human')
+        # env.step(2)
+        # env.render('human')
+        # env.reset()
+        # env.render('human')
         start_itr = saved_model['itr']
         reward_predictor = saved_model['reward_predictor']
         reward_predictor.hidden_state = None
-        if 'supervised_model' in saved_model:
-            supervised_model = saved_model['supervised_model']
-        else:
-            supervised_model = None
+        supervised_model = policy
+        # if 'supervised_model' in saved_model:
+        #     supervised_model = saved_model['supervised_model']
+        #     supervised_model.acmodel = policy
+        # else:
+        #     supervised_model = None
 
     else:
         optimizer = None
@@ -190,7 +198,7 @@ def run_experiment(**config):
     args.entropy_coef = config['entropy_bonus']
     args.model = 'default_il'
     args.lr = config['learning_rate']
-    args.recurrence = config['backprop_steps']
+    args.recurrence = 6#config['backprop_steps']
     args.clip_eps = config['clip_eps']
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=config['distill_with_teacher'])
@@ -219,30 +227,30 @@ def run_experiment(**config):
     )
 
     envs = [copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
+            # copy.deepcopy(env),
             ]
-    algo = PPOAlgo(policy, envs, config['frames_per_proc'], config['discount'], args.lr, args.beta1, args.beta2,
+    algo = PPOAlgo(policy, envs, 6, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
-                   args.optim_eps, config['clip_eps'], config['epochs'], config['meta_batch_size'],
+                   args.optim_eps, config['clip_eps'], config['epochs'], 6,
                    parallel=config['parallel'], rollouts_per_meta_task=config['rollouts_per_meta_task'])
 
     if optimizer is not None:
@@ -301,6 +309,7 @@ def run_experiment(**config):
         advance_levels=config['advance_levels'],
         is_debug=is_debug,
     )
+    temp = il_trainer.acmodel is algo.acmodel
     trainer.train()
 
 
@@ -351,7 +360,7 @@ if __name__ == '__main__':
         "max_grad_norm": [.5],  # .5 is default
         "clip_eps": [.2],  # .2 is default
         "epochs": [4],  # 4 is default
-        "frames_per_proc": [40],
+        "frames_per_proc": [6],
 
         # Reward
         'intermediate_reward': [True],  # This turns the intermediate rewards on or off

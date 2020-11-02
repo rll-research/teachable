@@ -93,6 +93,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.advice_end_index = advice_end_index
         self.advice_size = advice_end_index - advice_start_index
         self.num_modules = num_modules
+        self.instr_vecs = None
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -231,6 +232,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def reset(self, dones=None):
         batch_len = 1 if dones is None else len(dones)
         self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
+        self.obs_input = []
+        self.memory_input = []
+        self.probs_output = []
+        self.instrs_input = []
+        self.instr_embeddings = []
+        self.instr_vecs_list = []
 
     def get_actions(self, obs, training=False, use_teacher=False):
         if training:
@@ -257,7 +264,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return actions, info_list
 
     def get_actions_t(self, obs, use_teacher):  # TODO: this feels like a good place for a DictList
+        self.obs_input.append(obs.detach().clone())
+        self.memory_input.append(self.memory.detach().clone())
         dist, info = self(obs, self.memory, use_teacher=use_teacher)
+        self.probs_output.append(info['probs'].detach().clone())
+        self.instrs_input.append(info['instr'].detach().clone())
+        self.instr_embeddings.append(info['instr_embedding'].detach().clone())
+        self.instr_vecs_list.append(info['instr_vecs'])
         self.memory = info['memory']
         info_list = []
         probs = info['probs'].detach().cpu().numpy()
@@ -302,6 +315,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return img_vector
 
     def forward(self, obs, memory, instr_embedding=None, use_teacher=False):
+        assert use_teacher
         # Expect obs to be [batch, obs_dim]
         instruction_vector = self.get_instr(obs)
         if self.advice_size > 0:
@@ -310,6 +324,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         img_vector = self.get_img(obs)
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
+        instr_embedding_orig = instr_embedding.detach().clone()
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
             # memory: B x M
@@ -370,6 +385,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "probs": probs,
             "value": value,
             "memory": memory,
+            "instr_embedding": instr_embedding_orig,
+            "instr": instruction_vector,
+            "instr_vecs": self.instr_vecs
         }
 
         return dist, info
@@ -403,7 +421,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 outputs, final_states = self.instr_rnn(inputs)
             else:
                 instr = instr[:, 0:lengths[0]]
-                outputs, final_states = self.instr_rnn(self.word_embedding(instr))
+                word_embedding = self.word_embedding(instr)
+                outputs, final_states = self.instr_rnn(word_embedding)
+                self.instr_vecs = (instr.detach().clone(), word_embedding.detach().clone(), outputs.detach().clone(), final_states.detach().clone())
                 iperm_idx = None
             final_states = final_states.transpose(0, 1).contiguous()
             final_states = final_states.view(final_states.shape[0], -1)

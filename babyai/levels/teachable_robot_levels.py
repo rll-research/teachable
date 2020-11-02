@@ -123,6 +123,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
                 if self.persist_agent:
                     self.add_agent()
+                    self.agent_pos = np.array([1, 1])
+                    self.agent_dir = 0
                     task['agent'] = {'agent_pos': self.agent_pos, 'agent_dir': self.agent_dir}
 
                 if self.persist_objs:

@@ -13,7 +13,7 @@ import datetime
 import tempfile
 import joblib
 from collections import defaultdict
-import wandb
+# import wandb
 
 LOG_OUTPUT_FORMATS     = ['stdout', 'log', 'csv', 'tensorboard', 'wandb']
 LOG_OUTPUT_FORMATS_MPI = ['log']
@@ -194,8 +194,8 @@ class WandBOutputFormat(KVWriter):
     def writekvs(self, kvs):
         if not self.initialized:
             self.initialized = True
-            wandb.init(project="teachablerobot", config=self.config, name=self.name)
-        wandb.log(kvs)
+            # wandb.init(project="teachablerobot", config=self.config, name=self.name)
+        # wandb.log(kvs)
 
     def close(self):
         pass

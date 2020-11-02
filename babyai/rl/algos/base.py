@@ -121,6 +121,13 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
+        self.obs_input = []
+        self.memory_input = []
+        self.probs_output = []
+        self.instr_input = []
+        self.instr_input_embedding = []
+        self.instr_vecs = []
+
     def collect_experiences(self, use_teacher=False):
         """Collects rollouts and computes advantages.
 
@@ -142,18 +149,28 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        import numpy as np
+        np.random.seed(0)
+        torch.manual_seed(0)
+
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
 
             with torch.no_grad():
-                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)
+                self.obs_input.append(preprocessed_obs.detach().clone())
+                self.memory_input.append((self.memory * self.mask.unsqueeze(1)).detach().clone())
+                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=True)
+                self.probs_output.append(model_results['probs'].detach().clone())
+                self.instr_input.append(model_results['instr'].detach().clone())
+                self.instr_input_embedding.append(model_results['instr_embedding'].detach().clone())
+                self.instr_vecs.append(model_results['instr_vecs'])
                 value = model_results['value']
                 memory = model_results['memory']
                 extra_predictions = None
 
-            action = dist.sample()
+            action = torch.argmax(dist.probs, dim=1)
 
             obs, reward, done, env_info = self.env.step(action.cpu().numpy())
 
@@ -213,6 +230,7 @@ class BaseAlgo(ABC):
 
         preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
         with torch.no_grad():
+
             next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1), use_teacher=use_teacher)[1]['value']
 
         for i in reversed(range(self.num_frames_per_proc)):
@@ -285,6 +303,7 @@ class BaseAlgo(ABC):
         self.log_success = self.log_success[-self.num_procs:]
         self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
         self.log_num_frames = self.log_num_frames[-self.num_procs:]
+        # exps = exps[:6]
 
         return exps, log
 
