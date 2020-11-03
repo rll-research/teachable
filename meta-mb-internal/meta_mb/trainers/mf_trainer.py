@@ -74,6 +74,7 @@ class Trainer(object):
         self.teacher_info = teacher_info
         self.sparse_rewards = sparse_rewards
         self.distill_only = distill_only
+        self.save_every = 10
 
     def check_advance_curriculum(self, data):
         num_total_episodes = data['dones'].sum()
@@ -200,7 +201,7 @@ class Trainer(object):
                 if advance_curriculum:
                     step -= 1
 
-                if self.log_and_save:
+                if self.log_and_save and itr % self.save_every == 0:
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")

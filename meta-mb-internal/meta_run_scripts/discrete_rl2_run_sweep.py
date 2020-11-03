@@ -293,7 +293,7 @@ if __name__ == '__main__':
         'env': [MetaPointEnv],
         'meta_batch_size': [100],
         'backprop_steps': [50, 100, 200],
-        "parallel": [False], # TODO: consider changing this back! I think parallel has been crashing my computer.
+        "parallel": [True], # TODO: consider changing this back! I think parallel has been crashing my computer.
         "max_path_length": [float('inf')],  # Dummy; we don't time out episodes (they time out by themselves)
         "gae_lambda": [1.0],
         "normalize_adv": [True],
