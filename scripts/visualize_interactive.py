@@ -57,7 +57,6 @@ with tf.Session() as sess:
     agent.reset(dones=[True])
     env.set_task(None)
 
-    env.set_dropout_proportion(1)
     obs = env.reset()
     obs = np.expand_dims(obs, 0)
 

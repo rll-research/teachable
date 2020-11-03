@@ -81,13 +81,6 @@ class MetaIterativeEnvExecutor(object):
         advances = [env.advance_curriculum() for env in self.envs]
         return advances
 
-    def set_dropout(self, dropout_proportion):
-        """
-        Changes the dropout level
-        """
-        advances = [env.set_dropout_proportion(dropout_proportion) for env in self.envs]
-        return advances
-
     @property
     def num_envs(self):
         """
@@ -178,15 +171,6 @@ class MetaParallelEnvExecutor(object):
         [remote.recv() for remote in self.remotes]
         return None
 
-    def set_dropout(self, dropout_proportion):
-        """
-        Changes the dropout level
-        """
-        for remote in self.remotes:
-            remote.send(('set_dropout_proportion', dropout_proportion))
-        [remote.recv() for remote in self.remotes]
-        return None
-
     def set_tasks(self, tasks=None):
         """
         Sets a list of tasks to each worker
@@ -269,4 +253,4 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
             break
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError(cmd)
