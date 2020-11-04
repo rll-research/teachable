@@ -25,11 +25,11 @@ class FiLM(nn.Module):
         self.conv1 = nn.Conv2d(
             in_channels=in_channels, out_channels=imm_channels,
             kernel_size=(3, 3), padding=1)
-        self.bn1 = nn.BatchNorm2d(imm_channels)
+        # self.bn1 = nn.BatchNorm2d(imm_channels)
         self.conv2 = nn.Conv2d(
             in_channels=imm_channels, out_channels=out_features,
             kernel_size=(3, 3), padding=1)
-        self.bn2 = nn.BatchNorm2d(out_features)
+        # self.bn2 = nn.BatchNorm2d(out_features)
 
         self.weight = nn.Linear(in_features, out_features)
         self.bias = nn.Linear(in_features, out_features)
@@ -37,12 +37,14 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
-        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.conv1(x))
+        # x = F.relu(self.bn1(self.conv1(x)))
         x = self.conv2(x)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
-        return F.relu(self.bn2(out))
+        return F.relu(out)
+        # return F.relu(self.bn2(out))
 
 
 class ImageBOWEmbedding(nn.Module):
@@ -108,11 +110,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Conv2d(
                 in_channels=128 if use_bow or pixel else 3, out_channels=128,
                 kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            nn.BatchNorm2d(128),
+            # nn.BatchNorm2d(128),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            nn.BatchNorm2d(128),
+            # nn.BatchNorm2d(128),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
