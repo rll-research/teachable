@@ -100,7 +100,7 @@ def run_experiment(**config):
         policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
         policy.hidden_state = None
         baseline = saved_model['baseline']
-        curriculum_step = 0#saved_model['curriculum_step']
+        curriculum_step = 1#config['level']#saved_model['curriculum_step']
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                           **arguments)),
                      ceil_reward=config['ceil_reward'])
@@ -247,6 +247,9 @@ def run_experiment(**config):
             # copy.deepcopy(env),
             # copy.deepcopy(env),
             ]
+    temp1 = env.reset()
+    temp2 = env.reset()
+    match = np.array_equal(temp1, temp2)
     algo = PPOAlgo(policy, envs, 6, config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
@@ -309,7 +312,6 @@ def run_experiment(**config):
         advance_levels=config['advance_levels'],
         is_debug=is_debug,
     )
-    temp = il_trainer.acmodel is algo.acmodel
     trainer.train()
 
 

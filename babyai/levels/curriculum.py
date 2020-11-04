@@ -18,6 +18,8 @@ class Curriculum(Serializable):
         # also some harder levels with multiple instructions chained together.
         self.levels_list = [
             Level_GoToRedBallNoDists(**kwargs),  # 0
+            Level_GoToRedBallNoDists(**kwargs),  # 0
+            Level_GoToRedBallNoDists(**kwargs),  # 0
             # Level_GoToRedBallGrey(**kwargs),  # 1
             # Level_GoToRedBall(**kwargs),  # 2
             # Level_GoToObjS4(**kwargs),  # 3

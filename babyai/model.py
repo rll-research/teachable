@@ -345,15 +345,21 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
+        ii = instr_embedding.detach().clone()
+
         # Add the teacher's advice into the instruction
         if self.use_instr and self.advice_size > 0:
             instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
+
+        jj = instr_embedding.detach().clone()
 
         x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
         if 'pixel' in self.arch:
             x /= 256.0
+        conv_input = x.detach().clone()
         x = self.image_conv(x)
+        mid_model = x.detach().clone()
         if self.use_instr:
             for controller in self.controllers:
                 out = controller(x, instr_embedding)
@@ -362,6 +368,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 x = out
         x = F.relu(self.film_pool(x))
         x = x.reshape(x.shape[0], -1)
+        pre_rnn = x.detach().clone()
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
@@ -373,6 +380,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
+        pre_actor = embedding.detach().clone()
 
         x = self.actor(embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))
@@ -385,9 +393,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "probs": probs,
             "value": value,
             "memory": memory,
-            "instr_embedding": instr_embedding_orig,
-            "instr": instruction_vector,
-            "instr_vecs": self.instr_vecs
+            "instr_embedding": instr_embedding_orig, # instr_embedding_orig
+            "instr": instruction_vector, # instruction_vector
+            "instr_vecs": mid_model # self.instr_vecs  # PIPELINE: instr_embedding, pre_rnn
         }
 
         return dist, info

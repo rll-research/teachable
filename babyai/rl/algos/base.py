@@ -53,7 +53,7 @@ class BaseAlgo(ABC):
 
         """
         # Store parameters
-
+        parallel = False
         if parallel:
             self.env = ParallelEnv(envs, rollouts_per_meta_task)
         else:

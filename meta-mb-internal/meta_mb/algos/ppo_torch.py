@@ -264,7 +264,7 @@ class PPOAlgo(BaseAlgo):
                 accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
 
                 torch.nn.utils.clip_grad_norm_(self.acmodel.parameters(), self.max_grad_norm)
-                self.optimizer.step()
+                # self.optimizer.step()
 
                 backward_end = time.time() - backward_start
                 backward_time += backward_end

@@ -248,20 +248,20 @@ class Trainer(object):
             # if advance_curriculum or (itr % self.eval_every == 0) or (itr == self.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
-                    if self.supervised_model is not None:
-                        # Distilled model
-                        time_run_supervised_start = time.time()
-                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
-                        logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.distill_with_teacher, "DRollout/")
-                        run_supervised_time = time.time() - time_run_supervised_start
-                    else:
-                        run_supervised_time = 0
-                        advance_curriculum_sup = True
-                    # Original Policy
-                    time_run_policy_start = time.time()
-                    self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
-                    logger.log("Running model with teacher")
+                    # if self.supervised_model is not None:
+                    #     # Distilled model
+                    #     time_run_supervised_start = time.time()
+                    #     self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
+                    #     logger.log("Running supervised model")
+                    #     advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.distill_with_teacher, "DRollout/")
+                    #     run_supervised_time = time.time() - time_run_supervised_start
+                    # else:
+                    #     run_supervised_time = 0
+                    #     advance_curriculum_sup = True
+                    # # Original Policy
+                    # time_run_policy_start = time.time()
+                    # self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
+                    # logger.log("Running model with teacher")
                     advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher, "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
@@ -398,6 +398,7 @@ class Trainer(object):
         return log
 
     def run_supervised(self, policy, use_teacher, tag):
+        policy.eval()
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                             feedback_list=self.teacher_info, max_action=False,  # TODO: consider adding a flag for max_action
                                             use_teacher=use_teacher)
@@ -406,6 +407,43 @@ class Trainer(object):
         logger.logkv(f"{tag}Advance", int(advance_curriculum))
         logger.logkv(f"{tag}AvgSuccess", avg_success)
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
+
+        import pickle as pkl
+        def save_pkl(filename, obj):
+            with open(filename, 'wb') as f:
+                pkl.dump(obj, f)
+
+        # TRAIN
+        save_pkl('train_obs.pkl', self.algo.obs_input)
+        save_pkl('train_memory.pkl', self.algo.memory_input)
+        save_pkl('train_probs.pkl', self.algo.probs_output)
+        save_pkl('train_instr_input.pkl', self.algo.instr_input)
+        save_pkl('train_instr_input_embedding.pkl', self.algo.instr_input_embedding)
+        save_pkl('train_instr_vecs.pkl', self.algo.instr_vecs)
+        # IL
+        save_pkl('IL_obs.pkl', self.il_trainer.obs_input)
+        save_pkl('IL_memory.pkl', self.il_trainer.memory_input)
+        save_pkl('IL_probs.pkl', self.il_trainer.probs_output)
+        save_pkl('IL_instr_input.pkl', self.il_trainer.instr_input)
+        save_pkl('IL_instr_input_embedding.pkl', self.il_trainer.instr_input_embedding)
+        save_pkl('IL_instr_vecs.pkl', self.il_trainer.instr_vecs)
+
+        # Rollout
+        save_pkl('rollout_obs.pkl', self.algo.acmodel.obs_input)
+        save_pkl('rollout_memory.pkl', self.algo.acmodel.memory_input)
+        save_pkl('rollout_probs.pkl', self.algo.acmodel.probs_output)
+        save_pkl('rollout_instr_input.pkl', self.algo.acmodel.instrs_input)
+        save_pkl('rollout_instr_input_embedding.pkl', self.algo.acmodel.instr_embeddings)
+        save_pkl('rollout_instr_vecs.pkl', self.algo.acmodel.instr_vecs_list)
+
+        assert self.algo.acmodel is self.il_trainer.acmodel, ("ACMODELS ODN'T MATCH!")
+        assert self.algo.acmodel is policy
+
+        print("ALL GOOD!")
+
+        import IPython
+        IPython.embed()
+
         return advance_curriculum
 
     def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, use_teacher=False, save_video=False,
@@ -421,6 +459,39 @@ class Trainer(object):
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
                                   num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=False)
 
+        import pickle as pkl
+        def save_pkl(filename, obj):
+            with open(filename, 'wb') as f:
+                pkl.dump(obj, f)
+
+        # TRAIN
+        save_pkl('train_obs.pkl', self.algo.obs_input)
+        save_pkl('train_memory.pkl', self.algo.memory_input)
+        save_pkl('train_probs.pkl', self.algo.probs_output)
+        save_pkl('train_instr_input.pkl', self.algo.instr_input)
+        save_pkl('train_instr_input_embedding.pkl', self.algo.instr_input_embedding)
+        save_pkl('train_instr_vecs.pkl', self.algo.instr_vecs)
+        # IL
+        save_pkl('IL_obs.pkl', self.il_trainer.obs_input)
+        save_pkl('IL_memory.pkl', self.il_trainer.memory_input)
+        save_pkl('IL_probs.pkl', self.il_trainer.probs_output)
+        save_pkl('IL_instr_input.pkl', self.il_trainer.instr_input)
+        save_pkl('IL_instr_input_embedding.pkl', self.il_trainer.instr_input_embedding)
+        save_pkl('IL_instr_vecs.pkl', self.il_trainer.instr_vecs)
+
+        # Rollout
+        save_pkl('rollout_obs.pkl', self.algo.acmodel.obs_input)
+        save_pkl('rollout_memory.pkl', self.algo.acmodel.memory_input)
+        save_pkl('rollout_probs.pkl', self.algo.acmodel.probs_output)
+        save_pkl('rollout_instr_input.pkl', self.algo.acmodel.instrs_input)
+        save_pkl('rollout_instr_input_embedding.pkl', self.algo.acmodel.instr_embeddings)
+        save_pkl('rollout_instr_vecs.pkl', self.algo.acmodel.instr_vecs_list)
+
+
+        assert self.algo.acmodel is self.il_trainer.acmodel, ("ACMODELS ODN'T MATCH!")
+        assert self.algo.acmodel is policy
+
+        print("ALL GOOD!")
 
         import IPython
         IPython.embed()
