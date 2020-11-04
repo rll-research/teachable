@@ -131,10 +131,7 @@ class ImitationLearning(object):
 
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
 
-        if is_training:
-            self.acmodel.train()
-        else:
-            self.acmodel.eval()
+        self.acmodel.eval()  # TODO: see if this helps.  If it does, then remove the is_training flag
 
         batch_old = batch
         batch = self.transform_demos(batch, source)
