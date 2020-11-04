@@ -104,11 +104,19 @@ class ImitationLearning(object):
         else:
             raise NotImplementedError(source)
         done = demos.done.detach().cpu().numpy()
+        num_timesteps = len(done)
         # done = (1 - demos.mask).detach().cpu().numpy()
         # done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
         split_indices = np.where(done == 1)[0] + 1
         split_indices = np.concatenate([[0], split_indices], axis=0)  # TODO: deal with partial trajectories!
         new_demos = []
+        # If there's a partial trajectory at the end, we still want to train on it
+        if not split_indices[-1] == num_timesteps:  # Partial trajectory exists
+            # Add the last timestep in as the final index for the final run
+            split_indices = np.concatenate([split_indices, [num_timesteps]], axis=0)
+            # We'll also artificially set 'done' here so the model knows to split backprop at this timestep
+            done[-1] = 1
+
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
             a = action[split_indices[i]:split_indices[i+1]]
