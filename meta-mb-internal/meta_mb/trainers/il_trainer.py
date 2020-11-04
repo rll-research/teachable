@@ -92,10 +92,9 @@ class ImitationLearning(object):
             assert len(action.shape) == 1, action.shape
         else:
             raise NotImplementedError(source)
-        done = (1 - demos.mask).detach().cpu().numpy()
-        done = np.concatenate([done[1:], np.zeros_like(done[0:1])])
-        split_indices = np.where(done == 1)[0]
-        split_indices = np.concatenate([[0], split_indices, [len(obs)]], axis=0)
+        done = demos.done.detach().cpu().numpy()
+        split_indices = np.where(done == 1)[0] + 1
+        split_indices = np.concatenate([[0], split_indices], axis=0)
         new_demos = []
         for i in range(len(split_indices) - 1):
             o = obs[split_indices[i]:split_indices[i+1]]
@@ -150,7 +149,7 @@ class ImitationLearning(object):
         mask = np.ones([len(obss)], dtype=np.float64)
         try:
             mask[inds] = 0
-        except:
+        except Exception as e:
             print("???")
             print("BATCH LENGTH", len(batch))
             for demo in batch:

@@ -108,7 +108,11 @@ def run_experiment(**config):
         reward_predictor = saved_model['reward_predictor']
         reward_predictor.hidden_state = None
         if 'supervised_model' in saved_model:
-            supervised_model = saved_model['supervised_model']
+            # The supervised model can either be the same model as the policy or a different model
+            if config['self_distill']:
+                supervised_model = policy
+            else:
+                supervised_model = saved_model['supervised_model']
         else:
             supervised_model = None
 

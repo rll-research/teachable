@@ -394,6 +394,7 @@ class Trainer(object):
         return log
 
     def run_supervised(self, policy, use_teacher, tag):
+        policy.eval()
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                             feedback_list=self.teacher_info, max_action=False,  # TODO: consider adding a flag for max_action
                                             use_teacher=use_teacher)
