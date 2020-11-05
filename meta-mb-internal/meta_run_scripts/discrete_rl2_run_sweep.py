@@ -1,4 +1,3 @@
-from meta_mb.baselines.linear_baseline import LinearFeatureBaseline
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
 from meta_mb.algos.ppo_torch import PPOAlgo

@@ -32,7 +32,7 @@ class ImitationLearning(object):
 
         # Define actor-critic model
         self.acmodel = model
-        utils.save_model(self.acmodel, args.model)
+        # utils.save_model(self.acmodel, args.model)
         self.acmodel.train()
         if torch.cuda.is_available():
             self.acmodel.cuda()

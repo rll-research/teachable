@@ -1,2 +1,0 @@
-from meta_mb.baselines.base import Baseline
-from meta_mb.baselines.linear_baseline import LinearFeatureBaseline
