@@ -101,14 +101,16 @@ def run_experiment(**config):
         policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
         policy.hidden_state = None
         baseline = saved_model['baseline']
-        curriculum_step = saved_model['curriculum_step']
+        if original_config['continue_train'] is True:
+            start_itr = saved_model['itr']
+            curriculum_step = saved_model['curriculum_step']
+        else:
+            start_itr = 0
+            curriculum_step = config['level']
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                           **arguments)),
                      ceil_reward=config['ceil_reward'])
-        if original_config['continue_train'] is True:
-            start_itr = saved_model['itr']
-        else:
-            start_itr = 0
+
         reward_predictor = saved_model['reward_predictor']
         reward_predictor.hidden_state = None
         if 'supervised_model' in saved_model:
