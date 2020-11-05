@@ -300,7 +300,7 @@ class ImitationLearning(object):
             print(lengths_list)
             import IPython
             IPython.embed()
-        assert float(accuracy) <= 1, float(accuracy)
+        assert float(accuracy) <= 1.0001, float(accuracy)
         teacher_numerator = 0
         teacher_denominator = 0
         agent_numerator = 0
