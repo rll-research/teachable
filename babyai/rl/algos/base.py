@@ -259,6 +259,9 @@ class BaseAlgo(ABC):
         exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
         exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
         exps.done = self.dones.transpose(0, 1).reshape(-1)
+        full_done = self.dones.transpose(0, 1)
+        full_done[:, -1] = 1
+        exps.full_done = full_done.reshape(-1)
 
         if self.aux_info:
             exps = self.aux_info_collector.end_collection(exps)

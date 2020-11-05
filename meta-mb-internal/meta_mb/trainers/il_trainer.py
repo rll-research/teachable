@@ -116,6 +116,21 @@ class ImitationLearning(object):
         obs_arr = np.stack(obs, 0)
         return torch.FloatTensor(obs_arr).to(device)
 
+    def new_preprocess(self, batch, source):
+        obss = batch.obs.detach().cpu().numpy()
+        if source == 'teacher':
+            action_true = batch.env_infos.teacher_action[:, 0]
+        elif source == 'agent':
+            action_true = batch.action.detach().cpu().numpy()
+        action_teacher = batch.env_infos.teacher_action[:, 0]
+        done = batch.full_done
+        inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
+        done = done.detach().cpu().numpy()
+        inds = np.concatenate([[0], inds[:-1]])
+        return obss, action_true, action_teacher, done, inds
+
+
+
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
 
         if is_training:
@@ -124,36 +139,8 @@ class ImitationLearning(object):
             self.acmodel.eval()
 
         batch_old = batch
-        batch = self.transform_demos(batch, source)
-        batch.sort(key=len, reverse=True)
-        # Constructing flat batch and indices pointing to start of each demonstration
-        obss = []
-        action_true = []
-        action_teacher = []
-        done = []
-        inds = [0]
-
-        for demo in batch:
-            obss.append(demo[0])
-            action_true.append(demo[1])
-            done.append(demo[2])
-            action_teacher.append(demo[3])
-            inds.append(inds[-1] + len(demo[0]))
-
-        # (batch size * avg demo length , 3), where 3 is for (state, action, done)
-        try:
-            obss = np.concatenate(obss)
-        except:
-            print("?")
-            import IPython
-            IPython.embed()
-        action_true = np.concatenate(action_true)
-        assert len(action_true.shape) == 1
-        done = np.concatenate(done)
-        action_teacher = np.concatenate(action_teacher)
-        inds = inds[:-1]
+        obss, action_true, action_teacher, done, inds = self.new_preprocess(batch, source)
         num_frames = len(obss)
-
         mask = np.ones([len(obss)], dtype=np.float64)
         try:
             mask[inds] = 0
