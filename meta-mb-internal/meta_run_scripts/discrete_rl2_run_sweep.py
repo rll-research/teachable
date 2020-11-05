@@ -73,6 +73,7 @@ def get_advice_index(advice_start_index, config, env):
 
 def run_experiment(**config):
     set_seed(config['seed'])
+    original_config = config
     original_saved_path = config['saved_path']
     if original_saved_path is not None:
         saved_model = joblib.load(config['saved_path'])
@@ -104,7 +105,10 @@ def run_experiment(**config):
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
                                           **arguments)),
                      ceil_reward=config['ceil_reward'])
-        start_itr = saved_model['itr']
+        if original_config['continue_train'] is True:
+            start_itr = saved_model['itr']
+        else:
+            start_itr = 0
         reward_predictor = saved_model['reward_predictor']
         reward_predictor.hidden_state = None
         if 'supervised_model' in saved_model:
@@ -312,6 +316,7 @@ if __name__ == '__main__':
     DEBUG = False  # Make this true to run a really quick run designed to sanity check the code runs
     base_path = 'data/'
     sweep_params = {
+        'continue_train': [False],
         'level': [0],
         "n_itr": [10000],
         'source': ['agent'],  # options are agent or teacher (do we distill from the agent or the teacher?)
