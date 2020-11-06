@@ -18,12 +18,9 @@ from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
-
+import pathlib
 import joblib
 import argparse
-import pathlib
-
-INSTANCE_TYPE = 'c4.xlarge'
 
 def args_type(default):
   if isinstance(default, bool):
@@ -35,7 +32,6 @@ def args_type(default):
   if default is None:
     return str
   return type(default)
-
 
 def get_exp_name(config):
     EXP_NAME = config['prefix']
@@ -69,16 +65,44 @@ def get_advice_index(advice_start_index, config, env):
         raise NotImplementedError(config['feedback_type'])
     return advice_end_index, advice_dim
 
+def load_model(config):
+    original_config = config
+    saved_model = joblib.load(config['saved_path'])
+    if 'config' in saved_model:
+        if not config['override_old_config']:
+            config = saved_model['config']
+    set_seed(config['seed'])
+    policy = saved_model['policy']
+    optimizer = saved_model['optimizer']
+    policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
+    policy.hidden_state = None
+    if original_config['continue_train'] is True:
+        start_itr = saved_model['itr']
+        curriculum_step = saved_model['curriculum_step']
+    else:
+        start_itr = 0
+        curriculum_step = config['level']
+
+
+    reward_predictor = saved_model['reward_predictor']
+    reward_predictor.hidden_state = None
+    if 'supervised_model' in saved_model:
+        # The supervised model can either be the same model as the policy or a different model
+        if config['self_distill'] and config['distill_same_model']:
+            supervised_model = policy
+        else:
+            supervised_model = saved_model['supervised_model']
+    else:
+        supervised_model = None
+    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step
+
 
 def run_experiment(**config):
     set_seed(config['seed'])
-    original_config = config
+
     original_saved_path = config['saved_path']
     if original_saved_path is not None:
-        saved_model = joblib.load(config['saved_path'])
-        if 'config' in saved_model:
-            if not config['override_old_config']:
-                config = saved_model['config']
+        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step = load_model(config)
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": False,
@@ -86,7 +110,6 @@ def run_experiment(**config):
         "persist_objs": config['persist_objs'],
         "persist_agent": config['persist_agent'],
         "feedback_type": config["feedback_type"],
-        "feedback_always": config["feedback_always"],
         "feedback_freq": config["feedback_freq"],
         "cartesian_steps": config["cartesian_steps"],
         "num_meta_tasks": config["rollouts_per_meta_task"],
@@ -94,36 +117,10 @@ def run_experiment(**config):
     }
     advice_start_index = 160
     if original_saved_path is not None:
-        set_seed(config['seed'])
-        policy = saved_model['policy']
-        optimizer = saved_model['optimizer']
-        policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
-        policy.hidden_state = None
-        baseline = saved_model['baseline']
-        if original_config['continue_train'] is True:
-            start_itr = saved_model['itr']
-            curriculum_step = saved_model['curriculum_step']
-        else:
-            start_itr = 0
-            curriculum_step = config['level']
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=curriculum_step,
-                                          **arguments)),
-                     ceil_reward=config['ceil_reward'])
-
-        reward_predictor = saved_model['reward_predictor']
-        reward_predictor.hidden_state = None
-        if 'supervised_model' in saved_model:
-            # The supervised model can either be the same model as the policy or a different model
-            if config['self_distill'] and config['distill_same_model']:
-                supervised_model = policy
-            else:
-                supervised_model = saved_model['supervised_model']
-        else:
-            supervised_model = None
-
+                                          **arguments)), ceil_reward=config['ceil_reward'])
     else:
         optimizer = None
-        baseline = None
         env = rl2env(normalize(Curriculum(config['advance_curriculum_func'], start_index=config['level'], **arguments)),
                      ceil_reward=config['ceil_reward'])
         obs_dim = env.reset().shape[0]
@@ -150,8 +147,7 @@ def run_experiment(**config):
                          advice_end_index=advice_end_index,
                          num_modules=config['num_modules'])
 
-
-        reward_predictor = ACModel(obs_space=obs_dim - 1,  # TODO: change into Discrete(3) and do 3-way classification
+        reward_predictor = ACModel(obs_space=obs_dim - 1,
                                  action_space=spaces.Discrete(2),
                                  env=env,
                                  image_dim=image_dim,
@@ -220,34 +216,13 @@ def run_experiment(**config):
     )
 
     sample_processor = RL2SampleProcessor(
-        baseline=baseline,
         discount=config['discount'],
         gae_lambda=config['gae_lambda'],
         normalize_adv=config['normalize_adv'],
         positive_adv=config['positive_adv'],
     )
 
-    envs = [copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            copy.deepcopy(env),
-            ]
+    envs = [copy.deepcopy(env) for _ in range(20)]  # TODO: make this a config option
     algo = PPOAlgo(policy, envs, config['frames_per_proc'], config['discount'], args.lr, args.beta1, args.beta2,
                    config['gae_lambda'],
                    args.entropy_coef, config['value_loss_coef'], config['max_grad_norm'], args.recurrence,
@@ -408,4 +383,4 @@ if __name__ == '__main__':
         sweep_params["memory_dim"] = [3]  # 2048
         sweep_params["instr_dim"] = [4]  # 256
 
-    run_sweep(run_experiment, sweep_params, sweep_params['prefix'][0], parser, INSTANCE_TYPE)
+    run_sweep(run_experiment, sweep_params, sweep_params['prefix'][0], parser, 'c4.xlarge')

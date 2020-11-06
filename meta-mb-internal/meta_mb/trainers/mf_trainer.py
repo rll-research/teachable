@@ -70,7 +70,7 @@ class Trainer(object):
         self.env = copy.deepcopy(env)
         self.sampler = sampler
         self.sample_processor = sample_processor
-        self.baseline = sample_processor.baseline
+        # self.baseline = sample_processor.baseline
         self.policy = policy
         self.n_itr = n_itr
         self.start_itr = start_itr
@@ -432,7 +432,7 @@ class Trainer(object):
         d = dict(itr=itr,
                         policy=self.policy,
                         env=self.env,
-                        baseline=self.baseline,
+                        # baseline=self.baseline,
                         config=self.config,
                         optimizer=self.algo.optimizer.state_dict(),
                         curriculum_step=self.curriculum_step,)

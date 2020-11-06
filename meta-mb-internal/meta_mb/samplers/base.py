@@ -53,14 +53,12 @@ class SampleProcessor(object):
 
     def __init__(
             self,
-            baseline,
             discount=0.99,
             gae_lambda=1,
             normalize_adv=False,
             positive_adv=False,
     ):
 
-        self.baseline = baseline
         self.discount = discount
         self.gae_lambda = gae_lambda
         self.normalize_adv = normalize_adv
