@@ -141,9 +141,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             except RejectSampling as e:
                 if tries > 1000:
                     print("ISSUE sampling", e)
-                    # self.render(mode='human')
                     raise RejectSampling
-                # print("Rejection error", e)
                 continue
 
             break
@@ -245,29 +243,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         The teacher fails in certain situations.  Here we modify the objects in the environment to avoid this.
         Prevent boxes from disappearing. When a box disappears, it is replaced by its contents (or None, if empty.)
-        Prevent doors from closing once open.
         :param objs:
         """
-
-        # def make_door_toggle(obj):
-        #     def toggle(env, pos):
-        #         # If the player has the right key to open the door
-        #         if obj.is_locked:
-        #             if isinstance(env.carrying, Key) and env.carrying.color == obj.color:
-        #                 obj.is_locked = False
-        #                 obj.is_open = True
-        #                 return True
-        #             return False
-
-        #         obj.is_open = True
-        #         return True
-        #     return toggle
-
         for obj in objs:
             if obj.type == 'box':
                 obj.contains = obj
-            # if obj.type == 'door':
-            #     obj.toggle = make_door_toggle(obj)
 
     def gen_mission(self):
         """
@@ -388,7 +368,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        # self.compute_obj_infos()  # TODO: necessary?
         grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
         obs = np.concatenate([[self.agent_dir],
