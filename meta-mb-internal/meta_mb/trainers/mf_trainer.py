@@ -56,7 +56,7 @@ class Trainer(object):
         eval_every=25,
         save_every=100,
         log_every=10,
-        save_videos_every=100,
+        save_videos_every=10,
         train_with_teacher=True,
         distill_with_teacher=False,
         supervised_model=None,
