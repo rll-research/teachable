@@ -40,7 +40,6 @@ class ImitationLearning(object):
         done = done.detach().cpu().numpy()
         inds = np.concatenate([[0], inds[:-1]])
 
-        # TODO: figure out what's up with this!
         mask = np.ones([len(obss)], dtype=np.float64)
         mask[inds] = 0
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
@@ -110,7 +109,7 @@ class ImitationLearning(object):
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
             loss = policy_loss - self.args.entropy_coef * entropy
-            action_pred = dist.probs.max(1, keepdim=False)[1]  #  argmax action
+            action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             final_loss += loss
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
             # Increment indexes to hold the next step for each chunk

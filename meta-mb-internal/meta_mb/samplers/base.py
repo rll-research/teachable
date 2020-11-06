@@ -332,8 +332,6 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
 
             logger.logkv(log_prefix + 'AverageSuccess', np.mean(success))
-            if np.mean(total_success) > .6:
-                print("hi")
             logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))

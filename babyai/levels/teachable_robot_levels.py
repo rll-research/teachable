@@ -484,15 +484,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, 'teacher') and self.teacher is not None:
             teacher_copy = deepcopy(self.teacher)
             try:
-                # Even if we use multiple teachers, presumably they all relate to one underlying path.
-                # We can log what action is the next one on this path (currently in teacher.next_action).
-                if isinstance(self.teacher, BatchTeacher):
-                    info['teacher_action'] = np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
-                else:
-                    info['teacher_action'] = np.array([self.teacher.next_action], dtype=np.int32)
+                info['teacher_action'] = self.teacher_action
 
                 self.oracle = self.teacher.step([action], self.oracle)
                 info['teacher_error'] = float(self.teacher.last_step_error)
+                self.teacher_action = self.get_teacher_action()
                 # Update the observation with the teacher's new feedback
                 obs = self.gen_obs()
 
@@ -511,6 +507,16 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         rew = reward_total / 1000  # TODO: consider removing
         return obs, rew, done, info
 
+    def get_teacher_action(self):
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            # Even if we use multiple teachers, presumably they all relate to one underlying path.
+            # We can log what action is the next one on this path (currently in teacher.next_action).
+            if isinstance(self.teacher, BatchTeacher):
+                return np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
+            else:
+                return np.array([self.teacher.next_action], dtype=np.int32)
+        return None
+
     def reset(self):
         """
         Reset both the env and the teacher
@@ -520,7 +526,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.oracle = self.teacher.reset(self.oracle)
 
+        self.teacher_action = self.get_teacher_action()
         obs = self.gen_obs()
+        if self.teacher_action is not None:
+            assert np.argmax(obs[160:167]) == self.teacher_action, (np.argmax(obs[160:167]), self.teacher_action)
         self.itr += 1
 
         return obs
