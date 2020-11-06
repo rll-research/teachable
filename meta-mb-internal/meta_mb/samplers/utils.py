@@ -74,8 +74,11 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
 
             if not stochastic:
                 a = np.array([np.argmax(agent_info[0][0]['probs'])])
-            next_o, r, d, env_info = env.step(a)
+            assert np.argmax(o[160:167]) == env.teacher_action, (np.argmax(o[160:167]), o[160:167], env.teacher_action)
+            next_o, r, d, env_info = env.step(env.teacher_action)
+            assert np.argmax(o[160:167]) == env_info['teacher_action'], (o, o[160:167], env_info['teacher_action'])
             success = env_info['success']
+            # TODO: remove this when we're using higher teachers
 
             teacher_actions.append(env_info['teacher_action'])
             if env_info['teacher_action'] == a:
@@ -185,4 +188,6 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
     print("ROLLOUT ACTION COUNTS", np.unique(agent_actions, return_counts=True))
     print("ROLLOUT TEACHER COUNTS", np.unique(teacher_actions, return_counts=True))
+    success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
+    assert success_rate == 1, success_rate
     return paths, correct / count
