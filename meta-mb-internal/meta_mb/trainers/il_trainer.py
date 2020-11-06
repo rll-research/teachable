@@ -1,18 +1,6 @@
-import copy
-import gym
-import time
-import datetime
 import numpy as np
-import sys
-import itertools
 import torch
-from babyai.evaluate import batch_evaluate
 import babyai.utils as utils
-from babyai.rl import DictList
-from babyai.model import ACModel
-import multiprocessing
-import os
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,12 +15,9 @@ class ImitationLearning(object):
         utils.seed(self.args.seed)
         self.env = env
 
-        observation_space = self.env.observation_space
-        action_space = self.env.action_space
-
         # Define actor-critic model
         self.acmodel = model
-        # utils.save_model(self.acmodel, args.model)
+
         self.acmodel.train()
         if torch.cuda.is_available():
             self.acmodel.cuda()
@@ -41,296 +26,201 @@ class ImitationLearning(object):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.9)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("DEVICE", self.device)
 
-    def validate(self, episodes, verbose=True):
-        # Seed needs to be reset for each validation, to ensure consistency
-        utils.seed(self.args.val_seed)
-
-        if verbose:
-            logger.info("Validating the model")
-        if getattr(self.args, 'multi_env', None):
-            agent = utils.load_agent(self.env[0], model_name=self.args.model, argmax=True)
-        else:
-            agent = utils.load_agent(self.env, model_name=self.args.model, argmax=True)
-
-        # Setting the agent model to the current model
-        agent.model = self.acmodel
-
-        agent.model.eval()
-        logs = []
-
-        for env_name in ([self.args.env] if not getattr(self.args, 'multi_env', None)
-                         else self.args.multi_env):
-            logs += [batch_evaluate(agent, env_name, self.args.val_seed, episodes)]
-        agent.model.train()
-
-        return logs
-
-    def collect_returns(self):
-        logs = self.validate(episodes=self.args.eval_episodes, verbose=False)
-        mean_return = {tid: np.mean(log["return_per_episode"]) for tid, log in enumerate(logs)}
-        return mean_return
-
-    def transform_demos(self, demos, source='agent'):
-        '''
-        takes as input a list of demonstrations in the format generated with `make_agent_demos` or `make_human_demos`
-        i.e. each demo is a tuple (mission, blosc.pack_array(np.array(images)), directions, actions)
-        returns demos as a list of lists. Each demo is a list of (obs, action, done) tuples
-        '''
-        obs = demos.obs.detach().cpu().numpy()
-        teacher_action = demos.teacher_action.detach().cpu().numpy()
-        if self.reward_predictor:
-            obs = demos.env_infos.next_obs_rewardfree
-            reward = demos.reward
-            action = torch.clamp(reward, 0, 2).long().detach().cpu().numpy()
-        elif source == 'agent':
-            action = demos.action.detach().cpu().numpy()
-            assert len(action.shape) == 1, action.shape
-        elif source == 'teacher':
-            action = demos.teacher_action.detach().cpu().numpy()
-            assert len(action.shape) == 1, action.shape
-        else:
-            raise NotImplementedError(source)
-        done = demos.done.detach().cpu().numpy()
-        num_timesteps = len(done)
-        split_indices = np.where(done == 1)[0] + 1
-        split_indices = np.concatenate([[0], split_indices], axis=0)
-        new_demos = []
-        # If there's a partial trajectory at the end, we still want to train on it
-        if not split_indices[-1] == num_timesteps:  # Partial trajectory exists
-            # Add the last timestep in as the final index for the final run
-            split_indices = np.concatenate([split_indices, [num_timesteps]], axis=0)
-            # We'll also artificially set 'done' here so the model knows to split backprop at this timestep
-            done[-1] = 1
-
-        for i in range(len(split_indices) - 1):
-            o = obs[split_indices[i]:split_indices[i+1]]
-            a = action[split_indices[i]:split_indices[i+1]]
-            a_t = teacher_action[split_indices[i]:split_indices[i+1]][:]
-            d = done[split_indices[i]:split_indices[i+1]]
-            new_demos.append((o, a, d, a_t))
-        return new_demos
-
-    def obss_preprocessor(self, obs, device=None):
-        obs_arr = np.stack(obs, 0)
-        return torch.FloatTensor(obs_arr).to(device)
-
-    def new_preprocess(self, batch, source):
-        obss = batch.obs.detach().cpu().numpy()
+    def preprocess_batch(self, batch, source):
+        obss = batch.obs
         if source == 'teacher':
             action_true = batch.env_infos.teacher_action[:, 0]
         elif source == 'agent':
-            action_true = batch.action.detach().cpu().numpy()
+            action_true = batch.action
+        action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.env_infos.teacher_action[:, 0]
         done = batch.full_done
         inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
         done = done.detach().cpu().numpy()
         inds = np.concatenate([[0], inds[:-1]])
-        return obss, action_true, action_teacher, done, inds
 
+        # TODO: figure out what's up with this!
+        mask = np.ones([len(obss)], dtype=np.float64)
+        mask[inds] = 0
+        mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
 
+        return obss, action_true, action_teacher, done, inds, mask
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
-
+    def set_mode(self, is_training):
         if is_training:
             self.acmodel.train()
         else:
             self.acmodel.eval()
 
-        batch_old = batch
-        obss, action_true, action_teacher, done, inds = self.new_preprocess(batch, source)
-        num_frames = len(obss)
-        mask = np.ones([len(obss)], dtype=np.float64)
-        try:
-            mask[inds] = 0
-        except Exception as e:
-            print("???")
-            print("BATCH LENGTH", len(batch))
-            for demo in batch:
-                print("Obs", demo[0]. shape)
-                print("LEN", len(demo))
-            print("INDS", inds, inds.shape)
-            print("MASK", mask.shape)
-            import IPython
-            IPython.embed()
-        mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
+    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
+        self.set_mode(is_training)
 
-        # Observations, true action, values and done for each of the stored demostration
-        action_true = torch.tensor([action for action in action_true], device=self.device, dtype=torch.long)
+        # All the batch demos are in a single flat vector.
+        # Inds holds the start of each demo
+        obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
+        num_frames = len(obss)
 
         # Memory to be stored
-        memories = torch.zeros([len(obss), self.acmodel.memory_size], device=self.device)
-        episode_ids = np.zeros(len(obss))
-        memory = torch.zeros([len(batch), self.acmodel.memory_size], device=self.device)
+        memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
+        memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
 
-        preprocessed_first_obs = self.obss_preprocessor(obss[inds], self.device)
-        instr = self.acmodel.get_instr(preprocessed_first_obs)
-        instr_embedding = self.acmodel._get_instr_embedding(instr)
-
-        # Loop terminates when every observation in the flat_batch has been handled
+        # We're going to loop through each trajectory together.
+        # inds holds the current index of each trajectory (initialized to the start of each trajectory)
+        # memories is currently empty, but we will fill it with memory vectors.
+        # memory holds the current memory vector
         while True:
             # taking observations and done located at inds
+            num_demos = len(inds)
             obs = obss[inds]
             done_step = done[inds]
-            preprocessed_obs = self.obss_preprocessor(obs, self.device)
 
             with torch.no_grad():
-                # taking the memory till len(inds), as demos beyond that have already finished
-                dist, info = self.acmodel(
-                    preprocessed_obs,
-                    memory[:len(inds), :], instr_embedding[:len(inds)], self.distill_with_teacher)
+                # Taking memory up until num_demos, as demos after that have finished
+                dist, info = self.acmodel(obs, memory[:num_demos], use_teacher=self.distill_with_teacher)
                 new_memory = info['memory']
 
-            memories[inds, :] = memory[:len(inds), :]
-            memory[:len(inds), :] = new_memory
-            episode_ids[inds] = range(len(inds))
+            memories[inds] = memory[:num_demos]
+            memory[:num_demos] = new_memory
 
             # Updating inds, by removing those indices corresponding to which the demonstrations have finished
-            inds = inds[:int(len(inds) - sum(done_step))]
+            num_trajs_finished = sum(done_step)
+            inds = inds[:int(num_demos - num_trajs_finished)]
             if len(inds) == 0:
                 break
 
             # Incrementing the remaining indices
             inds = [index + 1 for index in inds]
 
-        # Here, actual backprop upto args.recurrence happens
-        final_loss = 0
-        per_token_correct = [0, 0, 0, 0, 0, 0, 0]
-        per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
-        per_token_count = [0, 0, 0, 0, 0, 0, 0]
-        per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
-        per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
-        final_entropy, final_policy_loss, final_value_loss = 0, 0, 0
-
+        # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
+        # Indexes currently holds the first index of each chunk.
         indexes = self.starting_indexes(num_frames)
+        self.initialize_logs(indexes)
         memory = memories[indexes]
-        accuracy = 0
-        total_frames = len(indexes) * self.args.recurrence
-        accuracy_list = []
-        lengths_list = []
-        agent_running_count_long = 0
-        teacher_running_count_long = 0
+        final_loss = 0
         for i in range(self.args.recurrence):
+            # Get the current obs for each chunk, and compute the agent's output
             obs = obss[indexes]
-            preprocessed_obs = self.obss_preprocessor(obs, device=self.device)
-
             action_step = action_true[indexes]
-
             mask_step = mask[indexes]
-            dist, info = self.acmodel(
-                preprocessed_obs, memory * mask_step,
-                instr_embedding[episode_ids[indexes]], self.distill_with_teacher)
+            dist, info = self.acmodel(obs, memory * mask_step, use_teacher=self.distill_with_teacher)
             memory = info["memory"]
 
+            # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()
             policy_loss = -dist.log_prob(action_step).mean()
             loss = policy_loss - self.args.entropy_coef * entropy
-            action_pred = dist.probs.max(1, keepdim=False)[1]
-            accuracy_list.append(float((action_pred == action_step).sum()))
-            lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
-            accuracy += float((action_pred == action_step).sum()) / total_frames
+            action_pred = dist.probs.max(1, keepdim=False)[1]  #  argmax action
             final_loss += loss
-            final_entropy += entropy
-            final_policy_loss += policy_loss
-
-            action_step = action_step.detach().cpu().numpy() # ground truth action
-            action_pred = action_pred.detach().cpu().numpy() # action we took
-            agent_running_count = 0
-            teacher_running_count = 0
-            for j in range(len(per_token_count)):
-                token_indices = np.where(action_step == j)[0]
-                count = len(token_indices)
-                correct = np.sum(action_step[token_indices] == action_pred[token_indices])
-                per_token_correct[j] += correct
-                per_token_count[j] += count
-
-                action_teacher_index = action_teacher[indexes]
-                assert action_teacher_index.shape == action_pred.shape == action_step.shape, (action_teacher_index.shape, action_pred.shape, action_step.shape)
-                teacher_token_indices = np.where(action_teacher_index == j)[0]
-                teacher_count = len(teacher_token_indices)
-                teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
-                per_token_teacher_correct[j] += teacher_correct
-                per_token_teacher_count[j] += teacher_count
-                teacher_running_count += teacher_count
-                agent_running_count += count
-                agent_running_count_long += teacher_count
-                teacher_running_count_long += teacher_count
-            assert np.min(action_step) < len(per_token_count), (np.min(action_step), action_step)
-            assert np.max(action_step) >= 0, (np.max(action_step), action_step)
-            assert np.min(action_pred) < len(per_token_count), (np.min(action_pred), action_pred)
-            assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
-            assert np.min(action_teacher_index) < len(per_token_count), (np.min(action_teacher_index), action_teacher_index)
-            assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
-            if not agent_running_count == teacher_running_count:
-                print("COUNTS DIDN'T MATCH!", agent_running_count, teacher_running_count)
-                print("Teacher ", action_teacher_index)
-                print("Correct", action_step)
-                print("Pred", action_pred)
-                print("indices", indexes)
-                import IPython
-                IPython.embed()
-            if not agent_running_count == len(action_step) == len(action_pred):
-                print("COUNTS DIDN'T MATCH! V2", agent_running_count, teacher_running_count)
-                print("Teacher ", action_teacher_index)
-                print("Correct", action_step)
-                print("Pred", action_pred)
-                print("indices", indexes)
-                import IPython
-                IPython.embed()
-
-                per_token_agent_count[j] += len(np.where(action_pred == j)[0])
+            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
+            # Increment indexes to hold the next step for each chunk
             indexes += 1
 
+        # Update the model
         final_loss /= self.args.recurrence
-
         if is_training:
             self.optimizer.zero_grad()
             final_loss.backward()
             self.optimizer.step()
 
+        # Store log info
+        log = self.log_final()
+        return log
+
+    def initialize_logs(self, indexes):
+        self.per_token_correct = [0, 0, 0, 0, 0, 0, 0]
+        self.per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
+        self.per_token_count = [0, 0, 0, 0, 0, 0, 0]
+        self.per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
+        self. per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
+        self.final_entropy = 0
+        self.final_policy_loss = 0
+        self.final_value_loss = 0
+        self.accuracy = 0
+        self.total_frames = len(indexes) * self.args.recurrence
+        self.accuracy_list = []
+        self.lengths_list = []
+        self.agent_running_count_long = 0
+        self.teacher_running_count_long = 0
+
+    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss):
+        self.accuracy_list.append(float((action_pred == action_step).sum()))
+        self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
+        self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
+
+        self.final_entropy += entropy
+        self.final_policy_loss += policy_loss
+
+        action_step = action_step.detach().cpu().numpy()  # ground truth action
+        action_pred = action_pred.detach().cpu().numpy()  # action we took
+        agent_running_count = 0
+        teacher_running_count = 0
+        for j in range(len(self.per_token_count)):
+            token_indices = np.where(action_step == j)[0]
+            count = len(token_indices)
+            correct = np.sum(action_step[token_indices] == action_pred[token_indices])
+            self.per_token_correct[j] += correct
+            self.per_token_count[j] += count
+
+            action_teacher_index = action_teacher[indexes]
+            assert action_teacher_index.shape == action_pred.shape == action_step.shape, (
+            action_teacher_index.shape, action_pred.shape, action_step.shape)
+            teacher_token_indices = np.where(action_teacher_index == j)[0]
+            teacher_count = len(teacher_token_indices)
+            teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
+            self.per_token_teacher_correct[j] += teacher_correct
+            self.per_token_teacher_count[j] += teacher_count
+            teacher_running_count += teacher_count
+            agent_running_count += count
+            self.agent_running_count_long += teacher_count
+            self.teacher_running_count_long += teacher_count
+        assert np.min(action_step) < len(self.per_token_count), (np.min(action_step), action_step)
+        assert np.max(action_step) >= 0, (np.max(action_step), action_step)
+        assert np.min(action_pred) < len(self.per_token_count), (np.min(action_pred), action_pred)
+        assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
+        assert np.min(action_teacher_index) < len(self.per_token_count), (np.min(action_teacher_index), action_teacher_index)
+        assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
+        assert agent_running_count == teacher_running_count, (agent_running_count, teacher_running_count)
+        assert agent_running_count == len(action_step) == len(action_pred), \
+            (agent_running_count, len(action_step), len(action_pred))
+
+    def log_final(self):
         log = {}
-        log["Entropy"] = float(final_entropy / self.args.recurrence)
-        log["Loss"] = float(final_policy_loss / self.args.recurrence)
-        log["Accuracy"] = float(accuracy)
-        if not float(accuracy) <= 1.0001:
-            print("?", accuracy)
-            print("Accuracy List", len(accuracy_list), total_frames, len(indexes))
-            print(accuracy_list)
-            print(lengths_list)
+        log["Entropy"] = float(self.final_entropy / self.args.recurrence)
+        log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
+        log["Accuracy"] = float(self.accuracy)
+        if not float(self.accuracy) <= 1.0001:
+            print("?", self.accuracy)
+            print("Accuracy List", len(self.accuracy_list), self.total_frames, len(self.indexes))
+            print(self.accuracy_list)
+            print(self.lengths_list)
             import IPython
             IPython.embed()
-        assert float(accuracy) <= 1.0001, float(accuracy)
+        assert float(self.accuracy) <= 1.0001, float(self.accuracy)
         teacher_numerator = 0
         teacher_denominator = 0
         agent_numerator = 0
         agent_denominator = 0
-        for i, (correct, count, teacher_correct, teacher_count) in enumerate(zip(per_token_correct, per_token_count, per_token_teacher_correct, per_token_teacher_count)):
+        for i, (correct, count, teacher_correct, teacher_count) in enumerate(
+            zip(self.per_token_correct, self.per_token_count, self.per_token_teacher_correct,
+                self.per_token_teacher_count)):
             assert correct <= count, (correct, count)
             assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
             if count > 0:
-                log[f'Accuracy_{i}'] = correct/count
+                log[f'Accuracy_{i}'] = correct / count
                 agent_numerator += correct
                 agent_denominator += count
             if teacher_count > 0:
                 log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
                 teacher_numerator += teacher_correct
                 teacher_denominator += teacher_count
-        if not agent_denominator == teacher_denominator:
-            print("AGENT DENOMINATOR AND TEACHER DENOMINATOR DON'T MATCH", agent_denominator, teacher_denominator, agent_running_count, teacher_running_count)
-            print("PER TOKEN COUNT", per_token_count)
-            print("PER TOKEN TEACHER COUNT", per_token_teacher_count)
-            print("PER TOKEN CORRECT", per_token_correct)
-            print("PER TOKEN TEACHER CORRECT", per_token_teacher_correct)
-            print("LONG AGENT", agent_running_count_long)
-            print("LONG TEACHER", teacher_running_count_long)
-            import IPython
-            IPython.embed()
+        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_count)
 
-        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_denominator, per_token_count, per_token_teacher_count)
-        assert abs(float(accuracy) - agent_numerator/agent_denominator) < .001, (accuracy, agent_numerator/agent_denominator)
+        assert agent_denominator == teacher_denominator, (
+        agent_denominator, teacher_denominator, self.per_token_count, self.per_token_teacher_count)
+        assert abs(float(self.accuracy) - agent_numerator / agent_denominator) < .001, (
+        self.accuracy, agent_numerator / agent_denominator)
         log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
-
         return log
 
     def starting_indexes(self, num_frames):
