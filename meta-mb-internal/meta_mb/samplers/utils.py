@@ -74,11 +74,8 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, reset
 
             if not stochastic:
                 a = np.array([np.argmax(agent_info[0][0]['probs'])])
-            assert np.argmax(o[160:167]) == env.teacher_action, (np.argmax(o[160:167]), o[160:167], env.teacher_action)
-            next_o, r, d, env_info = env.step(env.teacher_action)
-            assert np.argmax(o[160:167]) == env_info['teacher_action'], (o, o[160:167], env_info['teacher_action'])
+            next_o, r, d, env_info = env.step(a)
             success = env_info['success']
-            # TODO: remove this when we're using higher teachers
 
             teacher_actions.append(env_info['teacher_action'])
             if env_info['teacher_action'] == a:
