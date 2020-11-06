@@ -127,7 +127,7 @@ class Curriculum(Serializable):
         self.distribution[index] = 1
         self.index = index
 
-    def set_task(self, args):
+    def set_task(self, args=None):
         """
         Each time we set a task, sample which babyai level to use from the categorical distribution array.
         Then set the task as usual.

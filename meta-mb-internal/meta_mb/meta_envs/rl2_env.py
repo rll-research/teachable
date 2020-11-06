@@ -108,8 +108,8 @@ class RL2Env(Serializable):
         self.prev_done = [done]
         return next_obs, reward, done, info
 
-    def set_task(self, args):
-        self._wrapped_env.set_task(args)
+    def set_task(self, args=None):
+        self._wrapped_env.set_task(args=None)
         if isinstance(self._wrapped_env.action_space, Discrete):
             size = self._wrapped_env.action_space.n
         else:

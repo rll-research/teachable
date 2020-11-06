@@ -414,7 +414,7 @@ class Trainer(object):
                                   max_path_length=200,
                                   reset_every=self.rollouts_per_meta_task,
                                   stochastic=stochastic,
-                                  batch_size=1, record_teacher=True, use_teacher=use_teacher,
+                                  record_teacher=True, use_teacher=use_teacher,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
                                   num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=True)
         if log_prefix is not None:

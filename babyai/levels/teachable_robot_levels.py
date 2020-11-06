@@ -151,7 +151,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         return task
 
     # Functions fo RL2
-    def set_task(self, _):
+    def set_task(self, _=None):
         """
         Sets task dictionary. The parameter is a dummy passed in for compatibility with the normal RL2 set task function
         """
