@@ -22,7 +22,7 @@ class RL2SampleProcessor(SampleProcessor):
             (list of dicts) : Processed sample data among the meta-batch; size: [meta_batch_size] x [7] x (batch_size x max_path_length)
         """
         assert isinstance(paths_meta_batch, dict), 'paths must be a dict'
-        # assert self.baseline, 'baseline must be specified'
+        original_paths = paths_meta_batch
 
         samples_data_meta_batch = []
         all_paths = []
@@ -37,12 +37,6 @@ class RL2SampleProcessor(SampleProcessor):
 
         observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = \
             self._stack_path_data(copy.deepcopy(samples_data_meta_batch))
-
-        overall_avg_reward = np.mean(np.concatenate([samples_data['rewards'] for samples_data in samples_data_meta_batch]))
-        overall_avg_reward_std = np.std(np.concatenate([samples_data['rewards'] for samples_data in samples_data_meta_batch]))
-
-        for samples_data in samples_data_meta_batch:
-            samples_data['adj_avg_rewards'] = (samples_data['rewards'] - overall_avg_reward) / (overall_avg_reward_std + 1e-8)
 
         # 8) log statistics if desired
         self._log_path_stats(all_paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher)

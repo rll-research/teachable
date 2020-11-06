@@ -30,96 +30,7 @@ class BaseSampler(object):
         self.total_timesteps_sampled = 0
 
     def obtain_samples(self, log=False, log_prefix='', random=False):
-        """
-        Collect batch_size trajectories from each task
-
-        Args:
-            log (boolean): whether to log sampling times
-            log_prefix (str) : prefix for logger
-            random (boolean): whether the actions are random
-
-        Returns:
-            (dict) : A dict of paths of size [meta_batch_size] x (batch_size) x [5] x (max_path_length)
-        """
-
-        # initial setup / preparation
-        paths = []
-
-        n_samples = 0
-        running_paths = _get_empty_running_paths_dict()
-
-        if log: pbar = ProgBar(self.total_samples)
-        policy_time, env_time = 0, 0
-
-        policy = self.policy
-        policy.reset(dones=[True])
-
-        # initial reset of meta_envs
-        obs = np.asarray(self.env.reset())
-
-        ts = 0
-
-        while n_samples < self.total_samples:
-
-            # execute policy
-            t = time.time()
-            if random:
-                action = self.env.action_space.sample()
-                agent_info = {}
-            else:
-                action, agent_info = policy.get_action(obs)
-                if action.ndim == 2:
-                    action = action[0]
-            policy_time += time.time() - t
-
-            # step environments
-            t = time.time()
-            next_obs, reward, done, env_info = self.env.step(action)
-
-            ts += 1
-            done = done or ts >= self.max_path_length
-            if done:
-                next_obs = self.env.reset()
-                ts = 0
-
-            env_time += time.time() - t
-
-            new_samples = 0
-
-            # append new samples to running paths
-            if isinstance(reward, np.ndarray):
-                reward = reward[0]
-            running_paths["observations"].append(obs)
-            running_paths["actions"].append(action)
-            running_paths["rewards"].append(reward)
-            running_paths["dones"].append(done)
-            running_paths["env_infos"].append(env_info)
-            running_paths["agent_infos"].append(agent_info)
-
-            # if running path is done, add it to paths and empty the running path
-            if done:
-                paths.append(dict(
-                    observations=np.asarray(running_paths["observations"]),
-                    actions=np.asarray(running_paths["actions"]),
-                    rewards=np.asarray(running_paths["rewards"]),
-                    dones=np.asarray(running_paths["dones"]),
-                    env_infos=utils.stack_tensor_dict_list(running_paths["env_infos"]),
-                    agent_infos=utils.stack_tensor_dict_list(running_paths["agent_infos"]),
-                ))
-                new_samples += len(running_paths["rewards"])
-                running_paths = _get_empty_running_paths_dict()
-
-            if log: pbar.update(new_samples)
-            n_samples += new_samples
-            obs = next_obs
-        if log: pbar.stop()
-
-        self.total_timesteps_sampled += self.total_samples
-        if log:
-            logger.logkv(log_prefix + "PolicyExecTime", policy_time)
-            logger.logkv(log_prefix + "EnvExecTime", env_time)
-
-        return paths
+        raise NotImplementedError
 
 
 def _get_empty_running_paths_dict():
@@ -149,10 +60,6 @@ class SampleProcessor(object):
             positive_adv=False,
     ):
 
-        assert 0 <= discount <= 1.0, 'discount factor must be in [0,1]'
-        assert 0 <= gae_lambda <= 1.0, 'gae_lambda must be in [0,1]'
-        # assert hasattr(baseline, 'fit') and hasattr(baseline, 'predict')
-
         self.baseline = baseline
         self.discount = discount
         self.gae_lambda = gae_lambda
@@ -181,15 +88,11 @@ class SampleProcessor(object):
         assert self.baseline, 'baseline must be specified - use self.build_sample_processor(baseline_obj)'
 
         # fits baseline, compute advantages and stack path data
+        original_paths = paths
         samples_data, paths = self._compute_samples_data(paths)
 
         # 7) log statistics if desired
-        self._log_path_stats(paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher)
-
-        assert samples_data.keys() >= {'observations', 'actions', 'rewards', 'advantages', 'returns'}
-        return samples_data
-
-    """ helper functions """
+        self._log_path_stats(paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher, original_paths=original_paths)
 
     def _compute_samples_data(self, paths):
         assert type(paths) == list
@@ -231,62 +134,13 @@ class SampleProcessor(object):
         return samples_data, paths
 
     def _log_path_stats(self, paths, log=False, log_prefix='', log_teacher=True):
-        # compute log stats
+
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]
         path_length = [path['env_infos']['episode_length'][-1] for path in paths]
         success = [path['env_infos']['success'][-1] for path in paths]
         total_success = [np.sum(path['env_infos']['success']) for path in paths]
         action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
-
-        # # log by step in the meta-task
-        # for i in unique_steps:
-        #     success_i = [path['env_infos']['success'][-1] for path in paths if path['env_infos']['step'][0] == i]
-        #     undiscounted_returns_i = [sum(path["rewards"]) for path in paths if path['env_infos']['step'][0] == i]
-        #     average_discounted_return_i = [path["returns"][0] for path in paths if path['env_infos']['step'][0] == i]
-        #
-        #     logger.logkv(log_prefix + 'AvgDiscountedReturn' + str(i), np.mean(average_discounted_return_i))
-        #     logger.logkv(log_prefix + 'AvgReturn' + str(i), np.mean(undiscounted_returns_i))
-        #     logger.logkv(log_prefix + 'AvgSuccess' + str(i), np.mean(success_i))
-        #
-        #     if has_teacher:
-        #         actions_taken_i = np.array([step[0] for path in paths for step in path['actions']
-        #                                     if path['env_infos']['step'][0] == i])
-        #         actions_teacher_i = np.array([step for path in paths for step in path['env_infos']['teacher_action']
-        #                                       if path['env_infos']['step'][0] == i])
-        #         teacher_suggestions_i = actions_taken_i == actions_teacher_i
-        #         mean_advice = np.mean(teacher_suggestions_i)
-        #         logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
-
-        # # Log split by dropout
-        # # TODO: assumes dropout is the same for the entire meta-task. It is currently, but we might change that.
-        # no_goal = [path for path in paths if path['env_infos']['dropout_goal'][0]]
-        # no_corrections = [path for path in paths if path['env_infos']['dropout_corrections'][0]]
-        # yes_goal = [path for path in paths if not path['env_infos']['dropout_goal'][0]]
-        # yes_corrections = [path for path in paths if not path['env_infos']['dropout_corrections'][0]]
-        # sublists = [no_goal, yes_goal, no_corrections, yes_corrections]
-        # names = ["no_goal", "yes_goal", "no_corrections", "yes_corrections"]
-        # for name, sublist in zip(names, sublists):
-        #     if len(sublist) > 0:
-        #         success_i = [path['env_infos']['success'][-1] for path in sublist]
-        #         undiscounted_returns_i = [sum(path["rewards"]) for path in sublist]
-        #         average_discounted_return_i = [path["returns"][0] for path in sublist]
-        #         path_length_i = [path['env_infos']['episode_length'][-1] for path in sublist]
-        #
-        #         log_prefix_i = log_prefix + name + "-"
-        #         logger.logkv(log_prefix_i + 'AvgDiscountedReturn', np.mean(average_discounted_return_i))
-        #         logger.logkv(log_prefix_i + 'AvgReturn', np.mean(undiscounted_returns_i))
-        #         logger.logkv(log_prefix_i + 'AvgSuccess', np.mean(success_i))
-        #         logger.logkv(log_prefix_i + 'AveragePathLength', np.mean(path_length_i))
-        #
-        #         if has_teacher:
-        #             actions_taken_i = np.array([step[0] for path in sublist for step in path['actions']
-        #                                         if path['env_infos']['step'][0] == i])
-        #             actions_teacher_i = np.array([step for path in sublist for step in path['env_infos']['teacher_action']
-        #                                           if path['env_infos']['step'][0] == i])
-        #             teacher_suggestions_i = actions_taken_i == actions_teacher_i
-        #             mean_advice = np.mean(teacher_suggestions_i)
-        #             logger.logkv(log_prefix_i + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions_i))
 
         if log_teacher:
             actions_taken = np.array([step[0] for path in paths for step in path['actions']])
@@ -297,8 +151,6 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'ProbActionTeacher', np.mean(prob_actions_teacher))
             logger.logkv(log_prefix + 'ProbActionTaken', np.mean(prob_actions_taken))
 
-            # real_actions_teacher = np.array([step[160] for path in paths for step in path['observations']])
-            # rewards = np.array([step for path in paths for step in path['rewards']])
             teacher_suggestions = actions_taken == actions_teacher
 
             # Split by token
@@ -318,11 +170,6 @@ class SampleProcessor(object):
 
             all_actions = np.array([step[0] for path in paths for step in path['actions']])
             logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
-
-            # logger.logkv(log_prefix + 'FirstRoom', np.mean(first_room))
-            # if len(same_room_end) > 0:
-            #     logger.logkv(log_prefix + 'SameRoomEnd', np.mean(same_room_end))
-            #     logger.logkv(log_prefix + 'SameRoomStart', np.mean(same_room_start))
 
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
