@@ -150,7 +150,7 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                for _ in range(3):  # TODO: tune this!
+                for _ in range(args.distillation_steps):
                     distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
@@ -162,9 +162,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if False:
-            # if advance_curriculum or (itr % self.eval_every == 0) or (
-            #     itr == self.args.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+            if advance_curriculum or (itr % self.eval_every == 0) or (
+                itr == self.args.n_itr - 1):
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:

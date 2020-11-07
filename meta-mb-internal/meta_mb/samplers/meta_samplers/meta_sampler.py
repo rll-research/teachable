@@ -121,7 +121,6 @@ class MetaSampler(BaseSampler):
         num_paths = 0
         itrs = 0
         while num_paths < total_paths:
-            print("Loop", num_paths, total_paths, itrs)
             itrs += 1
             t = time.time()
             obses = self.obs_preprocessor(obses, teacher_dict)
