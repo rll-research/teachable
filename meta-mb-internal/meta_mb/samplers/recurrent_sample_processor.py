@@ -2,10 +2,10 @@ from meta_mb.samplers.base import SampleProcessor
 import numpy as np
 import copy
 
+
 class RecurrentSampleProcessor(SampleProcessor):
 
     def process_samples(self, paths_meta_batch, log=False, log_prefix=''):
-
         assert isinstance(paths_meta_batch, dict), 'paths must be a dict'
         assert self.baseline, 'baseline must be specified'
 
@@ -13,7 +13,6 @@ class RecurrentSampleProcessor(SampleProcessor):
         all_paths = []
 
         for meta_task, paths in paths_meta_batch.items():
-
             # fits baseline, compute advantages and stack path data
             samples_data, paths = self._compute_samples_data(paths)
 

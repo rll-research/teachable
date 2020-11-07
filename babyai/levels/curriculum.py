@@ -32,8 +32,8 @@ class Curriculum(Serializable):
             Level_PickupLocalS6N3(**kwargs),  # 12
             Level_PickupLocalS7N4(**kwargs),  # 13
             Level_PickupLocalS8N7(**kwargs),  # 14
-            Level_PickupLocal(**kwargs), #  15
-            Level_PutNextLocalS5N3(**kwargs), # 16
+            Level_PickupLocal(**kwargs),  # 15
+            Level_PutNextLocalS5N3(**kwargs),  # 16
             Level_PutNextLocalS6N4(**kwargs),  # 17
             Level_PutNextLocal(**kwargs),  # 18
             Level_OpenLocalS5N3(**kwargs),  # 19
@@ -60,7 +60,6 @@ class Curriculum(Serializable):
         self.distribution[start_index] = 1
         self._wrapped_env = self.levels_list[start_index]
         self.index = start_index
-
 
     def __getattr__(self, attr):
         """

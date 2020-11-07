@@ -2,6 +2,7 @@ from meta_mb.samplers.base import SampleProcessor
 import numpy as np
 import copy
 
+
 class RL2SampleProcessor(SampleProcessor):
 
     def process_samples(self, paths_meta_batch, log=False, log_prefix='', log_teacher=True):
@@ -28,9 +29,9 @@ class RL2SampleProcessor(SampleProcessor):
         all_paths = []
 
         for meta_task, paths in paths_meta_batch.items():
-
             # fits baseline, compute advantages and stack path data
-            samples_data, paths = self._compute_samples_data(paths) # TODO: Is RL^2 Optimizing for the N paths in a trial?
+            samples_data, paths = self._compute_samples_data(
+                paths)  # TODO: Is RL^2 Optimizing for the N paths in a trial?
 
             samples_data_meta_batch.append(samples_data)
             all_paths.extend(paths)

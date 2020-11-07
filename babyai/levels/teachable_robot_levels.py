@@ -13,6 +13,7 @@ from babyai.oracle.batch_teacher import BatchTeacher
 
 from babyai.bot import Bot
 
+
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
     """
     Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
@@ -48,24 +49,32 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type == 'PostActionAdvice':
-            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                       cartesian_steps=cartesian_steps)
         elif feedback_type == 'PreActionAdvice':
-            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                      cartesian_steps=cartesian_steps)
         elif feedback_type == 'CartesianCorrections':
-            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                           cartesian_steps=cartesian_steps)
         elif feedback_type == 'SubgoalCorrections':
-            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                         cartesian_steps=cartesian_steps)
         elif isinstance(feedback_type, list):
             teachers = []
             for ft in feedback_type:
                 if ft == 'PostActionAdvice':
-                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                         cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
-                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                        cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
-                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always,
+                                             feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
-                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
+                                           cartesian_steps=cartesian_steps)
                 teachers.append(t)
             teacher = BatchTeacher(teachers)
         else:
@@ -208,7 +217,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             else:
                 dist_pos_unwrapped.append(i * self.room_size + j)
         idx = range(len(dist_pos_unwrapped) + 1)
-        self.idx = [x for _,x in sorted(zip(dist_pos_unwrapped, idx))]
+        self.idx = [x for _, x in sorted(zip(dist_pos_unwrapped, idx))]
 
         dist_colors = [self.get_color_idx(d.color) for d in self.objs]
         dist_types = [self.get_type_idx(d.type) for d in self.objs]
@@ -216,7 +225,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.obj_infos = np.concatenate([np.array(dist_colors)[self.idx],
                                          np.array(dist_types)[self.idx],
                                          np.array(dist_pos_unwrapped)[self.idx]])
-
 
     def add_agent(self):
         """
@@ -289,7 +297,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 goal_obj = goal_objs
             self.obj_pos = goal_obj.cur_pos
 
-
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
         """
         Place the agent randomly into a room.  Optionally, initialize it in a particular part of the room.
@@ -353,7 +360,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             raise ValueError("Mission is too long: " + mission + str(pad_length))
         return mission_list
 
-
     def gen_obs(self):
         """
         Generate the agent's view (partially observable). It's a concatenation of the agent's direction and position,
@@ -371,9 +377,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
         obs = np.concatenate([[self.agent_dir],
-                               self.agent_pos,
-                               grid_representation,
-                               goal])
+                              self.agent_pos,
+                              grid_representation,
+                              goal])
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.obs_shape = obs.shape
             self.teacher.obs_size = obs.shape
@@ -417,12 +423,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                         self.teacher = curr_teach
                         followed_opt_action = teacher.success_check(ob_curr)
                     elif isinstance(teacher, PreActionAdvice):
-                        followed_opt_action = teacher.success_check(action)  
+                        followed_opt_action = teacher.success_check(action)
                     elif isinstance(teacher, SubgoalCorrections):
                         # Not actually checking for subgoal
                         opt_action = int(teacher.next_action)
                         followed_opt_action = (opt_action == action)
-                    give_reward = give_reward or followed_opt_action           
+                    give_reward = give_reward or followed_opt_action
             else:
                 give_reward = False
                 curr_teach = self.teacher
@@ -433,12 +439,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     self.teacher = curr_teach
                     followed_opt_action = self.teacher.success_check(ob_curr)
                 elif isinstance(self.teacher, PreActionAdvice):
-                    followed_opt_action = self.teacher.success_check(action)  
+                    followed_opt_action = self.teacher.success_check(action)
                 elif isinstance(self.teacher, SubgoalCorrections):
                     # Not actually checking for subgoal
                     opt_action = int(self.teacher.next_action)
                     followed_opt_action = (opt_action == action)
-                give_reward = followed_opt_action     
+                give_reward = followed_opt_action
         else:
             give_reward = False
         # if hasattr(self, 'teacher') and self.teacher is not None:
@@ -512,4 +518,3 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr += 1
 
         return obs
-

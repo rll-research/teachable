@@ -131,7 +131,7 @@ class ImitationLearning(object):
         self.per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_count = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
-        self. per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
+        self.per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
         self.final_entropy = 0
         self.final_policy_loss = 0
         self.final_value_loss = 0
@@ -163,7 +163,7 @@ class ImitationLearning(object):
 
             action_teacher_index = action_teacher[indexes]
             assert action_teacher_index.shape == action_pred.shape == action_step.shape, (
-            action_teacher_index.shape, action_pred.shape, action_step.shape)
+                action_teacher_index.shape, action_pred.shape, action_step.shape)
             teacher_token_indices = np.where(action_teacher_index == j)[0]
             teacher_count = len(teacher_token_indices)
             teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
@@ -177,7 +177,8 @@ class ImitationLearning(object):
         assert np.max(action_step) >= 0, (np.max(action_step), action_step)
         assert np.min(action_pred) < len(self.per_token_count), (np.min(action_pred), action_pred)
         assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
-        assert np.min(action_teacher_index) < len(self.per_token_count), (np.min(action_teacher_index), action_teacher_index)
+        assert np.min(action_teacher_index) < len(self.per_token_count), (
+        np.min(action_teacher_index), action_teacher_index)
         assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
         assert agent_running_count == teacher_running_count, (agent_running_count, teacher_running_count)
         assert agent_running_count == len(action_step) == len(action_pred), \
@@ -216,9 +217,9 @@ class ImitationLearning(object):
         assert agent_denominator == teacher_denominator, (agent_denominator, teacher_count)
 
         assert agent_denominator == teacher_denominator, (
-        agent_denominator, teacher_denominator, self.per_token_count, self.per_token_teacher_count)
+            agent_denominator, teacher_denominator, self.per_token_count, self.per_token_teacher_count)
         assert abs(float(self.accuracy) - agent_numerator / agent_denominator) < .001, (
-        self.accuracy, agent_numerator / agent_denominator)
+            self.accuracy, agent_numerator / agent_denominator)
         log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
         return log
 
