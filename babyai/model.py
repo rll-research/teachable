@@ -7,6 +7,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import babyai.rl
 from babyai.rl.utils.supervised_losses import required_heads
 import numpy as np
+from babyai.rl.utils.dictlist import DictList
 
 # From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def initialize_parameters(m):
@@ -37,14 +38,14 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
-        x = F.relu(self.conv1(x))
         # x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.conv1(x))
         x = self.conv2(x)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
-        return F.relu(out)
         # return F.relu(self.bn2(out))
+        return F.relu(out)
 
 
 class ImageBOWEmbedding(nn.Module):
@@ -66,7 +67,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
-                 advice_start_index=-1, advice_end_index=-1, num_modules=1):
+                 advice_size=-1, num_modules=1):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -91,9 +92,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.advice_dim = advice_dim
-        self.advice_start_index = advice_start_index
-        self.advice_end_index = advice_end_index
-        self.advice_size = advice_end_index - advice_start_index
+        self.advice_size = advice_size
         self.num_modules = num_modules
 
         for part in self.arch.split('_'):
@@ -110,11 +109,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Conv2d(
                 in_channels=128 if use_bow or pixel else 3, out_channels=128,
                 kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            # nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            # nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
@@ -234,32 +233,30 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         batch_len = 1 if dones is None else len(dones)
         self.memory = torch.zeros([batch_len, self.memory_size], device=self.device)
 
-    def get_actions(self, obs, training=False, use_teacher=False):
-        if training:
-            self.train()
-        else:
-            self.eval()
-
+    def get_actions(self, obs, training=False):
         if type(obs) is list:
             obs = torch.FloatTensor(np.stack(obs, axis=0)).to(self.device)
         else:
-            obs = torch.FloatTensor(obs).to(self.device)
-        if len(obs.shape) == 2:
-            obs = obs.unsqueeze(0)
-        assert len(obs.shape) == 3, obs.shape
+            # Double check we have a dictlist and that we have a batch dim
+            assert type(obs) is DictList, type(obs)
+            assert len(obs.obs.shape) == 4, obs.obs.shape
         action_list = [[] for _ in range(len(obs))]
         info_list = [[] for _ in range(len(obs))]
         for t in range(len(obs[0])):
             obs_t = obs[:, t]
-            action, info = self.get_actions_t(obs_t, use_teacher)
+            action, info = self.get_actions_t(obs_t, training)
             for i in range(len(info_list)):
                 action_list[i].append([action[i]])
                 info_list[i].append(info[i])
         actions = np.array(action_list)
         return actions, info_list
 
-    def get_actions_t(self, obs, use_teacher):  # TODO: this feels like a good place for a DictList
-        dist, info = self(obs, self.memory, use_teacher=use_teacher)
+    def get_actions_t(self, obs, training=False):  # TODO: this feels like a good place for a DictList\\        if training:
+        if training:
+            self.train()
+        else:
+            self.eval()
+        dist, info = self(obs, self.memory)
         self.memory = info['memory']
         info_list = []
         probs = info['probs'].detach().cpu().numpy()
@@ -279,37 +276,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             })
         return actions, info_list
 
-    def get_instr(self, obs):
-        # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
-        instr_indices = list(range(150, 160))
-        instruction_vector = obs[:, instr_indices].long()
-        return instruction_vector
 
-    def get_advice(self, obs, use_teacher):
-        # TODO: we should really really really just store the obs as a dict rather than chopping this out like this.
-        #    This version breaks for anything other than preactionadvice
-        instr_indices = list(range(self.advice_start_index, self.advice_end_index))
-        advice_vector = obs[:, instr_indices].long()
-        if not use_teacher:
-            advice_vector = advice_vector * 0 + self.env.action_space.n
-        return advice_vector
-
-    def get_img(self, obs):
-        img_indices = list(range(3, 150))
-        try:
-            img_vector = obs[:, img_indices].reshape((len(obs), 7, 7, 3))
-        except:
-            print("ERROR", obs.shape)
-            assert False
-        return img_vector
-
-    def forward(self, obs, memory, instr_embedding=None, use_teacher=False):
+    def forward(self, obs, memory, instr_embedding=None):
         # Expect obs to be [batch, obs_dim]
-        instruction_vector = self.get_instr(obs)
+        instruction_vector = obs.instr.long()
         if self.advice_size > 0:
-            advice_vector = self.get_advice(obs, use_teacher)
+            advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
-        img_vector = self.get_img(obs)
+        img_vector = obs.obs
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
         if self.use_instr and self.lang_model == "attgru":
@@ -398,7 +372,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 for i, v in enumerate(perm_idx):
                     iperm_idx[v.data] = i
 
-                inputs = self.word_embedding(instr)
+                inputs = self.word_embedding(instr.long())
                 inputs = inputs[perm_idx]
                 inputs = pack_padded_sequence(inputs, seq_lengths.data.cpu().numpy(), batch_first=True)
 
