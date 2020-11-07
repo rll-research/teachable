@@ -73,7 +73,7 @@ def plot_img(env, agent_action, teacher_action, record_teacher, run_index):
 def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, save_locally=True,
-            save_wandb=False):
+            save_wandb=False, obs_preprocessor=None, teacher_dict={}):
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
@@ -110,10 +110,11 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
             # Choose action
-            a, agent_info = agent.get_actions(np.expand_dims(o, 0), use_teacher=use_teacher)
+            o = obs_preprocessor([o], teacher_dict)
+            a, agent_info = agent.get_actions_t(o)
             a = a.item()
             if not stochastic:
-                a = np.array([np.argmax(agent_info[0][0]['probs'])])
+                a = np.array([np.argmax(agent_info[0]['probs'])])
 
             # Step env
             next_o, r, d, env_info = env.step(a)
@@ -121,7 +122,7 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             # use reward predictor
             if reward_predictor is not None:  # TODO: we currently don't do anything with this!
                 reward_obs = np.stack([env_info['next_obs_rewardfree']])
-                pred_reward = reward_predictor.get_actions(reward_obs, use_teacher=use_teacher)
+                pred_reward = reward_predictor.get_actions_t(reward_obs)
 
             # Store data for logging
             success = env_info['success']
