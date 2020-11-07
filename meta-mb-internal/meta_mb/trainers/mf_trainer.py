@@ -148,11 +148,10 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if False:
-            # if self.supervised_model is not None and advance_curriculum:
+            if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
                 for _ in range(3):  # TODO: tune this!
-                    distill_log = self.distill(samples_data, is_training=True)
+                    distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
@@ -311,8 +310,9 @@ class Trainer(object):
         log = self.rp_trainer.distill(samples, source=self.args.source, is_training=is_training)
         return log
 
-    def distill(self, samples, is_training=False):
-        log = self.il_trainer.distill(samples, source=self.args.source, is_training=is_training)
+    def distill(self, samples, is_training=False, teachers_dict=None):
+        log = self.il_trainer.distill(samples, source=self.args.source, is_training=is_training,
+                                      teachers_dict=teachers_dict)
         return log
 
     def run_supervised(self, policy, teacher_dict, tag):

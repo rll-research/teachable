@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import babyai.utils as utils
 import logging
+from itertools import chain, combinations
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,6 @@ class ImitationLearning(object):
         else:
             self.acmodel.eval()
 
-    def obss_preprocessor(self, obs, device=None):
-        obs_arr = np.stack(obs, 0)
-        return torch.FloatTensor(obs_arr).to(device)
-
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
         self.set_mode(is_training)
 
@@ -80,8 +77,7 @@ class ImitationLearning(object):
 
             with torch.no_grad():
                 # Taking memory up until num_demos, as demos after that have finished
-                obs = self.obss_preprocessor(obs, self.device)
-                dist, info = self.acmodel(obs, memory[:num_demos], use_teacher=self.distill_with_teacher)
+                dist, info = self.acmodel(obs, memory[:num_demos])
                 new_memory = info['memory']
 
             memories[inds] = memory[:num_demos]
@@ -107,8 +103,7 @@ class ImitationLearning(object):
             obs = obss[indexes]
             action_step = action_true[indexes]
             mask_step = mask[indexes]
-            obs = self.obss_preprocessor(obs, self.device)
-            dist, info = self.acmodel(obs, memory * mask_step, use_teacher=self.distill_with_teacher)
+            dist, info = self.acmodel(obs, memory * mask_step)
             memory = info["memory"]
 
             # Compute the cross-entropy loss with an entropy bonus
@@ -235,10 +230,25 @@ class ImitationLearning(object):
         else:
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
-    def distill(self, demo_batch, is_training=True, source='agent'):
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}):
         # Log is a dictionary with keys entropy, policy_loss, and accuracy
-        log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
+        # log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
+
+        # Distill to the powerset of distillation types
+        keys = list(teachers_dict.keys())
+        powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
+        logs = []
+        no_teacher_log = None
+        for key_set in powerset:
+            print("Distilling to", key_set)
+            teacher_subset_dict = {}
+            for k in key_set:
+                teacher_subset_dict[k] = teachers_dict[k]
+            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
+            logs.append(log)
+            if len(key_set) == 0:
+                no_teacher_log = log
+
         if is_training:
-            # Learning rate scheduler
             self.scheduler.step()
-        return log
+        return no_teacher_log

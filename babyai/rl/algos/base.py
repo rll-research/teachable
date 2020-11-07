@@ -269,10 +269,6 @@ class BaseAlgo(ABC):
         if self.aux_info:
             exps = self.aux_info_collector.end_collection(exps)
 
-        # Preprocess experiences
-
-        exps.obs = self.preprocess_obss(exps.obs, all_teachers_dict)
-
         # Log some values
 
         keep = max(self.log_done_counter, self.num_procs)

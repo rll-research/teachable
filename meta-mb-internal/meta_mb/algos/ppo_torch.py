@@ -75,6 +75,9 @@ class PPOAlgo(BaseAlgo):
         being the added information. They are either (n_procs * n_frames_per_proc) 1D tensors or
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
+
+        exps.obs = self.preprocess_obss(exps.obs, teacher_dict)
+
         self.acmodel.train()
         if entropy_coef is None:
             entropy_coef = self.entropy_coef
