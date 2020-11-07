@@ -1,7 +1,6 @@
-from .verifier import *
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 from meta_mb.meta_envs.base import MetaEnv
-from gym_minigrid.minigrid import MiniGridEnv, Key, Ball, Box
+from gym_minigrid.minigrid import MiniGridEnv
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
@@ -10,7 +9,6 @@ from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
-
 from babyai.bot import Bot
 
 
@@ -48,38 +46,29 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr = 0
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
-        if feedback_type == 'PostActionAdvice':
-            teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                       cartesian_steps=cartesian_steps)
-        elif feedback_type == 'PreActionAdvice':
-            teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                      cartesian_steps=cartesian_steps)
-        elif feedback_type == 'CartesianCorrections':
-            teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                           cartesian_steps=cartesian_steps)
-        elif feedback_type == 'SubgoalCorrections':
-            teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                         cartesian_steps=cartesian_steps)
-        elif isinstance(feedback_type, list):
-            teachers = []
+        if feedback_type is not None:
+            self.oracle = {}
+            teachers = {}
             for ft in feedback_type:
                 if ft == 'PostActionAdvice':
-                    t = PostActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                         cartesian_steps=cartesian_steps)
+                    teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
+                                               feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
-                    t = PreActionAdvice(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                        cartesian_steps=cartesian_steps)
+                    teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
-                    t = CartesianCorrections(Bot, self, feedback_always=feedback_always,
-                                             feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                    teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always,
+                                                   feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
-                    t = SubgoalCorrections(Bot, self, feedback_always=feedback_always, feedback_frequency=feedback_freq,
-                                           cartesian_steps=cartesian_steps)
-                teachers.append(t)
+                    teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
+                                                 feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                else:
+                    raise NotImplementedError
+                teachers[ft] = teacher
+                self.oracle[ft] = Bot(self)
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
-        self.oracle = Bot(self)
         self.teacher = teacher
 
     def sample_object(self):
@@ -152,9 +141,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     print("ISSUE sampling", e)
                     raise RejectSampling
                 continue
-
             break
-
         return task
 
     # Functions fo RL2
@@ -165,7 +152,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.task = self.sample_task()
         self.itr = 0
 
-    # Functions for RL2
     def get_task(self):
         """
         :return: task of the meta-learning environment. Dictionary.
@@ -251,6 +237,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         The teacher fails in certain situations.  Here we modify the objects in the environment to avoid this.
         Prevent boxes from disappearing. When a box disappears, it is replaced by its contents (or None, if empty.)
+        Prevent doors from closing once open.
         :param objs:
         """
         for obj in objs:
@@ -343,7 +330,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         misc = ["follow_teacher"]
         return ['PAD'] + colors + types + actions + fillers + misc
 
-    def to_vocab_index(self, mission, pad_length=None):  # TODO: turn this into an embedding
+    def to_vocab_index(self, mission, pad_length=None):
         """
         Take a mission string, and return a fixed-length vector where each index is the index of the nth word in the
         mission.  The end is padded with 0
@@ -374,30 +361,28 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        grid_representation = image.flatten()
         goal = self.to_vocab_index(self.mission, pad_length=10)
-        obs = np.concatenate([[self.agent_dir],
-                              self.agent_pos,
-                              grid_representation,
-                              goal])
+        obs_dict = {}
+        additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
+        obs_dict["obs"] = image
+        obs_dict['instr'] = goal
+        obs_dict['extra'] = additional
         if hasattr(self, 'teacher') and self.teacher is not None:
-            self.obs_shape = obs.shape
-            self.teacher.obs_size = obs.shape
-            if isinstance(self.teacher, BatchTeacher):
-                for t in self.teacher.teachers:
-                    t.obs_size = obs.shape
-            if self.feedback_type == 'PreActionAdvice' or self.feedback_type == 'PostActionAdvice':
-                correction_index = self.teacher.give_feedback([obs])
-                correction = np.zeros((self.action_space.n + 1,))
-                correction[correction_index] = 1.0
-            else:
-                if self.reset_yet is False:
-                    correction = self.teacher.empty_feedback()
-                else:
-                    correction = self.teacher.give_feedback([obs])
-            obs = np.concatenate([obs, correction])
+            correction = self.compute_teacher_advice(image.flatten())
+            obs_dict.update(correction)
+        return obs_dict
 
-        return deepcopy(obs)
+    def compute_teacher_advice(self, obs):
+        self.obs_shape = obs.shape
+        self.teacher.obs_size = obs.shape
+        if isinstance(self.teacher, BatchTeacher):
+            for t in self.teacher.teachers.values():
+                t.obs_size = obs.shape
+        if self.reset_yet is False:
+            correction = self.teacher.empty_feedback()
+        else:
+            correction = self.teacher.give_feedback([obs])
+        return correction
 
     def step(self, action):
         """
@@ -410,48 +395,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         except:
             action = action  # TODO: sketchy
 
-        # Off by one error potentially. 
+        # Off by one error potentially.
         if hasattr(self, 'teacher') and self.teacher is not None:
-            if isinstance(self.teacher, BatchTeacher):
-                give_reward = False
-                curr_teach = self.teacher
-                followed_opt_action = False
-                for teacher in curr_teach.teachers:
-                    if isinstance(teacher, CartesianCorrections):
-                        self.teacher = None
-                        ob_curr = self.gen_obs()
-                        self.teacher = curr_teach
-                        followed_opt_action = teacher.success_check(ob_curr)
-                    elif isinstance(teacher, PreActionAdvice):
-                        followed_opt_action = teacher.success_check(action)
-                    elif isinstance(teacher, SubgoalCorrections):
-                        # Not actually checking for subgoal
-                        opt_action = int(teacher.next_action)
-                        followed_opt_action = (opt_action == action)
-                    give_reward = give_reward or followed_opt_action
-            else:
-                give_reward = False
-                curr_teach = self.teacher
-                followed_opt_action = False
-                if isinstance(self.teacher, CartesianCorrections):
-                    self.teacher = None
-                    ob_curr = self.gen_obs()
-                    self.teacher = curr_teach
-                    followed_opt_action = self.teacher.success_check(ob_curr)
-                elif isinstance(self.teacher, PreActionAdvice):
-                    followed_opt_action = self.teacher.success_check(action)
-                elif isinstance(self.teacher, SubgoalCorrections):
-                    # Not actually checking for subgoal
-                    opt_action = int(self.teacher.next_action)
-                    followed_opt_action = (opt_action == action)
-                give_reward = followed_opt_action
+            give_reward = self.compute_give_reward(action)
         else:
             give_reward = False
-        # if hasattr(self, 'teacher') and self.teacher is not None:
-        #     opt_action = int(self.teacher.next_action)
-        #     followed_opt_action = (opt_action == action)
-        # else:
-        #     followed_opt_action = False
 
         obs, rew, done, info = super().step(action)
         info['agent_pos'] = self.agent_pos
@@ -467,30 +415,44 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['goal_pos'] = (-1, -1)
 
         if hasattr(self, 'teacher') and self.teacher is not None:
-            teacher_copy = deepcopy(self.teacher)
-            try:
-                info['teacher_action'] = self.teacher_action
+            # Even if we use multiple teachers, presumably they all relate to one underlying path.
+            # We can log what action is the next one on this path (currently in teacher.next_action).
+            info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
 
-                self.oracle = self.teacher.step([action], self.oracle)
-                info['teacher_error'] = float(self.teacher.last_step_error)
-                self.teacher_action = self.get_teacher_action()
-                # Update the observation with the teacher's new feedback
-                obs = self.gen_obs()
+            self.oracle = self.teacher.step([action], self.oracle)
+            info['teacher_error'] = float(self.teacher.get_last_step_error())
+            # Update the observation with the teacher's new feedback
+            self.teacher_action = self.get_teacher_action()
+            obs = self.gen_obs()
 
-            except Exception as e:
-                import IPython
-                IPython.embed()
-                # self.render('human')
-                print("ERROR!!!!!", e)
-                teacher_copy.step([action], self.oracle)
         else:
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
         reward_total = rew * 1000
         if self.intermediate_reward:
             reward_total += int(give_reward)
-        rew = reward_total / 1000  # TODO: consider removing
+        rew = reward_total / 1000
         return obs, rew, done, info
+
+    def compute_give_reward(self, action):  # TODO: consider computing dense rewards as a dictionary too
+        give_reward = False
+        curr_teach = self.teacher
+        followed_opt_action = False
+        for teacher in curr_teach.teachers.values():
+            if isinstance(teacher, CartesianCorrections):
+                # self.teacher = None
+                # ob_curr = self.gen_obs()  # TODO: later, make this dictionaries
+                # self.teacher = curr_teach  # TODO: why did we have this?
+                # followed_opt_action = teacher.success_check(ob_curr)
+                followed_opt_action = True  # TODO: AAAAAAA
+            elif isinstance(teacher, PreActionAdvice):
+                followed_opt_action = teacher.success_check(action)
+            elif isinstance(teacher, SubgoalCorrections):
+                # Not actually checking for subgoal
+                opt_action = int(teacher.next_action)
+                followed_opt_action = (opt_action == action)
+            give_reward = give_reward or followed_opt_action
+        return give_reward
 
     def get_teacher_action(self):
         if hasattr(self, 'teacher') and self.teacher is not None:
@@ -513,8 +475,5 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         self.teacher_action = self.get_teacher_action()
         obs = self.gen_obs()
-        if self.teacher_action is not None:
-            assert np.argmax(obs[160:167]) == self.teacher_action, (np.argmax(obs[160:167]), self.teacher_action)
         self.itr += 1
-
         return obs
