@@ -85,7 +85,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--level', type=int, default=0)
         self.add_argument('--n_itr', type=int, default=10000)
         self.add_argument('--source', type=str, default='agent', choices=['agent', 'teacher'])
-        self.add_argument('--advance_levels', type=bool, default=True)
+        self.add_argument('--single_level', action='store_true')
 
         # Saving/loading/finetuning
         self.add_argument('--continue_train', action='store_true')
@@ -103,7 +103,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollouts_per_meta_task', type=int, default=1)
 
         # Teacher
-        self.add_argument('--feedback_type', type=str, default=None,
+        self.add_argument('--feedback_type', nargs='+', default=["None"],
                           choices=["None", "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"])
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', type=int, default=1)
@@ -121,6 +121,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--value_loss_coef', type=float, default=.05)  # .5 is default
         self.add_argument('--max_grad_norm', type=float, default=.5)
         self.add_argument('--clip_eps', type=float, default=.2)
+        self.add_argument('--advice_dim', type=int, default=128)
 
         # Reward
         self.add_argument('--intermediate_reward', type=bool, default=True)

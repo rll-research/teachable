@@ -52,6 +52,10 @@ class ImitationLearning(object):
         else:
             self.acmodel.eval()
 
+    def obss_preprocessor(self, obs, device=None):
+        obs_arr = np.stack(obs, 0)
+        return torch.FloatTensor(obs_arr).to(device)
+
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
         self.set_mode(is_training)
 
@@ -76,6 +80,7 @@ class ImitationLearning(object):
 
             with torch.no_grad():
                 # Taking memory up until num_demos, as demos after that have finished
+                obs = self.obss_preprocessor(obs, self.device)
                 dist, info = self.acmodel(obs, memory[:num_demos], use_teacher=self.distill_with_teacher)
                 new_memory = info['memory']
 
@@ -102,6 +107,7 @@ class ImitationLearning(object):
             obs = obss[indexes]
             action_step = action_true[indexes]
             mask_step = mask[indexes]
+            obs = self.obss_preprocessor(obs, self.device)
             dist, info = self.acmodel(obs, memory * mask_step, use_teacher=self.distill_with_teacher)
             memory = info["memory"]
 

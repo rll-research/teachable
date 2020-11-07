@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 from torch.distributions.categorical import Categorical
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import babyai.rl
@@ -63,7 +62,7 @@ class ImageBOWEmbedding(nn.Module):
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
-    def __init__(self, obs_space, action_space, env,
+    def __init__(self, action_space, env,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
@@ -87,7 +86,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
 
-        self.obs_space = obs_space
         self.action_space = action_space
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,8 +97,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
 
-        # if not self.use_instr:
-        #     raise ValueError("FiLM architecture can be used when instructions are enabled")
         self.image_conv = nn.Sequential(*[
             *([ImageBOWEmbedding(147, 128)] if use_bow else []),
             *([nn.Conv2d(
@@ -251,7 +247,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         actions = np.array(action_list)
         return actions, info_list
 
-    def get_actions_t(self, obs, training=False):  # TODO: this feels like a good place for a DictList\\        if training:
+    def get_actions_t(self, obs, training=False):  # TODO: this feels like a good place for a DictList
         if training:
             self.train()
         else:
@@ -266,7 +262,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         memory = info['memory'].detach().cpu().numpy()
         actions = actions.detach().cpu().numpy()
 
-
         for i in range(len(probs)):
             info_list.append({
                 "memory": memory[i],
@@ -278,7 +273,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
 
     def forward(self, obs, memory, instr_embedding=None):
-        # Expect obs to be [batch, obs_dim]
         instruction_vector = obs.instr.long()
         if self.advice_size > 0:
             advice_vector = obs.advice

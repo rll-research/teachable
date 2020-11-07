@@ -37,7 +37,6 @@ class Trainer(object):
         start_itr=0,
         exp_name="",
         curriculum_step=0,
-        teacher_info=[],
         il_trainer=None,
         supervised_model=None,
         reward_predictor=None,
@@ -60,7 +59,6 @@ class Trainer(object):
         self.start_itr = start_itr
         self.exp_name = exp_name
         self.curriculum_step = curriculum_step
-        self.teacher_info = teacher_info
         self.il_trainer = il_trainer
         self.supervised_model = supervised_model
         self.reward_predictor = reward_predictor
@@ -150,7 +148,8 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if self.supervised_model is not None and advance_curriculum:
+            if False:
+            # if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
                 for _ in range(3):  # TODO: tune this!
                     distill_log = self.distill(samples_data, is_training=True)
@@ -164,8 +163,9 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if advance_curriculum or (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1):  # TODO: collect rollouts with and without the teacher
+            if False:
+            # if advance_curriculum or (itr % self.eval_every == 0) or (
+            #     itr == self.args.n_itr - 1):  # TODO: collect rollouts with and without the teacher
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
@@ -262,7 +262,7 @@ class Trainer(object):
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
 
-            if advance_curriculum and self.args.advance_levels:
+            if advance_curriculum and not self.args.single_level:
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()

@@ -7,12 +7,13 @@ from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcess
 from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
+from babyai.utils.obs_preprocessor import make_obs_preprocessor
+
 
 import torch
 import copy
 import shutil
 from meta_mb.logger import logger
-import json
 from gym import spaces
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
@@ -20,7 +21,6 @@ from babyai.levels.iclr19_levels import *
 from babyai.levels.curriculum import Curriculum
 import pathlib
 import joblib
-import argparse
 
 
 def args_type(default):
@@ -52,23 +52,6 @@ def get_exp_name(args):
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
-
-def get_advice_index(advice_start_index, args, env):
-    advice_dim = 128
-    if args.feedback_type == 'PreActionAdvice':
-        advice_end_index = advice_start_index + env.action_space.n + 1
-    elif args.feedback_type == 'CartesianCorrections':
-        advice_end_index = advice_start_index + 160
-    elif args.feedback_type == 'SubgoalCorrections':
-        advice_end_index = advice_start_index + 17
-    elif args.feedback_type is None:
-        advice_end_index = 160
-        advice_dim = 0
-    else:
-        raise NotImplementedError(args.feedback_type)
-    return advice_end_index, advice_dim
-
-
 def load_model(args):
     original_config = args
     saved_model = joblib.load(args.saved_path)
@@ -97,7 +80,7 @@ def load_model(args):
             supervised_model = saved_model['supervised_model']
     else:
         supervised_model = None
-    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step
+    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args
 
 
 def run_experiment(**config):
@@ -109,7 +92,7 @@ def run_experiment(**config):
     set_seed(args.seed)
     original_saved_path = args.saved_path
     if original_saved_path is not None:
-        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step = load_model(args)
+        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args = load_model(args)
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": False,
@@ -122,7 +105,9 @@ def run_experiment(**config):
         "num_meta_tasks": args.rollouts_per_meta_task,
         "intermediate_reward": args.intermediate_reward,
     }
-    advice_start_index = 160
+    teacher_train_dict = {}
+    for teacher_name in args.feedback_type:
+        teacher_train_dict[teacher_name] = True
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
                                           **arguments)), ceil_reward=args.ceil_reward)
@@ -130,10 +115,9 @@ def run_experiment(**config):
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level, **arguments)),
                      ceil_reward=args.ceil_reward)
-        obs_dim = env.reset().shape[0]
-        advice_end_index, advice_dim = get_advice_index(advice_start_index, args, env)
-        policy = ACModel(obs_space=obs_dim,
-                         action_space=env.action_space,
+        obs = env.reset()
+        advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
+        policy = ACModel(action_space=env.action_space,
                          env=env,
                          image_dim=args.image_dim,
                          memory_dim=args.memory_dim,
@@ -142,13 +126,11 @@ def run_experiment(**config):
                          use_instr=not args.no_instr,
                          use_memory=not args.no_mem,
                          arch=args.arch,
-                         advice_dim=advice_dim,
-                         advice_start_index=advice_start_index,
-                         advice_end_index=advice_end_index,
+                         advice_dim=args.advice_dim,
+                         advice_size=advice_size,
                          num_modules=args.num_modules)
 
-        reward_predictor = ACModel(obs_space=obs_dim - 1,
-                                   action_space=spaces.Discrete(2),
+        reward_predictor = ACModel(action_space=spaces.Discrete(2),
                                    env=env,
                                    image_dim=args.image_dim,
                                    memory_dim=args.memory_dim,
@@ -157,14 +139,11 @@ def run_experiment(**config):
                                    use_instr=not args.no_instr,
                                    use_memory=not args.no_mem,
                                    arch=args.arch,
-                                   advice_dim=advice_dim,
-                                   advice_start_index=advice_start_index,
-                                   advice_end_index=advice_end_index,
+                                   advice_dim=args.advice_dim,
+                                   advice_size=advice_size,
                                    num_modules=args.num_modules)
         if args.self_distill and not args.distill_same_model:
-            obs_dim = env.reset().shape[0]
-            supervised_model = ACModel(obs_space=obs_dim - 1,
-                                       action_space=env.action_space,
+            supervised_model = ACModel(action_space=env.action_space,
                                        env=env,
                                        image_dim=args.image_dim,
                                        memory_dim=args.memory_dim,
@@ -173,9 +152,8 @@ def run_experiment(**config):
                                        use_instr=not args.no_instr,
                                        use_memory=not args.no_mem,
                                        arch=args.arch,
-                                       advice_dim=advice_dim,
-                                       advice_start_index=advice_start_index,
-                                       advice_end_index=advice_end_index,
+                                       advice_dim=args.advice_dim,
+                                       advice_size=advice_size,
                                        num_modules=args.num_modules)
         elif args.self_distill:
             supervised_model = policy
@@ -191,6 +169,9 @@ def run_experiment(**config):
         il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
 
+    teacher_null_dict = env.teacher.null_feedback()
+    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
     sampler = MetaSampler(
         env=env,
         policy=policy,
@@ -201,6 +182,7 @@ def run_experiment(**config):
         envs_per_task=1,
         reward_predictor=reward_predictor,
         supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
     )
 
     sample_processor = RL2SampleProcessor(
@@ -215,7 +197,8 @@ def run_experiment(**config):
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
-                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task)
+                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
+                   obs_preprocessor=obs_preprocessor)
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -235,12 +218,6 @@ def run_experiment(**config):
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
 
-    advice_end_index, advice_dim = get_advice_index(advice_start_index, args, env)
-    null_val = np.zeros(advice_end_index - advice_start_index)
-    if len(null_val) > 0:
-        null_val[-1] = 1
-    teacher_info = [{"indices": np.arange(advice_start_index, advice_end_index), "null": null_val}]
-
     trainer = Trainer(
         args,
         algo=algo,
@@ -251,12 +228,13 @@ def run_experiment(**config):
         start_itr=start_itr,
         exp_name=exp_dir,
         curriculum_step=curriculum_step,
-        teacher_info=teacher_info,
         il_trainer=il_trainer,
         supervised_model=supervised_model,
         reward_predictor=reward_predictor,
         rp_trainer=rp_trainer,
         is_debug=is_debug,
+        teacher_train_dict=teacher_train_dict,
+        obs_preprocessor=obs_preprocessor,
     )
     trainer.train()
 

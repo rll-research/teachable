@@ -46,7 +46,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr = 0
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
-        if feedback_type is not None:
+        if (feedback_type is not None) and (not feedback_type == ['None']):
             self.oracle = {}
             teachers = {}
             for ft in feedback_type:
@@ -63,7 +63,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
                                                  feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
                 else:
-                    raise NotImplementedError
+                    raise NotImplementedError(ft)
                 teachers[ft] = teacher
                 self.oracle[ft] = Bot(self)
             teacher = BatchTeacher(teachers)
@@ -459,7 +459,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             if isinstance(self.teacher, BatchTeacher):
-                return np.array([self.teacher.teachers[0].next_action], dtype=np.int32)
+                return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
             else:
                 return np.array([self.teacher.next_action], dtype=np.int32)
         return None
