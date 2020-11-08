@@ -1,5 +1,4 @@
 import numpy as np
-import time
 import cv2
 import wandb
 import os
@@ -77,7 +76,6 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
-    start = time.time()
 
     # Get setup to log
     timestep = getattr(env, "dt", 0.5)
@@ -186,10 +184,4 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
-    end = time.time()
-    print("total time spent on rollouts", end - start)
-    print("ACCURACY", correct / count)
-    print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
-    print("ROLLOUT ACTION COUNTS", np.unique(agent_actions, return_counts=True))
-    print("ROLLOUT TEACHER COUNTS", np.unique(teacher_actions, return_counts=True))
     return paths, correct / count, stoch_correct / count, det_correct / count

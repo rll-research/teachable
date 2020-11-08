@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
+from babyai.utils.buffer import Buffer
 import os.path as osp
 import joblib
 import time
@@ -110,6 +111,9 @@ class Trainer(object):
         rollout_time = 0
         itrs_on_level = 0
 
+        separate_by_level = True
+        buffer = Buffer(self.args.buffer_capacity, separate_by_level)
+
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
             itrs_on_level += 1
@@ -123,6 +127,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+            buffer.add_batch(samples_data, self.curriculum_step)
             assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
@@ -150,8 +155,10 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                for _ in range(self.args.distillation_steps):
-                    distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
+                distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
+                for _ in range(self.args.distillation_steps - 1):
+                    sampled_batch = buffer.sample()
+                    self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 distill_time = time.time() - time_distill_start
@@ -266,7 +273,6 @@ class Trainer(object):
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
-                # self.algo.set_optimizer()
                 itrs_on_level = 0
 
         logger.log("Training finished")

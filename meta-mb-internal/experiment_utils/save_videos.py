@@ -150,6 +150,8 @@ if __name__ == "__main__":
                     print('Average Returns: ', np.mean([sum(path['rewards']) for path in paths]))
                     print('Average Path Length: ', np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
                     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
+                    print("ACCURACY", accuracy)
+
                 tf.reset_default_graph()
 
 

@@ -240,7 +240,6 @@ class ImitationLearning(object):
         logs = []
         no_teacher_log = None
         for key_set in powerset:
-            print("Distilling to", key_set)
             teacher_subset_dict = {}
             for k in key_set:
                 teacher_subset_dict[k] = teachers_dict[k]
