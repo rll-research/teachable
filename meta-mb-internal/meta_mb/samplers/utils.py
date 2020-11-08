@@ -72,8 +72,8 @@ def plot_img(env, agent_action, teacher_action, record_teacher, run_index):
 
 def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
-            num_save=None, record_teacher=False, reward_predictor=None, use_teacher=False, save_locally=True,
-            save_wandb=False, obs_preprocessor=None, teacher_dict={}):
+            num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
+            save_wandb=False, obs_preprocessor=None, teacher_dict={}, rollout_oracle=False):
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
@@ -112,12 +112,16 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             # Choose action
             o = obs_preprocessor([o], teacher_dict)
             a, agent_info = agent.get_actions_t(o)
+
             a = a.item()
             if not stochastic:
                 a = np.array([np.argmax(agent_info[0]['probs'])])
 
             # Step env
-            next_o, r, d, env_info = env.step(a)
+            if rollout_oracle:
+                next_o, r, d, env_info = env.step(env.teacher_action)
+            else:
+                next_o, r, d, env_info = env.step(a)
 
             # use reward predictor
             if reward_predictor is not None:  # TODO: we currently don't do anything with this!

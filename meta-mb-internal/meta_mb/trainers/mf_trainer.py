@@ -171,7 +171,9 @@ class Trainer(object):
                         time_run_supervised_start = time.time()
                         self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                         logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict, "DRollout/")
+                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
+                                                                     "DRollout/")
+                        self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict, "DRolloutOracle/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
@@ -236,6 +238,11 @@ class Trainer(object):
                                      num_rollouts=5,
                                      teacher_dict=self.no_teacher_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/Det", stochastic=False)
+                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch_oracle',
+                                     num_rollouts=5,
+                                     teacher_dict=self.teacher_train_dict,
+                                     save_video=should_save_video, log_prefix="DVidRolloutOracle/Stoch",
+                                     stochastic=True, rollout_oracle=True)
 
                 self.algo.acmodel.reset(dones=[True])
                 self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_stoch',
@@ -327,7 +334,7 @@ class Trainer(object):
         return advance_curriculum
 
     def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
-                    log_prefix=None, stochastic=True):
+                    log_prefix=None, stochastic=True, rollout_oracle=False):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
         save_wandb = (save_video and not self.is_debug)
@@ -338,7 +345,7 @@ class Trainer(object):
                                   record_teacher=True, teacher_dict=teacher_dict,
                                   video_directory=self.exp_name, video_name=save_name + str(self.curriculum_step),
                                   num_rollouts=num_rollouts, save_wandb=save_wandb, save_locally=True,
-                                  obs_preprocessor=self.obs_preprocessor)
+                                  obs_preprocessor=self.obs_preprocessor, rollout_oracle=rollout_oracle)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))
