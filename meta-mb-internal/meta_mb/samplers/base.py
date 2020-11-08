@@ -109,7 +109,7 @@ class SampleProcessor(object):
 
         # 4) stack path data
         observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = self._concatenate_path_data(
-            copy.deepcopy(paths))
+            paths)
 
         # 5) if desired normalize / shift advantages
         # if self.normalize_adv:
@@ -141,7 +141,7 @@ class SampleProcessor(object):
         action_entropy = [entropy(step) for path in paths for step in path['agent_infos']['probs']]
 
         if log_teacher:
-            actions_taken = np.array([step[0] for path in paths for step in path['actions']])
+            actions_taken = np.array([step for path in paths for step in path['actions']])
             actions_teacher = np.array([step[0] for path in paths for step in path['env_infos']['teacher_action']])
             probs = [probs for path in paths for probs in path['agent_infos']['probs']]
             prob_actions_teacher = [p[int(i)] for p, i in zip(probs, actions_teacher)]
@@ -154,7 +154,7 @@ class SampleProcessor(object):
             # Split by token
             unique_tokens = np.unique([timestep for path in paths for timestep in path['env_infos']['teacher_action']])
             for token in unique_tokens:
-                actions_taken = np.array([step[0] for path in paths for step in path['actions']])
+                actions_taken = np.array([step for path in paths for step in path['actions']])
                 actions_teacher = np.array([step[0] for path in paths for step in path['env_infos']['teacher_action']])
                 indices = actions_teacher == token
                 teacher_suggestions = actions_taken[indices] == actions_teacher[indices]
@@ -166,7 +166,7 @@ class SampleProcessor(object):
 
         elif log == 'all' or log is True:
 
-            all_actions = np.array([step[0] for path in paths for step in path['actions']])
+            all_actions = np.array([step for path in paths for step in path['actions']])
             logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
 
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)

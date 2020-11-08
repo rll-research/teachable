@@ -148,9 +148,10 @@ class MetaSampler(BaseSampler):
 
             new_samples = 0
             new_paths = 0
-            for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
+            for idx, action, reward, env_info, agent_info, done in zip(itertools.count(), actions,
                                                                                     rewards, env_infos, agent_infos,
                                                                                     dones):
+                observation = obses[idx]
                 # append new samples to running paths
                 if isinstance(reward, np.ndarray):
                     reward = reward[0]

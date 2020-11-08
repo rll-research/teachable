@@ -96,7 +96,7 @@ class Trainer(object):
         avg_success = num_successes / num_total_episodes
         # Episode length contains the timestep, starting at 1.  Padding values are 0.
         pad_steps = (data['env_infos']['episode_length'] == 0).sum()
-        correct_actions = (data['actions'] == data['env_infos']['teacher_action']).sum() - pad_steps
+        correct_actions = (data['actions'] == data['env_infos']['teacher_action'][:,:,0]).sum() - pad_steps
         avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         # We take the max since runs which end early will be 0-padded
         should_advance_curriculum = avg_success >= self.args.success_threshold
@@ -180,8 +180,8 @@ class Trainer(object):
                     time_run_policy_start = time.time()
                     self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running model with teacher")
-                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.train_with_teacher,
-                                                                    self.no_teacher_dict, "Rollout/")
+                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.teacher_train_dict,
+                                                                    "Rollout/")
                     run_policy_time = time.time() - time_run_policy_start
 
                     advance_curriculum = advance_curriculum_policy and advance_curriculum_sup \

@@ -37,7 +37,7 @@ class RL2SampleProcessor(SampleProcessor):
             all_paths.extend(paths)
 
         observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = \
-            self._stack_path_data(copy.deepcopy(samples_data_meta_batch))
+            self._stack_path_data(samples_data_meta_batch)
 
         # 8) log statistics if desired
         self._log_path_stats(all_paths, log=log, log_prefix=log_prefix, log_teacher=log_teacher)
