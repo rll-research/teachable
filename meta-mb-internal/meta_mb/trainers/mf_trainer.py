@@ -150,7 +150,7 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                for _ in range(args.distillation_steps):
+                for _ in range(self.args.distillation_steps):
                     distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
