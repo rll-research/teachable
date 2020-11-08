@@ -115,7 +115,7 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
 
             a = a.item()
             if not stochastic:
-                a = np.array([np.argmax(agent_info[0]['probs'])])
+                a = np.argmax(agent_info[0]['probs'])
 
             # Step env
             if rollout_oracle:

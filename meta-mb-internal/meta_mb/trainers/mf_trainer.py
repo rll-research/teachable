@@ -173,7 +173,6 @@ class Trainer(object):
                         logger.log("Running supervised model")
                         advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
                                                                      "DRollout/")
-                        self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict, "DRolloutOracle/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
@@ -228,28 +227,24 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
-                    self.il_trainer.acmodel.reset(dones=[True])
-                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch',
-                                     num_rollouts=5,
-                                     teacher_dict=self.teacher_train_dict,
-                                     save_video=should_save_video, log_prefix="DVidRollout/Stoch", stochastic=True)
-                    self.il_trainer.acmodel.reset(dones=[True])
                     self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_det',
                                      num_rollouts=5,
                                      teacher_dict=self.no_teacher_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/Det", stochastic=False)
+                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch',
+                                     num_rollouts=5,
+                                     teacher_dict=self.teacher_train_dict,
+                                     save_video=should_save_video, log_prefix="DVidRollout/Stoch", stochastic=True)
                     self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch_oracle',
                                      num_rollouts=5,
                                      teacher_dict=self.teacher_train_dict,
-                                     save_video=should_save_video, log_prefix="DVidRolloutOracle/Stoch",
+                                     save_video=should_save_video, log_prefix="DVidRollout/OracleStoch",
                                      stochastic=True, rollout_oracle=True)
 
-                self.algo.acmodel.reset(dones=[True])
                 self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_stoch',
                                  num_rollouts=5,
                                  teacher_dict=self.teacher_train_dict,
                                  save_video=should_save_video, log_prefix="VidRollout/Stoch", stochastic=True)
-                self.algo.acmodel.reset(dones=[True])
                 self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_det',
                                  num_rollouts=5,
                                  teacher_dict=self.no_teacher_dict,
