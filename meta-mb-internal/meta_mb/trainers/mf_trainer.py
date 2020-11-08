@@ -333,7 +333,7 @@ class Trainer(object):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
         save_wandb = (save_video and not self.is_debug)
-        paths, accuracy = rollout(self.env, policy,
+        paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                   max_path_length=200,
                                   reset_every=self.args.rollouts_per_meta_task,
                                   stochastic=stochastic,
@@ -343,6 +343,8 @@ class Trainer(object):
                                   obs_preprocessor=self.obs_preprocessor, rollout_oracle=rollout_oracle)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
+            logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)
+            logger.logkv(log_prefix + "Det_Acc", det_accuracy)
             logger.logkv(log_prefix + "Reward", np.mean([sum(path['rewards']) for path in paths]))
             logger.logkv(log_prefix + "PathLength",
                          np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))

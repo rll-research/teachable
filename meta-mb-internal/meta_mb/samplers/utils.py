@@ -94,7 +94,7 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
 
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
-    correct, count = 0, 0
+    correct, stoch_correct, det_correct, count = 0, 0, 0, 0
     for i in range(num_rollouts):
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
@@ -114,6 +114,8 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             a, agent_info = agent.get_actions_t(o)
 
             a = a.item()
+            stoch_a = a
+            det_a = np.argmax(agent_info[0]['probs'])
             if not stochastic:
                 a = np.argmax(agent_info[0]['probs'])
 
@@ -133,6 +135,10 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             teacher_actions.append(env_info['teacher_action'])
             if env_info['teacher_action'] == a:
                 correct += 1
+            if env_info['teacher_action'] == stoch_a:
+                stoch_correct += 1
+            if env_info['teacher_action'] == det_a:
+                det_correct += 1
             count += 1
             agent_actions.append(a)
             observations.append(o)
@@ -186,4 +192,4 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
     print('Average Success Rate: ', np.mean([path['env_infos'][-1]['success'] for path in paths]))
     print("ROLLOUT ACTION COUNTS", np.unique(agent_actions, return_counts=True))
     print("ROLLOUT TEACHER COUNTS", np.unique(teacher_actions, return_counts=True))
-    return paths, correct / count
+    return paths, correct / count, stoch_correct / count, det_correct / count
