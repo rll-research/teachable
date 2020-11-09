@@ -208,7 +208,7 @@ class Trainer(object):
                     distilled_stoch_advance = self.save_videos(self.il_trainer.acmodel,
                                                                save_name='distilled_video_stoch',
                                                                num_rollouts=10,
-                                                               teacher_dict=self.teacher_train_dict,
+                                                               teacher_dict=self.no_teacher_dict,
                                                                save_video=should_save_video,
                                                                log_prefix="DVidRollout/Stoch",
                                                                stochastic=True)
@@ -218,7 +218,7 @@ class Trainer(object):
                 # teacher_det_advance = self.save_videos(self.algo.acmodel,
                 #                                                           save_name='withTeacher_video_det',
                 #                                                           num_rollouts=10,
-                #                                                           teacher_dict=self.no_teacher_dict,
+                #                                                           teacher_dict=self.teacher_train_dict,
                 #                                                           save_video=should_save_video,
                 #                                                           log_prefix="VidRollout/Det", stochastic=False)
                 teacher_stoch_advance = self.save_videos(self.algo.acmodel,
