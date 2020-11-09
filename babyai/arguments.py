@@ -133,7 +133,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--self_distill', action='store_true')
         self.add_argument('--distill_same_model', action='store_true')
         self.add_argument('--distillation_steps', type=int, default=3)
-        self.add_argument('--buffer_capacity', type=int, default=10000)
+        self.add_argument('--buffer_capacity', type=int, default=500)
         self.add_argument('--prob_current', type=float, default=.5)
 
         # Arguments we rarely change
