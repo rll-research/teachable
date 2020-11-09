@@ -131,13 +131,9 @@ class MetaSampler(BaseSampler):
                                      self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
                 actions, agent_infos = policy.get_actions_t(obses)
-                if max_action:  # TODO: double check this still works
-                    assert False, "We haven't checked this still works with the new model; if it does, feel free to delete."
-                    original_action_shape = actions.shape
-                    actions = [[[np.argmax(d['probs'])] for d in agent_info] for agent_info in agent_infos]
-                    actions = np.array(actions, dtype=np.int32)
-                    if not actions.shape == original_action_shape:
-                        assert False, (actions.shape, original_action_shape)
+                if max_action:
+                    actions = np.array([np.argmax(d['probs']) for d in agent_infos], dtype=np.int32)
+
 
             policy_time += time.time() - t
 
