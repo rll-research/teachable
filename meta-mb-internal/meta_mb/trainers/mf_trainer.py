@@ -111,7 +111,7 @@ class Trainer(object):
         rollout_time = 0
         itrs_on_level = 0
 
-        buffer = Buffer(self.args.buffer_capacity, self.args.prob_current)
+        buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current)
 
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
