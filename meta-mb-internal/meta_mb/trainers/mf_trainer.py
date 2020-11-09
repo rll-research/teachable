@@ -228,6 +228,14 @@ class Trainer(object):
                                                          save_video=should_save_video,
                                                          log_prefix="VidRollout/Stoch",
                                                          stochastic=True)
+                self.save_videos(self.algo.acmodel,
+                                 save_name='oracle_video',
+                                 num_rollouts=10,
+                                 teacher_dict=self.no_teacher_dict,
+                                 save_video=should_save_video,
+                                 log_prefix="VidRollout/Oracle",
+                                 stochastic=True,
+                                 rollout_oracle=True)
                 # advance_distilled = distilled_det_advance or distilled_stoch_advance
                 # advance_teacher = teacher_det_advance or teacher_stoch_advance
                 # advance_curriculum = advance_curriculum and advance_distilled and advance_teacher
