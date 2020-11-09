@@ -8,10 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class ImitationLearning(object):
-    def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False):
+    def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
+        self.preprocess_obs = preprocess_obs
 
         utils.seed(self.args.seed)
         self.env = env
@@ -53,12 +54,13 @@ class ImitationLearning(object):
         else:
             self.acmodel.eval()
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent'):
+    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}):
         self.set_mode(is_training)
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
         obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
+        obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
 
         # Memory to be stored
@@ -241,9 +243,13 @@ class ImitationLearning(object):
         no_teacher_log = None
         for key_set in powerset:
             teacher_subset_dict = {}
-            for k in key_set:
-                teacher_subset_dict[k] = teachers_dict[k]
-            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
+            for k in keys:
+                if k in key_set:
+                    teacher_subset_dict[k] = teachers_dict[k]
+                else:
+                    teacher_subset_dict[k] = False
+            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                                                      teacher_dict=teacher_subset_dict)
             logs.append(log)
             if len(key_set) == 0:
                 no_teacher_log = log

@@ -111,8 +111,7 @@ class Trainer(object):
         rollout_time = 0
         itrs_on_level = 0
 
-        separate_by_level = True
-        buffer = Buffer(self.args.buffer_capacity, separate_by_level)
+        buffer = Buffer(self.args.buffer_capacity, self.args.prob_current)
 
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
@@ -127,6 +126,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+            raw_samples_data = copy.deepcopy(samples_data)
             buffer.add_batch(samples_data, self.curriculum_step)
             assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             time_collection = time.time() - time_env_sampling_start
@@ -155,9 +155,9 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                distill_log = self.distill(samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
+                distill_log = self.distill(raw_samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for _ in range(self.args.distillation_steps - 1):
-                    sampled_batch = buffer.sample()
+                    sampled_batch = buffer.sample(self.args.batch_size)
                     self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
@@ -176,7 +176,6 @@ class Trainer(object):
                     if self.supervised_model is not None:
                         # Distilled model
                         time_run_supervised_start = time.time()
-                        self.sampler.supervised_model.reset(dones=[True] * len(samples_data.obs))
                         logger.log("Running supervised model")
                         advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
                                                                      "DRollout/")
@@ -186,7 +185,6 @@ class Trainer(object):
                         advance_curriculum_sup = True
                     # Original Policy
                     time_run_policy_start = time.time()
-                    self.algo.acmodel.reset(dones=[True] * len(samples_data.obs))
                     logger.log("Running model with teacher")
                     advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.teacher_train_dict,
                                                                     "Rollout/")
@@ -234,25 +232,25 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
-                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_det',
+                    self.save_videos(self.il_trainer.acmodel, save_name='distilled_video_det',
                                      num_rollouts=5,
                                      teacher_dict=self.no_teacher_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/Det", stochastic=False)
-                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch',
+                    self.save_videos(self.il_trainer.acmodel, save_name='distilled_video_stoch',
                                      num_rollouts=5,
                                      teacher_dict=self.teacher_train_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/Stoch", stochastic=True)
-                    self.save_videos(itr, self.il_trainer.acmodel, save_name='distilled_video_stoch_oracle',
+                    self.save_videos(self.il_trainer.acmodel, save_name='distilled_video_stoch_oracle',
                                      num_rollouts=5,
                                      teacher_dict=self.teacher_train_dict,
                                      save_video=should_save_video, log_prefix="DVidRollout/OracleStoch",
                                      stochastic=True, rollout_oracle=True)
 
-                self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_stoch',
+                self.save_videos(self.algo.acmodel, save_name='withTeacher_video_stoch',
                                  num_rollouts=5,
                                  teacher_dict=self.teacher_train_dict,
                                  save_video=should_save_video, log_prefix="VidRollout/Stoch", stochastic=True)
-                self.save_videos(self.curriculum_step, self.algo.acmodel, save_name='withTeacher_video_det',
+                self.save_videos(self.algo.acmodel, save_name='withTeacher_video_det',
                                  num_rollouts=5,
                                  teacher_dict=self.no_teacher_dict,
                                  save_video=should_save_video, log_prefix="VidRollout/Det", stochastic=False)
@@ -334,7 +332,7 @@ class Trainer(object):
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
         return advance_curriculum
 
-    def save_videos(self, step, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
+    def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
                     log_prefix=None, stochastic=True, rollout_oracle=False):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)

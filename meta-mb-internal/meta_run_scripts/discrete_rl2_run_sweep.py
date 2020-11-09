@@ -162,15 +162,17 @@ def run_experiment(**config):
         start_itr = 0
         curriculum_step = env.index
 
-    args.model = 'default_il'
-    if supervised_model is not None:
-        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False)
-    else:
-        il_trainer = None
-    rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True)
-
     teacher_null_dict = env.teacher.null_feedback()
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
+    args.model = 'default_il'
+    if supervised_model is not None:
+        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
+                                       preprocess_obs=obs_preprocessor)
+    else:
+        il_trainer = None
+    rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
+                                       preprocess_obs=obs_preprocessor)
 
     sampler = MetaSampler(
         env=env,

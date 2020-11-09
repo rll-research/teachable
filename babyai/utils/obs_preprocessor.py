@@ -5,6 +5,7 @@ from babyai.rl.utils.dictlist import DictList
 def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
     def obss_preprocessor(obs, teacher_dict):
         obs_output = {}
+        assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
 
         # Populate dictionary with an empty dict
         for k in obs[0].keys():

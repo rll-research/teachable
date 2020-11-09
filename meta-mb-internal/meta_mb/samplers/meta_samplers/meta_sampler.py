@@ -125,7 +125,7 @@ class MetaSampler(BaseSampler):
             t = time.time()
             obses = self.obs_preprocessor(obses, teacher_dict)
             if random:
-                actions = np.stack([[self.env.action_space.sample()] for _ in range(len(obses))], axis=0)
+                actions = np.stack([[self.env.action_space.sample()] for _ in range(len(obses.obs))], axis=0)
                 agent_infos = [[{'mean': np.zeros_like(self.env.action_space.sample()),
                                  'log_std': np.zeros_like(
                                      self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size

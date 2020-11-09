@@ -50,7 +50,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="Adam and RMSprop optimizer epsilon (default: 1e-5)")
         self.add_argument("--optim-alpha", type=float, default=0.99,
                           help="RMSprop optimizer apha (default: 0.99)")
-        self.add_argument("--batch-size", type=int, default=1280,
+        self.add_argument("--batch-size", type=int, default=512,
                           help="batch size for PPO (default: 1280)")
         self.add_argument("--entropy-coef", type=float, default=0.001,
                           help="entropy term coefficient (default: 0.01)")
@@ -134,6 +134,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distill_same_model', action='store_true')
         self.add_argument('--distillation_steps', type=int, default=3)
         self.add_argument('--buffer_capacity', type=int, default=10000)
+        self.add_argument('--prob_current', type=float, default=.5)
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=20)
