@@ -111,7 +111,7 @@ class Trainer(object):
         rollout_time = 0
         itrs_on_level = 0
 
-        buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current)
+        buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1)
 
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
@@ -157,10 +157,15 @@ class Trainer(object):
                 time_distill_start = time.time()
                 distill_log = self.distill(raw_samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for _ in range(self.args.distillation_steps - 1):
-                    sampled_batch = buffer.sample(self.args.batch_size)
+                    sampled_batch = buffer.sample(self.args.batch_size, 'train')
                     self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
+                sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
+                distill_log_val = self.distill(sampled_val_batch, is_training=False,
+                                               teachers_dict=self.teacher_train_dict)
+                for k, v in distill_log_val.items():
+                    logger.logkv(f"Distill/{k}_Val", v)
                 distill_time = time.time() - time_distill_start
                 advance_curriculum = distill_log['Accuracy'] >= self.args.accuracy_threshold
                 logger.logkv('Distill/Advance', int(advance_curriculum))
