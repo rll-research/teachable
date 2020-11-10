@@ -404,9 +404,9 @@ class Logger(object):
                 joblib.dump(params, file_name, compress=3)
                 file_name = osp.join(self.dir, 'latest.pkl')
                 joblib.dump(params, file_name, compress=3)
-            elif self.snapshot_mode == 'last':
+            elif self.snapshot_mode == 'latest':
                 # override previous params
-                file_name = osp.join(self.dir, 'params.pkl')
+                file_name = osp.join(self.dir, 'latest.pkl')
                 joblib.dump(params, file_name, compress=3)
             elif self.snapshot_mode == "gap":
                 if itr % self.snapshot_gap == 0:
