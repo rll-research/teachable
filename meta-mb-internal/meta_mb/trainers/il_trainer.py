@@ -1,10 +1,7 @@
 import numpy as np
 import torch
 import babyai.utils as utils
-import logging
 from itertools import chain, combinations
-
-logger = logging.getLogger(__name__)
 
 
 class ImitationLearning(object):
