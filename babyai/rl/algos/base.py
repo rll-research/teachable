@@ -91,7 +91,7 @@ class BaseAlgo(ABC):
 
         self.memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
         self.memories = torch.zeros(*shape, self.acmodel.memory_size, device=self.device)
-
+        self.dagger_memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
 
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
@@ -121,7 +121,7 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
-    def collect_experiences(self, teacher_dict):
+    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -142,9 +142,6 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
-        teacher_keys = list(teacher_dict.keys())
-        all_teachers_dict = dict(zip(teacher_keys, [True] * len(teacher_keys)))
-
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
@@ -157,8 +154,17 @@ class BaseAlgo(ABC):
                 extra_predictions = None
 
             action = dist.sample()
+            action_to_take = action.cpu().numpy()
 
-            obs, reward, done, env_info = self.env.step(action.cpu().numpy())
+            if use_dagger:
+                with torch.no_grad():
+                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict)
+                    dagger_dist, dagger_model_results = self.acmodel(dagger_obs,
+                                                                     self.dagger_memory * self.mask.unsqueeze(1))
+                    self.dagger_memory = dagger_model_results['memory']
+                    action_to_take = dagger_dist.sample().cpu().numpy()
+
+            obs, reward, done, env_info = self.env.step(action_to_take)
 
             # Update experiences values
 

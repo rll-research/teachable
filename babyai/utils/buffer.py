@@ -20,7 +20,7 @@ def trim_batch(batch):
 
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
 class Buffer:
-    def __init__(self, path, buffer_capacity, prob_current, val_prob):
+    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer'):
         self.train_buffer_capacity = buffer_capacity
         # We don't need that many val samples
         self.val_buffer_capacity = np.clip(int(buffer_capacity * val_prob), 1, 50)
@@ -30,7 +30,7 @@ class Buffer:
         self.counts_train = {}
         self.index_val = {}
         self.counts_val = {}
-        self.buffer_path = pathlib.Path(path).joinpath('buffer')
+        self.buffer_path = pathlib.Path(path).joinpath(buffer_name)
         # If the buffer already exists, load it
         if self.buffer_path.exists():
             for file_name in self.buffer_path.iterdir():

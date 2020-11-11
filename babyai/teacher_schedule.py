@@ -14,7 +14,7 @@ def no_teacher(level):
 #### SINGLE TEACHER ####
 def single_teacher(level, teacher_name):
     if level == -1:  # Generate no_teacher_dict
-        return {teacher_name: False}
+        return {teacher_name: False}, None
     teacher_train_dict = {teacher_name: True}
     distillation_dict = copy.deepcopy(teacher_train_dict)
     return teacher_train_dict, distillation_dict
@@ -23,7 +23,7 @@ def single_teacher(level, teacher_name):
 #### SINGLE TEACHER, NO POWERSET ####
 def single_teacher_no_powerset(level, teacher_name):
     if level == -1:  # Generate no_teacher_dict
-        return {teacher_name: False}
+        return {teacher_name: False}, None
     teacher_train_dict = {teacher_name: True}
     distillation_dict = {teacher_name: False}
     return teacher_train_dict, distillation_dict
@@ -33,7 +33,7 @@ def single_teacher_no_powerset(level, teacher_name):
 # Add in the second teacher ...
 def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=21):
     if level == -1:  # Generate no_teacher_dict
-        return {easy_teacher: False, harder_teacher: False}
+        return {easy_teacher: False, harder_teacher: False}, None
     if level < cutoff_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
     else:
@@ -46,7 +46,7 @@ def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=21):
 # Add in the second teacher ...
 def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=15, remove_easy_level=21):
     if level == -1:  # Generate no_teacher_dict
-        return {easy_teacher: False, harder_teacher: False}
+        return {easy_teacher: False, harder_teacher: False}, None
     if level < add_hard_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
         distillation_dict = copy.deepcopy(teacher_train_dict)

@@ -76,7 +76,7 @@ class Trainer(object):
         # Dict saying which teacher types the agent has access to for training.
         self.teacher_schedule = teacher_schedule
         # Dict specifying no teacher provided.
-        self.no_teacher_dict = teacher_schedule(-1)
+        self.no_teacher_dict, _ = teacher_schedule(-1)
         self.obs_preprocessor = obs_preprocessor
 
     def check_advance_curriculum(self, episode_logs, summary_logs):
@@ -110,6 +110,11 @@ class Trainer(object):
         itrs_on_level = 0
 
         buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1)
+        if self.args.use_dagger:
+            dagger_buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+                                   buffer_name='dagger_buffer')
+        else:
+            dagger_buffer = None
 
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
@@ -127,10 +132,19 @@ class Trainer(object):
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict)
                 raw_samples_data = copy.deepcopy(samples_data)
                 buffer.add_batch(samples_data, self.curriculum_step)
-                assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
+                assert len(samples_data.action.shape) == 1, samples_data.action.shape
+
+                if self.args.use_dagger:
+                    dagger_samples_data, _ = self.algo.collect_experiences(teacher_train_dict, use_dagger=True,
+                                                                           dagger_dict=self.no_teacher_dict)
+                    dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
+                else:
+                    dagger_samples_data = None
+
             else:
                 episode_logs = None
                 raw_samples_data = None
+                dagger_samples_data = None
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if not (self.args.no_collect or self.args.no_train_rl):
@@ -163,9 +177,17 @@ class Trainer(object):
                 for _ in range(self.args.distillation_steps - 1):
                     sampled_batch = buffer.sample(self.args.batch_size, 'train')
                     distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=teacher_distill_dict)
+
+                    if self.args.use_dagger:
+                        sampled_dagger_batch = dagger_buffer.sample(self.args.batch_size, 'train')
+                        self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
+
                 if raw_samples_data is not None:
                     distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
                                                teachers_dict=teacher_distill_dict)
+                if dagger_samples_data is not None:
+                    self.distill(trim_batch(dagger_samples_data), is_training=True,
+                                 teachers_dict=teacher_distill_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
