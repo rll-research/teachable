@@ -236,7 +236,7 @@ class ImitationLearning(object):
         # Distill to the powerset of distillation types
         keys = list(teachers_dict.keys())
         powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
-        logs = []
+        logs = {}
         no_teacher_log = None
         for key_set in powerset:
             teacher_subset_dict = {}
@@ -247,10 +247,8 @@ class ImitationLearning(object):
                     teacher_subset_dict[k] = False
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
-            logs.append(log)
-            if len(key_set) == 0:
-                no_teacher_log = log
+            logs[key_set] = log
 
         if is_training:
             self.scheduler.step()
-        return no_teacher_log
+        return logs

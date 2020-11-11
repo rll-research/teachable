@@ -190,15 +190,19 @@ class Trainer(object):
                 if dagger_samples_data is not None:
                     self.distill(trim_batch(dagger_samples_data), is_training=True,
                                  teachers_dict=teacher_distill_dict)
-                for k, v in distill_log.items():
-                    logger.logkv(f"Distill/{k}_Train", v)
+                for key_set, log_dict in distill_log.items():
+                    key_set = '_'.join(key_set)
+                    for k, v in log_dict.items():
+                        logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
                 distill_log_val = self.distill(sampled_val_batch, is_training=False,
                                                teachers_dict=teacher_distill_dict)
-                for k, v in distill_log_val.items():
-                    logger.logkv(f"Distill/{k}_Val", v)
+                for key_set, log_dict in distill_log_val.items():
+                    key_set = '_'.join(key_set)
+                    for k, v in log_dict.items():
+                        logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
-                advance_curriculum = distill_log['Accuracy'] >= self.args.accuracy_threshold
+                advance_curriculum = distill_log[()]['Accuracy'] >= self.args.accuracy_threshold
                 logger.logkv('Distill/Advance', int(advance_curriculum))
             else:
                 distill_time = 0
