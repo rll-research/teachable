@@ -134,6 +134,7 @@ class Trainer(object):
                 assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
             else:
                 episode_logs = None
+                raw_samples_data = None
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if not (self.args.no_collect or self.args.no_train_rl):
