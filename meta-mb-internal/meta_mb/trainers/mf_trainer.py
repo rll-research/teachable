@@ -46,7 +46,7 @@ class Trainer(object):
         eval_every=25,
         save_every=100,
         log_every=10,
-        save_videos_every=10,
+        save_videos_every=100,
         log_and_save=True,
         teacher_train_dict={},
         obs_preprocessor=None,
@@ -182,6 +182,38 @@ class Trainer(object):
             else:
                 distill_time = 0
 
+            """ ------------------ Policy rollouts ---------------------"""
+            run_policy_time = 0
+            if advance_curriculum or (itr % self.eval_every == 0) or (
+                itr == self.args.n_itr - 1):
+                train_advance_curriculum = advance_curriculum
+                with torch.no_grad():
+                    if self.supervised_model is not None:
+                        # Distilled model
+                        time_run_supervised_start = time.time()
+                        logger.log("Running supervised model")
+                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
+                                                                     "DRollout/")
+                        run_supervised_time = time.time() - time_run_supervised_start
+                    else:
+                        run_supervised_time = 0
+                        advance_curriculum_sup = True
+                    # Original Policy
+                    time_run_policy_start = time.time()
+                    logger.log("Running model with teacher")
+                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.teacher_train_dict,
+                                                                    "Rollout/")
+                    run_policy_time = time.time() - time_run_policy_start
+
+                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup \
+                                         and train_advance_curriculum
+                    print("Advancing curriculum???", advance_curriculum)
+
+                    logger.logkv('Advance', int(advance_curriculum))
+            else:
+                run_supervised_time = 0
+                advance_curriculum = False
+
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
             logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
@@ -202,7 +234,9 @@ class Trainer(object):
             logger.logkv('Time/Collection', time_collection)
             logger.logkv('Time/RPUse', rp_splice_time)
             logger.logkv('Time/RPTrain', time_rp_train)
+            logger.logkv('Time/RunwTeacher', run_policy_time)
             logger.logkv('Time/Distillation', distill_time)
+            logger.logkv('Time/RunDistilled', run_supervised_time)
             logger.logkv('Time/VidRollout', rollout_time)
             logger.dumpkvs()
 
@@ -230,9 +264,6 @@ class Trainer(object):
                                                                save_video=should_save_video,
                                                                log_prefix="DVidRollout/Stoch",
                                                                stochastic=True)
-                else:
-                    distilled_det_advance = True
-                    distilled_stoch_advance = True
                 # teacher_det_advance = self.save_videos(self.algo.acmodel,
                 #                                                           save_name='withTeacher_video_det',
                 #                                                           num_rollouts=10,
@@ -254,10 +285,6 @@ class Trainer(object):
                                  log_prefix="VidRollout/Oracle",
                                  stochastic=True,
                                  rollout_oracle=True)
-                # advance_distilled = distilled_det_advance or distilled_stoch_advance
-                # advance_teacher = teacher_det_advance or teacher_stoch_advance
-                # advance_curriculum = advance_curriculum and advance_distilled and advance_teacher
-                advance_curriculum = advance_curriculum and distilled_stoch_advance and teacher_stoch_advance
 
                 rollout_time = time.time() - time_rollout_start
             else:
