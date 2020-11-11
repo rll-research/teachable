@@ -8,7 +8,7 @@ from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
-
+from babyai.teacher_schedule import make_teacher_schedule
 
 import torch
 import copy
@@ -107,9 +107,8 @@ def run_experiment(**config):
         "num_meta_tasks": args.rollouts_per_meta_task,
         "intermediate_reward": args.intermediate_reward,
     }
-    teacher_train_dict = {}
-    for teacher_name in args.feedback_type:
-        teacher_train_dict[teacher_name] = True
+    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
+    teacher_train_dict, _ = teacher_schedule(0)
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
                                           **arguments)), ceil_reward=args.ceil_reward)
@@ -238,7 +237,7 @@ def run_experiment(**config):
         reward_predictor=reward_predictor,
         rp_trainer=rp_trainer,
         is_debug=is_debug,
-        teacher_train_dict=teacher_train_dict,
+        teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
     )
     trainer.train()
