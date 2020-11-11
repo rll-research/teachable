@@ -37,7 +37,9 @@ def args_type(default):
 
 def get_exp_name(args):
     EXP_NAME = args.prefix
-    EXP_NAME += '_teacher' + str(args.feedback_type)
+    feedback_type = str(args.feedback_type)
+    feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]"]])
+    EXP_NAME += '_teacher' + feedback_type
     if args.distill_same_model:
         EXP_NAME += '_SAME'
     if args.self_distill:
@@ -207,7 +209,7 @@ def run_experiment(**config):
 
     EXP_NAME = get_exp_name(args)
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(args.seed)
-    if original_saved_path is None:
+    if original_saved_path is None and not args.continue_train:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']
