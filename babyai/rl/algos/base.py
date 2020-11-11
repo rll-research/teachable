@@ -93,7 +93,7 @@ class BaseAlgo(ABC):
         self.memories = torch.zeros(*shape, self.acmodel.memory_size, device=self.device)
 
 
-        self.mask = torch.ones(shape[1], device=self.device)
+        self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
         self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
         self.values = torch.zeros(*shape, device=self.device)
