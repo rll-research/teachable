@@ -210,6 +210,9 @@ class Trainer(object):
 
             should_save_video = (itr % self.save_videos_every == 0) or (
                 itr == self.args.n_itr - 1) or advance_curriculum
+            # If we're just collecting, don't log
+            if (self.args.no_train_rl and self.supervised_model is None):
+                should_save_video = False
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
