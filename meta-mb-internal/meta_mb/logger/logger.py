@@ -404,7 +404,7 @@ class Logger(object):
                 joblib.dump(params, file_name, compress=3)
                 file_name = osp.join(self.dir, 'latest.pkl')
                 joblib.dump(params, file_name, compress=3)
-            elif self.snapshot_mode == 'last':
+            elif self.snapshot_mode == 'latest':
                 # override previous params
                 file_name = osp.join(self.dir, 'params.pkl')
                 joblib.dump(params, file_name, compress=3)
@@ -419,7 +419,7 @@ class Logger(object):
             elif self.snapshot_mode == 'none':
                 pass
             else:
-                raise NotImplementedError
+                raise NotImplementedError(self.snapshot_mode)
 
 Logger.DEFAULT = Logger.CURRENT = Logger(dir=None, output_formats=[HumanOutputFormat(sys.stdout)])
 

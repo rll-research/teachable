@@ -85,6 +85,8 @@ class Trainer(object):
             self.obs_preprocessor = obs_preprocessor
 
     def check_advance_curriculum(self, episode_logs, summary_logs):
+        if summary_logs is None or episode_logs is None:
+            return True
         avg_success = np.mean(episode_logs["success_per_episode"])
         avg_accuracy = summary_logs['Accuracy']
         should_advance_curriculum = (avg_success >= self.args.success_threshold) \
@@ -125,13 +127,19 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
-            raw_samples_data = copy.deepcopy(samples_data)
-            buffer.add_batch(samples_data, self.curriculum_step)
-            assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
+            if not self.args.no_collect:
+                samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+                raw_samples_data = copy.deepcopy(samples_data)
+                buffer.add_batch(samples_data, self.curriculum_step)
+                assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
+            else:
+                episode_logs = None
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
+            if not (self.args.no_collect or self.args.no_train_rl):
+                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
+            else:
+                summary_logs = None
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
@@ -155,10 +163,12 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                distill_log = self.distill(raw_samples_data, is_training=True, teachers_dict=self.teacher_train_dict)
                 for _ in range(self.args.distillation_steps - 1):
                     sampled_batch = buffer.sample(self.args.batch_size, 'train')
-                    self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
+                    distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
+                if raw_samples_data is not None:
+                    distill_log = self.distill(raw_samples_data, is_training=True,
+                                               teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
@@ -268,20 +278,21 @@ class Trainer(object):
         logger.log("Training finished")
 
     def _log(self, episode_logs, summary_logs, tag=""):
-        avg_return = np.mean(episode_logs['return_per_episode'])
-        avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
-        avg_success = np.mean(episode_logs['success_per_episode'])
-        self.num_feedback_advice += summary_logs['num_feedback_advice']
-        self.num_feedback_reward += summary_logs['num_feedback_reward']
-        logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
-        logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
-        logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
-
-        logger.logkv(f"{tag}/Success", avg_success)
-        logger.logkv(f"{tag}/Return", avg_return)
-        logger.logkv(f"{tag}/PathLength", avg_path_length)
-        for k, v in summary_logs.items():
-            logger.logkv(f"{tag}/{k}", v)
+        if episode_logs is not None:
+            avg_return = np.mean(episode_logs['return_per_episode'])
+            avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
+            avg_success = np.mean(episode_logs['success_per_episode'])
+            logger.logkv(f"{tag}/Success", avg_success)
+            logger.logkv(f"{tag}/Return", avg_return)
+            logger.logkv(f"{tag}/PathLength", avg_path_length)
+        if summary_logs is not None:
+            self.num_feedback_advice += summary_logs['num_feedback_advice']
+            self.num_feedback_reward += summary_logs['num_feedback_reward']
+            logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
+            logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
+            logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
+            for k, v in summary_logs.items():
+                logger.logkv(f"{tag}/{k}", v)
 
     def use_reward_predictor(self, samples_data):
         pass

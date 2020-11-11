@@ -86,6 +86,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--n_itr', type=int, default=10000)
         self.add_argument('--source', type=str, default='agent', choices=['agent', 'teacher'])
         self.add_argument('--single_level', action='store_true')
+        self.add_argument('--no_collect', action='store_true')
+        self.add_argument('--no_train_rl', action='store_true')
 
         # Saving/loading/finetuning
         self.add_argument('--continue_train', action='store_true')
