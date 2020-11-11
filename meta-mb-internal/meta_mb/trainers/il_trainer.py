@@ -242,6 +242,8 @@ class ImitationLearning(object):
         logs = []
         no_teacher_log = None
         for key_set in powerset:
+            if len(key_set) > 0:
+                continue
             teacher_subset_dict = {}
             for k in keys:
                 if k in key_set:

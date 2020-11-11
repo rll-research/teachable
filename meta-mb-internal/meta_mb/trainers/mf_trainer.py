@@ -127,20 +127,20 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            if not self.args.no_collect:
-                samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
-                raw_samples_data = copy.deepcopy(samples_data)
-                buffer.add_batch(samples_data, self.curriculum_step)
-                assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
-            else:
-                episode_logs = None
-                raw_samples_data = None
+            # if not self.args.no_collect:
+            #     samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+            #     raw_samples_data = copy.deepcopy(samples_data)
+            #     buffer.add_batch(samples_data, self.curriculum_step)
+            #     assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
+            # else:
+            episode_logs = None
+            raw_samples_data = None
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if not (self.args.no_collect or self.args.no_train_rl):
-                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
-            else:
-                summary_logs = None
+            # if not (self.args.no_collect or self.args.no_train_rl):
+            #     summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
+            # else:
+            summary_logs = None
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
@@ -164,16 +164,16 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
-                for _ in range(self.args.distillation_steps - 1):
-                    sampled_batch = buffer.sample(self.args.batch_size, 'train')
-                    distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
-                if raw_samples_data is not None:
-                    distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
-                                               teachers_dict=self.teacher_train_dict)
+                for _ in range(self.args.distillation_steps):
+                    sampled_batch, _ = self.algo.collect_experiences(self.teacher_train_dict)
+                    distill_log = self.distill(trim_batch(sampled_batch), is_training=True, teachers_dict=self.teacher_train_dict)
+                # if raw_samples_data is not None:
+                #     distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
+                #                                teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
-                sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
-                distill_log_val = self.distill(sampled_val_batch, is_training=False,
+                sampled_val_batch, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+                distill_log_val = self.distill(trim_batch(sampled_val_batch), is_training=False,
                                                teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log_val.items():
                     logger.logkv(f"Distill/{k}_Val", v)
