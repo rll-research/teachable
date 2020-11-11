@@ -48,7 +48,7 @@ class Trainer(object):
         log_every=10,
         save_videos_every=100,
         log_and_save=True,
-        teacher_train_dict={},
+        teacher_schedule=lambda _: ({}, {}),
         obs_preprocessor=None,
     ):
         self.args = args
@@ -74,15 +74,10 @@ class Trainer(object):
         self.num_feedback_advice = 0
         self.num_feedback_reward = 0
         # Dict saying which teacher types the agent has access to for training.
-        self.teacher_train_dict = teacher_train_dict  # TODO: write a function where we can adjust this over time
-        # Dict saying which teacher types we should distill to.  Currently set to be identical, but could be different
-        # if we were training on a single teacher but distilling to a set, or something like that.
-        self.teacher_distill_dict = teacher_train_dict
+        self.teacher_schedule = teacher_schedule
         # Dict specifying no teacher provided.
-        self.no_teacher_dict = copy.deepcopy(teacher_train_dict)
-        for k in self.no_teacher_dict.keys():
-            self.no_teacher_dict[k] = False
-            self.obs_preprocessor = obs_preprocessor
+        self.no_teacher_dict = teacher_schedule(-1)
+        self.obs_preprocessor = obs_preprocessor
 
     def check_advance_curriculum(self, episode_logs, summary_logs):
         if summary_logs is None or episode_logs is None:
@@ -109,6 +104,7 @@ class Trainer(object):
         """
         Trains policy on env using algo
         """
+        teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step)
         start_time = time.time()
         rollout_time = 0
         itrs_on_level = 0
@@ -128,7 +124,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             if not self.args.no_collect:
-                samples_data, episode_logs = self.algo.collect_experiences(self.teacher_train_dict)
+                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict)
                 raw_samples_data = copy.deepcopy(samples_data)
                 buffer.add_batch(samples_data, self.curriculum_step)
                 assert len(samples_data.action.shape) == 1, (samples_data.action.shape)
@@ -138,7 +134,7 @@ class Trainer(object):
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if not (self.args.no_collect or self.args.no_train_rl):
-                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=self.teacher_train_dict)
+                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict)
             else:
                 summary_logs = None
             time_training = time.time() - time_training_start
@@ -166,15 +162,15 @@ class Trainer(object):
                 time_distill_start = time.time()
                 for _ in range(self.args.distillation_steps - 1):
                     sampled_batch = buffer.sample(self.args.batch_size, 'train')
-                    distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
+                    distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=teacher_distill_dict)
                 if raw_samples_data is not None:
                     distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
-                                               teachers_dict=self.teacher_train_dict)
+                                               teachers_dict=teacher_distill_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)
                 sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
                 distill_log_val = self.distill(sampled_val_batch, is_training=False,
-                                               teachers_dict=self.teacher_train_dict)
+                                               teachers_dict=teacher_distill_dict)
                 for k, v in distill_log_val.items():
                     logger.logkv(f"Distill/{k}_Val", v)
                 distill_time = time.time() - time_distill_start
@@ -203,7 +199,7 @@ class Trainer(object):
                         # Original Policy
                         time_run_policy_start = time.time()
                         logger.log("Running model with teacher")
-                        advance_curriculum_policy = self.run_supervised(self.algo.acmodel, self.teacher_train_dict,
+                        advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
                                                                         "Rollout/")
                         run_policy_time = time.time() - time_run_policy_start
                     else:
@@ -277,7 +273,7 @@ class Trainer(object):
                 teacher_stoch_advance = self.save_videos(self.algo.acmodel,
                                                          save_name='withTeacher_video_stoch',
                                                          num_rollouts=10,
-                                                         teacher_dict=self.teacher_train_dict,
+                                                         teacher_dict=teacher_train_dict,
                                                          save_video=should_save_video,
                                                          log_prefix="VidRollout/Stoch",
                                                          stochastic=True)
