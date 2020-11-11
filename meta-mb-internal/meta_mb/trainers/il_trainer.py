@@ -32,11 +32,11 @@ class ImitationLearning(object):
     def preprocess_batch(self, batch, source):
         obss = batch.obs
         if source == 'teacher':
-            action_true = batch.env_infos.teacher_action[:, 0]
+            action_true = batch.teacher_action[:, 0]
         elif source == 'agent':
             action_true = batch.action
         action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
-        action_teacher = batch.env_infos.teacher_action[:, 0]
+        action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done
         inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
         done = done.detach().cpu().numpy()

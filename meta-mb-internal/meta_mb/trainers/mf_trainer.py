@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
-from babyai.utils.buffer import Buffer
+from babyai.utils.buffer import Buffer, trim_batch
 import os.path as osp
 import joblib
 import time
@@ -167,7 +167,7 @@ class Trainer(object):
                     sampled_batch = buffer.sample(self.args.batch_size, 'train')
                     distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=self.teacher_train_dict)
                 if raw_samples_data is not None:
-                    distill_log = self.distill(raw_samples_data, is_training=True,
+                    distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
                                                teachers_dict=self.teacher_train_dict)
                 for k, v in distill_log.items():
                     logger.logkv(f"Distill/{k}_Train", v)

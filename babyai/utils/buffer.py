@@ -5,7 +5,17 @@ import pathlib
 import pickle as pkl
 import torch
 
-from babyai.rl.utils.dictlist import merge_dictlists
+from babyai.rl.utils.dictlist import merge_dictlists, DictList
+
+
+def trim_batch(batch):
+    # Remove keys which aren't useful for distillation
+    return DictList({
+        "obs": batch.obs,
+        "action": batch.action.int(),
+        "teacher_action": batch.env_infos.teacher_action,
+        "full_done": batch.full_done.int()
+    })
 
 
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
@@ -48,6 +58,7 @@ class Buffer:
         return batch
 
     def add_trajs(self, batch, level):
+        batch = trim_batch(batch)
         trajs = self.split_batch(batch)
         random.shuffle(trajs)
         split = int(self.val_prob * len(trajs))
