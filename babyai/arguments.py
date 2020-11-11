@@ -137,6 +137,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distillation_steps', type=int, default=3)
         self.add_argument('--buffer_capacity', type=int, default=500)
         self.add_argument('--prob_current', type=float, default=.5)
+        self.add_argument('--buffer_path', type=str, default=None)
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=20)

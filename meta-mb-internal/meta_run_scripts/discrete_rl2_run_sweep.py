@@ -222,6 +222,7 @@ def run_experiment(**config):
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
 
+    buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
     trainer = Trainer(
         args,
         algo=algo,
@@ -230,7 +231,7 @@ def run_experiment(**config):
         sampler=sampler,
         sample_processor=sample_processor,
         start_itr=start_itr,
-        exp_name=exp_dir,
+        exp_name=buffer_path,
         curriculum_step=curriculum_step,
         il_trainer=il_trainer,
         supervised_model=supervised_model,
