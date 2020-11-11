@@ -78,8 +78,10 @@ def load_model(args):
         # The supervised model can either be the same model as the policy or a different model
         if args.self_distill and args.distill_same_model:
             supervised_model = policy
-        else:
+        elif args.self_distill:
             supervised_model = saved_model['supervised_model']
+        else:
+            supervised_model = None
     else:
         supervised_model = None
     return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args

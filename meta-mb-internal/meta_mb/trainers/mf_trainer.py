@@ -217,13 +217,16 @@ class Trainer(object):
                     else:
                         run_supervised_time = 0
                         advance_curriculum_sup = True
-                    # Original Policy
-                    time_run_policy_start = time.time()
-                    logger.log("Running model with teacher")
-                    advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
-                                                                    "Rollout/")
-                    run_policy_time = time.time() - time_run_policy_start
-
+                    if not self.args.no_train_rl:
+                        # Original Policy
+                        time_run_policy_start = time.time()
+                        logger.log("Running model with teacher")
+                        advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
+                                                                        "Rollout/")
+                        run_policy_time = time.time() - time_run_policy_start
+                    else:
+                        run_policy_time = 0
+                        advance_curriculum_policy = True
                     advance_curriculum = advance_curriculum_policy and advance_curriculum_sup \
                                          and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)

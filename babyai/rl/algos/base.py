@@ -213,6 +213,7 @@ class BaseAlgo(ABC):
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())
                     self.log_num_frames.append(self.log_episode_num_frames[i].item())
 
+            self.mask = self.mask.float()
             self.log_episode_return *= self.mask
             self.log_episode_success *= self.mask
             self.log_episode_reshaped_return *= self.mask
