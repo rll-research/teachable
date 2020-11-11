@@ -36,6 +36,7 @@ class Trainer(object):
         sampler,
         sample_processor,
         start_itr=0,
+        buffer_name="",
         exp_name="",
         curriculum_step=0,
         il_trainer=None,
@@ -58,6 +59,7 @@ class Trainer(object):
         self.sampler = sampler
         self.sample_processor = sample_processor
         self.start_itr = start_itr
+        self.buffer_name = buffer_name
         self.exp_name = exp_name
         self.curriculum_step = curriculum_step
         self.il_trainer = il_trainer
@@ -109,9 +111,9 @@ class Trainer(object):
         rollout_time = 0
         itrs_on_level = 0
 
-        buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1)
+        buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1)
         if self.args.use_dagger:
-            dagger_buffer = Buffer(self.exp_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+            dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                                    buffer_name='dagger_buffer')
         else:
             dagger_buffer = None
