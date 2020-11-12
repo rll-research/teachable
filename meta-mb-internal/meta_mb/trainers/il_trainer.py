@@ -5,11 +5,13 @@ from itertools import chain, combinations
 
 
 class ImitationLearning(object):
-    def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x):
+    def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
+                 label_weightings=False):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
         self.preprocess_obs = preprocess_obs
+        self.label_weightings = label_weightings
 
         utils.seed(self.args.seed)
         self.env = env
@@ -60,6 +62,14 @@ class ImitationLearning(object):
         obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
 
+        if self.label_weightings:
+            weightings = torch.zeros(7).to(self.device)
+            actions, counts = torch.unique(action_true, return_counts=True)
+            weightings[actions] = 1 / counts
+            weightings = weightings / torch.sum(weightings)
+        else:
+            weightings = torch.ones(7).to(self.device)
+
         # Memory to be stored
         memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
         memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
@@ -106,8 +116,10 @@ class ImitationLearning(object):
             memory = info["memory"]
 
             # Compute the cross-entropy loss with an entropy bonus
+            action_weightings = weightings[action_step]
             entropy = dist.entropy().mean()
-            policy_loss = -dist.log_prob(action_step).mean()
+            policy_loss = -dist.log_prob(action_step) * action_weightings
+            policy_loss = policy_loss.mean()
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             final_loss += loss
