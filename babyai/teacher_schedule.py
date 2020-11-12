@@ -12,10 +12,14 @@ def no_teacher(level):
 
 
 #### SINGLE TEACHER ####
-def single_teacher(level, teacher_name):
+def all_teachers(level, teacher_list):
+    no_teacher_dict = {}
+    teacher_train_dict = {}
+    for teacher in teacher_list:
+        no_teacher_dict[teacher] = False
+        teacher_train_dict[teacher] = True
     if level == -1:  # Generate no_teacher_dict
-        return {teacher_name: False}, None
-    teacher_train_dict = {teacher_name: True}
+        return no_teacher_dict, None
     distillation_dict = copy.deepcopy(teacher_train_dict)
     return teacher_train_dict, distillation_dict
 
@@ -63,9 +67,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
     if teacher_schedule == 'none':
         assert len(feedback_types) == 0
         return no_teacher
-    elif teacher_schedule == 'single_teacher':
-        assert len(feedback_types) == 1
-        return lambda level: single_teacher(level, feedback_types[0])
+    elif teacher_schedule == 'all_teachers':
+        return lambda level: all_teachers(level, feedback_types)
     elif teacher_schedule == 'single_teacher_no_powerset':
         assert len(feedback_types) == 1
         return lambda level: single_teacher_no_powerset(level, feedback_types[0])

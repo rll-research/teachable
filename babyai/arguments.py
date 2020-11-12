@@ -110,7 +110,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', type=int, default=1)
         self.add_argument('--cartesian_steps', type=int, default=1)
-        self.add_argument('--teacher_schedule', type=str, default='single_teacher')
+        self.add_argument('--teacher_schedule', type=str, default='all_teachers')
         self.add_argument('--use_dagger', action='store_true')
 
         # Curriculum
