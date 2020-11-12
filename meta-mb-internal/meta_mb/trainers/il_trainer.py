@@ -63,12 +63,12 @@ class ImitationLearning(object):
         num_frames = len(obss)
 
         if self.label_weightings:
-            weightings = torch.zeros(7).to(self.device)
+            weightings = torch.zeros(7, dtype=torch.float32).to(self.device)
             actions, counts = torch.unique(action_true, return_counts=True)
             weightings[actions] = 1 / counts
             weightings = weightings / torch.sum(weightings)
         else:
-            weightings = torch.ones(7).to(self.device)
+            weightings = torch.ones(7, dtype=torch.float32).to(self.device)
 
         # Memory to be stored
         memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
