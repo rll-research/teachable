@@ -65,6 +65,7 @@ class ImitationLearning(object):
         if self.label_weightings:
             weightings = torch.zeros(7, dtype=torch.float32).to(self.device)
             actions, counts = torch.unique(action_true, return_counts=True)
+            counts = counts.float()
             weightings[actions] = 1 / counts
             weightings = weightings / torch.sum(weightings)
         else:
