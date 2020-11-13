@@ -92,6 +92,8 @@ class Buffer:
             self.save_traj(traj, level, self.index_train[level], 'train')
             self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
             self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+        if self.counts_train[level] == self.train_buffer_capacity:
+            raise ValueError('all done!')
 
     def add_batch(self, batch, level):
         # Starting a new level
