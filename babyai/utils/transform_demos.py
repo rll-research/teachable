@@ -103,11 +103,15 @@ def transform_all_ours_to_theirs(our_directory, their_file):
     our_directory = pathlib.Path(our_directory)
     train_list = []
     val_list = []
+    i = 0
     for file_name in our_directory.iterdir():
         if 'train' in file_name.name:
             train_list.append(load(file_name))
         else:
             val_list.append(load(file_name))
+        i += 1
+        if i % 10 == 0:
+            print("loaded", i)
     print("loaded all files")
     theirs_train = [ours_to_theirs(traj) for traj in train_list]
     print("transformed all train")
