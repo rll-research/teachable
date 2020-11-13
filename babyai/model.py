@@ -40,7 +40,7 @@ class FiLM(nn.Module):
         # x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.conv1(x))
         x = self.conv2(x)
-        weight = self.weight(y).unsqueeze(2).unsqueeze(3)
+        weight = self.weight(y).unsqueeze(2).unsqueeze(3) # (20, 64) --> no teacher (10, 192)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
         # return F.relu(self.bn2(out))
@@ -89,7 +89,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.action_space = action_space
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.advice_dim = advice_dim
+        self.advice_dim = advice_dim if advice_size > 0 else 0
         self.advice_size = advice_size
         self.num_modules = num_modules
 

@@ -78,6 +78,7 @@ def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=15, 
 
 
 def make_teacher_schedule(feedback_types, teacher_schedule):
+    feedback_types = [teacher for teacher in feedback_types if not teacher == 'None']
     if teacher_schedule == 'none':
         assert len(feedback_types) == 0
         return no_teacher

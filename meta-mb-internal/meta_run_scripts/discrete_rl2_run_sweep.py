@@ -165,7 +165,10 @@ def run_experiment(**config):
         start_itr = 0
         curriculum_step = env.index
 
-    teacher_null_dict = env.teacher.null_feedback()
+    try:
+        teacher_null_dict = env.teacher.null_feedback()
+    except:
+        teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
     args.model = 'default_il'
