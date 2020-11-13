@@ -121,7 +121,7 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
-    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}):
+    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -156,7 +156,9 @@ class BaseAlgo(ABC):
             action = dist.sample()
             action_to_take = action.cpu().numpy()
 
-            if use_dagger:
+            if collect_with_oracle:
+                action_to_take = self.env.get_teacher_action()
+            elif use_dagger:
                 with torch.no_grad():
                     dagger_obs = self.preprocess_obss(self.obs, dagger_dict)
                     dagger_dist, dagger_model_results = self.acmodel(dagger_obs,

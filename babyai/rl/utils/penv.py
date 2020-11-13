@@ -24,6 +24,9 @@ def worker(conn, env, rollouts_per_meta_task):
         elif cmd == "render":
             obs = env.render(mode='rgb_array')
             conn.send(obs)
+        elif cmd == "get_teacher_action":
+            result = env.get_teacher_action()
+            conn.send(result)
         else:
             raise NotImplementedError
 
@@ -87,6 +90,12 @@ class ParallelEnv(gym.Env):
         for local in self.locals:
             local.send(("render", None))
         results = [self.envs[0].render(mode='rgb_array')] + [local.recv() for local in self.locals]
+        return results
+
+    def get_teacher_action(self):
+        for local in self.locals:
+            local.send(("get_teacher_action", None))
+        results = [self.envs[0].get_teacher_action()] + [local.recv() for local in self.locals]
         return results
 
     def __del__(self):

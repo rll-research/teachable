@@ -131,7 +131,8 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             if not self.args.no_collect:
-                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict)
+                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
+                                                                           collect_with_oracle=self.args.collect_with_oracle)
                 raw_samples_data = copy.deepcopy(samples_data)
                 buffer.add_batch(samples_data, self.curriculum_step)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
