@@ -27,7 +27,7 @@ def theirs_to_ours(batch):
         obs = blosc.unpack_array(traj[1])
         instr = np.array(env.to_vocab_index(traj[0], pad_length=10))
 
-        pre_action_advice = np.zeros((len(traj[3]), 7))
+        pre_action_advice = np.zeros((len(traj[3]), 8))
         indices = np.array(traj[3])
         pre_action_advice[np.arange(len(indices)), indices] = 1
         observations = []
