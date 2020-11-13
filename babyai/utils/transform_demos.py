@@ -83,6 +83,8 @@ def tranform_all_theirs_to_ours(their_file, our_directory):
     ours_list_val = theirs_to_ours(theirs_val)
 
     our_directory = pathlib.Path(our_directory)
+    if not our_directory.exists():
+        our_directory.mkdir()
     for i, traj in enumerate(ours_list_train):
         file_name = our_directory.joinpath(f'traj_train_level18_idx{i}.pkl')
         save(file_name, traj)
