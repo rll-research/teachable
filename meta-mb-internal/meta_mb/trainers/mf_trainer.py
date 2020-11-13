@@ -44,10 +44,10 @@ class Trainer(object):
         reward_predictor=None,
         rp_trainer=None,
         is_debug=False,
-        eval_every=25,
-        save_every=100,
+        eval_every=200,
+        save_every=200,
         log_every=10,
-        save_videos_every=100,
+        save_videos_every=200,
         log_and_save=True,
         teacher_schedule=lambda _: ({}, {}),
         obs_preprocessor=None,
@@ -210,7 +210,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if advance_curriculum or (itr % self.eval_every == 0) or (
+            # TODO: put if advance_curriculum back in here
+            if (itr % self.eval_every == 0) or (
                 itr == self.args.n_itr - 1):
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
