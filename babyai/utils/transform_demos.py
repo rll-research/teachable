@@ -75,7 +75,7 @@ def ours_to_theirs(batch):
     return their_tuple
 
 
-def tranform_all_theirs_to_ours(their_file, our_directory):
+def transform_all_theirs_to_ours(their_file, our_directory):
     theirs_train = load(their_file)
     ours_list_train = theirs_to_ours(theirs_train)
     their_file_val = their_file[:-4] + '_valid.pkl'
@@ -93,7 +93,7 @@ def tranform_all_theirs_to_ours(their_file, our_directory):
         save(file_name, traj)
 
 
-def tranform_all_ours_to_theirs(our_directory, their_file):
+def transform_all_ours_to_theirs(our_directory, their_file):
     our_directory = pathlib.Path(our_directory)
     train_list = []
     val_list = []
@@ -108,5 +108,3 @@ def tranform_all_ours_to_theirs(our_directory, their_file):
     save(their_file, theirs_train)
     their_file_val = their_file[:-4] + '_valid.pkl'
     save(their_file_val, theirs_val)
-
-temp = 3
