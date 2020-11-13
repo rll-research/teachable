@@ -77,10 +77,14 @@ def ours_to_theirs(batch):
 
 def transform_all_theirs_to_ours(their_file, our_directory):
     theirs_train = load(their_file)
+    print("loaded their data - train")
     ours_list_train = theirs_to_ours(theirs_train)
+    print("transformed into our format - train")
     their_file_val = their_file[:-4] + '_valid.pkl'
     theirs_val = load(their_file_val)
+    print("loaded their data - val")
     ours_list_val = theirs_to_ours(theirs_val)
+    print("transformed into our format - val")
 
     our_directory = pathlib.Path(our_directory)
     if not our_directory.exists():
@@ -88,9 +92,11 @@ def transform_all_theirs_to_ours(their_file, our_directory):
     for i, traj in enumerate(ours_list_train):
         file_name = our_directory.joinpath(f'traj_train_level18_idx{i}.pkl')
         save(file_name, traj)
+    print("saved all train")
     for i, traj in enumerate(ours_list_val):
         file_name = our_directory.joinpath(f'traj_val_level18_idx{i}.pkl')
         save(file_name, traj)
+    print("saved all val")
 
 
 def transform_all_ours_to_theirs(our_directory, their_file):
@@ -102,9 +108,13 @@ def transform_all_ours_to_theirs(our_directory, their_file):
             train_list.append(load(file_name))
         else:
             val_list.append(load(file_name))
+    print("loaded all files")
     theirs_train = [ours_to_theirs(traj) for traj in train_list]
+    print("transformed all train")
     theirs_val = [ours_to_theirs(traj) for traj in val_list]
-
+    print("transformed all val")
     save(their_file, theirs_train)
+    print("saved train")
     their_file_val = their_file[:-4] + '_valid.pkl'
     save(their_file_val, theirs_val)
+    print("saved val")
