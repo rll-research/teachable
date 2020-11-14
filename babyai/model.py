@@ -25,11 +25,11 @@ class FiLM(nn.Module):
         self.conv1 = nn.Conv2d(
             in_channels=in_channels, out_channels=imm_channels,
             kernel_size=(3, 3), padding=1)
-        # self.bn1 = nn.BatchNorm2d(imm_channels)
+        self.bn1 = nn.BatchNorm2d(imm_channels)
         self.conv2 = nn.Conv2d(
             in_channels=imm_channels, out_channels=out_features,
             kernel_size=(3, 3), padding=1)
-        # self.bn2 = nn.BatchNorm2d(out_features)
+        self.bn2 = nn.BatchNorm2d(out_features)
 
         self.weight = nn.Linear(in_features, out_features)
         self.bias = nn.Linear(in_features, out_features)
@@ -37,14 +37,14 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
-        # x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
+        # x = F.relu(self.conv1(x))
         x = self.conv2(x)
-        weight = self.weight(y).unsqueeze(2).unsqueeze(3) # (20, 64) --> no teacher (10, 192)
+        weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
-        # return F.relu(self.bn2(out))
-        return F.relu(out)
+        return F.relu(self.bn2(out))
+        # return F.relu(out)
 
 
 class ImageBOWEmbedding(nn.Module):
@@ -353,11 +353,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         elif self.lang_model in ['bigru', 'attgru']:
             masks = (instr != 0).float()
-            # Make sure we don't have an entire trajectory of zeros.
-            # doing this doesn't matter since we should be masking out these transitions anyway.
-            # all_zeros = masks.sum(dim=1) == 0
-            # instr[all_zeros] = instr[all_zeros] + 1
-            # lengths = (instr != 0).sum(1).long()
 
             if lengths.shape[0] > 1:
                 seq_lengths, perm_idx = lengths.sort(0, descending=True)

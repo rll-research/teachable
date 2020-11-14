@@ -52,19 +52,19 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=512,
                           help="batch size for PPO (default: 1280)")
-        self.add_argument("--entropy-coef", type=float, default=0.001,
+        self.add_argument("--entropy-coef", type=float, default=0.01,
                           help="entropy term coefficient (default: 0.01)")
 
         # Model parameters
         self.add_argument("--image-dim", type=int, default=128,
                           help="dimensionality of the image embedding")
-        self.add_argument("--memory-dim", type=int, default=512,
+        self.add_argument("--memory-dim", type=int, default=128,
                           help="dimensionality of the memory LSTM")
-        self.add_argument("--instr-dim", type=int, default=64,
+        self.add_argument("--instr-dim", type=int, default=128,
                           help="dimensionality of the memory LSTM")
         self.add_argument("--no-instr", action="store_true", default=False,
                           help="don't use instructions in the model")
-        self.add_argument("--instr-arch", default="bigru",
+        self.add_argument("--instr-arch", default="gru",
                           help="arch to encode instructions, possible values: gru, bigru, conv, bow (default: gru)")
         self.add_argument("--no-mem", action="store_true", default=False,
                           help="don't use memory in the model")
