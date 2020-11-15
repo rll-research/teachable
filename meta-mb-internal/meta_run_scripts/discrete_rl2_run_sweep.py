@@ -99,7 +99,7 @@ def run_experiment(**config):
         policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args = load_model(args)
     arguments = {
         "start_loc": 'all',
-        "include_holdout_obj": False,
+        "include_holdout_obj": True,
         "persist_goal": not args.reset_goal,
         "persist_objs": not args.reset_objs,
         "persist_agent": not args.reset_agent,
