@@ -37,6 +37,30 @@ class ImitationLearning(object):
         action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done
+
+        # rearrange all demos to be in descending order of length
+        inds = np.concatenate([[0], torch.where(done == 1)[0].detach().cpu().numpy() + 1])
+        obss_list = []
+        action_true_list = []
+        action_teacher_list = []
+        done_list = []
+
+        for i in range(len(inds) - 1):
+            start = inds[i]
+            end = inds[i + 1]
+            obss_list.append(obss[start: end])
+            action_true_list.append(action_true[start: end])
+            action_teacher_list.append(action_teacher[start: end])
+            done_list.append(done[start: end])
+        trajs = list(zip(obss_list, action_true_list, action_teacher_list, done_list))
+        trajs.sort(key=lambda x: len(x[0]), reverse=True)
+        obss_list, action_true_list, action_teacher_list, done_list = zip(*trajs)
+
+        obss = [o for traj in obss_list for o in traj]
+        action_true = torch.cat(action_true_list, dim=0)
+        action_teacher = np.concatenate(action_teacher_list, axis=0)
+        done = torch.cat(done_list, dim=0)
+
         inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
         done = done.detach().cpu().numpy()
         inds = np.concatenate([[0], inds[:-1]])
