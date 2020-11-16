@@ -288,6 +288,6 @@ class ImitationLearning(object):
 
         if is_training:
             self.scheduler.step()
-            curr_lr = self.scheduler._last_lr / self.args.lr
+            curr_lr = self.scheduler._last_lr[0] / self.args.lr
             print("LR PROP", curr_lr, "!" * 100)
         return logs
