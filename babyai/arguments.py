@@ -127,6 +127,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--max_grad_norm', type=float, default=.5)
         self.add_argument('--clip_eps', type=float, default=.2)
         self.add_argument('--advice_dim', type=int, default=128)
+        self.add_argument('--no_teacher', action='store_true')
 
         # Reward
         self.add_argument('--intermediate_reward', type=bool, default=True)

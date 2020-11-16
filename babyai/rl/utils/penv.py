@@ -150,3 +150,7 @@ class SequentialEnv(gym.Env):
     def render(self):
         results = [env.render(mode='rgb_array') for env in self.envs]
         return results
+
+    def get_teacher_action(self):
+        results = [env.get_teacher_action() for env in self.envs]
+        return results

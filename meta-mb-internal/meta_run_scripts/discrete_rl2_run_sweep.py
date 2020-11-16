@@ -120,6 +120,8 @@ def run_experiment(**config):
                      ceil_reward=args.ceil_reward)
         obs = env.reset()
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
+        if args.no_teacher:
+            advice_size = 0
         policy = ACModel(action_space=env.action_space,
                          env=env,
                          image_dim=args.image_dim,
