@@ -99,6 +99,7 @@ class Level_GoToRedBallGrey(Level_TeachableRobot):
     def add_objs(self, _):
         obj, _ = self.add_object(0, 0, 'ball', 'red')
         dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+        self.check_objs_reachable()
         for dist in dists:
             dist.color = 'grey'
         return dists + [obj], obj
@@ -129,6 +130,7 @@ class Level_GoToRedBall(Level_TeachableRobot):
     def add_objs(self, _):
         obj, _ = self.add_object(0, 0, 'ball', 'red')
         dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+        self.check_objs_reachable()
         return dists + [obj], obj
 
 
@@ -204,6 +206,7 @@ class Level_GoToLocal(Level_TeachableRobot):
         obj_type, obj_color = task
         obj, _ = self.add_object(0, 0, obj_type, obj_color)
         dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+        self.check_objs_reachable()
         return dists + [obj], obj
 
 
@@ -293,6 +296,7 @@ class Level_PickupLocal(Level_TeachableRobot):
         obj_type, obj_color = task
         obj, _ = self.add_object(0, 0, obj_type, obj_color)
         dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
+        self.check_objs_reachable()
         return dists + [obj], obj
 
 
@@ -347,6 +351,7 @@ class Level_PutNextLocal(Level_TeachableRobot):
         obj1, _ = self.add_object(0, 0, o1_type, o1_color)
         obj2, _ = self.add_object(0, 0, o2_type, o2_color)
         dists = self.add_distractors(num_distractors=self.num_dists - 2, all_unique=True)
+        self.check_objs_reachable()
         return dists + [obj1, obj2], (obj1, obj2)
 
 
@@ -395,6 +400,7 @@ class Level_OpenLocal(Level_TeachableRobot):
                 doors.append(door)
         door = self._rand_elem(doors)
         door.color = obj_color
+        self.check_objs_reachable()
         return dists + self.get_doors(), door
 
 
