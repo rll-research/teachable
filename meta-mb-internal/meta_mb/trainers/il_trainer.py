@@ -24,7 +24,7 @@ class ImitationLearning(object):
             self.acmodel.cuda()
 
         self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.args.lr, eps=self.args.optim_eps)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.95)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.99)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
