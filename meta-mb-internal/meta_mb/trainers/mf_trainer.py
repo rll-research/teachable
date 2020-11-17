@@ -187,17 +187,26 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
+                time_sampling_from_buffer = 0
+                time_train_distill = 0
+                time_val_distill = 0
                 for _ in range(self.args.distillation_steps - 1):
+                    sample_start = time.time()
                     sampled_batch = buffer.sample(self.args.batch_size, 'train')
+                    time_sampling_from_buffer += (time.time() - sample_start)
+                    sample_start = time.time()
                     distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=teacher_distill_dict)
+                    time_val_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
                         sampled_dagger_batch = dagger_buffer.sample(self.args.batch_size, 'train')
                         self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
 
                 if raw_samples_data is not None:
+                    sample_start = time.time()
                     distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
                                                teachers_dict=teacher_distill_dict)
+                    time_train_distill += (time.time() - sample_start)
                 if dagger_samples_data is not None:
                     self.distill(trim_batch(dagger_samples_data), is_training=True,
                                  teachers_dict=teacher_distill_dict)
@@ -205,9 +214,13 @@ class Trainer(object):
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Train", v)
+                sample_start = time.time()
                 sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
+                time_sampling_from_buffer += (time.time() - sample_start)
+                sample_start = time.time()
                 distill_log_val = self.distill(sampled_val_batch, is_training=False,
                                                teachers_dict=teacher_distill_dict)
+                time_val_distill += (time.time() - sample_start)
                 for key_set, log_dict in distill_log_val.items():
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
@@ -215,6 +228,11 @@ class Trainer(object):
                 distill_time = time.time() - time_distill_start
                 advance_curriculum = distill_log[()]['Accuracy'] >= self.args.accuracy_threshold
                 logger.logkv('Distill/Advance', int(advance_curriculum))
+                print("DISTILLATION BREAKDOWN")
+                print("Sampling", time_sampling_from_buffer)
+                print("TRAINING", time_train_distill)
+                print("VAL", time_val_distill)
+
             else:
                 distill_time = 0
 
