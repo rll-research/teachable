@@ -55,10 +55,11 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        new_oracle = self.botclass(oracle.mission)
-        new_oracle.vis_mask = oracle.vis_mask
-        new_oracle.step = oracle.step
-        oracle = new_oracle
+        new_oracle = oracle
+        # new_oracle = self.botclass(oracle.mission)
+        # new_oracle.vis_mask = oracle.vis_mask
+        # new_oracle.step = oracle.step
+        # oracle = new_oracle
         self.last_action = self.next_action
         self.last_step_error = False
         try:
@@ -73,14 +74,14 @@ class Teacher:
         oracle.mission.teacher = None
         env_copy1 = pickle.loads(pickle.dumps(oracle.mission))
         env_copy1.teacher = None
-        try:
-            self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
-        except Exception as e:
-            print("STEP AWAY FAILED!")
-            print(e)
-            print("CURRENT VISMASK", oracle.vis_mask)
-            self.next_state = self.next_state * 0
-            self.last_step_error = True
+        # try:
+        #     self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
+        # except Exception as e:
+        #     print("STEP AWAY FAILED!")
+        #     print(e)
+        #     print("CURRENT VISMASK", oracle.vis_mask)
+        #     self.next_state = self.next_state * 0
+        #     self.last_step_error = True
         self.steps_since_lastfeedback += 1
         oracle.mission.teacher = original_teacher
         return oracle
