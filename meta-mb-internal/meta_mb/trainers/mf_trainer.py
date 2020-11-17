@@ -118,11 +118,22 @@ class Trainer(object):
         else:
             dagger_buffer = None
 
+        itr_start_time = time.time()
+
+        all_time_training = 0
+        all_time_collection = 0
+        all_rp_splice_time = 0
+        all_time_rp_train = 0
+        all_run_policy_time = 0
+        all_distill_time = 0
+        all_run_supervised_time = 0
+        all_rollout_time = 0
+        all_unaccounted_time = 0
+
         for itr in range(self.start_itr, self.args.n_itr):
             logger.logkv("ItrsOnLEvel", itrs_on_level)
             itrs_on_level += 1
 
-            itr_start_time = time.time()
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
             logger.log("Sampling set of tasks/goals for this meta-batch...")
 
@@ -159,7 +170,6 @@ class Trainer(object):
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             logger.logkv('Train/Advance', int(advance_curriculum))
-            time_env_sampling = time.time() - time_env_sampling_start
 
             # """ ------------------ Reward Predictor Splicing ---------------------"""
             rp_start_time = time.time()
@@ -248,8 +258,11 @@ class Trainer(object):
             logger.logkv('Itr', itr)
             logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
 
-            logger.logkv('Time/Total', time.time() - start_time)
-            logger.logkv('Time/Itr', time.time() - itr_start_time)
+            time_total = time.time() - start_time
+            time_itr = time.time() - itr_start_time
+            itr_start_time = time.time()
+            logger.logkv('Time/Total', time_total)
+            logger.logkv('Time/Itr', time_itr)
 
             logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
 
@@ -259,7 +272,6 @@ class Trainer(object):
 
             logger.log(self.exp_name)
 
-            logger.logkv('Time/Sampling', time_env_sampling)
             logger.logkv('Time/Training', time_training)
             logger.logkv('Time/Collection', time_collection)
             logger.logkv('Time/RPUse', rp_splice_time)
@@ -268,6 +280,31 @@ class Trainer(object):
             logger.logkv('Time/Distillation', distill_time)
             logger.logkv('Time/RunDistilled', run_supervised_time)
             logger.logkv('Time/VidRollout', rollout_time)
+            time_unaccounted = time_itr - time_training - time_collection - \
+                         rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
+                         rollout_time
+            logger.logkv('Time/Unaccounted', time_unaccounted)
+
+            all_time_training += time_training
+            all_time_collection += time_collection
+            all_rp_splice_time += rp_splice_time
+            all_time_rp_train += time_rp_train
+            all_run_policy_time += run_policy_time
+            all_distill_time += distill_time
+            all_run_supervised_time += run_supervised_time
+            all_rollout_time += rollout_time
+            all_unaccounted_time += time_unaccounted
+
+            logger.logkv('Time/All_Training', all_time_training / time_total)
+            logger.logkv('Time/All_Collection', all_time_collection / time_total)
+            logger.logkv('Time/All_RPUse', all_rp_splice_time / time_total)
+            logger.logkv('Time/All_RPTrain', all_time_rp_train / time_total)
+            logger.logkv('Time/All_RunwTeacher', all_run_policy_time / time_total)
+            logger.logkv('Time/All_Distillation', all_distill_time / time_total)
+            logger.logkv('Time/All_RunDistilled', all_run_supervised_time / time_total)
+            logger.logkv('Time/All_VidRollout', all_rollout_time / time_total)
+            logger.logkv('Time/All_Unaccounted', all_unaccounted_time / time_total)
+
             logger.dumpkvs()
 
             """ ------------------ Video Saving ---------------------"""
