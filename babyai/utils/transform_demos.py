@@ -106,19 +106,20 @@ def transform_all_ours_to_theirs(our_directory, their_file):
     i = 0
     for file_name in our_directory.iterdir():
         if 'train' in file_name.name:
-            train_list.append(load(file_name))
+            temp = 3
+            train_list.append(ours_to_theirs(load(file_name)))
         else:
-            val_list.append(load(file_name))
+            val_list.append(ours_to_theirs(load(file_name)))
         i += 1
         if i % 10 == 0:
             print("loaded", i)
     print("loaded all files")
-    theirs_train = [ours_to_theirs(traj) for traj in train_list]
-    print("transformed all train")
-    theirs_val = [ours_to_theirs(traj) for traj in val_list]
-    print("transformed all val")
-    save(their_file, theirs_train)
+    #theirs_train = [ours_to_theirs(traj) for traj in train_list]
+    #print("transformed all train")
+    #theirs_val = [ours_to_theirs(traj) for traj in val_list]
+    #print("transformed all val")
+    save(their_file, train_list)
     print("saved train")
     their_file_val = their_file[:-4] + '_valid.pkl'
-    save(their_file_val, theirs_val)
+    save(their_file_val, val_list)
     print("saved val")
