@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import babyai.utils as utils
 from itertools import chain, combinations
-
+import time
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
@@ -82,7 +82,9 @@ class ImitationLearning(object):
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
+        start = time.time()
         obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
+        print("Preprocessing", time.time() - start)
         obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
 
@@ -99,6 +101,7 @@ class ImitationLearning(object):
         memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
         memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
 
+        start = time.time()
         # We're going to loop through each trajectory together.
         # inds holds the current index of each trajectory (initialized to the start of each trajectory)
         # memories is currently empty, but we will fill it with memory vectors.
@@ -125,7 +128,8 @@ class ImitationLearning(object):
 
             # Incrementing the remaining indices
             inds = [index + 1 for index in inds]
-
+        print("First half", time.time() - start)
+        start = time.time()
         # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
         # Indexes currently holds the first index of each chunk.
         indexes = self.starting_indexes(num_frames)
@@ -151,7 +155,7 @@ class ImitationLearning(object):
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
-
+        print("Second half", time.time() - start)
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
@@ -282,8 +286,10 @@ class ImitationLearning(object):
                     teacher_subset_dict[k] = teachers_dict[k]
                 else:
                     teacher_subset_dict[k] = False
+            start = time.time()
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
+            print("One Recurrence took", time.time() - start)
             logs[key_set] = log
 
         if is_training:
