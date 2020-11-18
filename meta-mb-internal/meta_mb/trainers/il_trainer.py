@@ -128,7 +128,7 @@ class ImitationLearning(object):
 
             # Incrementing the remaining indices
             inds = [index + 1 for index in inds]
-        print("First half", time.time() - start)
+        # print("First half", time.time() - start)
         start = time.time()
         # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
         # Indexes currently holds the first index of each chunk.
@@ -155,7 +155,7 @@ class ImitationLearning(object):
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
-        print("Second half", time.time() - start)
+        # print("Second half", time.time() - start)
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
@@ -295,5 +295,5 @@ class ImitationLearning(object):
         if is_training:
             self.scheduler.step()
             curr_lr = self.scheduler._last_lr[0] / self.args.lr
-            print("LR PROP", curr_lr, "!" * 100)
+            # print("LR PROP", curr_lr, "!" * 100)
         return logs
