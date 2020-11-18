@@ -84,7 +84,7 @@ class ImitationLearning(object):
         # Inds holds the start of each demo
         start = time.time()
         obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
-        print("Preprocessing", time.time() - start)
+        # print("Preprocessing", time.time() - start)
         obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
 
