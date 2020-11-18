@@ -76,6 +76,27 @@ class Buffer:
             batch = pkl.load(f)
         return batch
 
+    def add_trajs_no_split(self, trajs, level):
+        if not level in self.index_train:
+            self.counts_train[level] = 0
+            self.index_train[level] = 0
+            self.counts_val[level] = 0
+            self.index_val[level] = 0
+        random.shuffle(trajs)
+        split = int(self.val_prob * len(trajs))
+        # Make sure we get at least one of each
+        if split == 0 and len(trajs) > 1:
+            split = 1
+        for traj in trajs[:split]:
+            self.save_traj(traj, level, self.index_val[level], 'val')
+            self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
+            self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
+        for traj in trajs[split:]:
+            self.save_traj(traj, level, self.index_train[level], 'train')
+            self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
+            self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+
+
     def add_trajs(self, batch, level):
         batch = trim_batch(batch)
         trajs = self.split_batch(batch)

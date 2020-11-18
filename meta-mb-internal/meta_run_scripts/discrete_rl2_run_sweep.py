@@ -44,7 +44,7 @@ def get_exp_name(args):
         EXP_NAME += '_SAME'
     if args.self_distill:
         EXP_NAME += '_SD'
-    if args.intermediate_reward:
+    if not args.sparse_reward:
         EXP_NAME += '_dense'
     EXP_NAME += '_threshS' + str(args.success_threshold)
     EXP_NAME += '_threshA' + str(args.accuracy_threshold)
@@ -107,7 +107,7 @@ def run_experiment(**config):
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": args.intermediate_reward,
+        "intermediate_reward": not args.sparse_reward,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     teacher_train_dict, _ = teacher_schedule(0)

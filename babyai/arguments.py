@@ -130,7 +130,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--no_teacher', action='store_true')
 
         # Reward
-        self.add_argument('--intermediate_reward', type=bool, default=True)
+        self.add_argument('--sparse_reward', action='store_true')
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--use_rp_inner', action='store_true')
         self.add_argument('--use_rp_outer', action='store_true')

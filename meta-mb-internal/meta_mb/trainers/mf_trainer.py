@@ -9,6 +9,7 @@ import time
 import psutil
 import os
 import copy
+from scripts.make_agent_demos import generate_demos
 
 
 class Trainer(object):
@@ -117,6 +118,12 @@ class Trainer(object):
                                    buffer_name='dagger_buffer')
         else:
             dagger_buffer = None
+
+        generate_demos(self.env, buffer, 323000)
+        print("all done")
+        return
+
+
 
         itr_start_time = time.time()
 
