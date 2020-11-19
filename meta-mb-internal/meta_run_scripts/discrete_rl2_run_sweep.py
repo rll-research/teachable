@@ -201,8 +201,7 @@ def run_experiment(**config):
         normalize_adv=True,
         positive_adv=False,
     )
-
-    envs = [copy.deepcopy(env) for _ in range(20)]  # TODO: make this a config option
+    envs = [copy.deepcopy(env) for _ in range(1)]  # TODO: make this a config option
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,

@@ -1,14 +1,18 @@
 from multiprocessing import Process, Pipe
 import gym
+import numpy as np
 
 def worker(conn, env, rollouts_per_meta_task):
     while True:
         cmd, data = conn.recv()
         if cmd == "step":
-            obs, reward, done, info = env.step(data)
+            action, seed = data
+            obs, reward, done, info = env.step(action)
             if done:
                 if env.itr == rollouts_per_meta_task:
                     env.set_task(None)
+                env.seed(int(seed))
+                np.random.seed(seed)
                 obs = env.reset()
             conn.send((obs, reward, done, info))
         elif cmd == "reset":
@@ -70,12 +74,14 @@ class ParallelEnv(gym.Env):
         results = [self.envs[0].advance_curriculum()] + [local.recv() for local in self.locals]
         return results
 
-    def step(self, actions):
+    def step(self, actions, seed):
         for local, action in zip(self.locals, actions[1:]):
-            local.send(("step", action))  # TODO: does this reset?
+            local.send(("step", (action, seed)))
         obs, reward, done, info = self.envs[0].step(actions[0])
         if done:
             self.envs[0].set_task(None)
+            self.envs[0].seed(int(seed))
+            np.random.seed(seed)
             obs = self.envs[0].reset()
         results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
         results = list(results)
@@ -131,13 +137,15 @@ class SequentialEnv(gym.Env):
             results.append(env.advance_curriculum())
         return results
 
-    def step(self, actions):
+    def step(self, actions, seed):
         results = []
         for i, (env, action) in enumerate(zip(self.envs, actions)):
             obs, reward, done, info = env.step(action)
             if done:
                 if env.itr == self.rollouts_per_meta_task:
                     env.set_task(None)
+                env.seed(int(seed))
+                np.random.seed(seed)
                 obs = env.reset()
             results.append((obs, reward, done, info))
         results = zip(*results)

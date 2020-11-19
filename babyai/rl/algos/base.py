@@ -53,7 +53,6 @@ class BaseAlgo(ABC):
 
         """
         # Store parameters
-
         if parallel:
             self.env = ParallelEnv(envs, rollouts_per_meta_task)
         else:
@@ -86,6 +85,8 @@ class BaseAlgo(ABC):
 
         shape = (self.num_frames_per_proc, self.num_procs)
 
+        envs[0].seed(0)
+        np.random.seed(0)
         self.obs = self.env.reset()
         self.obss = [None]*(shape[0])
 
@@ -121,7 +122,7 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
-    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False):
+    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False, seed=0):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -142,7 +143,16 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        shape = (self.num_frames_per_proc, self.num_procs)
+        self.env.envs[0].seed(seed + 0)
+        np.random.seed(seed + 0)
+        self.obs = self.env.reset()
+
+        self.memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
+        self.mask = torch.ones(shape[1], device=self.device).float()
+
         # TODO: Make this handle the case where the meta_rollout length > 1
+        num_runs = 0
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
@@ -166,9 +176,10 @@ class BaseAlgo(ABC):
                     self.dagger_memory = dagger_model_results['memory']
                     action_to_take = dagger_dist.sample().cpu().numpy()
 
-            obs, reward, done, env_info = self.env.step(action_to_take)
+            obs, reward, done, env_info = self.env.step(action_to_take, seed + num_runs + 1)
 
             # Update experiences values
+            num_runs += np.sum(done)
 
             self.env_infos[i] = env_info
             self.obss[i] = self.obs
@@ -237,11 +248,13 @@ class BaseAlgo(ABC):
 
         # Flatten the data correctly, making sure that
         # each episode's data is a continuous chunk
+        starts = [torch.where(row == 1)[0] + 1 for row in self.dones.transpose(0, 1)]
+        last_start = [start[-1].item() for start in starts]
 
         exps = DictList()
         exps.obs = [self.obss[i][j]
                     for j in range(self.num_procs)
-                    for i in range(self.num_frames_per_proc)]
+                    for i in range(self.num_frames_per_proc) if i < last_start[j]]
         keys = list(env_info[0].keys())
         batch = len(env_info)
         timesteps = len(self.env_infos)
@@ -250,30 +263,50 @@ class BaseAlgo(ABC):
             arr = []
             for b in range(batch):
                 for t in range(timesteps):
-                    arr.append(self.env_infos[t][b][k])
+                    if t < last_start[b]:
+                        arr.append(self.env_infos[t][b][k])
             env_info_dict[k] = np.stack(arr)
         env_info_dict = DictList(env_info_dict)
         exps.env_infos = env_info_dict
         # In commments below T is self.num_frames_per_proc, P is self.num_procs,
         # D is the dimensionality
 
+        # # T x P x D -> P x T x D -> (P * T) x D
+        # exps.memory = self.memories.transpose(0, 1).reshape(-1, *self.memories.shape[2:])
+        # # T x P -> P x T -> (P * T) x 1
+        # exps.mask = self.masks.transpose(0, 1).reshape(-1).unsqueeze(1)
+        #
+        # # for all tensors below, T x P -> P x T -> P * T
+        # exps.action = self.actions.transpose(0, 1).reshape(-1)
+        # exps.value = self.values.transpose(0, 1).reshape(-1)
+        # exps.reward = self.rewards.transpose(0, 1).reshape(-1)
+        # exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
+        # exps.returnn = exps.value + exps.advantage
+        # exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
+        # exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
+        # exps.done = self.dones.transpose(0, 1).reshape(-1)
+        # full_done = self.dones.transpose(0, 1)
+        # full_done[:, -1] = 1
+        # exps.full_done = full_done.reshape(-1)
         # T x P x D -> P x T x D -> (P * T) x D
-        exps.memory = self.memories.transpose(0, 1).reshape(-1, *self.memories.shape[2:])
+        exps.memory = torch.cat([vec[:last] for vec, last in zip(self.memories.transpose(0, 1), last_start)])
         # T x P -> P x T -> (P * T) x 1
-        exps.mask = self.masks.transpose(0, 1).reshape(-1).unsqueeze(1)
+        exps.mask = torch.cat([vec[:last] for vec, last in zip(self.masks.transpose(0, 1), last_start)]).unsqueeze(1)
 
         # for all tensors below, T x P -> P x T -> P * T
-        exps.action = self.actions.transpose(0, 1).reshape(-1)
-        exps.value = self.values.transpose(0, 1).reshape(-1)
-        exps.reward = self.rewards.transpose(0, 1).reshape(-1)
-        exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
+        exps.action = torch.cat([vec[:last] for vec, last in zip(self.actions.transpose(0, 1), last_start)])
+        exps.value = torch.cat([vec[:last] for vec, last in zip(self.values.transpose(0, 1), last_start)])
+        exps.reward = torch.cat([vec[:last] for vec, last in zip(self.rewards.transpose(0, 1), last_start)])
+        exps.advantage = torch.cat([vec[:last] for vec, last in zip(self.advantages.transpose(0, 1), last_start)])
         exps.returnn = exps.value + exps.advantage
-        exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
-        exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
-        exps.done = self.dones.transpose(0, 1).reshape(-1)
+        exps.log_prob = torch.cat([vec[:last] for vec, last in zip(self.log_probs.transpose(0, 1), last_start)])
+        exps.teacher_action = torch.cat(
+            [vec[:last] for vec, last in zip(self.teacher_actions.transpose(0, 1), last_start)])
+        exps.done = torch.cat([vec[:last] for vec, last in zip(self.dones.transpose(0, 1), last_start)])
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1
-        exps.full_done = full_done.reshape(-1)
+        exps.full_done = torch.cat([vec[:last] for vec, last in zip(full_done, last_start)])
+        assert torch.all(torch.eq(exps.done, exps.full_done)).item()
 
         if self.aux_info:
             exps = self.aux_info_collector.end_collection(exps)

@@ -419,7 +419,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
 
-            self.oracle = self.teacher.step([action], self.oracle)
+            self.oracle = self.teacher.step(action, self.oracle)
             info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()

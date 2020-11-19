@@ -76,31 +76,42 @@ class Buffer:
             batch = pkl.load(f)
         return batch
 
-    def add_trajs(self, batch, level):
+    def add_trajs(self, batch, level, splits=['train', 'val']):
         batch = trim_batch(batch)
         trajs = self.split_batch(batch)
-        random.shuffle(trajs)
+        # random.shuffle(trajs)
         split = int(self.val_prob * len(trajs))
         # Make sure we get at least one of each
         if split == 0 and len(trajs) > 1:
             split = 1
-        for traj in trajs[:split]:
-            self.save_traj(traj, level, self.index_val[level], 'val')
-            self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
-            self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
-        for traj in trajs[split:]:
-            self.save_traj(traj, level, self.index_train[level], 'train')
-            self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
-            self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+        if 'train' in splits and 'val' in splits:
+            for traj in trajs[:split]:
+                self.save_traj(traj, level, self.index_val[level], 'val')
+                self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
+                self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
+            for traj in trajs[split:]:
+                self.save_traj(traj, level, self.index_train[level], 'train')
+                self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
+                self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+        else:
+            for traj in trajs:
+                if 'train' in splits:
+                    self.save_traj(traj, level, self.index_train[level], splits[0])
+                    self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
+                    self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+                elif 'val' in splits:
+                    self.save_traj(traj, level, self.index_val[level], splits[0])
+                    self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
+                    self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
 
-    def add_batch(self, batch, level):
+    def add_batch(self, batch, level, splits=['train', 'val']):
         # Starting a new level
         if not level in self.index_train:
             self.counts_train[level] = 0
             self.index_train[level] = 0
             self.counts_val[level] = 0
             self.index_val[level] = 0
-        self.add_trajs(batch, level)
+        self.add_trajs(batch, level, splits=splits)
 
     def sample(self, total_num_samples, split='train'):
         if split == 'train':
