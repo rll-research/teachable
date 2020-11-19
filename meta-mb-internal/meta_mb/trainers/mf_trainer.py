@@ -135,6 +135,7 @@ class Trainer(object):
         num_trajs = 0
         num_val_trajs = 0
         while num_trajs < 323000:
+            print("Num trajs", num_trajs)
             samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                        collect_with_oracle=self.args.collect_with_oracle,
                                                                        seed=num_trajs)
@@ -142,6 +143,7 @@ class Trainer(object):
             num_trajs = buffer.counts_train[self.curriculum_step]
 
         while num_val_trajs < 512:
+            print("num val trajs", num_val_trajs)
             samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                        collect_with_oracle=self.args.collect_with_oracle,
                                                                        seed=int(1e6 + num_val_trajs))
