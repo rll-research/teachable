@@ -95,11 +95,11 @@ class Buffer:
                 self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
         else:
             for traj in trajs:
-                if 'train' in splits:
+                if 'train' in splits and self.counts_train[level] < self.train_buffer_capacity:
                     self.save_traj(traj, level, self.index_train[level], splits[0])
                     self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
                     self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
-                elif 'val' in splits:
+                elif 'val' in splits and self.counts_val[level] < self.val_buffer_capacity:
                     self.save_traj(traj, level, self.index_val[level], splits[0])
                     self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
                     self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
