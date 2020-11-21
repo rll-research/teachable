@@ -7,8 +7,13 @@ import copy
 # Based on the success/reward from the past itr
 
 #### NO TEACHER ####
-def no_teacher(level):
-    return {}, {}
+def no_teacher(level, teacher_list):
+    no_teacher_dict = {}
+    for teacher in teacher_list:
+        no_teacher_dict[teacher] = False
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    return no_teacher_dict, copy.deepcopy(no_teacher_dict)
 
 
 #### SINGLE TEACHER ####
@@ -93,8 +98,7 @@ def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=15, 
 def make_teacher_schedule(feedback_types, teacher_schedule):
     feedback_types = [teacher for teacher in feedback_types if not teacher == 'None']
     if teacher_schedule == 'none':
-        assert len(feedback_types) == 0
-        return no_teacher
+        return lambda level: no_teacher(level, feedback_types)
     elif teacher_schedule == 'all_teachers':
         return lambda level: all_teachers(level, feedback_types)
     elif teacher_schedule == 'first_teacher':
