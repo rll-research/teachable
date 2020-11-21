@@ -233,7 +233,10 @@ class Trainer(object):
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
-                advance_curriculum = distill_log[()]['Accuracy'] >= self.args.accuracy_threshold
+                try:
+                    advance_curriculum = distill_log[()]['Accuracy'] >= self.args.accuracy_threshold
+                except:
+                    advance_curriculum = list(distill_log.values())[0]['Accuracy'] >= self.args.accuracy_threshold
                 logger.logkv('Distill/Advance', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', total_distillation_frames)
                 # print("DISTILLATION BREAKDOWN")
