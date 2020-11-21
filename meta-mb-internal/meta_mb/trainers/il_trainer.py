@@ -293,12 +293,12 @@ class ImitationLearning(object):
                 print("One Recurrence took", time.time() - start)
                 logs[key_set] = log
         elif distill_target == 'all':
-            key_set = list(teachers_dict.keys())
+            key_set = tuple(teachers_dict.keys())
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'none':
-            key_set = list(teachers_dict.keys())
+            key_set = tuple(teachers_dict.keys())
             teacher_subset_dict = {}
             for k in key_set:
                 teacher_subset_dict[k] = False
@@ -308,6 +308,6 @@ class ImitationLearning(object):
 
         if is_training:
             self.scheduler.step()
-            curr_lr = self.scheduler._last_lr[0] / self.args.lr
+            # curr_lr = self.scheduler._last_lr[0] / self.args.lr
             # print("LR PROP", curr_lr, "!" * 100)
         return logs
