@@ -270,7 +270,7 @@ class ImitationLearning(object):
         else:
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}):
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset'):
         # Log is a dictionary with keys entropy, policy_loss, and accuracy
         # log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
 
@@ -278,18 +278,32 @@ class ImitationLearning(object):
         keys = list(teachers_dict.keys())
         powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
         logs = {}
-        no_teacher_log = None
-        for key_set in powerset:
+
+        if distill_target == 'powerset':
+            for key_set in powerset:
+                teacher_subset_dict = {}
+                for k in keys:
+                    if k in key_set:
+                        teacher_subset_dict[k] = teachers_dict[k]
+                    else:
+                        teacher_subset_dict[k] = False
+                start = time.time()
+                log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                                                          teacher_dict=teacher_subset_dict)
+                print("One Recurrence took", time.time() - start)
+                logs[key_set] = log
+        elif distill_target == 'all':
+            key_set = list(teachers_dict.keys())
+            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                                                      teacher_dict=teachers_dict)
+            logs[key_set] = log
+        elif distill_target == 'none':
+            key_set = list(teachers_dict.keys())
             teacher_subset_dict = {}
-            for k in keys:
-                if k in key_set:
-                    teacher_subset_dict[k] = teachers_dict[k]
-                else:
-                    teacher_subset_dict[k] = False
-            start = time.time()
+            for k in key_set:
+                teacher_subset_dict[k] = False
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
-            print("One Recurrence took", time.time() - start)
             logs[key_set] = log
 
         if is_training:

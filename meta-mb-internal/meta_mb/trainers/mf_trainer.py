@@ -442,8 +442,13 @@ class Trainer(object):
         return log
 
     def distill(self, samples, is_training=False, teachers_dict=None):
+        distill_target = 'powerset'
+        if self.args.distill_all_teachers:
+            distill_target = 'all'
+        if self.args.distill_no_teachers:
+            distill_target = 'none'
         log = self.il_trainer.distill(samples, source=self.args.source, is_training=is_training,
-                                      teachers_dict=teachers_dict)
+                                      teachers_dict=teachers_dict, distill_target=distill_target)
         return log
 
     def run_supervised(self, policy, teacher_dict, tag):
