@@ -84,7 +84,7 @@ class ImitationLearning(object):
         # Inds holds the start of each demo
         start = time.time()
         obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
-        print("Preprocessing", time.time() - start)
+        # print("Preprocessing", time.time() - start)
         obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
 
@@ -128,7 +128,7 @@ class ImitationLearning(object):
 
             # Incrementing the remaining indices
             inds = [index + 1 for index in inds]
-        print("First half", time.time() - start)
+        # print("First half", time.time() - start)
         start = time.time()
         # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
         # Indexes currently holds the first index of each chunk.
@@ -155,7 +155,7 @@ class ImitationLearning(object):
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
-        print("Second half", time.time() - start)
+        # print("Second half", time.time() - start)
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
@@ -270,7 +270,7 @@ class ImitationLearning(object):
         else:
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}):
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset'):
         # Log is a dictionary with keys entropy, policy_loss, and accuracy
         # log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
 
@@ -278,22 +278,36 @@ class ImitationLearning(object):
         keys = list(teachers_dict.keys())
         powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
         logs = {}
-        no_teacher_log = None
-        for key_set in powerset:
+
+        if distill_target == 'powerset':
+            for key_set in powerset:
+                teacher_subset_dict = {}
+                for k in keys:
+                    if k in key_set:
+                        teacher_subset_dict[k] = teachers_dict[k]
+                    else:
+                        teacher_subset_dict[k] = False
+                start = time.time()
+                log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                                                          teacher_dict=teacher_subset_dict)
+                print("One Recurrence took", time.time() - start)
+                logs[key_set] = log
+        elif distill_target == 'all':
+            key_set = list(teachers_dict.keys())
+            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                                                      teacher_dict=teachers_dict)
+            logs[key_set] = log
+        elif distill_target == 'none':
+            key_set = list(teachers_dict.keys())
             teacher_subset_dict = {}
-            for k in keys:
-                if k in key_set:
-                    teacher_subset_dict[k] = teachers_dict[k]
-                else:
-                    teacher_subset_dict[k] = False
-            start = time.time()
+            for k in key_set:
+                teacher_subset_dict[k] = False
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
-            print("One Recurrence took", time.time() - start)
             logs[key_set] = log
 
         if is_training:
             self.scheduler.step()
             curr_lr = self.scheduler._last_lr[0] / self.args.lr
-            print("LR PROP", curr_lr, "!" * 100)
+            # print("LR PROP", curr_lr, "!" * 100)
         return logs

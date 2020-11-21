@@ -143,6 +143,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distill_label_weightings', action='store_true')
+        self.add_argument('--distill_all_teachers', action='store_true')
+        self.add_argument('--distill_no_teachers', action='store_true')
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=20)
