@@ -102,7 +102,7 @@ class Buffer:
             self.index_val[level] = 0
         self.add_trajs(batch, level)
 
-    def sample(self, total_num_samples, split='train'):
+    def sample(self, total_num_samples=None, total_num_trajs=None, split='train'):
         if split == 'train':
             index = self.index_train
             counts = self.counts_train
@@ -112,8 +112,10 @@ class Buffer:
 
         trajs = []
         num_samples = 0
+        num_trajs = 0
         possible_levels = list(index.keys())
-        while num_samples < total_num_samples:
+        done = False
+        while not done:
             # With prob_current probability, sample from the latest level.
             if random.random() < self.prob_current:
                 level = max(possible_levels)
@@ -122,7 +124,16 @@ class Buffer:
             index = random.randint(0, counts[level] - 1)
             traj = self.load_traj(level, index, split)
             num_samples += len(traj.action)
+            num_trajs += 1
             trajs.append(traj)
+
+            if total_num_samples is not None:
+                done = num_samples >= total_num_samples
+            elif total_num_trajs is not None:
+                done = num_trajs >= total_num_trajs
+            else:  # if not specified, just add one traj
+                done = True
+
         # Combine our list of trajs in to a single DictList
         batch = merge_dictlists(trajs)
         return batch

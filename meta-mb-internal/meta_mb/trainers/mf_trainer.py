@@ -195,7 +195,7 @@ class Trainer(object):
                 time_val_distill = 0
                 for _ in range(self.args.distillation_steps - 1):
                     sample_start = time.time()
-                    sampled_batch = buffer.sample(self.args.batch_size, 'train')
+                    sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='train')
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
                     total_distillation_frames += len(sampled_batch)
@@ -203,7 +203,7 @@ class Trainer(object):
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
-                        sampled_dagger_batch = dagger_buffer.sample(self.args.batch_size, 'train')
+                        sampled_dagger_batch = dagger_buffer.sample(total_num_trajs=self.args.batch_size, split='train')
                         total_distillation_frames += len(sampled_dagger_batch)
                         self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
 
@@ -222,7 +222,7 @@ class Trainer(object):
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
-                sampled_val_batch = buffer.sample(self.args.batch_size, 'val')
+                sampled_val_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
                 distill_log_val = self.distill(sampled_val_batch, is_training=False,
