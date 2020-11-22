@@ -37,14 +37,14 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
-        # x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
+        # x = F.relu(self.conv1(x))
         x = self.conv2(x)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
-        # return F.relu(self.bn2(out))
-        return F.relu(out)
+        return F.relu(self.bn2(out))
+        # return F.relu(out)
 
 
 class ImageBOWEmbedding(nn.Module):
