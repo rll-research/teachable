@@ -122,7 +122,7 @@ class ArgumentParser(argparse.ArgumentParser):
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
         self.add_argument('--discount', type=float, default=.9)
-        self.add_argument('--num_modules', type=int, default=1)
+        self.add_argument('--num_modules', type=int, default=2)
         self.add_argument('--value_loss_coef', type=float, default=.05)  # .5 is default
         self.add_argument('--max_grad_norm', type=float, default=.5)
         self.add_argument('--clip_eps', type=float, default=.2)
