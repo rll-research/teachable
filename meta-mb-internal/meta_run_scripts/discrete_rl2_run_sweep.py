@@ -135,6 +135,12 @@ def run_experiment(**config):
                          advice_size=advice_size,
                          num_modules=args.num_modules)
 
+        og_model = torch.load('/home/olivia/Documents/Teachable/og_babyai/models/EXAMPLE_TRAIN/model.pt')
+        og_params = list(og_model.parameters())
+        our_params = list(policy.parameters())
+        for our_param, og_param in zip(our_params, og_params):
+            our_param.data = og_param.data.clone()
+
         reward_predictor = ACModel(action_space=spaces.Discrete(2),
                                    env=env,
                                    image_dim=args.image_dim,

@@ -28,6 +28,15 @@ class ImitationLearning(object):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    def ours_to_theirs(self, tokens):
+        import json
+        vocab = self.env.vocab()
+        words = [vocab[num] for num in tokens]
+        their_dict = json.loads('')
+        words = [their_dict[word] for word in words if word in their_dict]
+        return words
+
+
     def preprocess_batch(self, batch, source):
         obss = batch.obs
         if source == 'teacher':
@@ -69,6 +78,9 @@ class ImitationLearning(object):
         mask[inds] = 0
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
 
+        for obs in obss:
+            obs['instr'] = self.ours_to_theirs(obs['instr'])
+
         return obss, action_true, action_teacher, done, inds, mask
 
     def set_mode(self, is_training):
@@ -78,12 +90,16 @@ class ImitationLearning(object):
             self.acmodel.eval()
 
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}):
+        act = batch.teacher_action[:, 0]
         self.set_mode(is_training)
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
         start = time.time()
         obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
+        # action_true = action_true.detach().cpu().numpy()
+        # mask = mask.detach().cpu().numpy()[:, 0]
+
         # print("Preprocessing", time.time() - start)
         obss = self.preprocess_obs(obss, teacher_dict)
         num_frames = len(obss)
@@ -114,6 +130,13 @@ class ImitationLearning(object):
 
             with torch.no_grad():
                 # Taking memory up until num_demos, as demos after that have finished
+                # obs_obs = obs.obs.detach().cpu().numpy()  # BAD
+                # # TODO: REMOVE this once we start using a dataset which doesn't pad to 10
+                # obs.instr = obs.instr[:, :-1]  # BAD
+                # obs_instr = obs.instr.detach().cpu().numpy()  # BAD
+                # mem = memory[:num_demos].detach().cpu().numpy()  # BAD
+
+
                 dist, info = self.acmodel(obs, memory[:num_demos])
                 new_memory = info['memory']
 
