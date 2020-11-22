@@ -3,6 +3,7 @@ import torch
 import babyai.utils as utils
 from itertools import chain, combinations
 import time
+import copy
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
@@ -32,7 +33,8 @@ class ImitationLearning(object):
         import json
         vocab = self.env.vocab()
         words = [vocab[num] for num in tokens]
-        their_dict = json.loads('')
+        with open('/home/olivia/Documents/Teachable/og_babyai/models/WORKING_MODEL_L18/vocab.json', 'r') as f:
+            their_dict = json.load(f)
         words = [their_dict[word] for word in words if word in their_dict]
         return words
 
@@ -311,7 +313,8 @@ class ImitationLearning(object):
                     else:
                         teacher_subset_dict[k] = False
                 start = time.time()
-                log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+                batch = copy.deepcopy(demo_batch)
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 print("One Recurrence took", time.time() - start)
                 logs[key_set] = log
@@ -321,9 +324,9 @@ class ImitationLearning(object):
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'none':
-            key_set = tuple(teachers_dict.keys())
+            key_set = tuple(set())
             teacher_subset_dict = {}
-            for k in key_set:
+            for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
