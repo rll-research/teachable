@@ -361,7 +361,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        goal = self.to_vocab_index(self.mission, pad_length=10)
+        goal = self.to_vocab_index(self.mission, pad_length=9)
         obs_dict = {}
         additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
         obs_dict["obs"] = image
