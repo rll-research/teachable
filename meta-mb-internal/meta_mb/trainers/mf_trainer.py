@@ -251,7 +251,7 @@ class Trainer(object):
             run_policy_time = 0
             # TODO: put if advance_curriculum back in here
             if (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1):
+                itr == self.args.n_itr - 1) or (advance_curriculum and itr % 10 == 0):
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
