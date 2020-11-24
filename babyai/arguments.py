@@ -52,7 +52,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=512,
                           help="batch size for PPO (default: 1280)")
-        self.add_argument("--entropy-coef", type=float, default=0.01,
+        self.add_argument("--entropy-coef", type=float, default=0.001,
                           help="entropy term coefficient (default: 0.01)")
 
         # Model parameters
