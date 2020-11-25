@@ -50,7 +50,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="Adam and RMSprop optimizer epsilon (default: 1e-5)")
         self.add_argument("--optim-alpha", type=float, default=0.99,
                           help="RMSprop optimizer apha (default: 0.99)")
-        self.add_argument("--batch-size", type=int, default=512,
+        self.add_argument("--batch-size", type=int, default=256,
                           help="batch size for PPO (default: 1280)")
         self.add_argument("--entropy-coef", type=float, default=0.001,
                           help="entropy term coefficient (default: 0.01)")
@@ -117,7 +117,7 @@ class ArgumentParser(argparse.ArgumentParser):
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])
         self.add_argument('--success_threshold', type=float, default=.99)
-        self.add_argument('--accuracy_threshold', type=float, default=.8)
+        self.add_argument('--accuracy_threshold', type=float, default=.6)
         self.add_argument('--curriculum_type', type=int, default=0)
 
         # Model/Optimization
