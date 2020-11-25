@@ -65,7 +65,6 @@ class Curriculum(Serializable):
                 # 0 --> intro L, R, Forward PreAction, Explore and GoNextTo subgoals
                 Level_GoToRedBallGrey(**kwargs),  # 1 --> first level with distractors
                 Level_GoToRedBall(**kwargs),  # 2 --> first level with colored distractors
-
                 Level_GoToObjS5(**kwargs),  # 3 --> first level where the goal is something other than a red ball
                 Level_GoToLocalS5N2(**kwargs),  # 4 --> first level where the task means something
                 Level_PickupLocalS5N2(**kwargs),  # 5 --> intro Pickup subgoal and pickup PreAction

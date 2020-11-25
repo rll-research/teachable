@@ -67,7 +67,7 @@ def single_teacher_no_powerset(level, teacher_name):
 
 ### PREACTION TO ONE OTHER ####
 # Add in the second teacher ...
-def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=21):
+def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=8):
     if level == -1:  # Generate no_teacher_dict
         return {easy_teacher: False, harder_teacher: False}, None
     if level < cutoff_level:
@@ -80,7 +80,7 @@ def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=21):
 
 ### PREACTION TO ONE OTHER, SWAP OUT ####
 # Add in the second teacher ...
-def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=15, remove_easy_level=21):
+def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
     if level == -1:  # Generate no_teacher_dict
         return {easy_teacher: False, harder_teacher: False}, None
     if level < add_hard_level:

@@ -395,7 +395,7 @@ class Trainer(object):
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
 
-            if True:#if advance_curriculum and not self.args.single_level:
+            if advance_curriculum and not self.args.single_level:
                 if self.il_trainer is not None:
                     self.run_with_bad_teachers(buffer, teacher_train_dict)
                 self.curriculum_step += 1
