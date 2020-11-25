@@ -118,6 +118,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])
         self.add_argument('--success_threshold', type=float, default=.99)
         self.add_argument('--accuracy_threshold', type=float, default=.8)
+        self.add_argument('--curriculum_type', type=int, default=0)
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)

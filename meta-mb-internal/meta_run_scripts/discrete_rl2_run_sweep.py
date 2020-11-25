@@ -113,10 +113,12 @@ def run_experiment(**config):
     teacher_train_dict, _ = teacher_schedule(0)
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
-                                          **arguments)), ceil_reward=args.ceil_reward)
+                                          curriculum_type=args.curriculum_type, **arguments)
+                               ), ceil_reward=args.ceil_reward)
     else:
         optimizer = None
-        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level, **arguments)),
+        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level,
+                                          curriculum_type=args.curriculum_type, **arguments)),
                      ceil_reward=args.ceil_reward)
         obs = env.reset()
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])

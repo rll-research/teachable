@@ -174,11 +174,17 @@ class Level_GoToObjS4(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=4, seed=seed, **kwargs)
 
+class Level_GoToObjS5(Level_GoToObj):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=5, seed=seed, **kwargs)
 
 class Level_GoToObjS6(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=6, seed=seed, **kwargs)
 
+class Level_GoToObjS7(Level_GoToObj):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=7, seed=seed, **kwargs)
 
 class Level_GoToLocal(Level_TeachableRobot):
     """
@@ -360,9 +366,19 @@ class Level_PutNextLocalS5N3(Level_PutNextLocal):
         super().__init__(room_size=5, num_dists=3, seed=seed, **kwargs)
 
 
+class Level_PutNextLocalS5N2(Level_PutNextLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=5, num_dists=2, seed=seed, **kwargs)
+
+
 class Level_PutNextLocalS6N4(Level_PutNextLocal):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=6, num_dists=4, seed=seed, **kwargs)
+
+
+class Level_PutNextLocalS7N4(Level_PutNextLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=7, num_dists=4, seed=seed, **kwargs)
 
 
 class Level_OpenLocal(Level_TeachableRobot):
@@ -404,6 +420,11 @@ class Level_OpenLocal(Level_TeachableRobot):
         return dists + self.get_doors(), door
 
 
+class Level_OpenLocalS5N2(Level_OpenLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=5, num_dists=2, seed=seed, **kwargs)
+
+
 class Level_OpenLocalS5N3(Level_OpenLocal):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=5, num_dists=3, seed=seed, **kwargs)
@@ -412,6 +433,11 @@ class Level_OpenLocalS5N3(Level_OpenLocal):
 class Level_OpenLocalS6N4(Level_OpenLocal):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=6, num_dists=4, seed=seed, **kwargs)
+
+
+class Level_OpenLocalS7N4(Level_OpenLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(room_size=7, num_dists=4, seed=seed, **kwargs)
 
 
 class Level_GoTo(Level_TeachableRobot):

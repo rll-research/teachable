@@ -9,7 +9,7 @@ import time
 import psutil
 import os
 import copy
-
+import random
 
 class Trainer(object):
     """
@@ -395,7 +395,9 @@ class Trainer(object):
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
 
-            if advance_curriculum and not self.args.single_level:
+            if True:#if advance_curriculum and not self.args.single_level:
+                if self.il_trainer is not None:
+                    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
@@ -443,6 +445,25 @@ class Trainer(object):
     def train_rp(self, samples, is_training=False):
         log = self.rp_trainer.distill(samples, source=self.args.source, is_training=is_training)
         return log
+
+    def run_with_bad_teachers(self, buffer, teachers_dict):
+        sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
+        # We pass in teachers one at a time and see what success rate we'd get if we shuffle that teacher
+        teacher_names = [teacher for teacher in teachers_dict.keys() if teachers_dict[teacher]]
+        for teacher in teacher_names:
+            teacher_subset_dict = {}
+            for k in teachers_dict.keys():
+                teacher_subset_dict[k] = False
+            teacher_subset_dict[teacher] = True
+            teacher_feedback = [obs_dict[teacher] for obs_dict in sampled_batch.obs]
+            random.shuffle(teacher_feedback)
+            for obs_dict, shuffled_obs in zip(sampled_batch.obs, teacher_feedback):
+                obs_dict[teacher] = shuffled_obs
+            log = self.il_trainer.distill(sampled_batch, source=self.args.source, is_training=False,
+                                      teachers_dict=teacher_subset_dict, distill_target='all')
+            log_dict = list(log.values())[0]
+            for k, v in log_dict.items():
+                logger.logkv(f"CheckTeachers/{teacher}{k}_Val", v)
 
     def distill(self, samples, is_training=False, teachers_dict=None):
         distill_target = 'powerset'

@@ -288,11 +288,9 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = teachers_dict[k]
                     else:
                         teacher_subset_dict[k] = False
-                start = time.time()
                 batch = copy.deepcopy(demo_batch)
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
-                print("One Recurrence took", time.time() - start)
                 logs[key_set] = log
         elif distill_target == 'all':
             key_set = tuple(teachers_dict.keys())
