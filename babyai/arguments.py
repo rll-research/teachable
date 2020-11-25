@@ -83,7 +83,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Core params
         self.add_argument('--level', type=int, default=0)
-        self.add_argument('--n_itr', type=int, default=10000)
+        self.add_argument('--n_itr', type=int, default=100000)
         self.add_argument('--source', type=str, default='agent', choices=['agent', 'teacher'])
         self.add_argument('--single_level', action='store_true')
         self.add_argument('--no_collect', action='store_true')
