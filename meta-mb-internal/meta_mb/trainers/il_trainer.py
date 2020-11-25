@@ -283,7 +283,7 @@ class ImitationLearning(object):
         if distill_target == 'powerset':
             for key_set in powerset:
                 teacher_subset_dict = {}
-                for k in keys:
+                for k in teachers_dict.keys():
                     if k in key_set:
                         teacher_subset_dict[k] = True
                     else:
