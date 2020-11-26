@@ -159,7 +159,7 @@ class SampleProcessor(object):
                 indices = actions_teacher == token
                 teacher_suggestions = actions_taken[indices] == actions_teacher[indices]
                 mean_advice = np.mean(teacher_suggestions)
-                logger.logkv(log_prefix + 'Advice' + str(token), np.mean(mean_advice))
+                logger.logkv(log_prefix + 'Accuracy' + str(token), np.mean(mean_advice))
 
         if log == 'reward':
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
