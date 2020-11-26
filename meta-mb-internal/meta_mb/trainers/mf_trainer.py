@@ -134,7 +134,7 @@ class Trainer(object):
         total_distillation_frames = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
-            logger.logkv("ItrsOnLEvel", itrs_on_level)
+            # logger.logkv("ItrsOnLevel", itrs_on_level)
             itrs_on_level += 1
 
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
@@ -301,18 +301,18 @@ class Trainer(object):
 
             logger.log(self.exp_name)
 
-            logger.logkv('Time/Training', time_training)
-            logger.logkv('Time/Collection', time_collection)
-            logger.logkv('Time/RPUse', rp_splice_time)
-            logger.logkv('Time/RPTrain', time_rp_train)
-            logger.logkv('Time/RunwTeacher', run_policy_time)
-            logger.logkv('Time/Distillation', distill_time)
-            logger.logkv('Time/RunDistilled', run_supervised_time)
-            logger.logkv('Time/VidRollout', rollout_time)
+            # logger.logkv('Time/Training', time_training)
+            # logger.logkv('Time/Collection', time_collection)
+            # logger.logkv('Time/RPUse', rp_splice_time)
+            # logger.logkv('Time/RPTrain', time_rp_train)
+            # logger.logkv('Time/RunwTeacher', run_policy_time)
+            # logger.logkv('Time/Distillation', distill_time)
+            # logger.logkv('Time/RunDistilled', run_supervised_time)
+            # logger.logkv('Time/VidRollout', rollout_time)
             time_unaccounted = time_itr - time_training - time_collection - \
                          rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
                          rollout_time
-            logger.logkv('Time/Unaccounted', time_unaccounted)
+            # logger.logkv('Time/Unaccounted', time_unaccounted)
 
             all_time_training += time_training
             all_time_collection += time_collection
@@ -447,7 +447,6 @@ class Trainer(object):
         return log
 
     def run_with_bad_teachers(self, buffer, teachers_dict):
-        sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
         # We pass in teachers one at a time and see what success rate we'd get if we shuffle that teacher
         teacher_names = [teacher for teacher in teachers_dict.keys() if teachers_dict[teacher]]
         for teacher in teacher_names:
@@ -455,6 +454,9 @@ class Trainer(object):
             for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
             teacher_subset_dict[teacher] = True
+
+            # Shuffle teachers
+            sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
             teacher_feedback = [obs_dict[teacher] for obs_dict in sampled_batch.obs]
             random.shuffle(teacher_feedback)
             for obs_dict, shuffled_obs in zip(sampled_batch.obs, teacher_feedback):
@@ -462,8 +464,16 @@ class Trainer(object):
             log = self.il_trainer.distill(sampled_batch, source=self.args.source, is_training=False,
                                       teachers_dict=teacher_subset_dict, distill_target='all')
             log_dict = list(log.values())[0]
-            for k, v in log_dict.items():
-                logger.logkv(f"CheckTeachers/{teacher}{k}_Val", v)
+            logger.logkv(f"CheckTeachers/Shuffled_{teacher}_Accuracy", log_dict['Accuracy'])
+
+            # CorrectTeacher, no inst
+            sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
+            for obs_dict in sampled_batch.obs:
+                obs_dict['instr'] = [0] * len(obs_dict['instr'])
+            log = self.il_trainer.distill(sampled_batch, source=self.args.source, is_training=False,
+                                          teachers_dict=teacher_subset_dict, distill_target='all')
+            log_dict = list(log.values())[0]
+            logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
     def distill(self, samples, is_training=False, teachers_dict=None):
         distill_target = 'powerset'
@@ -483,7 +493,7 @@ class Trainer(object):
                                                              log_teacher=self.train_with_teacher)
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data)
         logger.logkv(f"{tag}Advance", int(advance_curriculum))
-        logger.logkv(f"{tag}AvgSuccess", avg_success)
+        # logger.logkv(f"{tag}AvgSuccess", avg_success)
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
         return advance_curriculum
 

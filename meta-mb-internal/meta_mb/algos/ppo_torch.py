@@ -261,32 +261,32 @@ class PPOAlgo(BaseAlgo):
                 logs['TeacherError'] = numpy.mean(exps.env_infos.teacher_error)
             except:
                 has_teacher = False
-            logs['Advantage'] = numpy.mean(log_advantage)
-            logs['Ratio'] = numpy.mean(log_ratio)
-            logs['PolicyClip'] = numpy.mean(log_policy_clip)
+            # logs['Advantage'] = numpy.mean(log_advantage)
+            # logs['Ratio'] = numpy.mean(log_ratio)
+            # logs['PolicyClip'] = numpy.mean(log_policy_clip)
 
-            logs['ValueClip'] = numpy.mean(log_value_clip)
+            # logs['ValueClip'] = numpy.mean(log_value_clip)
             logs['Returnn'] = numpy.mean(log_returnn)
 
-            logs['LogProb'] = numpy.mean(log_log_prob)
-            logs['Returnn'] = numpy.mean(log_sb_value)
+            # logs['LogProb'] = numpy.mean(log_log_prob)
+            # logs['Returnn'] = numpy.mean(log_sb_value)
 
             logs['Accuracy'] = accuracy
-            logs["Entropy_loss"] = numpy.mean(log_entropies)
+            # logs["Entropy_loss"] = numpy.mean(log_entropies)
             logs["Entropy"] = numpy.mean(log_entropies) / self.entropy_coef
-            logs["Value"] = numpy.mean(log_values)
-            logs["Policy_loss"] = numpy.mean(log_policy_losses)
-            logs["Value_loss"] = numpy.mean(log_value_losses)
+            # logs["Value"] = numpy.mean(log_values)
+            # logs["Policy_loss"] = numpy.mean(log_policy_losses)
+            # logs["Value_loss"] = numpy.mean(log_value_losses)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
             for i in range(num_actions):
-                logs[f'Took{i}'] = np.mean(log_actions_taken[i])
+                # logs[f'Took{i}'] = np.mean(log_actions_taken[i])
                 if len(log_teacher_following[i]) > 0:
                     logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
-                    logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
+                    # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
             num_feedback = sum(list(teacher_dict.values()))
             logs["num_feedback_advice"] = len(exps.obs) * num_feedback
-            logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
+            # logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
 
         return logs
 

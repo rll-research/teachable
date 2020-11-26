@@ -146,7 +146,7 @@ class SampleProcessor(object):
             probs = [probs for path in paths for probs in path['agent_infos']['probs']]
             prob_actions_teacher = [p[int(i)] for p, i in zip(probs, actions_teacher)]
             prob_actions_taken = [p[int(i)] for p, i in zip(probs, actions_taken)]
-            logger.logkv(log_prefix + 'ProbActionTeacher', np.mean(prob_actions_teacher))
+            # logger.logkv(log_prefix + 'ProbActionTeacher', np.mean(prob_actions_teacher))
             logger.logkv(log_prefix + 'ProbActionTaken', np.mean(prob_actions_taken))
 
             teacher_suggestions = actions_taken == actions_teacher
@@ -167,26 +167,26 @@ class SampleProcessor(object):
         elif log == 'all' or log is True:
 
             all_actions = np.array([step for path in paths for step in path['actions']])
-            logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
+            # logger.logkv(log_prefix + 'ActionDiversity', np.mean(all_actions))
 
             logger.logkv(log_prefix + 'AverageDiscountedReturn', average_discounted_return)
             logger.logkv(log_prefix + 'AverageReturn', np.mean(undiscounted_returns))
-            logger.logkv(log_prefix + 'NumTrajs', len(paths))
-            logger.logkv(log_prefix + 'StdReturn', np.std(undiscounted_returns))
-            logger.logkv(log_prefix + 'MaxReturn', np.max(undiscounted_returns))
-            logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
+            # logger.logkv(log_prefix + 'NumTrajs', len(paths))
+            # logger.logkv(log_prefix + 'StdReturn', np.std(undiscounted_returns))
+            # logger.logkv(log_prefix + 'MaxReturn', np.max(undiscounted_returns))
+            # logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
 
             logger.logkv(log_prefix + 'AverageSuccess', np.mean(success))
-            logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
+            # logger.logkv(log_prefix + 'TotalSuccess', np.mean(total_success))
 
             logger.logkv(log_prefix + 'AveragePathLength', np.mean(path_length))
-            logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
-            logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
-            logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
+            # logger.logkv(log_prefix + 'MinPathLength', np.min(path_length))
+            # logger.logkv(log_prefix + 'MaxPathLength', np.max(path_length))
+            # logger.logkv(log_prefix + 'StdPathLength', np.std(path_length))
 
             logger.logkv(log_prefix + 'AvgEntropy', np.mean(action_entropy))
-            if log_teacher:
-                logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions))
+            # if log_teacher:
+            #     logger.logkv(log_prefix + 'AvgTeacherAdviceTaken', np.mean(teacher_suggestions))
 
         return np.mean(undiscounted_returns)
 
