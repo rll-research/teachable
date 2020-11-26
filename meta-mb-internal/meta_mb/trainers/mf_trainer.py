@@ -157,6 +157,7 @@ class Trainer(object):
                     dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
                 else:
                     dagger_samples_data = None
+                logger.logkv("BufferSize", buffer.counts_train[self.curriculum_step])
 
             else:
                 episode_logs = None

@@ -286,7 +286,7 @@ class PPOAlgo(BaseAlgo):
                     # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
             num_feedback = sum(list(teacher_dict.values()))
             logs["num_feedback_advice"] = len(exps.obs) * num_feedback
-            # logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
+            logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
 
         return logs
 
