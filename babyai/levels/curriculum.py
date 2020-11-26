@@ -3,7 +3,7 @@ from babyai.levels.iclr19_levels import *
 
 
 class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, start_index=None, curriculum_type=0, **kwargs):
+    def __init__(self, advance_curriculum_func, start_index=0, curriculum_type=0, **kwargs):
         """
 
         :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
@@ -111,8 +111,6 @@ class Curriculum(Serializable):
 
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
-        if start_index is None:
-            start_index = 0
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[start_index] = 1
         self._wrapped_env = self.levels_list[start_index]
