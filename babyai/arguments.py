@@ -152,6 +152,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.99)
+        self.add_argument('--num_envs', type=int, default=20)
 
     def parse_args(self, arg=None):
         """
