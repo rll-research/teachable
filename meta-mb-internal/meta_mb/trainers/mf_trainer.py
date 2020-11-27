@@ -11,6 +11,7 @@ import os
 import copy
 import random
 
+
 class Trainer(object):
     """
     Performs steps for MAML
@@ -130,7 +131,6 @@ class Trainer(object):
         all_rollout_time = 0
         all_unaccounted_time = 0
 
-
         total_distillation_frames = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
@@ -158,6 +158,10 @@ class Trainer(object):
                 else:
                     dagger_samples_data = None
                 logger.logkv("BufferSize", buffer.counts_train[self.curriculum_step])
+                if self.args.end_on_full_buffer and \
+                    (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
+                    print("ALL DONE!")
+                    return
 
             else:
                 episode_logs = None
@@ -311,8 +315,8 @@ class Trainer(object):
             # logger.logkv('Time/RunDistilled', run_supervised_time)
             # logger.logkv('Time/VidRollout', rollout_time)
             time_unaccounted = time_itr - time_training - time_collection - \
-                         rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
-                         rollout_time
+                               rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
+                               rollout_time
             # logger.logkv('Time/Unaccounted', time_unaccounted)
 
             all_time_training += time_training
@@ -463,7 +467,7 @@ class Trainer(object):
             for obs_dict, shuffled_obs in zip(sampled_batch.obs, teacher_feedback):
                 obs_dict[teacher] = shuffled_obs
             log = self.il_trainer.distill(sampled_batch, source=self.args.source, is_training=False,
-                                      teachers_dict=teacher_subset_dict, distill_target='all')
+                                          teachers_dict=teacher_subset_dict, distill_target='all')
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/Shuffled_{teacher}_Accuracy", log_dict['Accuracy'])
 
