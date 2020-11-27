@@ -47,19 +47,12 @@ class ImitationLearning(object):
         done_list = []
 
         for i in range(len(inds) - 1):
-            # clip to length 40
             start = inds[i]
             end = inds[i + 1]
-            if end - start > 40:
-                max_start = end - start - 40
-                start = np.random.randint(0, max_start)
-                end = start + 40
             obss_list.append(obss[start: end])
             action_true_list.append(action_true[start: end])
             action_teacher_list.append(action_teacher[start: end])
-            done_traj = done[start: end]
-            done_traj[-1] = 1
-            done_list.append(done_traj)
+            done_list.append(done[start: end])
         trajs = list(zip(obss_list, action_true_list, action_teacher_list, done_list))
         trajs.sort(key=lambda x: len(x[0]), reverse=True)
         obss_list, action_true_list, action_teacher_list, done_list = zip(*trajs)
