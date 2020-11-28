@@ -401,8 +401,8 @@ class Trainer(object):
                     logger.log("Saved")
 
             if advance_curriculum and not self.args.single_level:
-                if self.il_trainer is not None:
-                    self.run_with_bad_teachers(buffer, teacher_train_dict)
+                #if self.il_trainer is not None:
+                #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
