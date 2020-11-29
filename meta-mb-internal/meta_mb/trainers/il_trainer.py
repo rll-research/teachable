@@ -35,6 +35,8 @@ class ImitationLearning(object):
             action_true = batch.teacher_action[:, 0]
         elif source == 'agent':
             action_true = batch.action
+        elif source == 'agent_argmax':
+            action_true = torch.argmax(batch.action_probs, dim=1)
         action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done

@@ -96,6 +96,7 @@ class BaseAlgo(ABC):
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
         self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
+        self.action_probs = torch.zeros(*shape, envs[0].action_space.n, device=self.device, dtype=torch.float16)
         self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
@@ -155,6 +156,7 @@ class BaseAlgo(ABC):
 
             action = dist.sample()
             action_to_take = action.cpu().numpy()
+            probs = dist.probs
 
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
@@ -187,6 +189,7 @@ class BaseAlgo(ABC):
             self.dones[i] = done_tensor
             self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action
+            self.action_probs[i] = probs
             self.values[i] = value
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
@@ -264,6 +267,8 @@ class BaseAlgo(ABC):
 
         # for all tensors below, T x P -> P x T -> P * T
         exps.action = self.actions.transpose(0, 1).reshape(-1)
+        exps.action_probs = self.action_probs.transpose(0, 1)
+        exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
         exps.value = self.values.transpose(0, 1).reshape(-1)
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
         exps.advantage = self.advantages.transpose(0, 1).reshape(-1)

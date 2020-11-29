@@ -13,6 +13,7 @@ def trim_batch(batch):
     return DictList({
         "obs": batch.obs,
         "action": batch.action.int(),
+        "action_probs": batch.action_probs,
         "teacher_action": batch.env_infos.teacher_action,
         "full_done": batch.full_done.int()
     })
