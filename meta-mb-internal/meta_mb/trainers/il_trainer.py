@@ -37,7 +37,10 @@ class ImitationLearning(object):
             action_true = batch.action
         elif source == 'agent_argmax':
             action_true = torch.argmax(batch.action_probs, dim=1)
-        action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
+        elif source == 'agent_probs':
+            action_true = batch.action_probs
+        if not source == 'agent_probs':
+            action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done
 
@@ -147,11 +150,16 @@ class ImitationLearning(object):
             dist, info = self.acmodel(obs, memory * mask_step)
             memory = info["memory"]
 
-            # Compute the cross-entropy loss with an entropy bonus
-            action_weightings = weightings[action_step]
-            entropy = dist.entropy().mean()
-            policy_loss = -dist.log_prob(action_step) * action_weightings
+            if source == 'agent_probs':
+                loss_fn = torch.nn.BCEWithLogitsLoss()
+                policy_loss = loss_fn(dist.logits, action_step)
+                action_step = torch.argmax(action_step, dim=1)
+            else:
+                action_weightings = weightings[action_step]
+                policy_loss = -dist.log_prob(action_step) * action_weightings
             policy_loss = policy_loss.mean()
+            # Compute the cross-entropy loss with an entropy bonus
+            entropy = dist.entropy().mean()
             loss = policy_loss - self.args.entropy_coef * entropy
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             final_loss += loss
