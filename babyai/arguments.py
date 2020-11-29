@@ -109,7 +109,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--feedback_type', nargs='+', default=["None"],
                           choices=["None", "PreActionAdvice", "CartesianCorrections", "SubgoalCorrections"])
         self.add_argument('--feedback_always', action='store_true')
-        self.add_argument('--feedback_freq', type=int, default=1)
+        self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
         self.add_argument('--cartesian_steps', type=int, default=1)
         self.add_argument('--teacher_schedule', type=str, default='all_teachers')
         self.add_argument('--use_dagger', action='store_true')

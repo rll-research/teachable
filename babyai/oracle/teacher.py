@@ -110,19 +110,24 @@ class Teacher:
         if self.feedback_always:
             feedback = self.compute_feedback()
             self.last_feedback = feedback
+            gave_feedback = True
         elif self.feedback_type == 'none':
             feedback = self.empty_feedback()
+            gave_feedback = False
         elif self.feedback_type == 'random':
             feedback = self.random_feedback()
+            gave_feedback = True
         elif self.feedback_type == 'oracle':
             if self.feedback_condition():
                 feedback = self.compute_feedback()
+                gave_feedback = True
             else:
                 feedback = self.empty_feedback()
+                gave_feedback = False
             self.last_feedback = feedback
         else:
             raise ValueError("Unsupported feedback type")
-        return feedback
+        return feedback, gave_feedback
 
     def empty_feedback(self):
         """

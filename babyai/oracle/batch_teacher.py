@@ -16,7 +16,9 @@ class BatchTeacher:
     def give_feedback(self, state):
         return_dict = {}
         for k, v in self.teachers.items():
-            return_dict[k] = v.give_feedback(state)
+            advice, advice_given = v.give_feedback(state)
+            return_dict[k] = advice
+            return_dict['gave_' + k] = advice_given
         return return_dict
 
     def empty_feedback(self):

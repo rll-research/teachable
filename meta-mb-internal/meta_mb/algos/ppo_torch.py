@@ -284,9 +284,12 @@ class PPOAlgo(BaseAlgo):
                 if len(log_teacher_following[i]) > 0:
                     logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
                     # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
-            num_feedback = sum(list(teacher_dict.values()))
-            logs["num_feedback_advice"] = len(exps.obs) * num_feedback
-            logs["num_feedback_reward"] = len(exps.reward)  # TODO: change this once we use the reward predictor!
+            num_feedback = 0
+            for key in exps.obs.keys():
+                if 'gave_' in key:
+                    num_feedback += torch.sum(getattr(exps.obs, key)).item()
+            logs["num_feedback_advice"] = num_feedback
+            logs["num_feedback_reward"] = len(exps.reward)
 
         return logs
 

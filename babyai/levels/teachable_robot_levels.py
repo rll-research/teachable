@@ -49,19 +49,23 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if (feedback_type is not None) and (not feedback_type == ['None']):
             self.oracle = {}
             teachers = {}
-            for ft in feedback_type:
+            assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
+                "you must provide either one feedback_freq value for all teachers or one per teacher"
+            if len(feedback_freq) == 1:
+                feedback_freq = [feedback_freq[0]] * len(feedback_type)
+            for ft, ff in zip(feedback_type, feedback_freq):
                 if ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
-                                               feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
                     teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always,
-                                                   feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                                                   feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=feedback_freq, cartesian_steps=cartesian_steps)
+                                                 feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
