@@ -306,18 +306,18 @@ class Trainer(object):
 
             logger.log(self.exp_name)
 
-            # logger.logkv('Time/Training', time_training)
-            # logger.logkv('Time/Collection', time_collection)
-            # logger.logkv('Time/RPUse', rp_splice_time)
-            # logger.logkv('Time/RPTrain', time_rp_train)
-            # logger.logkv('Time/RunwTeacher', run_policy_time)
-            # logger.logkv('Time/Distillation', distill_time)
-            # logger.logkv('Time/RunDistilled', run_supervised_time)
-            # logger.logkv('Time/VidRollout', rollout_time)
+            logger.logkv('Time/Training', time_training)
+            logger.logkv('Time/Collection', time_collection)
+            logger.logkv('Time/RPUse', rp_splice_time)
+            logger.logkv('Time/RPTrain', time_rp_train)
+            logger.logkv('Time/RunwTeacher', run_policy_time)
+            logger.logkv('Time/Distillation', distill_time)
+            logger.logkv('Time/RunDistilled', run_supervised_time)
+            logger.logkv('Time/VidRollout', rollout_time)
             time_unaccounted = time_itr - time_training - time_collection - \
                                rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
                                rollout_time
-            # logger.logkv('Time/Unaccounted', time_unaccounted)
+            logger.logkv('Time/Unaccounted', time_unaccounted)
 
             all_time_training += time_training
             all_time_collection += time_collection
