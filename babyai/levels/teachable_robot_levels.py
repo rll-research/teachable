@@ -432,30 +432,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         else:
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # Reward at the end scaled by 1000
-        reward_total = rew * 1000
+        reward_total = np.ceil(rew) * 10
         if self.intermediate_reward:
             reward_total += int(give_reward)
-        rew = reward_total / 1000
+        rew = reward_total / 10
         return obs, rew, done, info
 
     def compute_give_reward(self, action):  # TODO: consider computing dense rewards as a dictionary too
-        give_reward = False
-        curr_teach = self.teacher
-        followed_opt_action = False
-        for teacher in curr_teach.teachers.values():
-            if isinstance(teacher, CartesianCorrections):
-                # self.teacher = None
-                # ob_curr = self.gen_obs()  # TODO: later, make this dictionaries
-                # self.teacher = curr_teach  # TODO: why did we have this?
-                # followed_opt_action = teacher.success_check(ob_curr)
-                followed_opt_action = True  # TODO: AAAAAAA
-            elif isinstance(teacher, PreActionAdvice):
-                followed_opt_action = teacher.success_check(action)
-            elif isinstance(teacher, SubgoalCorrections):
-                # Not actually checking for subgoal
-                opt_action = int(teacher.next_action)
-                followed_opt_action = (opt_action == action)
-            give_reward = give_reward or followed_opt_action
+        # Give reward whenever the agent follows the optimal action
+        give_reward = action == self.teacher_action
         return give_reward
 
     def get_teacher_action(self):
