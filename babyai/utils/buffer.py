@@ -102,6 +102,13 @@ class Buffer:
             self.index_val[level] = 0
         self.add_trajs(batch, level)
 
+    def trim_level(self, level, max_trajs=20000):
+        for i in range(max_trajs, self.counts_train[level]):
+            file_name = self.buffer_path.joinpath(f'traj_train_level{level}_idx{i}.pkl')
+            file_name.unlink()
+        self.counts_train[level] = min(self.counts_train[level], max_trajs)
+        self.index_train[level] = min(self.index_train[level], max_trajs - 1)
+
     def sample(self, total_num_samples=None, total_num_trajs=None, split='train'):
         if split == 'train':
             index = self.index_train

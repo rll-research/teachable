@@ -403,6 +403,7 @@ class Trainer(object):
             if advance_curriculum and not self.args.single_level:
                 #if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
+                buffer.trim_level(self.curriculum_step, max_trajs=20000)
                 self.curriculum_step += 1
                 self.sampler.advance_curriculum()
                 self.algo.advance_curriculum()
