@@ -80,7 +80,7 @@ def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=8):
 
 ### PREACTION TO ONE OTHER, SWAP OUT ####
 # Add in the second teacher ...
-def easy_replace_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
+def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
     if level == -1:  # Generate no_teacher_dict
         return {easy_teacher: False, harder_teacher: False}, None
     if level < add_hard_level:
@@ -113,6 +113,6 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         return lambda level: easy_add_harder(level, feedback_types[0], feedback_types[1])
     elif teacher_schedule == 'easy_swap_harder':
         assert len(feedback_types) == 2
-        return lambda level: easy_add_harder(level, feedback_types[0], feedback_types[1])
+        return lambda level: easy_swap_harder(level, feedback_types[0], feedback_types[1])
     else:
         raise ValueError(f'Unknown distillation scheme {teacher_schedule}, {feedback_types}')

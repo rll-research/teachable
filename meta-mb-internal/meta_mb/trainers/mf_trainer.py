@@ -107,7 +107,6 @@ class Trainer(object):
         """
         Trains policy on env using algo
         """
-        teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step)
         start_time = time.time()
         rollout_time = 0
         itrs_on_level = 0
@@ -134,6 +133,7 @@ class Trainer(object):
         total_distillation_frames = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
+            teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step)
             # logger.logkv("ItrsOnLevel", itrs_on_level)
             itrs_on_level += 1
 
