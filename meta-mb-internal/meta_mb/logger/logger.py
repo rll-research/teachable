@@ -112,7 +112,7 @@ class JSONOutputFormat(KVWriter):
 
 class CSVOutputFormat(KVWriter):
     def __init__(self, filename):
-        self.file = open(filename, 'w+t')
+        self.file = open(filename, 'a+t')
         self.keys = []
         self.sep = ','
 
