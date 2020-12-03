@@ -139,11 +139,16 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         return lambda level: all_teachers(level, feedback_types)
     elif teacher_schedule == 'first_teacher':
         return lambda level: first_teacher(level, feedback_types)
+    elif teacher_schedule == 'train_first_advance_first':
+        return lambda level: train_first_advance_first(level, feedback_types)
     elif teacher_schedule == 'first_teacher_both':
         return lambda level: first_teacher(level, feedback_types)
     elif teacher_schedule == 'single_teacher_no_powerset':
         assert len(feedback_types) == 1
         return lambda level: single_teacher_no_powerset(level, feedback_types[0])
+    elif teacher_schedule == 'train_first_advance_second':
+        assert len(feedback_types) == 2
+        return lambda level: train_first_advance_second(level, feedback_types[0], feedback_types[1])
     elif teacher_schedule == 'easy_add_harder':
         assert len(feedback_types) == 2
         return lambda level: easy_add_harder(level, feedback_types[0], feedback_types[1])
