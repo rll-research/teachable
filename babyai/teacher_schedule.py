@@ -45,6 +45,20 @@ def first_teacher(level, teacher_list):
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
+#### FIRST TEACHER ####
+# Train on the first teacher, distill to first
+def train_first_advance_first(level, teacher_list):
+    no_teacher_dict = {}
+    for teacher in teacher_list:
+        no_teacher_dict[teacher] = False
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = copy.deepcopy(no_teacher_dict)
+    teacher_train_dict[teacher_list[0]] = True
+    advancement_dict = copy.deepcopy(teacher_train_dict)
+    distillation_dict = copy.deepcopy(teacher_train_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
+
 
 # Train on the first teacher, distill to the second, advance with the second
 def train_first_advance_second(level, easy_teacher, harder_teacher):
