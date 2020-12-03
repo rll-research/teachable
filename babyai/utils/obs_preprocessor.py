@@ -3,7 +3,7 @@ import numpy as np
 from babyai.rl.utils.dictlist import DictList
 
 def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
-    def obss_preprocessor(obs, teacher_dict):
+    def obss_preprocessor(obs, teacher_dict, show_instrs=True):
         obs_output = {}
         assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
 
@@ -18,11 +18,16 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
         for o in obs:
             advice_list = []
             for k, v in o.items():
+                if type(v) is list:
+                    v = np.array(v)
                 if k in teacher_dict:
                     # Mask out particular teachers
                     if not teacher_dict[k]:
                         v = teacher_null_dict[k]
                     advice_list.append(v.flatten())
+                elif k == 'instr':
+                    mask = int(show_instrs)
+                    obs_output[k].append(v * mask)
                 else:
                     obs_output[k].append(v)
             if len(advice_list) > 0:

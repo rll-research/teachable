@@ -50,7 +50,7 @@ class Trainer(object):
         log_every=10,
         save_videos_every=200,
         log_and_save=True,
-        teacher_schedule=lambda _: ({}, {}),
+        teacher_schedule=lambda _: ({}, {}, {}),
         obs_preprocessor=None,
     ):
         self.args = args
@@ -133,7 +133,7 @@ class Trainer(object):
         total_distillation_frames = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
-            teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step)
+            teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step)
             # logger.logkv("ItrsOnLevel", itrs_on_level)
             itrs_on_level += 1
 
@@ -263,7 +263,7 @@ class Trainer(object):
                         # Distilled model
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
+                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
                                                                      "DRollout/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:

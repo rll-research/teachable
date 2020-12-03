@@ -4,15 +4,17 @@ import babyai.utils as utils
 from itertools import chain, combinations
 import time
 import copy
+from babyai.rl.utils.dictlist import DictList
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False):
+                 label_weightings=False, instr_dropout_prob=.5):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
         self.preprocess_obs = preprocess_obs
         self.label_weightings = label_weightings
+        self.instr_dropout_prob = instr_dropout_prob
 
         utils.seed(self.args.seed)
         self.env = env
@@ -62,7 +64,8 @@ class ImitationLearning(object):
         trajs.sort(key=lambda x: len(x[0]), reverse=True)
         obss_list, action_true_list, action_teacher_list, done_list = zip(*trajs)
 
-        obss = [o for traj in obss_list for o in traj]
+        # obss = [o for traj in obss_list for o in traj]
+        obss = obss_list
         action_true = torch.cat(action_true_list, dim=0)
         action_teacher = np.concatenate(action_teacher_list, axis=0)
         done = torch.cat(done_list, dim=0)
@@ -71,7 +74,7 @@ class ImitationLearning(object):
         done = done.detach().cpu().numpy()
         inds = np.concatenate([[0], inds[:-1]])
 
-        mask = np.ones([len(obss)], dtype=np.float64)
+        mask = np.ones([len(action_true)], dtype=np.float64)
         mask[inds] = 0
         mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
 
@@ -89,9 +92,15 @@ class ImitationLearning(object):
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
         start = time.time()
-        obss, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
+        obss_list, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
         # print("Preprocessing", time.time() - start)
-        obss = self.preprocess_obs(obss, teacher_dict)
+        obss_list = [self.preprocess_obs(o, teacher_dict, show_instrs=np.random.uniform() > self.instr_dropout_prob)
+                     for o in obss_list]
+        obss = {}
+        keys = obss_list[0].keys()
+        for k in keys:
+            obss[k] = torch.cat([getattr(o, k) for o in obss_list])
+        obss = DictList(obss)
         num_frames = len(obss)
 
         if self.label_weightings:

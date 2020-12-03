@@ -13,7 +13,7 @@ def no_teacher(level, teacher_list):
         no_teacher_dict[teacher] = False
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
-    return no_teacher_dict, copy.deepcopy(no_teacher_dict)
+    return no_teacher_dict, copy.deepcopy(no_teacher_dict), copy.deepcopy(no_teacher_dict)
 
 
 #### SINGLE TEACHER ####
@@ -26,7 +26,8 @@ def all_teachers(level, teacher_list):
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
     distillation_dict = copy.deepcopy(teacher_train_dict)
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 
 #### FIRST TEACHER ####
@@ -41,7 +42,21 @@ def first_teacher(level, teacher_list):
         return no_teacher_dict, None
     teacher_train_dict = copy.deepcopy(no_teacher_dict)
     teacher_train_dict[teacher_list[0]] = True
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
+
+
+# Train on the first teacher, distill to the second, advance with the second
+def train_first_advance_second(level, easy_teacher, harder_teacher):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = copy.deepcopy(no_teacher_dict)
+    teacher_train_dict[easy_teacher] = True
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    advancement_dict[harder_teacher] = True
+    distillation_dict = copy.deepcopy(advancement_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 #### FIRST TEACHER ####
 # Train and distill on the first teacher
@@ -54,35 +69,41 @@ def first_teacher_both(level, teacher_list):
     teacher_train_dict = copy.deepcopy(no_teacher_dict)
     teacher_train_dict[teacher_list[0]] = True
     distillation_dict = copy.deepcopy(teacher_train_dict)
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 #### SINGLE TEACHER, NO POWERSET ####
 def single_teacher_no_powerset(level, teacher_name):
+    no_teacher_dict = {teacher_name: False}
     if level == -1:  # Generate no_teacher_dict
-        return {teacher_name: False}, None
+        return no_teacher_dict, None
     teacher_train_dict = {teacher_name: True}
     distillation_dict = {teacher_name: False}
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 
 ### PREACTION TO ONE OTHER ####
 # Add in the second teacher ...
 def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=8):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
-        return {easy_teacher: False, harder_teacher: False}, None
+        return no_teacher_dict, None
     if level < cutoff_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
     else:
         teacher_train_dict = {easy_teacher: True, harder_teacher: True}
     distillation_dict = copy.deepcopy(teacher_train_dict)
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 
 ### PREACTION TO ONE OTHER, SWAP OUT ####
 # Add in the second teacher ...
 def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
-        return {easy_teacher: False, harder_teacher: False}, None
+        return no_teacher_dict, None
     if level < add_hard_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
         distillation_dict = copy.deepcopy(teacher_train_dict)
@@ -92,7 +113,8 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remo
     else:
         teacher_train_dict = {easy_teacher: False, harder_teacher: True}
         distillation_dict = {easy_teacher: True, harder_teacher: True}
-    return teacher_train_dict, distillation_dict
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 
 def make_teacher_schedule(feedback_types, teacher_schedule):
