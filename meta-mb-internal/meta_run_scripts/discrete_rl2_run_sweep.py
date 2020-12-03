@@ -178,7 +178,8 @@ def run_experiment(**config):
     args.model = 'default_il'
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
-                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
+                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
+                                       instr_dropout_prob=args.instr_dropout_prob)
     else:
         il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
