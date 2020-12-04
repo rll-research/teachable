@@ -3,6 +3,7 @@ import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
 from babyai.utils.buffer import Buffer, trim_batch
+from scripts.test_generalization import eval_policy
 import os.path as osp
 import joblib
 import time
@@ -10,6 +11,7 @@ import psutil
 import os
 import copy
 import random
+import pathlib
 
 
 class Trainer(object):
@@ -405,11 +407,29 @@ class Trainer(object):
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 buffer.trim_level(self.curriculum_step, max_trajs=20000)
                 self.curriculum_step += 1
-                self.sampler.advance_curriculum()
-                self.algo.advance_curriculum()
+                try:
+                    self.sampler.advance_curriculum()
+                    self.algo.advance_curriculum()
+                except NotImplementedError:
+                    # If we get a NotImplementedError b/c we ran out of levels, stop training
+                    break
                 itrs_on_level = 0
 
         logger.log("Training finished")
+        policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
+        self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
+        logger.log("Evaluation finished")
+        logger.dumpkvs()
+
+    def evaluate_heldout(self, policy, teachers):
+        num_rollouts = 1#50
+        for env in self.env.held_out_levels:
+            level_name = env.__class__.__name__[6:]
+            save_dir = pathlib.Path(self.exp_name).joinpath(level_name)
+            success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, save_dir, num_rollouts, teachers)
+            logger.logkv(f'Heldout/{level_name}Success', success_rate)
+            logger.logkv(f'Heldout/{level_name}StochAcc', success_rate)
+            logger.logkv(f'Heldout/{level_name}DetAcc', success_rate)
 
     def _log(self, episode_logs, summary_logs, tag=""):
         if episode_logs is not None:
