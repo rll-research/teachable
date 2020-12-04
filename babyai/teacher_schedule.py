@@ -45,6 +45,7 @@ def first_teacher(level, teacher_list):
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
+
 #### FIRST TEACHER ####
 # Train on the first teacher, distill to first
 def train_first_advance_first(level, teacher_list):
@@ -72,6 +73,7 @@ def train_first_advance_second(level, easy_teacher, harder_teacher):
     distillation_dict = copy.deepcopy(advancement_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
+
 #### FIRST TEACHER ####
 # Train and distill on the first teacher
 def first_teacher_both(level, teacher_list):
@@ -85,6 +87,7 @@ def first_teacher_both(level, teacher_list):
     distillation_dict = copy.deepcopy(teacher_train_dict)
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
+
 
 #### SINGLE TEACHER, NO POWERSET ####
 def single_teacher_no_powerset(level, teacher_name):
@@ -131,6 +134,24 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remo
     return teacher_train_dict, distillation_dict, advancement_dict
 
 
+# Add in the second teacher ...
+def easy_swap_harder_advance_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    if level < add_hard_level:
+        teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+        distillation_dict = copy.deepcopy(teacher_train_dict)
+    elif level < remove_easy_level:
+        teacher_train_dict = {easy_teacher: True, harder_teacher: True}
+        distillation_dict = copy.deepcopy(teacher_train_dict)
+    else:
+        teacher_train_dict = {easy_teacher: False, harder_teacher: True}
+        distillation_dict = {easy_teacher: True, harder_teacher: True}
+    advancement_dict = copy.deepcopy(distillation_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
+
+
 def make_teacher_schedule(feedback_types, teacher_schedule):
     feedback_types = [teacher for teacher in feedback_types if not teacher == 'None']
     if teacher_schedule == 'none':
@@ -155,5 +176,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
     elif teacher_schedule == 'easy_swap_harder':
         assert len(feedback_types) == 2
         return lambda level: easy_swap_harder(level, feedback_types[0], feedback_types[1])
+    elif teacher_schedule == 'easy_swap_harder_advance_harder':
+        assert len(feedback_types) == 2
+        return lambda level: easy_swap_harder_advance_harder(level, feedback_types[0], feedback_types[1])
     else:
         raise ValueError(f'Unknown distillation scheme {teacher_schedule}, {feedback_types}')
