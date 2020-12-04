@@ -6,7 +6,7 @@ import argparse
 import pathlib
 
 from meta_mb.samplers.utils import rollout
-from meta_mb.trainers.mf_trainer import Trainer
+# from meta_mb.trainers.mf_trainer import Trainer
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
 

@@ -147,6 +147,9 @@ class Curriculum(Serializable):
     def advance_curriculum(self, index=None):
         if index is None:
             index = self.index + 1
+        if index >= len(self.levels_list):
+            print("LEARNED ALL THE LEVELS!!")
+            raise NotImplementedError("Invalid level")
         if self.advance_curriculum_func == 'one_hot':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[index] = 1
@@ -160,8 +163,6 @@ class Curriculum(Serializable):
         else:
             raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
         self.index = index
-        if self.index >= len(self.levels_list):
-            print("LEARNED ALL THE LEVELS!!")
         print("updated curriculum", self.index, type(self.levels_list[self.index]))
 
     def set_level(self, index):
