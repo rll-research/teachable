@@ -18,11 +18,16 @@ def load_policy(path):
     return policy, env, args
 
 
-def eval_policy(env, policy, save_dir, num_rollouts, eval_with_teacher):
+def eval_policy(env, policy, save_dir, num_rollouts, teachers):
     if not save_dir.exists():
         save_dir.mkdir()
     env.reset()
-    teacher_dict = {f: eval_with_teacher for f in env.feedback_type}
+    if teachers == ['all']:
+        teacher_dict = {f: True for f in env.feedback_type}
+    elif teachers == ['none']:
+        teacher_dict = {f: False for f in env.feedback_type}
+    else:
+        teacher_dict = {f: f in teachers for f in env.feedback_type}
     try:
         teacher_null_dict = env.teacher.null_feedback()
     except Exception as e:
@@ -96,14 +101,14 @@ def finetune_policy(env, policy, finetuning_epochs, config, save_name):
     print("All done!")
 
 
-def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, eval_with_teacher):  # TODO: later change this to be any subset of teachers
+def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, teachers):
     policy, _, _ = load_policy(policy_path)
     policy_env_name = f'Policy{policy_path.stem}-{env.__class__.__name__}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
     if finetune_itrs > 0:
         finetune_policy(env, policy, finetune_itrs, config, full_save_dir.joinpath('finetuned_policy.pt'))
-    success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, eval_with_teacher)
+    success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(f'{policy_env_name},{policy_path.stem},{env.__class__.__name__},{success_rate},{stoch_accuracy},{det_accuracy} \n')
@@ -113,7 +118,7 @@ def main():
     parser.add_argument("--policy", required=True)
     parser.add_argument('--envs', nargs='+', required=True, type=str)
     parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
-    parser.add_argument('--eval_with_teacher', action='store_true')
+    parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
     parser.add_argument("--finetune_itrs", default=0, type=int)
     parser.add_argument("--num_rollouts", default=50, type=int)
     parser.add_argument("--save_dir", default=".")
@@ -163,7 +168,7 @@ def main():
     for policy_name in policy_level_names:
         for env in envs:
             test_success(policy_path.joinpath(policy_name), env, save_dir, args.finetune_itrs, config,
-                         args.num_rollouts, args.eval_with_teacher)
+                         args.num_rollouts, args.teachers)
 
 
 if __name__ == '__main__':
