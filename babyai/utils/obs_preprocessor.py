@@ -13,7 +13,8 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
             # We might consider changing this if we process diff advice types differently (e.g. cartesian with a conv net)
             if not k in teacher_dict:
                 obs_output[k] = []
-            obs_output['advice'] = []
+            if len(teacher_dict) > 0:
+                obs_output['advice'] = []
 
         for o in obs:
             advice_list = []

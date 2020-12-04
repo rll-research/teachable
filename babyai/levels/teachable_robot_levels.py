@@ -9,6 +9,7 @@ from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
+from babyai.oracle.dummy_advice import DummyAdvice
 from babyai.bot import Bot
 
 
@@ -46,7 +47,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr = 0
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
-        if (feedback_type is not None) and (not feedback_type == ['None']):
+        if feedback_type is not None:
             self.oracle = {}
             teachers = {}
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
@@ -54,7 +55,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             if len(feedback_freq) == 1:
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
             for ft, ff in zip(feedback_type, feedback_freq):
-                if ft == 'PostActionAdvice':
+                if ft == 'None':
+                    teacher = DummyAdvice(Bot, self)
+                elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
                                                feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
@@ -371,7 +374,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         obs_dict["obs"] = image
         obs_dict['instr'] = goal
         obs_dict['extra'] = additional
-        if hasattr(self, 'teacher') and self.teacher is not None:
+        if hasattr(self, 'teacher') and self.teacher is not None and not 'None' in self.teacher.teachers:
             correction = self.compute_teacher_advice(image.flatten())
             obs_dict.update(correction)
         return obs_dict
