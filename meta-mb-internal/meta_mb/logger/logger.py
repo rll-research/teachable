@@ -112,9 +112,21 @@ class JSONOutputFormat(KVWriter):
 
 class CSVOutputFormat(KVWriter):
     def __init__(self, filename):
-        self.file = open(filename, 'a+t')
         self.keys = []
         self.sep = ','
+        lines = self.init_file(filename)
+        self.file = open(filename, 'w+t')
+        if lines is not None:
+            self.file.writelines(lines)
+            self.file.flush()
+
+    def init_file(self, filename):
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                lines = f.readlines()
+                self.keys = lines[0][:-1].split(',')
+            return lines
+        return None
 
     def writekvs(self, kvs):
         # Add our current row to the history
