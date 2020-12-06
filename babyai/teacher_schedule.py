@@ -144,10 +144,10 @@ def easy_swap_harder_advance_harder(level, easy_teacher, harder_teacher, add_har
         distillation_dict = copy.deepcopy(teacher_train_dict)
     elif level < remove_easy_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: True}
-        distillation_dict = copy.deepcopy(teacher_train_dict)
+        distillation_dict = {easy_teacher: False, harder_teacher: True}
     else:
         teacher_train_dict = {easy_teacher: False, harder_teacher: True}
-        distillation_dict = {easy_teacher: True, harder_teacher: True}
+        distillation_dict = {easy_teacher: False, harder_teacher: True}
     advancement_dict = copy.deepcopy(distillation_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
