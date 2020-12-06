@@ -137,7 +137,7 @@ def main():
     for policy_level in policy_levels:
         try:
             level_number = int(policy_level)
-            policy_level_names.append(f'level{level_number}.pkl')
+            policy_level_names.append(f'level_{level_number}.pkl')
         except ValueError:
             if not policy_level[-4:] == '.pkl':
                 policy_level = policy_level + '.pkl'
