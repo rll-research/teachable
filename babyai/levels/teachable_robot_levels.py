@@ -437,8 +437,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         # Reward at the end scaled by 1000
         reward_total = rew * 1000
         if self.intermediate_reward:
+            provided_reward = True
             reward_total += int(give_reward) * 100
+        else:
+            provided_reward = done
         rew = reward_total / 1000
+        info['gave_reward'] = int(provided_reward)
         return obs, rew, done, info
 
     def compute_give_reward(self, action):  # TODO: consider computing dense rewards as a dictionary too
