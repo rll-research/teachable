@@ -179,6 +179,8 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
+            if self.args.no_train_rl:
+                advance_curriculum = True
             logger.logkv('Train/Advance', int(advance_curriculum))
 
             # """ ------------------ Reward Predictor Splicing ---------------------"""
