@@ -50,7 +50,7 @@ class Trainer(object):
         eval_every=200,
         save_every=200,
         log_every=10,
-        save_videos_every=200,
+        save_videos_every=1000,
         log_and_save=True,
         teacher_schedule=lambda _: ({}, {}, {}),
         obs_preprocessor=None,
@@ -364,7 +364,7 @@ class Trainer(object):
                     #                                                             stochastic=False)
                     distilled_stoch_advance = self.save_videos(self.il_trainer.acmodel,
                                                                save_name='distilled_video_stoch',
-                                                               num_rollouts=10,
+                                                               num_rollouts=4,
                                                                teacher_dict=advancement_dict,
                                                                save_video=should_save_video,
                                                                log_prefix="DVidRollout/Stoch",
@@ -377,14 +377,14 @@ class Trainer(object):
                 #                                                           log_prefix="VidRollout/Det", stochastic=False)
                 teacher_stoch_advance = self.save_videos(self.algo.acmodel,
                                                          save_name='withTeacher_video_stoch',
-                                                         num_rollouts=10,
+                                                         num_rollouts=4,
                                                          teacher_dict=teacher_train_dict,
                                                          save_video=should_save_video,
                                                          log_prefix="VidRollout/Stoch",
                                                          stochastic=True)
                 self.save_videos(self.algo.acmodel,
                                  save_name='oracle_video',
-                                 num_rollouts=10,
+                                 num_rollouts=2,
                                  teacher_dict=self.no_teacher_dict,
                                  save_video=should_save_video,
                                  log_prefix="VidRollout/Oracle",
@@ -529,7 +529,7 @@ class Trainer(object):
                     log_prefix=None, stochastic=True, rollout_oracle=False):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
-        save_wandb = (save_video and not self.is_debug)
+        save_wandb = False#(save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,
