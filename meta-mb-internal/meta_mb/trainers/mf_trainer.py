@@ -139,6 +139,9 @@ class Trainer(object):
             # logger.logkv("ItrsOnLevel", itrs_on_level)
             itrs_on_level += 1
 
+            # If we're distilling, don't train the first time on the level in case we can zero-shot it
+            skip_training = self.supervised_model is not None and itrs_on_level == 1
+
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
             logger.log("Sampling set of tasks/goals for this meta-batch...")
 
@@ -146,7 +149,7 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            if not self.args.no_collect:
+            if not (self.args.no_collect or skip_training):
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle)
                 raw_samples_data = copy.deepcopy(samples_data)
@@ -171,7 +174,7 @@ class Trainer(object):
                 dagger_samples_data = None
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if not (self.args.no_collect or self.args.no_train_rl):
+            if not (self.args.no_collect or self.args.no_train_rl or skip_training):
                 summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict)
             else:
                 summary_logs = None
@@ -179,7 +182,7 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            if self.args.no_train_rl:
+            if self.args.no_train_rl or skip_training:
                 advance_curriculum = True
             logger.logkv('Train/Advance', int(advance_curriculum))
 
@@ -197,7 +200,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if self.supervised_model is not None and advance_curriculum:
+            if self.supervised_model is not None and advance_curriculum and not skip_training:
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
@@ -212,7 +215,8 @@ class Trainer(object):
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
-                        sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size, split='train')
+                        sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size,
+                                                                    split='train')
                         total_distillation_frames += len(sampled_dagger_batch)
                         self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
 
@@ -256,7 +260,8 @@ class Trainer(object):
             run_policy_time = 0
             # TODO: put if advance_curriculum back in here
             if (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or (advance_curriculum and itr % 10 == 0):
+                itr == self.args.n_itr - 1) or (advance_curriculum and itr % 10 == 0) or (
+                advance_curriculum and itrs_on_level == 1):
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
@@ -272,10 +277,11 @@ class Trainer(object):
                     if not self.args.no_train_rl:
                         # Original Policy
                         time_run_policy_start = time.time()
-                        logger.log("Running model with teacher")
-                        advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
-                                                                        "Rollout/")
+                        # logger.log("Running model with teacher")
+                        # advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
+                        #                                                 "Rollout/")
                         run_policy_time = time.time() - time_run_policy_start
+                        advance_curriculum_policy = True  # if we don't care about time, we can uncomment the line above and remove this.
                     else:
                         run_policy_time = 0
                         advance_curriculum_policy = True
@@ -401,7 +407,7 @@ class Trainer(object):
                     logger.log("Saved")
 
             if advance_curriculum and not self.args.single_level:
-                #if self.il_trainer is not None:
+                # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 buffer.trim_level(self.curriculum_step, max_trajs=20000)
                 self.curriculum_step += 1
@@ -420,7 +426,7 @@ class Trainer(object):
         logger.dumpkvs()
 
     def evaluate_heldout(self, policy, teachers):
-        num_rollouts = 1#50
+        num_rollouts = 1  # 50
         for env in self.env.held_out_levels:
             level_name = env.__class__.__name__[6:]
             save_dir = pathlib.Path(self.exp_name).joinpath(level_name)
@@ -525,7 +531,7 @@ class Trainer(object):
                     log_prefix=None, stochastic=True, rollout_oracle=False):
         policy.eval()
         self.env.set_level_distribution(self.curriculum_step)
-        save_wandb = False#(save_video and not self.is_debug)
+        save_wandb = False  # (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,

@@ -190,7 +190,7 @@ def run_experiment(**config):
         env=env,
         policy=policy,
         rollouts_per_meta_task=args.rollouts_per_meta_task,
-        meta_batch_size=args.meta_batch_size,
+        meta_batch_size=10,
         max_path_length=args.max_path_length,
         parallel=not args.sequential,
         envs_per_task=1,
