@@ -54,6 +54,7 @@ def get_exp_name(args):
     print("EXPERIMENT NAME:", EXP_NAME)
     return EXP_NAME
 
+
 def load_model(args):
     original_config = args
     saved_model = joblib.load(args.saved_path)
@@ -62,7 +63,7 @@ def load_model(args):
             args = saved_model['args']
     set_seed(args.seed)
     policy = saved_model['policy']
-    optimizer = saved_model['optimizer']
+    optimizer = saved_model.get('optimizer', None)
     policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
     policy.hidden_state = None
     if original_config.continue_train is True:
@@ -84,7 +85,10 @@ def load_model(args):
             supervised_model = None
     else:
         supervised_model = None
-    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args
+    il_optimizer = saved_model.get('il_optimizer', None)
+    log_dict = saved_model.get('log_dict', {})
+    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+        il_optimizer, log_dict
 
 
 def run_experiment(**config):
@@ -96,7 +100,11 @@ def run_experiment(**config):
     set_seed(args.seed)
     original_saved_path = args.saved_path
     if original_saved_path is not None:
-        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args = load_model(args)
+        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+            il_optimizer, log_dict = load_model(args)
+    else:
+        il_optimizer = None
+        log_dict = {}
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": True,
@@ -181,10 +189,12 @@ def run_experiment(**config):
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
                                        preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                        instr_dropout_prob=args.instr_dropout_prob)
+        if il_optimizer is not None:
+            il_trainer.optimizer.load_state_dict(il_optimizer)
     else:
         il_trainer = None
     rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
-                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
+                                   preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
 
     sampler = MetaSampler(
         env=env,
@@ -251,6 +261,7 @@ def run_experiment(**config):
         is_debug=is_debug,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
+        log_dict=log_dict,
     )
     trainer.train()
 
