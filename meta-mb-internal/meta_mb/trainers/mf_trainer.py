@@ -204,7 +204,7 @@ class Trainer(object):
                 time_val_distill = 0
                 for _ in range(self.args.distillation_steps - 1):
                     sample_start = time.time()
-                    sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='train')
+                    sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
                     total_distillation_frames += len(sampled_batch)
@@ -212,7 +212,7 @@ class Trainer(object):
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
-                        sampled_dagger_batch = dagger_buffer.sample(total_num_trajs=self.args.batch_size, split='train')
+                        sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size, split='train')
                         total_distillation_frames += len(sampled_dagger_batch)
                         self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
 
@@ -231,7 +231,7 @@ class Trainer(object):
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
-                sampled_val_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
+                sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
                 distill_log_val = self.distill(sampled_val_batch, is_training=False,
@@ -248,10 +248,6 @@ class Trainer(object):
                     advance_curriculum = list(distill_log_val.values())[0]['Accuracy'] >= self.args.accuracy_threshold
                 logger.logkv('Distill/Advance', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', total_distillation_frames)
-                # print("DISTILLATION BREAKDOWN")
-                # print("Sampling", time_sampling_from_buffer)
-                # print("TRAINING", time_train_distill)
-                # print("VAL", time_val_distill)
 
             else:
                 distill_time = 0
@@ -484,7 +480,7 @@ class Trainer(object):
             teacher_subset_dict[teacher] = True
 
             # Shuffle teachers
-            sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
+            sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
             teacher_feedback = [obs_dict[teacher] for obs_dict in sampled_batch.obs]
             random.shuffle(teacher_feedback)
             for obs_dict, shuffled_obs in zip(sampled_batch.obs, teacher_feedback):
@@ -495,7 +491,7 @@ class Trainer(object):
             logger.logkv(f"CheckTeachers/Shuffled_{teacher}_Accuracy", log_dict['Accuracy'])
 
             # CorrectTeacher, no inst
-            sampled_batch = buffer.sample(total_num_trajs=self.args.batch_size, split='val')
+            sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
             for obs_dict in sampled_batch.obs:
                 obs_dict['instr'] = [0] * len(obs_dict['instr'])
             log = self.il_trainer.distill(sampled_batch, source=self.args.source, is_training=False,

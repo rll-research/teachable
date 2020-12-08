@@ -50,8 +50,8 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="Adam and RMSprop optimizer epsilon (default: 1e-5)")
         self.add_argument("--optim-alpha", type=float, default=0.99,
                           help="RMSprop optimizer apha (default: 0.99)")
-        self.add_argument("--batch-size", type=int, default=256,
-                          help="batch size for PPO (default: 1280)")
+        self.add_argument("--batch-size", type=int, default=2048,
+                          help="batch size for distillation")
         self.add_argument("--entropy-coef", type=float, default=0.001,
                           help="entropy term coefficient (default: 0.01)")
 
