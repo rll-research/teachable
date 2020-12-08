@@ -104,6 +104,8 @@ class Buffer:
         self.add_trajs(batch, level)
 
     def trim_level(self, level, max_trajs=20000):
+        if not level in self.counts_train:
+            return
         for i in range(max_trajs, self.counts_train[level]):
             file_name = self.buffer_path.joinpath(f'traj_train_level{level}_idx{i}.pkl')
             file_name.unlink()
@@ -129,6 +131,8 @@ class Buffer:
                 level = max(possible_levels)
             else:  # Otherwise, sample uniformly from the other levels
                 level = random.choice(possible_levels)
+            if not level in self.counts_train:
+                continue
             index = random.randint(0, counts[level] - 1)
             traj = self.load_traj(level, index, split)
             num_samples += len(traj.action)
