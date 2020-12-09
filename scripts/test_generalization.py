@@ -1,12 +1,12 @@
 # imports
 import joblib
 import os
+import copy
 import numpy as np
 import argparse
 import pathlib
 
 from meta_mb.samplers.utils import rollout
-# from meta_mb.trainers.mf_trainer import Trainer
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
 
@@ -51,63 +51,94 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers):
     return success_rate, stoch_accuracy, det_accuracy
 
 
-def finetune_policy(env, policy, finetuning_epochs, config, save_name):
-    # save_name = "ORACLE" + save_name
-    policy._hidden_state = None
-    reward_predictor._hidden_state = None
-    sample_processor = RL2SampleProcessor(
-        baseline=baseline,
-        discount=config['discount'],
-        gae_lambda=config['gae_lambda'],
-        normalize_adv=config['normalize_adv'],
-        positive_adv=config['positive_adv'],
-    )
-    algo = PPO(
-        policy=policy,
-        learning_rate=config['learning_rate'],
-        max_epochs=config['max_epochs'],
-        backprop_steps=config['backprop_steps'],
-        reward_predictor=reward_predictor,
-        entropy_bonus=config['entropy_bonus'],
-    )
+def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args):
+    from meta_mb.algos.ppo_torch import PPOAlgo
+    from meta_mb.trainers.mf_trainer import Trainer
+    from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
+    from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
+    from meta_mb.trainers.il_trainer import ImitationLearning
+    from babyai.teacher_schedule import make_teacher_schedule
+
+    try:
+        teacher_null_dict = env.teacher.null_feedback()
+    except Exception as e:
+        teacher_null_dict = {}
+    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
+    args.model = 'default_il'
+    if supervised_model is not None:
+        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
+                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
+                                       instr_dropout_prob=args.instr_dropout_prob)
+    else:
+        il_trainer = None
+    rp_trainer = None
     sampler = MetaSampler(
         env=env,
         policy=policy,
-        rollouts_per_meta_task=config['rollouts_per_meta_task'],
-        meta_batch_size=config['meta_batch_size'],
-        max_path_length=config['max_path_length'],
-        parallel=config['parallel'],
+        rollouts_per_meta_task=args.rollouts_per_meta_task,
+        meta_batch_size=10,
+        max_path_length=args.max_path_length,
+        parallel=not args.sequential,
         envs_per_task=1,
-        reward_predictor=reward_predictor,
+        reward_predictor=None,
+        supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
     )
+
+    sample_processor = RL2SampleProcessor(
+        discount=args.discount,
+        gae_lambda=args.gae_lambda,
+        normalize_adv=True,
+        positive_adv=False,
+    )
+
+    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+                   args.gae_lambda,
+                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                   args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
+                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
+                   obs_preprocessor=obs_preprocessor)
+
+    teacher_schedule = make_teacher_schedule(args.feedback_type, 'last_teacher')
+    # Standardize args
+    args.single_level = True
+    args.n_itr = finetuning_epochs
+
     trainer = Trainer(
+        args,
         algo=algo,
         policy=policy,
-        env=env,
+        env=copy.deepcopy(env),
         sampler=sampler,
         sample_processor=sample_processor,
-        n_itr=finetuning_epochs,
-        sess=sess,
-        start_itr=0,
-        reward_threshold=2,
-        config=config,
+        buffer_name=save_name.parent,
+        exp_name=save_name,
+        curriculum_step=0,
+        il_trainer=il_trainer,
+        supervised_model=supervised_model,
+        reward_predictor=None,
+        rp_trainer=rp_trainer,
+        is_debug=False,
+        teacher_schedule=teacher_schedule,
+        obs_preprocessor=obs_preprocessor,
+        log_dict={},
         log_and_save=False,
-        use_rp_inner=True,
-        use_rp_outer=True,
     )
-    trainer.train()
-    print("Saving policy", save_name)
-    save_file(policy, save_name)
+    trainer.train()  # TODO: add this!
+    # print("Saving policy", save_name)
+    # save_file(policy, save_name)
     print("All done!")
 
 
 def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, teachers):
-    policy, _, _ = load_policy(policy_path)
+    policy, _, args = load_policy(policy_path)
     policy_env_name = f'Policy{policy_path.stem}-{env.__class__.__name__}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
     if finetune_itrs > 0:
-        finetune_policy(env, policy, finetune_itrs, config, full_save_dir.joinpath('finetuned_policy.pt'))
+        finetune_policy(env, policy, policy, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args)
     success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
@@ -121,6 +152,7 @@ def main():
     parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
     parser.add_argument("--finetune_itrs", default=0, type=int)
     parser.add_argument("--num_rollouts", default=50, type=int)
+    parser.add_argument("--train_rl_on_finetune", action='store_true')
     parser.add_argument("--save_dir", default=".")
     args = parser.parse_args()
 

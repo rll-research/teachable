@@ -46,6 +46,22 @@ def first_teacher(level, teacher_list):
     return teacher_train_dict, distillation_dict, advancement_dict
 
 
+#### Last TEACHER ####
+# Train on the last teacher, distill to all the others
+def last_teacher(level, teacher_list):
+    no_teacher_dict = {}
+    distillation_dict = {}
+    for teacher in teacher_list:
+        no_teacher_dict[teacher] = False
+        distillation_dict[teacher] = True
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = copy.deepcopy(no_teacher_dict)
+    teacher_train_dict[teacher_list[-1]] = True
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
+
+
 #### FIRST TEACHER ####
 # Train on the first teacher, distill to first
 def train_first_advance_first(level, teacher_list):
@@ -160,6 +176,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         return lambda level: all_teachers(level, feedback_types)
     elif teacher_schedule == 'first_teacher':
         return lambda level: first_teacher(level, feedback_types)
+    elif teacher_schedule == 'last_teacher':
+        return lambda level: last_teacher(level, feedback_types)
     elif teacher_schedule == 'train_first_advance_first':
         return lambda level: train_first_advance_first(level, feedback_types)
     elif teacher_schedule == 'first_teacher_both':
