@@ -47,6 +47,8 @@ for folder in args.folders:
         if file_name.is_dir():  # copy recursively
             print("copying folder", file_name.name)
             new_folder = new_data_dir.joinpath(file_name.name)
+            if not new_folder.exists():
+                new_folder.mkdir()
             for actual_file in file_name.iterdir():
                 new_file = new_folder.joinpath(actual_file.name)
                 copyfile(actual_file, new_file)
