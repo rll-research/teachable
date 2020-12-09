@@ -324,7 +324,10 @@ class Trainer(object):
             logger.logkv('Time/Total', time_total)
             logger.logkv('Time/Itr', time_itr)
 
-            logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
+            try:
+                logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
+            except:
+                print("no curriculum")
 
             process = psutil.Process(os.getpid())
             memory_use = process.memory_info().rss / float(2 ** 20)
@@ -470,12 +473,15 @@ class Trainer(object):
             logger.logkv(f"{tag}/Success", avg_success)
             logger.logkv(f"{tag}/Return", avg_return)
             logger.logkv(f"{tag}/PathLength", avg_path_length)
-        if summary_logs is not None:
+        if episode_logs is not None:
             self.num_feedback_advice += episode_logs['num_feedback_advice']
             self.num_feedback_reward += episode_logs['num_feedback_reward']
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
             logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
             logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
+            logger.logkv(f"{tag}/num_feedback_reward", episode_logs['num_feedback_reward'])
+            logger.logkv(f"{tag}/num_feedback_advice", episode_logs['num_feedback_advice'])
+        if summary_logs is not None:
             for k, v in summary_logs.items():
                 logger.logkv(f"{tag}/{k}", v)
 

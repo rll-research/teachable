@@ -284,15 +284,6 @@ class PPOAlgo(BaseAlgo):
                 if len(log_teacher_following[i]) > 0:
                     logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
                     # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
-            num_feedback_advice = 0
-            num_feedback_reward = 0
-            for key in exps.obs.keys():
-                if key == 'gave_reward':
-                    num_feedback_reward += torch.sum(getattr(exps.obs, key)).item()
-                elif 'gave_' in key:
-                    num_feedback_advice += torch.sum(getattr(exps.obs, key)).item()
-            logs["num_feedback_advice"] = num_feedback_advice
-            logs["num_feedback_reward"] = num_feedback_reward
 
         return logs
 
