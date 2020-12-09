@@ -136,6 +136,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--use_rp_inner', action='store_true')
         self.add_argument('--use_rp_outer', action='store_true')
+        self.add_argument('--reward_when_necessary', action='store_true')
 
         # Distillations
         self.add_argument('--self_distill', action='store_true')

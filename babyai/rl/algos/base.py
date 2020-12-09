@@ -122,7 +122,8 @@ class BaseAlgo(ABC):
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
 
-    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False):
+    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
+                            collect_reward=True):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -169,6 +170,8 @@ class BaseAlgo(ABC):
                     action_to_take = dagger_dist.sample().cpu().numpy()
 
             obs, reward, done, env_info = self.env.step(action_to_take)
+            if not collect_reward:
+                reward = [np.nan for _ in reward]
 
             # Update experiences values
 
@@ -301,6 +304,13 @@ class BaseAlgo(ABC):
         self.log_success = self.log_success[-self.num_procs:]
         self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
         self.log_num_frames = self.log_num_frames[-self.num_procs:]
+
+        num_feedback_advice = 0
+        for key in exps.obs[0].keys():
+            if 'gave_' in key:
+                num_feedback_advice += np.sum([d[key] for d in exps.obs])
+        log["num_feedback_advice"] = num_feedback_advice
+        log["num_feedback_reward"] = np.sum(exps.env_infos.gave_reward) if collect_reward else 0
 
         return exps, log
 

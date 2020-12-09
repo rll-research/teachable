@@ -86,6 +86,8 @@ class Trainer(object):
         # Dict specifying no teacher provided.
         self.no_teacher_dict, _ = teacher_schedule(-1)
         self.obs_preprocessor = obs_preprocessor
+        self.next_train_itr = log_dict.get('next_train_itr', start_itr)
+        self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
 
     def check_advance_curriculum(self, episode_logs, summary_logs):
         if summary_logs is None or episode_logs is None:
@@ -136,14 +138,13 @@ class Trainer(object):
         all_saving_time = 0
         all_unaccounted_time = 0
 
-
         for itr in range(self.start_itr, self.args.n_itr):
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step)
-            # logger.logkv("ItrsOnLevel", self.itrs_on_level)
+            logger.logkv("ItrsOnLevel", self.itrs_on_level)
             self.itrs_on_level += 1
 
             # If we're distilling, don't train the first time on the level in case we can zero-shot it
-            skip_training = self.supervised_model is not None and self.itrs_on_level == 1
+            skip_training_rl = self.args.reward_when_necessary and not self.next_train_itr == itr
 
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
             logger.log("Sampling set of tasks/goals for this meta-batch...")
@@ -152,9 +153,12 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            if not (self.args.no_collect or skip_training):
+            should_collect = (not self.args.no_collect) and ((not skip_training_rl) or self.supervised_model is not None)
+            if should_collect:
+                # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
-                                                                           collect_with_oracle=self.args.collect_with_oracle)
+                                                                           collect_with_oracle=self.args.collect_with_oracle,
+                                                                           collect_reward=not skip_training_rl)
                 raw_samples_data = copy.deepcopy(samples_data)
                 buffer.add_batch(samples_data, self.curriculum_step)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
@@ -170,14 +174,16 @@ class Trainer(object):
                     (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
                     print("ALL DONE!")
                     return
-
             else:
                 episode_logs = None
                 raw_samples_data = None
                 dagger_samples_data = None
+
+            """ -------------------- Training --------------------------"""
+
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if not (self.args.no_collect or self.args.no_train_rl or skip_training):
+            if not (self.args.no_collect or self.args.no_train_rl or skip_training_rl):
                 summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict)
             else:
                 summary_logs = None
@@ -185,8 +191,17 @@ class Trainer(object):
             self._log(episode_logs, summary_logs, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
-            if self.args.no_train_rl or skip_training:
+            if self.args.no_train_rl or skip_training_rl:
                 advance_curriculum = True
+            else:
+                # Decide whether to train RL next itr
+                if advance_curriculum:
+                    self.next_train_itr = itr + self.num_train_skip_itrs
+                    self.num_train_skip_itrs += 10
+                else:
+                    self.next_train_itr = itr + 1
+                    self.num_train_skip_itrs = 10
+
             logger.logkv('Train/Advance', int(advance_curriculum))
 
             # """ ------------------ Reward Predictor Splicing ---------------------"""
@@ -203,7 +218,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if self.supervised_model is not None and advance_curriculum and not skip_training:
+            if self.supervised_model is not None and advance_curriculum:
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
@@ -261,10 +276,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            # TODO: put if advance_curriculum back in here
             if (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or (advance_curriculum and itr % 10 == 0) or (
-                advance_curriculum and self.itrs_on_level == 1):
+                itr == self.args.n_itr - 1) or advance_curriculum:
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
@@ -297,9 +310,13 @@ class Trainer(object):
                 run_supervised_time = 0
                 advance_curriculum = False
 
+
+
+
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
             logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
+            logger.logkv('Train/TrainRL', int(skip_training_rl))
 
             time_total = time.time() - start_time
             time_itr = time.time() - itr_start_time
@@ -426,6 +443,8 @@ class Trainer(object):
                     # If we get a NotImplementedError b/c we ran out of levels, stop training
                     break
                 self.itrs_on_level = 0
+                self.next_train_itr = itr + 1
+                self.num_train_skip_itrs = 10
 
         logger.log("Training finished")
         policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
@@ -452,8 +471,8 @@ class Trainer(object):
             logger.logkv(f"{tag}/Return", avg_return)
             logger.logkv(f"{tag}/PathLength", avg_path_length)
         if summary_logs is not None:
-            self.num_feedback_advice += summary_logs['num_feedback_advice']
-            self.num_feedback_reward += summary_logs['num_feedback_reward']
+            self.num_feedback_advice += episode_logs['num_feedback_advice']
+            self.num_feedback_reward += episode_logs['num_feedback_reward']
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
             logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
             logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
@@ -584,6 +603,8 @@ class Trainer(object):
                      'num_feedback_reward': self.num_feedback_reward,
                      'total_distillation_frames': self.total_distillation_frames,
                      'itrs_on_level': self.itrs_on_level,
+                     'next_train_itr': self.next_train_itr,
+                     'num_train_skip_itrs': self.num_train_skip_itrs
                  })
         if self.reward_predictor is not None:
             d['reward_predictor'] = self.reward_predictor
