@@ -125,6 +125,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         obs_preprocessor=obs_preprocessor,
         log_dict={},
         log_and_save=False,
+        eval_heldout=False,
     )
     trainer.train()  # TODO: add this!
     # print("Saving policy", save_name)
