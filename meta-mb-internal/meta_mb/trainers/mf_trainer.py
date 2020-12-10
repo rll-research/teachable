@@ -55,6 +55,7 @@ class Trainer(object):
         teacher_schedule=lambda _: ({}, {}, {}),
         obs_preprocessor=None,
         log_dict={},
+        eval_heldout=True,
     ):
         self.args = args
         self.algo = algo
@@ -88,6 +89,7 @@ class Trainer(object):
         self.obs_preprocessor = obs_preprocessor
         self.next_train_itr = log_dict.get('next_train_itr', start_itr)
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
+        self.eval_heldout = eval_heldout
 
     def check_advance_curriculum(self, episode_logs, summary_logs):
         if summary_logs is None or episode_logs is None:
@@ -450,9 +452,10 @@ class Trainer(object):
                 self.num_train_skip_itrs = 10
 
         logger.log("Training finished")
-        policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
-        self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
-        logger.log("Evaluation finished")
+        if self.eval_heldout:
+            policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
+            self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
+            logger.log("Evaluation finished")
         logger.dumpkvs()
 
     def evaluate_heldout(self, policy, teachers):
