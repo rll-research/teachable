@@ -137,6 +137,8 @@ def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts
     policy_env_name = f'Policy{policy_path.stem}-{env.__class__.__name__}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
+    if not full_save_dir.exists():
+        full_save_dir.mkdir()
     if finetune_itrs > 0:
         finetune_policy(env, policy, policy, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args)
     success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
