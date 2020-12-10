@@ -563,7 +563,10 @@ class Trainer(object):
     def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
                     log_prefix=None, stochastic=True, rollout_oracle=False):
         policy.eval()
-        self.env.set_level_distribution(self.curriculum_step)
+        try:
+            self.env.set_level_distribution(self.curriculum_step)
+        except:
+            print("no curriculum")
         save_wandb = False  # (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
