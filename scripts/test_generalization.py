@@ -105,6 +105,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     # Standardize args
     args.single_level = True
     args.n_itr = finetuning_epochs
+    args.reward_when_necessary = False  # TODO: make this a flag
 
     trainer = Trainer(
         args,
