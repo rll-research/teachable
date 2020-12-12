@@ -467,8 +467,12 @@ class Trainer(object):
             finetune_itrs = 0
             with open(save_dir.joinpath('results.csv'), 'w') as f:
                 f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy \n')
+            try:
+                teacher_null_dict = env.teacher.null_feedback()
+            except Exception as e:
+                teacher_null_dict = {}
             success_rate, stoch_accuracy, det_accuracy = test_success(env, save_dir, finetune_itrs, num_rollouts,
-                                                                      teachers, policy=policy,
+                                                                      teachers, teacher_null_dict, policy=policy,
                                                                       policy_name='latest', env_name=level_name)
             logger.logkv(f'Heldout/{level_name}Success', success_rate)
             logger.logkv(f'Heldout/{level_name}StochAcc', success_rate)
