@@ -118,8 +118,9 @@ class ArgumentParser(argparse.ArgumentParser):
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])
         self.add_argument('--success_threshold', type=float, default=.99)
-        self.add_argument('--accuracy_threshold', type=float, default=.6)
-        self.add_argument('--curriculum_type', type=int, default=0)
+        self.add_argument('--accuracy_threshold_rl', type=float, default=.9)
+        self.add_argument('--accuracy_threshold_distill', type=float, default=.6)
+        self.add_argument('--curriculum_type', type=int, default=1)
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
@@ -151,7 +152,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
 
         # Arguments we rarely change
-        self.add_argument('--meta_batch_size', type=int, default=20)
+        self.add_argument('--meta_batch_size', type=int, default=1280)
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.99)

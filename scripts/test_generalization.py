@@ -134,9 +134,12 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     print("All done!")
 
 
-def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, teachers, teacher_null_dict):
-    policy, _, args = load_policy(policy_path)
-    policy_env_name = f'Policy{policy_path.stem}-{env.__class__.__name__}'
+def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
+                 policy_path=None, policy=None,
+                 policy_name="", env_name=""):
+    if policy is None:
+        policy, _, args = load_policy(policy_path)
+    policy_env_name = f'Policy{policy_name}-{env_name}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
     if not full_save_dir.exists():
@@ -146,7 +149,9 @@ def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts
     success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
-        f.write(f'{policy_env_name},{policy_path.stem},{env.__class__.__name__},{success_rate},{stoch_accuracy},{det_accuracy} \n')
+        f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy} \n')
+    return success_rate, stoch_accuracy, det_accuracy
+
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -205,8 +210,10 @@ def main():
         f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy \n')
     for policy_name in policy_level_names:
         for env in envs:
-            test_success(policy_path.joinpath(policy_name), env, save_dir, args.finetune_itrs, config,
-                         args.num_rollouts, args.teachers, teacher_null_dict)
+            test_success(env, save_dir, args.finetune_itrs,
+                         args.num_rollouts, args.teachers, teacher_null_dict,
+                         policy_path=policy_path.joinpath(policy_name),
+                         policy_name=policy_path.stem, env_name=env.__class__.__name__)
 
 
 if __name__ == '__main__':
