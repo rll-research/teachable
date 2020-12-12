@@ -51,7 +51,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers):
     return success_rate, stoch_accuracy, det_accuracy
 
 
-def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args):
+def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict):
     from meta_mb.algos.ppo_torch import PPOAlgo
     from meta_mb.trainers.mf_trainer import Trainer
     from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
@@ -59,13 +59,11 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     from meta_mb.trainers.il_trainer import ImitationLearning
     from babyai.teacher_schedule import make_teacher_schedule
 
-    try:
-        teacher_null_dict = env.teacher.null_feedback()
-    except Exception as e:
-        teacher_null_dict = {}
+    print("TEACHER NULL DICT", teacher_null_dict)
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
     args.model = 'default_il'
+    args.instr_dropout_prob = 0 # TODO move all these together
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
                                        preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
@@ -93,6 +91,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         positive_adv=False,
     )
 
+
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
@@ -105,6 +104,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     # Standardize args
     args.single_level = True
     args.n_itr = finetuning_epochs
+    args.instr_dropout_prob = 0 # TODO: ??
     args.reward_when_necessary = False  # TODO: make this a flag
 
     trainer = Trainer(
@@ -134,7 +134,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     print("All done!")
 
 
-def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, teachers):
+def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts, teachers, teacher_null_dict):
     policy, _, args = load_policy(policy_path)
     policy_env_name = f'Policy{policy_path.stem}-{env.__class__.__name__}'
     print("EVALUATING", policy_env_name)
@@ -142,7 +142,7 @@ def test_success(policy_path, env, save_dir, finetune_itrs, config, num_rollouts
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     if finetune_itrs > 0:
-        finetune_policy(env, policy, policy, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args)
+        finetune_policy(env, policy, policy, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
     success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
@@ -164,6 +164,8 @@ def main():
     policy_path = pathlib.Path(args.policy)
 
     _, default_env, config = load_policy(policy_path.joinpath('latest.pkl'))
+    default_env.reset()
+    teacher_null_dict = default_env.teacher.null_feedback()
 
     # Get the levels of the policies to load
     policy_levels = args.levels
@@ -204,7 +206,7 @@ def main():
     for policy_name in policy_level_names:
         for env in envs:
             test_success(policy_path.joinpath(policy_name), env, save_dir, args.finetune_itrs, config,
-                         args.num_rollouts, args.teachers)
+                         args.num_rollouts, args.teachers, teacher_null_dict)
 
 
 if __name__ == '__main__':
