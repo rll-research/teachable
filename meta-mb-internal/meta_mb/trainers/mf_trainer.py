@@ -3,7 +3,7 @@ import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
 from babyai.utils.buffer import Buffer, trim_batch
-from scripts.test_generalization import eval_policy
+from scripts.test_generalization import eval_policy, test_success
 import os.path as osp
 import joblib
 import time
@@ -97,7 +97,7 @@ class Trainer(object):
         avg_success = np.mean(episode_logs["success_per_episode"])
         avg_accuracy = summary_logs['Accuracy']
         should_advance_curriculum = (avg_success >= self.args.success_threshold) \
-                                    and (avg_accuracy >= self.args.accuracy_threshold)
+                                    and (avg_accuracy >= self.args.accuracy_threshold_rl)
         return should_advance_curriculum
 
     def check_advance_curriculum_rollout(self, data):
@@ -155,7 +155,8 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            should_collect = (not self.args.no_collect) and ((not skip_training_rl) or self.supervised_model is not None)
+            should_collect = (not self.args.no_collect) and (
+                (not skip_training_rl) or self.supervised_model is not None)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
@@ -267,9 +268,10 @@ class Trainer(object):
                         logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
                 try:
-                    advance_curriculum = distill_log_val[()]['Accuracy'] >= self.args.accuracy_threshold
+                    advance_curriculum = distill_log_val[()]['Accuracy'] >= self.args.accuracy_threshold_distill
                 except:
-                    advance_curriculum = list(distill_log_val.values())[0]['Accuracy'] >= self.args.accuracy_threshold
+                    advance_curriculum = list(distill_log_val.values())[0][
+                                             'Accuracy'] >= self.args.accuracy_threshold_distill
                 logger.logkv('Distill/Advance', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
 
@@ -311,9 +313,6 @@ class Trainer(object):
             else:
                 run_supervised_time = 0
                 advance_curriculum = False
-
-
-
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
@@ -385,33 +384,33 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
-                    # distilled_det_advance = self.save_videos(self.il_trainer.acmodel,
-                    #                                                             save_name='distilled_video_det',
-                    #                                                             num_rollouts=10,
-                    #                                                             teacher_dict=self.no_teacher_dict,
-                    #                                                             save_video=should_save_video,
-                    #                                                             log_prefix="DVidRollout/Det",
-                    #                                                             stochastic=False)
-                    distilled_stoch_advance = self.save_videos(self.il_trainer.acmodel,
-                                                               save_name='distilled_video_stoch',
-                                                               num_rollouts=4,
-                                                               teacher_dict=advancement_dict,
-                                                               save_video=should_save_video,
-                                                               log_prefix="DVidRollout/Stoch",
-                                                               stochastic=True)
-                # teacher_det_advance = self.save_videos(self.algo.acmodel,
-                #                                                           save_name='withTeacher_video_det',
-                #                                                           num_rollouts=10,
-                #                                                           teacher_dict=self.teacher_train_dict,
-                #                                                           save_video=should_save_video,
-                #                                                           log_prefix="VidRollout/Det", stochastic=False)
-                teacher_stoch_advance = self.save_videos(self.algo.acmodel,
-                                                         save_name='withTeacher_video_stoch',
-                                                         num_rollouts=4,
-                                                         teacher_dict=teacher_train_dict,
-                                                         save_video=should_save_video,
-                                                         log_prefix="VidRollout/Stoch",
-                                                         stochastic=True)
+                    # self.save_videos(self.il_trainer.acmodel,
+                    #                     save_name='distilled_video_det',
+                    #                     num_rollouts=10,
+                    #                     teacher_dict=self.no_teacher_dict,
+                    #                     save_video=should_save_video,
+                    #                     log_prefix="DVidRollout/Det",
+                    #                     stochastic=False)
+                    self.save_videos(self.il_trainer.acmodel,
+                                     save_name='distilled_video_stoch',
+                                     num_rollouts=4,
+                                     teacher_dict=advancement_dict,
+                                     save_video=should_save_video,
+                                     log_prefix="DVidRollout/Stoch",
+                                     stochastic=True)
+                # self.save_videos(self.algo.acmodel,
+                #                  save_name='withTeacher_video_det',
+                #                  num_rollouts=10,
+                #                  teacher_dict=self.teacher_train_dict,
+                #                  save_video=should_save_video,
+                #                  log_prefix="VidRollout/Det", stochastic=False)
+                self.save_videos(self.algo.acmodel,
+                                 save_name='withTeacher_video_stoch',
+                                 num_rollouts=4,
+                                 teacher_dict=teacher_train_dict,
+                                 save_video=should_save_video,
+                                 log_prefix="VidRollout/Stoch",
+                                 stochastic=True)
                 self.save_videos(self.algo.acmodel,
                                  save_name='oracle_video',
                                  num_rollouts=2,
@@ -462,8 +461,15 @@ class Trainer(object):
         num_rollouts = 1  # 50
         for env in self.env.held_out_levels:
             level_name = env.__class__.__name__[6:]
-            save_dir = pathlib.Path(self.exp_name).joinpath(level_name)
-            success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, save_dir, num_rollouts, teachers)
+            save_dir = pathlib.Path(self.exp_name)
+            if not save_dir.exists():
+                save_dir.mkdir()
+            finetune_itrs = 0
+            with open(save_dir.joinpath('results.csv'), 'w') as f:
+                f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy \n')
+            success_rate, stoch_accuracy, det_accuracy = test_success(env, save_dir, finetune_itrs, num_rollouts,
+                                                                      teachers, policy=policy,
+                                                                      policy_name='latest', env_name=level_name)
             logger.logkv(f'Heldout/{level_name}Success', success_rate)
             logger.logkv(f'Heldout/{level_name}StochAcc', success_rate)
             logger.logkv(f'Heldout/{level_name}DetAcc', success_rate)
@@ -592,8 +598,7 @@ class Trainer(object):
                          np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
             success = np.mean([path['env_infos'][-1]['success'] for path in paths])
             logger.logkv(log_prefix + "Success", success)
-            advance = (accuracy >= self.args.accuracy_threshold) and (success >= self.args.success_threshold)
-        return advance
+        return None
 
     def get_itr_snapshot(self, itr):
         """

@@ -133,7 +133,7 @@ def easy_add_harder(level, easy_teacher, harder_teacher, cutoff_level=8):
 
 ### PREACTION TO ONE OTHER, SWAP OUT ####
 # Add in the second teacher ...
-def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
+def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
@@ -151,7 +151,7 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remo
 
 
 # Add in the second teacher ...
-def easy_swap_harder_advance_harder(level, easy_teacher, harder_teacher, add_hard_level=8, remove_easy_level=13):
+def easy_swap_harder_advance_harder(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
