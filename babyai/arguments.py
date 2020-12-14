@@ -152,7 +152,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
 
         # Arguments we rarely change
-        self.add_argument('--meta_batch_size', type=int, default=1280)
+        self.add_argument('--meta_batch_size', type=int, default=32)
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.99)
