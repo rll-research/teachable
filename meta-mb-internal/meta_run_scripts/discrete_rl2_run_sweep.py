@@ -159,6 +159,8 @@ def run_experiment(**config):
                                    advice_size=advice_size,
                                    num_modules=args.num_modules)
         if args.self_distill and not args.distill_same_model:
+            obs = env.reset()
+            advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
             supervised_model = ACModel(action_space=env.action_space,
                                        env=env,
                                        image_dim=args.image_dim,
