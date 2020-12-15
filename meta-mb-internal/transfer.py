@@ -38,7 +38,7 @@ for folder in args.folders:
     for file_name in data_dir.iterdir():
         if file_name.suffix == '.pkl' and not args.copy_model:
             continue
-        if file_name.stem == 'buffer':
+        if file_name.stem in ['buffer', 'dagger_buffer']:
             continue
         if file_name.suffix == '.mp4':
             continue
