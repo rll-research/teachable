@@ -184,6 +184,20 @@ def run_experiment(**config):
     except Exception as e:
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+    if args.new_distill:
+        print("ADDING SUP!!!")
+        supervised_model = ACModel(action_space=env.action_space,
+                                   env=env,
+                                   image_dim=args.image_dim,
+                                   memory_dim=args.memory_dim,
+                                   instr_dim=args.instr_dim,
+                                   lang_model=args.instr_arch,
+                                   use_instr=not args.no_instr,
+                                   use_memory=not args.no_mem,
+                                   arch=args.arch,
+                                   advice_dim=args.advice_dim,
+                                   advice_size=advice_size,
+                                   num_modules=args.num_modules)
 
     args.model = 'default_il'
     if supervised_model is not None:
