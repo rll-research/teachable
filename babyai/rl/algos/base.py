@@ -311,7 +311,9 @@ class BaseAlgo(ABC):
                 num_feedback_advice += np.sum([d[key] for d in exps.obs])
         log["num_feedback_advice"] = num_feedback_advice
         log["num_feedback_reward"] = np.sum(exps.env_infos.gave_reward) if collect_reward else 0
-
+        for key in exps.env_infos.keys():
+            if 'followed_' in key:
+                log[key] = np.sum(getattr(exps.env_infos, key))
         return exps, log
 
     @abstractmethod

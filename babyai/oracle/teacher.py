@@ -31,8 +31,11 @@ class Teacher:
         self.steps_since_lastfeedback = 0
         self.feedback_frequency = feedback_frequency
         self.last_feedback = None
+        self.past_timestep_feedback = None
         self.device = device
         self.last_step_error = False
+        self.coords_after_stepping = None
+        self.gave_feedback = False
         if device is None:
             if torch.cuda.is_available():
                 self.device = 'cuda'
@@ -65,24 +68,8 @@ class Teacher:
             self.next_action, self.next_subgoal = oracle.replan(-1)
         except Exception as e:
             self.next_action = -1
-            print("NOT UPDATING ACTION AND SUBGOAL")
-            print(e)
-            print("CURRENT VISMASK", oracle.vis_mask)
-            self.last_step_error = True
-        original_teacher = oracle.mission.teacher
-        oracle.mission.teacher = None
-        env_copy1 = pickle.loads(pickle.dumps(oracle.mission))
-        env_copy1.teacher = None
-        try:
-            self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
-        except Exception as e:
-            print("STEP AWAY FAILED!")
-            print(e)
-            print("CURRENT VISMASK", oracle.vis_mask)
-            self.next_state = self.next_state * 0
             self.last_step_error = True
         self.steps_since_lastfeedback += 1
-        oracle.mission.teacher = original_teacher
         return oracle
 
     def step_away_state(self, env_copy, oracle, steps):
@@ -99,16 +86,19 @@ class Teacher:
             else:
                 next_state,  rew,  done,  info = env_copy.step(next_action)
                 next_state = next_state['obs']
+        self.coords_after_stepping = (env_copy.agent_pos.copy(), env_copy.agent_dir)
         return next_state
 
-    def give_feedback(self, state):
+    def give_feedback(self, state, oracle):
         """
         Augment the agent's state observation with teacher feedback.
+        :param oracle:
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
         if self.feedback_always:
-            feedback = self.compute_feedback()
+            feedback = self.compute_feedback(oracle)
+            self.past_timestep_feedback = self.last_feedback
             self.last_feedback = feedback
             gave_feedback = True
         elif self.feedback_type == 'none':
@@ -119,14 +109,16 @@ class Teacher:
             gave_feedback = True
         elif self.feedback_type == 'oracle':
             if self.feedback_condition():
-                feedback = self.compute_feedback()
+                feedback = self.compute_feedback(oracle)
                 gave_feedback = True
+                self.past_timestep_feedback = self.last_feedback
+                self.last_feedback = feedback
             else:
                 feedback = self.empty_feedback()
                 gave_feedback = False
-            self.last_feedback = feedback
         else:
             raise ValueError("Unsupported feedback type")
+        self.gave_feedback = gave_feedback
         return feedback, gave_feedback
 
     def empty_feedback(self):
@@ -135,7 +127,7 @@ class Teacher:
         """
         raise NotImplementedError
 
-    def compute_feedback(self):
+    def compute_feedback(self, _):
         """
         Returns feedback for the agent as a tensor.
         """
@@ -146,7 +138,6 @@ class Teacher:
         Returns true when we should give feedback.
         Currently gives feedback at a fixed interval, but we could use other strategies (e.g. whenever the agent messes up)
         """
-        # TODO NOW Fix this
         if self.steps_since_lastfeedback % self.feedback_frequency == 0:
             self.steps_since_lastfeedback = 0
             return True
@@ -158,5 +149,6 @@ class Teacher:
         self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
         self.steps_since_lastfeedback = 0
-        self.last_feedback = None
+        self.last_feedback = self.empty_feedback()
+        self.past_timestep_feedback = self.empty_feedback()
         return oracle

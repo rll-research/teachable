@@ -388,7 +388,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if self.reset_yet is False:
             correction = self.teacher.empty_feedback()
         else:
-            correction = self.teacher.give_feedback([obs])
+            correction = self.teacher.give_feedback([obs], self.oracle)
         return correction
 
     def step(self, action):
@@ -425,15 +425,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
-
             self.oracle = self.teacher.step([action], self.oracle)
+            for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():
+                info[f'followed_{k}'] = v
             info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
-            obs = self.gen_obs()
-
         else:
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
+        obs = self.gen_obs()
         # Reward at the end scaled by 1000
         reward_total = rew * 1000
         if self.intermediate_reward:

@@ -19,7 +19,7 @@ class PreActionAdvice(Teacher):
         """
         return self.one_hotify(self.action_space.sample())
 
-    def compute_feedback(self):
+    def compute_feedback(self, _):
         """
         Return the expert action from the previous timestep.
         """
@@ -30,7 +30,7 @@ class PreActionAdvice(Teacher):
         correction[index] = 1.0
         return correction
 
-    def success_check(self, action):
-        opt_action = int(self.next_action)
+    def success_check(self, state, action, oracle):
+        opt_action = int(self.last_action)
         followed_opt_action = (opt_action == action)
-        return followed_opt_action
+        return followed_opt_action and self.gave_feedback

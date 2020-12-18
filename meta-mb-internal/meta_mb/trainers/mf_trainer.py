@@ -486,7 +486,6 @@ class Trainer(object):
             logger.logkv(f"{tag}/Success", avg_success)
             logger.logkv(f"{tag}/Return", avg_return)
             logger.logkv(f"{tag}/PathLength", avg_path_length)
-        if episode_logs is not None:
             self.num_feedback_advice += episode_logs['num_feedback_advice']
             self.num_feedback_reward += episode_logs['num_feedback_reward']
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
@@ -494,6 +493,9 @@ class Trainer(object):
             logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
             logger.logkv(f"{tag}/num_feedback_reward", episode_logs['num_feedback_reward'])
             logger.logkv(f"{tag}/num_feedback_advice", episode_logs['num_feedback_advice'])
+            for key in episode_logs:
+                if 'followed_' in key:
+                    logger.logkv(f"{tag}/{key}", episode_logs[key])
         if summary_logs is not None:
             for k, v in summary_logs.items():
                 logger.logkv(f"{tag}/{k}", v)

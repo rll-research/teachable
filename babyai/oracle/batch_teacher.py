@@ -13,10 +13,10 @@ class BatchTeacher:
             return_dict[k] = v.step(action, oracle[k])
         return return_dict
 
-    def give_feedback(self, state):
+    def give_feedback(self, state, oracle):
         return_dict = {}
         for k, v in self.teachers.items():
-            advice, advice_given = v.give_feedback(state)
+            advice, advice_given = v.give_feedback(state, oracle[k])
             return_dict[k] = advice
             return_dict['gave_' + k] = advice_given
         return return_dict
@@ -62,3 +62,9 @@ class BatchTeacher:
         last_step_error = [t.last_step_error for t in self.teachers.values()]
         last_step_error = np.max(last_step_error)
         return last_step_error
+
+    def success_check(self, state, action, oracle):
+        return_dict = {}
+        for k, v in self.teachers.items():
+            return_dict[k] = v.success_check(state, action, oracle[k])
+        return return_dict
