@@ -17,27 +17,27 @@ class SubgoalCorrections(Teacher):
         """
         return np.random.uniform(0, 1, size=17)
 
-    def compute_feedback(self):
+    def compute_feedback(self, _):
         """
         Return the expert action from the previous timestep.
         """
         return np.array(self.next_subgoal)
 
-    def success_check(self, action):
-        # subgoal_val = self.subgoal_to_idx(state)
-        # followed_opt_action = np.allclose(subgoal_val, self.last_feedback)
-        # return followed_opt_action
-        opt_action = int(self.next_action)
-        followed_opt_action = (opt_action == action[0])
-        return followed_opt_action
+    def success_check(self, state, action, oracle):
+        """ Assume the agent completed the subgoal when the last subgoal is no longer in the stack. """
+        stack = oracle.stack
+        for subgoal in stack:
+            if np.allclose(self.last_feedback, oracle.subgoal_to_index(subgoal)):
+                return False
+        return True
 
-    def give_feedback(self, state):
+    def give_feedback(self, state, _):
         """
         Augment the agent's state observation with teacher feedback.
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
-        feedback = self.compute_feedback()
+        feedback = self.compute_feedback(None)
         gave_feedback = self.last_feedback is None or not np.array_equal(feedback, self.last_feedback)
         self.last_feedback = feedback
         return feedback, gave_feedback

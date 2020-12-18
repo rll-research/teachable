@@ -1,4 +1,5 @@
 import numpy as np
+import pickle as pkl
 from babyai.oracle.teacher import Teacher
 
 class CartesianCorrections(Teacher):
@@ -17,18 +18,41 @@ class CartesianCorrections(Teacher):
         """
         return np.random.uniform(0, 1, size=self.obs_size)
 
-    def compute_feedback(self):
+    def compute_feedback(self, oracle):
         """
         Return the expert action from the previous timestep.
         """
+        self.step_ahead(oracle)
         return np.array(self.next_state)
-        
 
-
-    def success_check(self, state):
+    def success_check(self, state, action, oracle):
         if self.last_feedback is None:
             return False
-        followed_opt_action = np.allclose(state, self.last_feedback)
+        followed_opt_action = np.allclose(state.flatten(), self.past_timestep_feedback.flatten())
         return followed_opt_action
 
-        # TODO: Check that success check works, no off by one error, and the feedback seems reasonable. 
+    def step(self, agent_action, oracle):
+        oracle = super().step(agent_action, oracle)
+        # self.step_ahead(oracle)
+        return oracle
+
+    def step_ahead(self, oracle):
+        original_teacher = oracle.mission.teacher
+        oracle.mission.teacher = None
+        env_copy1 = pkl.loads(pkl.dumps(oracle.mission))
+        env_copy1.teacher = None
+        try:
+            self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
+        except Exception as e:
+            print("STEP AWAY FAILED!")
+            print(e)
+            print("CURRENT VISMASK", oracle.vis_mask)
+            self.next_state = self.next_state * 0
+            self.last_step_error = True
+        oracle.mission.teacher = original_teacher
+        return oracle
+
+    def reset(self, oracle):
+        oracle = super().reset(oracle)
+        # self.step_ahead(oracle)
+        return oracle
