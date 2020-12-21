@@ -382,6 +382,5 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             ValueError("Undefined instruction architecture: {}".format(self.use_instr))
 
-
     def _get_advice_embedding(self, advice):
         return self.advice_embedding(advice.float())

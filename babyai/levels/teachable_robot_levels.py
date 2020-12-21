@@ -425,7 +425,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
-            self.oracle = self.teacher.step([action], self.oracle)
+            self.oracle = self.teacher.step(action, self.oracle)
             for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():
                 info[f'followed_{k}'] = v
             info['teacher_error'] = float(self.teacher.get_last_step_error())

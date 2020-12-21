@@ -41,8 +41,7 @@ class RoomGridLevel(RoomGrid):
         self.instrs.reset_verifier(self)
 
         # Compute the time step limit based on the maze size and instructions
-        nav_time_room = self.room_size ** 2
-        # nav_time_room = self.room_size * 3  # TODO: consider changing to this.  A smaller nav time makes the task harder, but it runs faster
+        nav_time_room = min(self.room_size ** 2, self.room_size * 8)
 
         nav_time_maze = nav_time_room * self.num_rows * self.num_cols
         num_navs = self.num_navs_needed(self.instrs)
