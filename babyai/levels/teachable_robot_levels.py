@@ -6,6 +6,7 @@ import numpy as np
 from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
+from babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
@@ -62,6 +63,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                                feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'PreActionAdviceMultiple':
+                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
                     teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always,
