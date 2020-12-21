@@ -142,7 +142,7 @@ class ArgumentParser(argparse.ArgumentParser):
         # Distillations
         self.add_argument('--self_distill', action='store_true')
         self.add_argument('--distill_same_model', action='store_true')
-        self.add_argument('--distillation_steps', type=int, default=3)
+        self.add_argument('--distillation_steps', type=int, default=15)
         self.add_argument('--buffer_capacity', type=int, default=500)
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
@@ -153,7 +153,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
 
         # Arguments we rarely change
-        self.add_argument('--meta_batch_size', type=int, default=40)
+        self.add_argument('--meta_batch_size', type=int, default=200)
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.99)
