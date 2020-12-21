@@ -31,11 +31,6 @@ class CartesianCorrections(Teacher):
         followed_opt_action = np.allclose(state.flatten(), self.past_timestep_feedback.flatten())
         return followed_opt_action
 
-    def step(self, agent_action, oracle):
-        oracle = super().step(agent_action, oracle)
-        # self.step_ahead(oracle)
-        return oracle
-
     def step_ahead(self, oracle):
         original_teacher = oracle.mission.teacher
         oracle.mission.teacher = None
@@ -50,9 +45,4 @@ class CartesianCorrections(Teacher):
             self.next_state = self.next_state * 0
             self.last_step_error = True
         oracle.mission.teacher = original_teacher
-        return oracle
-
-    def reset(self, oracle):
-        oracle = super().reset(oracle)
-        # self.step_ahead(oracle)
         return oracle

@@ -80,13 +80,19 @@ class Teacher:
         return oracle
 
     def step_away_state(self, env_copy, oracle, steps):
+        next_action = -1
         for step in range(steps):
-            new_oracle = self.botclass(env_copy)
-            new_oracle.vis_mask = oracle.vis_mask.copy()
-            new_oracle.step = oracle.step
-            new_oracle._process_obs()
-            next_action, _ = new_oracle.replan(-1)
-            oracle = new_oracle
+            vis_mask = oracle.vis_mask
+            new_oracle = self.botclass(oracle.mission)
+            drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
+                       (not next_action == oracle.mission.actions.toggle)
+            if drop_off:
+                next_action, next_subgoal = oracle.replan(next_action)
+            else:
+                new_oracle.vis_mask = vis_mask
+                new_oracle.step = oracle.step
+                next_action, next_subgoal = new_oracle.replan(-1)
+                oracle = new_oracle
             env_copy.teacher = None
             if next_action == -1:  # TODO: Is this ever triggered?  As far as I can tell, no.
                 next_state = env_copy.gen_obs()['obs']
