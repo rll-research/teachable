@@ -20,7 +20,7 @@ import time
 import traceback
 from optparse import OptionParser
 from babyai.levels import level_dict
-from babyai.bot import Bot
+from babyai.bot import Bot, GoNextToSubgoal
 from babyai.utils.agent import ModelAgent, RandomAgent
 from random import Random
 
@@ -30,8 +30,9 @@ level_list = [name for name, level in level_dict.items()
               if (not getattr(level, 'is_bonus', False) and not name == 'MiniBossLevel')]
 # success:"GoToLocal", "GoTo", "Open", "Unlock" (98.6%) "GoToImpUnlock"
 # failure: "UnblockPickup" "Pickup", "PutNext"
-# level_list = ["GoToLocal", "GoTo", "GoToImpUnlock", "Pickup", "UnblockPickup", "Open", "Unlock", "PutNext"]
-level_list = ["Unlock"]
+level_list = ["GoToLocal", "GoTo", "GoToImpUnlock", "Pickup", "Open", "Unlock", 'PutNextLocal',
+              'GoToObjMazeOpen', 'GoToOpen', 'GoToObjMaze', 'Unlock', "UnblockPickup", "PutNext"]
+# level_list = ["PutNext"]
 print("LEVEL", level_list)
 
 parser = OptionParser()
@@ -107,18 +108,22 @@ for level_name in level_list:
     total_bfs = 0
     total_episode_steps = 0
     total_bfs_steps = 0
+    max_length = 0
 
     for run_no in range(options.num_runs):
         level = level_dict[level_name]
 
         mission_seed = options.seed + run_no
         mission = level(seed=mission_seed)
-        if not run_no % 1:
-            print(run_no, mission.mission)
+        import copy
+        other_mission = copy.deepcopy(mission)
+        other_mission2 = copy.deepcopy(mission)
+        # if not run_no % 1:
+        #     print(run_no, mission.mission)
         expert = Bot(mission)
 
-        if options.verbose:
-            print('%s/%s: %s, seed=%d' % (run_no+1, options.num_runs, mission.surface, mission_seed))
+        # if options.verbose:
+        #     print('%s/%s: %s, seed=%d' % (run_no+1, options.num_runs, mission.surface, mission_seed))
 
         optimal_actions = []
         before_optimal_actions = []
@@ -129,11 +134,19 @@ for level_name in level_list:
             episode_steps = 0
             last_action = None
             while True:
-                # vis_mask = expert.vis_mask
-                # expert = Bot(mission)
-                # expert.vis_mask = vis_mask
-                action = expert.replan(last_action)
-                # action = expert.replan(last_action)
+                vis_mask = expert.vis_mask
+                new_expert = Bot(expert.mission)
+                drop_off = len(expert.stack) > 0 and expert.mission.carrying and expert.stack[
+                    -1].reason == 'DropOff' and \
+                           (not last_action[0] == expert.mission.actions.toggle)
+                if drop_off:
+                    action = expert.replan(last_action[0])
+                else:
+                    new_expert.vis_mask = vis_mask
+                    new_expert.step = expert.step
+                    action = new_expert.replan(-1)
+                    expert = new_expert
+
                 if options.advise_mode and episode_steps < non_optimal_steps:
                     if rng.random() < options.bad_action_proba:
                         while True:
@@ -151,8 +164,14 @@ for level_name in level_list:
                                 break
                     before_optimal_actions.append(action)
                 else:
-                    optimal_actions.append(action)
+                    optimal_actions.append(action[0])
+                    # if len(optimal_actions) > 90:
+                    #     mission.render()
+                    #     print("hi")
 
+                # if run_no == 1:
+                #     mission.render()
+                #     temp = 3
                 obs, reward, done, info = mission.step(action)
                 last_action = action
 
@@ -160,26 +179,104 @@ for level_name in level_list:
                 episode_steps += 1
 
                 if done:
+                    max_length = max(max_length, mission.step_count)
                     total_episode_steps += episode_steps
                     total_bfs_steps += expert.bfs_step_counter
                     total_bfs += expert.bfs_counter
                     if reward > 0:
                         num_success += 1
-                        total_steps.append(episode_steps)
-                        if options.verbose:
-                            print('SUCCESS on seed {}, reward {:.2f}'.format(mission_seed, reward))
+                        # total_steps.append(episode_steps)
+                        # if options.verbose:
+                        #     print('SUCCESS on seed {}, reward {:.2f}'.format(mission_seed, reward))
                     if reward <= 0:
                         assert episode_steps == mission.max_steps  # Is there another reason for this to happen ?
-                        if options.verbose:
-                            print('FAILURE on %s, seed %d, reward %.2f' % (level_name, mission_seed, reward))
+                        try:
+                            if options.verbose:
+                                print('FAILURE on %s, seed %d, reward %.2f' % (level_name, mission_seed, reward))
+                                # env_done = False
+                                # expert = Bot(other_mission2)
+                                # action = (None, None)
+                                # while not env_done:
+                                #     # other_mission2.render()
+                                #     action = expert.replan(action[0])
+                                #     _, _, env_done, _ = other_mission2.step(action)
+                                #
+                                #
+                                # expert = Bot(other_mission)
+                                # while True:
+                                #     vis_mask = expert.vis_mask
+                                #     new_expert = Bot(other_mission)
+                                #
+                                #     weirdness = len(new_expert.stack) > 0 and mission.carrying and new_expert.stack[
+                                #         -1].reason == 'DropOff'
+                                #     if weirdness:
+                                #         action = expert.replan(last_action[0])
+                                #     else:
+                                #         # print(len(new_expert.stack) > 0,
+                                #         #       len(new_expert.stack) > 0 and type(new_expert.stack[-1]) == GoNextToSubgoal,
+                                #         #       weirdness)
+                                #         new_expert.vis_mask = vis_mask
+                                #         action = new_expert.replan()
+                                #         expert = new_expert
+                                #     # other_mission.render()
+                                #     other_mission.step(action)
+                        except Exception as e:
+                            print("UH OH!!!!!!!!")
                     break
         except Exception as e:
-            print('FAILURE on %s, seed %d' % (level_name, mission_seed))
+            print('WEIRD FAILURE on %s, seed %d' % (level_name, mission_seed))
+            # expert = Bot(other_mission)
+            # while True:
+            #     # other_mission.render()
+            #     vis_mask = expert.vis_mask
+            #     new_expert = Bot(other_mission)
+            #
+            #     weirdness = len(expert.stack) > 0 and mission.carrying and expert.stack[
+            #         -1].reason == 'DropOff'
+            #     if weirdness:
+            #         action = expert.replan(last_action[0])
+            #     else:
+            #         # print(len(new_expert.stack) > 0,
+            #         #       len(new_expert.stack) > 0 and type(new_expert.stack[-1]) == GoNextToSubgoal,
+            #         #       weirdness)
+            #         new_expert.vis_mask = vis_mask
+            #         action = new_expert.replan()
+            #         expert = new_expert
+            #     other_mission.step(action)
+
+
+
+
+
+
+
+
+
+
+
+
+            # expert = Bot(other_mission)
+            # while True:
+            #     vis_mask = expert.vis_mask
+            #     new_expert = Bot(other_mission)
+            #     weirdness = len(new_expert.stack) > 0 and type(new_expert.stack[-1]) == GoNextToSubgoal and \
+            #                 new_expert.stack[
+            #                     -1].reason == 'DropOff'
+            #     if weirdness:
+            #         action = expert.replan(last_action[0])
+            #     else:
+            #         print(len(new_expert.stack) > 0,
+            #               len(new_expert.stack) > 0 and type(new_expert.stack[-1]) == GoNextToSubgoal, weirdness)
+            #         new_expert.vis_mask = vis_mask
+            #         action = new_expert.replan()
+            #         expert = new_expert
+            #     other_mission.render()
+            #     other_mission.step(action)
             # traceback.print_exc()
             # Playing these 2 sets of actions should get you to the mission snapshot above
-            # print(before_optimal_actions)
-            # print(optimal_actions)
-            # print(expert.stack)
+            print(before_optimal_actions)
+            print(optimal_actions)
+            print(expert.stack)
             break
 
     all_good = all_good and (num_success == options.num_runs)
@@ -188,7 +285,7 @@ for level_name in level_list:
     mean_reward = total_reward / options.num_runs
     mean_steps = sum(total_steps) / options.num_runs
 
-    print('%16s: %.1f%%, r=%.3f, s=%.2f' % (level_name, success_rate, mean_reward, mean_steps))
+    print('%16s: %.1f%%, r=%.3f, s=%.2f, length=%i' % (level_name, success_rate, mean_reward, mean_steps, max_length))
     # Uncomment the following line to print the number of steps per episode (useful to look for episodes to debug)
     # print({options.seed + num_run: total_steps[num_run] for num_run in range(options.num_runs)})
 end_time = time.time()
