@@ -9,13 +9,13 @@ class SubgoalCorrections(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return -1*np.ones(17)
+        return -1*np.ones(18)
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.random.uniform(0, 1, size=17)
+        return np.random.uniform(0, 1, size=18)
 
     def compute_feedback(self, _):
         """

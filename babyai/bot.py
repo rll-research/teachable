@@ -267,6 +267,9 @@ class DropSubgoal(Subgoal):
 class PickupSubgoal(Subgoal):
 
     def replan_before_action(self):
+        if self.bot.mission.carrying:
+            print("uh oh")
+            self.bot.mission.render()
         assert not self.bot.mission.carrying
         return self.actions.pickup
 
@@ -429,9 +432,9 @@ class GoNextToSubgoal(Subgoal):
                     return
                 else:
                     drop_pos = self.bot._find_drop_pos()
-                    self.bot.stack.append(DropSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos))
-                    self.bot.stack.append(PickupSubgoal(self.bot))
+                    self.bot.stack.append(DropSubgoal(self.bot, reason='DropOff'))
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos, reason='DropOff'))
+                    self.bot.stack.append(PickupSubgoal(self.bot, reason='DropOff'))
                     return
             else:
                 return self.actions.forward
@@ -633,7 +636,8 @@ class Bot:
                         'PutNext',
                         'Open',
                         'Explore',
-                        'KeepKey']
+                        'KeepKey',
+                        'DropOff']
                         
         # Name of the subgoal
         subgoal_name_idx = subgoal_names.index(type(subgoal).__name__)
@@ -692,7 +696,9 @@ class Bot:
                     if cell is None and not (i == self.mission.agent_pos[0] and j == self.mission.agent_pos[1]):
                         empty_visible_cells.append((i, j))
         if len(empty_visible_cells) > 0:
-            return random.choice(empty_visible_cells)
+            # We don't want to go to far, so choose among the top 5 closest cells
+            empty_visible_cells.sort(key=lambda x: np.abs(x[0] - self.mission.agent_pos[0]) + np.abs(x[1] - self.mission.agent_pos[1]))
+            return random.choice(empty_visible_cells[:5])
         # self.mission.render("human")
         raise RecursionError(f"Did not find an open cell in {attempts} iterations.")
 
@@ -1130,17 +1136,16 @@ class Bot:
         if isinstance(instr, PickupInstr):
             # We pick up and immediately drop so
             # that we may carry other objects
-            if not self.mission.carrying:
-                self.stack.append(DropSubgoal(self))
-                self.stack.append(PickupSubgoal(self))
-                self.stack.append(GoNextToSubgoal(self, instr.desc))
+            self.stack.append(DropSubgoal(self))
+            self.stack.append(PickupSubgoal(self))
+            self.stack.append(GoNextToSubgoal(self, instr.desc))
             # If we're carrying an object, drop it first
-            else:
+            if self.mission.carrying:
                 self.stack.append(DropSubgoal(self))
                 fwd_cell = self.mission.grid.get(*self.mission.agent_pos + self.mission.dir_vec)
                 if fwd_cell is not None:
                     empty = self.find_open_cell()
-                    self.stack.append(GoNextToSubgoal(self, empty))
+                    self.stack.append(GoNextToSubgoal(self, empty, reason='DropOff'))
             return
 
         if isinstance(instr, PutNextInstr):
@@ -1162,7 +1167,7 @@ class Bot:
                     fwd_cell = self.mission.grid.get(*self.mission.agent_pos + self.mission.dir_vec)
                     if fwd_cell is not None:
                         empty = self.find_open_cell()
-                        self.stack.append(GoNextToSubgoal(self, empty))
+                        self.stack.append(GoNextToSubgoal(self, empty, reason='DropOff'))
                     return
             self.stack.append(DropSubgoal(self))
             self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))

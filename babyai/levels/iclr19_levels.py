@@ -484,6 +484,7 @@ class Level_GoTo(Level_TeachableRobot):
         # If requested, open all the doors
         if self.doors_open:
             self.open_all_doors()
+        self.check_objs_reachable()
         return dists + self.get_doors() + [obj], obj
 
 

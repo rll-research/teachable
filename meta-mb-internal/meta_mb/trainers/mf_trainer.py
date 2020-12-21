@@ -52,7 +52,7 @@ class Trainer(object):
         log_every=10,
         save_videos_every=1000,
         log_and_save=True,
-        teacher_schedule=lambda _: ({}, {}, {}),
+        teacher_schedule=lambda a, b, c: ({}, {}, {}),
         obs_preprocessor=None,
         log_dict={},
         eval_heldout=True,
@@ -85,7 +85,9 @@ class Trainer(object):
         # Dict saying which teacher types the agent has access to for training.
         self.teacher_schedule = teacher_schedule
         # Dict specifying no teacher provided.
-        self.no_teacher_dict, _ = teacher_schedule(-1)
+        self.no_teacher_dict, _ = teacher_schedule(-1, -1, -1)
+        self.gave_feedback = log_dict.get('gave_feedback', {k: 0 for k in self.no_teacher_dict.keys()})
+        self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.no_teacher_dict.keys()})
         self.obs_preprocessor = obs_preprocessor
         self.next_train_itr = log_dict.get('next_train_itr', start_itr)
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
@@ -139,9 +141,13 @@ class Trainer(object):
         all_rollout_time = 0
         all_saving_time = 0
         all_unaccounted_time = 0
+        last_success = 0
+        last_accuracy = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
-            teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step)
+            teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
+                                                                                               last_success,
+                                                                                               last_accuracy)
             logger.logkv("ItrsOnLevel", self.itrs_on_level)
             self.itrs_on_level += 1
 
@@ -186,7 +192,8 @@ class Trainer(object):
 
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if not (self.args.no_collect or self.args.no_train_rl or skip_training_rl):
+            should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
+            if should_train_rl:
                 summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict)
             else:
                 summary_logs = None
@@ -221,7 +228,8 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            if self.supervised_model is not None and advance_curriculum:
+            should_distill = self.supervised_model is not None and advance_curriculum
+            if should_distill:
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
@@ -280,31 +288,33 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            if (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or advance_curriculum:
+            should_policy_rollout = (itr % self.eval_every == 0) or (
+                itr == self.args.n_itr - 1) or advance_curriculum
+            if should_policy_rollout:
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
                     if self.supervised_model is not None:
                         # Distilled model
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
-                        advance_curriculum_sup = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
+                        advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
                                                                      "DRollout/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
                         advance_curriculum_sup = True
-                    if not self.args.no_train_rl:
-                        # Original Policy
-                        time_run_policy_start = time.time()
-                        # logger.log("Running model with teacher")
-                        # advance_curriculum_policy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
-                        #                                                 "Rollout/")
-                        run_policy_time = time.time() - time_run_policy_start
-                        advance_curriculum_policy = True  # if we don't care about time, we can uncomment the line above and remove this.
-                    else:
-                        run_policy_time = 0
-                        advance_curriculum_policy = True
+                    # Original Policy
+                    time_run_policy_start = time.time()
+                    logger.log("Running model with highest level teacher")
+                    # Take distillation dict, keep the last teacher
+                    last_teacher = [k for k, v in teacher_distill_dict.items() if v][-1]
+                    last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
+                    _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, last_teacher_dict,
+                                                                    "Rollout/")
+
+                    run_policy_time = time.time() - time_run_policy_start
+
+                    advance_curriculum_policy = True  # TODO: decide if we want this
                     advance_curriculum = advance_curriculum_policy and advance_curriculum_sup \
                                          and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
@@ -371,6 +381,24 @@ class Trainer(object):
             logger.logkv('Time/All_VidRollout', all_rollout_time / time_total)
             logger.logkv('Time/All_Saving', all_saving_time / time_total)
             logger.logkv('Time/All_Unaccounted', all_unaccounted_time / time_total)
+
+            for k in teacher_train_dict.keys():
+                if should_train_rl:
+                    logger.logkv(f'Feedback/Trained_{k}', int(teacher_train_dict[k]))
+                else:
+                    logger.logkv(f'Feedback/Trained_{k}', -1)
+
+                if should_distill:
+                    logger.logkv(f'Feedback/Distilled_{k}', int(teacher_distill_dict[k]))
+                else:
+                    logger.logkv(f'Feedback/Distilled_{k}', -1)
+
+                if should_policy_rollout:
+                    logger.logkv(f'Feedback/Rollout_{k}', int(last_teacher_dict[k]))
+                    logger.logkv(f'Feedback/DRollout_{k}', int(advancement_dict[k]))
+                else:
+                    logger.logkv(f'Feedback/Rollout_{k}', -1)
+                    logger.logkv(f'Feedback/DRollout_{k}', -1)
 
             logger.dumpkvs()
 
@@ -488,14 +516,23 @@ class Trainer(object):
             logger.logkv(f"{tag}/PathLength", avg_path_length)
             self.num_feedback_advice += episode_logs['num_feedback_advice']
             self.num_feedback_reward += episode_logs['num_feedback_reward']
+            for k in self.no_teacher_dict.keys():
+                k_gave = f'gave_{k}'
+                self.gave_feedback[k] += episode_logs[k_gave]
+                logger.logkv(f"Feedback/Total_{k_gave}", self.gave_feedback[k])
+                k_followed = f'followed_{k}'
+                self.followed_feedback[k] += episode_logs[k_followed]
+                logger.logkv(f"Feedback/Total_{k_followed}", self.followed_feedback[k])
+                logger.logkv(f"Feedback/Ratio_{k_followed}", self.followed_feedback[k] / self.gave_feedback[k])
+
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
             logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
             logger.logkv(f"{tag}/NumFeedbackTotal", self.num_feedback_advice + self.num_feedback_reward)
             logger.logkv(f"{tag}/num_feedback_reward", episode_logs['num_feedback_reward'])
             logger.logkv(f"{tag}/num_feedback_advice", episode_logs['num_feedback_advice'])
             for key in episode_logs:
-                if 'followed_' in key:
-                    logger.logkv(f"{tag}/{key}", episode_logs[key])
+                if 'followed_' in key or 'gave_' in key:
+                    logger.logkv(f"Feedback/{key}", episode_logs[key])
         if summary_logs is not None:
             for k, v in summary_logs.items():
                 logger.logkv(f"{tag}/{k}", v)
@@ -573,7 +610,7 @@ class Trainer(object):
         logger.logkv(f"{tag}Advance", int(advance_curriculum))
         # logger.logkv(f"{tag}AvgSuccess", avg_success)
         logger.logkv(f"{tag}AvgAccuracy", avg_accuracy)
-        return advance_curriculum
+        return advance_curriculum, avg_success, avg_accuracy
 
     def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
                     log_prefix=None, stochastic=True, rollout_oracle=False):
@@ -627,7 +664,9 @@ class Trainer(object):
                      'total_distillation_frames': self.total_distillation_frames,
                      'itrs_on_level': self.itrs_on_level,
                      'next_train_itr': self.next_train_itr,
-                     'num_train_skip_itrs': self.num_train_skip_itrs
+                     'num_train_skip_itrs': self.num_train_skip_itrs,
+                     'gave_feedback': self.gave_feedback,
+                     'followed_feedback': self.followed_feedback,
                  })
         if self.reward_predictor is not None:
             d['reward_predictor'] = self.reward_predictor

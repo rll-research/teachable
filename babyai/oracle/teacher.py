@@ -58,10 +58,17 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
+        vis_mask = oracle.vis_mask
         new_oracle = self.botclass(oracle.mission)
-        new_oracle.vis_mask = oracle.vis_mask
-        new_oracle.step = oracle.step
-        oracle = new_oracle
+        drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
+                   (not agent_action == oracle.mission.actions.toggle)
+        if drop_off:
+            self.next_action, self.next_subgoal = oracle.replan(agent_action)
+        else:
+            new_oracle.vis_mask = vis_mask
+            new_oracle.step = oracle.step
+            self.next_action, self.next_subgoal = new_oracle.replan(-1)
+            oracle = new_oracle
         self.last_action = self.next_action
         self.last_step_error = False
         try:
