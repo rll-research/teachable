@@ -62,6 +62,7 @@ class Teacher:
         new_oracle = self.botclass(oracle.mission)
         drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
                    (not agent_action == oracle.mission.actions.toggle)
+        self.last_action = self.next_action
         if drop_off:
             self.next_action, self.next_subgoal = oracle.replan(agent_action)
         else:
@@ -69,13 +70,7 @@ class Teacher:
             new_oracle.step = oracle.step
             self.next_action, self.next_subgoal = new_oracle.replan(-1)
             oracle = new_oracle
-        self.last_action = self.next_action
         self.last_step_error = False
-        try:
-            self.next_action, self.next_subgoal = oracle.replan(-1)
-        except Exception as e:
-            self.next_action = -1
-            self.last_step_error = True
         self.steps_since_lastfeedback += 1
         return oracle
 
