@@ -307,10 +307,17 @@ class Trainer(object):
                     time_run_policy_start = time.time()
                     logger.log("Running model with highest level teacher")
                     # Take distillation dict, keep the last teacher
-                    last_teacher = [k for k, v in teacher_distill_dict.items() if v][-1]
-                    last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
+                    if self.supervised_model is None:
+                        last_teacher_dict = teacher_train_dict
+                        last_teacher = "_".join(teacher_train_dict.keys())
+                    elif np.sum(teacher_distill_dict.values()) == 0:  # No teachers active:
+                        last_teacher_dict = teacher_distill_dict
+                        last_teacher = ""
+                    else:
+                        last_teacher = [k for k, v in teacher_distill_dict.items() if v][-1]
+                        last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
                     _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, last_teacher_dict,
-                                                                    "Rollout/")
+                                                                    f"Rollout/{last_teacher}")
 
                     run_policy_time = time.time() - time_run_policy_start
 
@@ -523,7 +530,7 @@ class Trainer(object):
                 k_followed = f'followed_{k}'
                 self.followed_feedback[k] += episode_logs[k_followed]
                 logger.logkv(f"Feedback/Total_{k_followed}", self.followed_feedback[k])
-                logger.logkv(f"Feedback/Ratio_{k_followed}", self.followed_feedback[k] / self.gave_feedback[k])
+                logger.logkv(f"Feedback/Ratio_{k_followed}", episode_logs[k_followed] / episode_logs[k_gave])
 
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
             logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)
