@@ -197,6 +197,7 @@ class ImitationLearning(object):
         self.final_policy_loss = 0
         self.final_value_loss = 0
         self.accuracy = 0
+        self.label_accuracy = 0
         self.total_frames = len(indexes) * self.args.recurrence
         self.accuracy_list = []
         self.lengths_list = []
@@ -207,6 +208,8 @@ class ImitationLearning(object):
         self.accuracy_list.append(float((action_pred == action_step).sum()))
         self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
         self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
+        if action_step.shape == action_teacher[indexes].shape:
+            self.label_accuracy += np.sum(action_teacher[indexes] == action_step.detach().cpu().numpy()) / self.total_frames
 
         self.final_entropy += entropy
         self.final_policy_loss += policy_loss
@@ -250,13 +253,8 @@ class ImitationLearning(object):
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
-        if not float(self.accuracy) <= 1.0001:
-            print("?", self.accuracy)
-            print("Accuracy List", len(self.accuracy_list), self.total_frames, len(self.indexes))
-            print(self.accuracy_list)
-            print(self.lengths_list)
-            import IPython
-            IPython.embed()
+        log["Label_Accuracy"] = float(self.label_accuracy)
+        assert float(self.accuracy) <= 1.0001, "somehow accuracy is greater than 1"
         assert float(self.accuracy) <= 1.0001, float(self.accuracy)
         teacher_numerator = 0
         teacher_denominator = 0
