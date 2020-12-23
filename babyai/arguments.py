@@ -132,6 +132,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--clip_eps', type=float, default=.2)
         self.add_argument('--advice_dim', type=int, default=128)
         self.add_argument('--no_teacher', action='store_true')
+        self.add_argument('--early_entropy_coef', type=int, default=None)
 
         # Reward
         self.add_argument('--intermediate_reward', type=bool, default=True)
