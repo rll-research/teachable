@@ -8,7 +8,7 @@ from babyai.rl.utils.dictlist import DictList
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5):
+                 label_weightings=False, instr_dropout_prob=.5, modify_cc3_steps=None):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
@@ -30,8 +30,19 @@ class ImitationLearning(object):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.99)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.modify_cc3_steps = modify_cc3_steps
+
+    def modify_cc3(self, batch):
+        obs = batch.obs
+        for i in range(len(obs) - self.modify_cc3_steps):
+            future_obs = obs[i + self.modify_cc3_steps]['obs']
+            obs[i]['CartesianCorrections'] = future_obs
+        batch.obs = obs
+        return batch
 
     def preprocess_batch(self, batch, source):
+        if self.modify_cc3_steps is not None:
+            batch = self.modify_cc3(batch)
         obss = batch.obs
         if source == 'teacher':
             action_true = batch.teacher_action[:, 0]

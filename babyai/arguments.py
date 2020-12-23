@@ -132,6 +132,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--clip_eps', type=float, default=.2)
         self.add_argument('--advice_dim', type=int, default=128)
         self.add_argument('--no_teacher', action='store_true')
+        self.add_argument('--early_entropy_coef', type=int, default=None)
 
         # Reward
         self.add_argument('--intermediate_reward', type=bool, default=True)
@@ -152,6 +153,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distill_no_teachers', action='store_true')
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
+        self.add_argument('--modify_cc3', action='store_true')
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=200)

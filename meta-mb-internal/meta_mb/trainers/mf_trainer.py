@@ -194,7 +194,9 @@ class Trainer(object):
             time_training_start = time.time()
             should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_train_rl:
-                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict)
+                early_entropy_coef = self.args.early_entropy_coef if self.itrs_on_level < 10 else None
+                summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict,
+                                                             entropy_coef=early_entropy_coef)
             else:
                 summary_logs = None
             time_training = time.time() - time_training_start

@@ -203,9 +203,10 @@ def run_experiment(**config):
 
     args.model = 'default_il'
     if supervised_model is not None:
+        modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
                                        preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                       instr_dropout_prob=args.instr_dropout_prob)
+                                       instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps)
         if il_optimizer is not None:
             il_trainer.optimizer.load_state_dict(il_optimizer)
     else:
