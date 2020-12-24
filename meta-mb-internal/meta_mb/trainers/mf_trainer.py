@@ -174,7 +174,7 @@ class Trainer(object):
 
                 if self.args.use_dagger:
                     dagger_samples_data, _ = self.algo.collect_experiences(teacher_train_dict, use_dagger=True,
-                                                                           dagger_dict=self.no_teacher_dict)
+                            dagger_dict={k: k == 'CartesianCorrections' for k in self.no_teacher_dict.keys()})#self.no_teacher_dict)
                     dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
                 else:
                     dagger_samples_data = None
@@ -435,15 +435,15 @@ class Trainer(object):
                                      save_video=should_save_video,
                                      log_prefix="DVidRollout/Stoch",
                                      stochastic=True)
-                # self.save_videos(self.algo.acmodel,
-                #                  save_name='withTeacher_video_det',
-                #                  num_rollouts=10,
-                #                  teacher_dict=self.teacher_train_dict,
-                #                  save_video=should_save_video,
-                #                  log_prefix="VidRollout/Det", stochastic=False)
+                self.save_videos(self.algo.acmodel,
+                                 save_name='withTeacher_video_det',
+                                 num_rollouts=10,
+                                 teacher_dict=teacher_train_dict,
+                                 save_video=should_save_video,
+                                 log_prefix="VidRollout/Det", stochastic=False)
                 self.save_videos(self.algo.acmodel,
                                  save_name='withTeacher_video_stoch',
-                                 num_rollouts=4,
+                                 num_rollouts=10,
                                  teacher_dict=teacher_train_dict,
                                  save_video=should_save_video,
                                  log_prefix="VidRollout/Stoch",
@@ -628,7 +628,7 @@ class Trainer(object):
             self.env.set_level_distribution(self.curriculum_step)
         except:
             print("no curriculum")
-        save_wandb = False  # (save_video and not self.is_debug)
+        save_wandb = True  # (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,
@@ -636,9 +636,10 @@ class Trainer(object):
                                                                 record_teacher=True, teacher_dict=teacher_dict,
                                                                 video_directory=self.exp_name,
                                                                 video_name=save_name + str(self.curriculum_step),
-                                                                num_rollouts=num_rollouts, save_wandb=save_wandb,
+                                                                num_rollouts=num_rollouts, 
+                                                                save_wandb=save_wandb,
                                                                 save_locally=True,
-                                                                num_save=5,
+                                                                num_save=10,
                                                                 obs_preprocessor=self.obs_preprocessor,
                                                                 rollout_oracle=rollout_oracle)
         if log_prefix is not None:
