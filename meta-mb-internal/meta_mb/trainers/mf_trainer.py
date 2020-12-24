@@ -200,7 +200,7 @@ class Trainer(object):
             else:
                 summary_logs = None
             time_training = time.time() - time_training_start
-            self._log(episode_logs, summary_logs, tag="Train")
+            self._log(episode_logs, summary_logs, samples_data, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
             if self.args.no_train_rl or skip_training_rl:
@@ -443,7 +443,7 @@ class Trainer(object):
                 #                  log_prefix="VidRollout/Det", stochastic=False)
                 self.save_videos(self.algo.acmodel,
                                  save_name='withTeacher_video_stoch',
-                                 num_rollouts=4,
+                                 num_rollouts=10,
                                  teacher_dict=teacher_train_dict,
                                  save_video=should_save_video,
                                  log_prefix="VidRollout/Stoch",
@@ -515,12 +515,15 @@ class Trainer(object):
             logger.logkv(f'Heldout/{level_name}StochAcc', success_rate)
             logger.logkv(f'Heldout/{level_name}DetAcc', success_rate)
 
-    def _log(self, episode_logs, summary_logs, tag=""):
+    def _log(self, episode_logs, summary_logs, data, tag=""):
         if episode_logs is not None:
             avg_return = np.mean(episode_logs['return_per_episode'])
             avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
             avg_success = np.mean(episode_logs['success_per_episode'])
             logger.logkv(f"{tag}/Success", avg_success)
+            logger.logkv(f"{tag}/Accuracy", torch.eq(data.action, data.teacher_action).float().mean().item())
+            logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1),
+                                                            data.teacher_action).float().mean().item())
             logger.logkv(f"{tag}/Return", avg_return)
             logger.logkv(f"{tag}/PathLength", avg_path_length)
             self.num_feedback_advice += episode_logs['num_feedback_advice']
@@ -544,7 +547,8 @@ class Trainer(object):
                     logger.logkv(f"Feedback/{key}", episode_logs[key])
         if summary_logs is not None:
             for k, v in summary_logs.items():
-                logger.logkv(f"{tag}/{k}", v)
+                if not k == 'Accuracy':
+                    logger.logkv(f"{tag}/{k}", v)
 
     def use_reward_predictor(self, samples_data):
         pass
@@ -638,7 +642,7 @@ class Trainer(object):
                                                                 video_name=save_name + str(self.curriculum_step),
                                                                 num_rollouts=num_rollouts, save_wandb=save_wandb,
                                                                 save_locally=True,
-                                                                num_save=5,
+                                                                num_save=10,
                                                                 obs_preprocessor=self.obs_preprocessor,
                                                                 rollout_oracle=rollout_oracle)
         if log_prefix is not None:
