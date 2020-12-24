@@ -632,7 +632,7 @@ class Trainer(object):
             self.env.set_level_distribution(self.curriculum_step)
         except:
             print("no curriculum")
-        save_wandb = True  # (save_video and not self.is_debug)
+        save_wandb = False  # (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,
