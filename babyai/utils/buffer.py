@@ -24,7 +24,7 @@ class Buffer:
     def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer'):
         self.train_buffer_capacity = buffer_capacity
         # We don't need that many val samples
-        self.val_buffer_capacity = np.clip(int(buffer_capacity * val_prob), 1, 50)
+        self.val_buffer_capacity = int(buffer_capacity * val_prob)
         # Probability that we sample from the current level instead of a past level
         self.prob_current = prob_current
         self.index_train = {}
