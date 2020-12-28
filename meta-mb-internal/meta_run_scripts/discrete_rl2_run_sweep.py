@@ -242,6 +242,15 @@ def run_experiment(**config):
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
                    obs_preprocessor=obs_preprocessor)
 
+
+    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    algo_dagger = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+                   args.gae_lambda,
+                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                   args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
+                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
+                   obs_preprocessor=obs_preprocessor)
+
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
 
@@ -264,6 +273,7 @@ def run_experiment(**config):
     trainer = Trainer(
         args,
         algo=algo,
+        algo_dagger=algo_dagger,
         policy=policy,
         env=deepcopy(env),
         sampler=sampler,

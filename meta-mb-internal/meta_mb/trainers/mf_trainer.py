@@ -34,6 +34,7 @@ class Trainer(object):
         self,
         args,
         algo,
+        algo_dagger,
         policy,
         env,
         sampler,
@@ -59,6 +60,7 @@ class Trainer(object):
     ):
         self.args = args
         self.algo = algo
+        self.algo_dagger = algo_dagger
         self.policy = policy
         self.env = copy.deepcopy(env)
         self.sampler = sampler
@@ -93,11 +95,12 @@ class Trainer(object):
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
         self.eval_heldout = eval_heldout
 
-    def check_advance_curriculum(self, episode_logs, summary_logs):
-        if summary_logs is None or episode_logs is None:
+    def check_advance_curriculum(self, episode_logs, data):
+        if episode_logs is None:
             return True
+        avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
+                                data.teacher_action).float().mean().item()
         avg_success = np.mean(episode_logs["success_per_episode"])
-        avg_accuracy = summary_logs['Accuracy']
         should_advance_curriculum = (avg_success >= self.args.success_threshold) \
                                     and (avg_accuracy >= self.args.accuracy_threshold_rl)
         return should_advance_curriculum
@@ -169,16 +172,13 @@ class Trainer(object):
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=not skip_training_rl)
                 raw_samples_data = copy.deepcopy(samples_data)
-                buffer.add_batch(samples_data, self.curriculum_step)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
 
-                if self.args.use_dagger:
-                    dagger_samples_data, _ = self.algo.collect_experiences(teacher_train_dict, use_dagger=True,
-                            dagger_dict={k: k == 'CartesianCorrections' for k in self.no_teacher_dict.keys()})#self.no_teacher_dict)
-                    dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
-                else:
-                    dagger_samples_data = None
-                logger.logkv("BufferSize", buffer.counts_train[self.curriculum_step])
+                try:
+                    counts_train = buffer.counts_train[self.curriculum_step]
+                except:
+                    counts_train = 0
+                logger.logkv("BufferSize", counts_train)
                 if self.args.end_on_full_buffer and \
                     (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
                     print("ALL DONE!")
@@ -202,7 +202,7 @@ class Trainer(object):
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum = self.check_advance_curriculum(episode_logs, summary_logs)
+            advance_curriculum = self.check_advance_curriculum(episode_logs, raw_samples_data)
             if self.args.no_train_rl or skip_training_rl:
                 advance_curriculum = True
             else:
@@ -213,6 +213,16 @@ class Trainer(object):
                 else:
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 10
+            if advance_curriculum:
+                buffer.add_batch(raw_samples_data, self.curriculum_step)
+
+                if self.args.use_dagger:
+                    dagger_samples_data, _ = self.algo_dagger.collect_experiences(teacher_train_dict, use_dagger=True,
+                            dagger_dict={k: k == 'CartesianCorrections' for k in self.no_teacher_dict.keys()})#self.no_teacher_dict)
+                    dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
+                else:
+                    dagger_samples_data = None
+
 
             logger.logkv('Train/Advance', int(advance_curriculum))
 
@@ -249,7 +259,7 @@ class Trainer(object):
                         sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size,
                                                                     split='train')
                         self.total_distillation_frames += len(sampled_dagger_batch)
-                        self.distill(sampled_dagger_batch, is_training=True, teachers_dict=teacher_distill_dict)
+                        self.distill(sampled_dagger_batch, is_training=True, source='teacher', teachers_dict=teacher_distill_dict)
 
                 if raw_samples_data is not None:
                     sample_start = time.time()
@@ -259,7 +269,7 @@ class Trainer(object):
                     time_train_distill += (time.time() - sample_start)
                 if dagger_samples_data is not None:
                     self.total_distillation_frames += len(dagger_samples_data)
-                    self.distill(trim_batch(dagger_samples_data), is_training=True,
+                    self.distill(trim_batch(dagger_samples_data), is_training=True, source='teacher',
                                  teachers_dict=teacher_distill_dict)
                 for key_set, log_dict in distill_log.items():
                     key_set = '_'.join(key_set)
@@ -430,8 +440,8 @@ class Trainer(object):
                     #                     stochastic=False)
                     self.save_videos(self.il_trainer.acmodel,
                                      save_name='distilled_video_stoch',
-                                     num_rollouts=4,
-                                     teacher_dict=advancement_dict,
+                                     num_rollouts=20,
+                                     teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},#advancement_dict,
                                      save_video=should_save_video,
                                      log_prefix="DVidRollout/Stoch",
                                      stochastic=True)
@@ -603,13 +613,15 @@ class Trainer(object):
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
-    def distill(self, samples, is_training=False, teachers_dict=None):
+    def distill(self, samples, is_training=False, teachers_dict=None, source=None):
         distill_target = 'powerset'
         if self.args.distill_all_teachers:
             distill_target = 'all'
         if self.args.distill_no_teachers:
             distill_target = 'none'
-        log = self.il_trainer.distill(samples, source=self.args.source, is_training=is_training,
+        if source is None:
+            source = self.args.source
+        log = self.il_trainer.distill(samples, source=source, is_training=is_training,
                                       teachers_dict=teachers_dict, distill_target=distill_target)
         return log
 
@@ -632,7 +644,7 @@ class Trainer(object):
             self.env.set_level_distribution(self.curriculum_step)
         except:
             print("no curriculum")
-        save_wandb = False  # (save_video and not self.is_debug)
+        save_wandb = (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,
@@ -643,7 +655,7 @@ class Trainer(object):
                                                                 num_rollouts=num_rollouts, 
                                                                 save_wandb=save_wandb,
                                                                 save_locally=True,
-                                                                num_save=10,
+                                                                num_save=20,
                                                                 obs_preprocessor=self.obs_preprocessor,
                                                                 rollout_oracle=rollout_oracle)
         if log_prefix is not None:
