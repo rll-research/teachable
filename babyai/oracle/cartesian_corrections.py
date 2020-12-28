@@ -26,7 +26,7 @@ class CartesianCorrections(Teacher):
         return np.array(self.next_state)
 
     def success_check(self, state, action, oracle):
-        if self.last_feedback is None:
+        if self.past_timestep_feedback is None:
             return False
         followed_opt_action = np.allclose(state.flatten(), self.past_timestep_feedback.flatten())
         return followed_opt_action
