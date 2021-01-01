@@ -217,9 +217,10 @@ class Trainer(object):
                 buffer.add_batch(raw_samples_data, self.curriculum_step)
 
                 if self.args.use_dagger:
-                    dagger_samples_data, _ = self.algo_dagger.collect_experiences(teacher_train_dict, use_dagger=True,
+                    for i in range(1):
+                        dagger_samples_data, _ = self.algo_dagger.collect_experiences(teacher_train_dict, use_dagger=True,
                             dagger_dict={k: k == 'CartesianCorrections' for k in self.no_teacher_dict.keys()})#self.no_teacher_dict)
-                    dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
+                        dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
                 else:
                     dagger_samples_data = None
 
@@ -259,7 +260,12 @@ class Trainer(object):
                         sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size,
                                                                     split='train')
                         self.total_distillation_frames += len(sampled_dagger_batch)
-                        self.distill(sampled_dagger_batch, is_training=True, source='teacher', teachers_dict=teacher_distill_dict)
+                        dagger_distill_log = self.distill(sampled_dagger_batch, is_training=True, source='teacher', teachers_dict=teacher_distill_dict)
+                        distill_log = dagger_distill_log
+                        for key_set, log_dict in dagger_distill_log.items():
+                            key_set = '_'.join(key_set)
+                            for k, v in log_dict.items():
+                                logger.logkv(f'Distill/DAgger_{key_set}{k}_Train', v)
 
                 if raw_samples_data is not None:
                     sample_start = time.time()
@@ -269,24 +275,43 @@ class Trainer(object):
                     time_train_distill += (time.time() - sample_start)
                 if dagger_samples_data is not None:
                     self.total_distillation_frames += len(dagger_samples_data)
-                    self.distill(trim_batch(dagger_samples_data), is_training=True, source='teacher',
+                    dagger_distill_log = self.distill(trim_batch(dagger_samples_data), is_training=True, source='teacher',
                                  teachers_dict=teacher_distill_dict)
+                    distill_log = dagger_distill_log
+                    for key_set, log_dict in dagger_distill_log.items():
+                        key_set = '_'.join(key_set)
+                        for k, v in log_dict.items():
+                            logger.logkv(f'Distill/DAgger_{key_set}{k}_Train_Recent', v)
                 for key_set, log_dict in distill_log.items():
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
-                sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
+                #sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
-                distill_log_val = self.distill(sampled_val_batch, is_training=False,
+                if True:#itr % 2 == 1:
+                    sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')#trim_batch(raw_samples_data)
+                    distill_log_val = self.distill(sampled_val_batch, is_training=False,
                                                teachers_dict=teacher_distill_dict)
+                    #distill_log = distill_log_val
+
+
+                    #sampled_dagger_val_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size, split='val')
+                    #dagger_distill_log_val = self.distill(sampled_dagger_val_batch, is_training=False, source='teacher',
+                    #                           teachers_dict=teacher_distill_dict)
+
+
                 time_val_distill += (time.time() - sample_start)
                 for key_set, log_dict in distill_log_val.items():
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
+                #for key_set, log_dict in dagger_distill_log_val.items():
+                #    key_set = '_'.join(key_set)
+                #    for k, v in log_dict.items():
+                #        logger.logkv(f"Distill/DAgger_{key_set}{k}_Val", v)
                 try:
                     advance_curriculum = distill_log_val[()]['Accuracy'] >= self.args.accuracy_threshold_distill
                 except:
@@ -300,8 +325,8 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             run_policy_time = 0
-            should_policy_rollout = (itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or advance_curriculum
+            should_policy_rollout = ((itr % self.eval_every == 0) or (
+                itr == self.args.n_itr - 1) or advance_curriculum)
             if should_policy_rollout:
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
@@ -461,9 +486,9 @@ class Trainer(object):
                 self.save_videos(self.algo.acmodel,
                                  save_name='oracle_video',
                                  num_rollouts=2,
-                                 teacher_dict=self.no_teacher_dict,
+                                 teacher_dict={k:k == 'CartesianCorrections' for k in advancement_dict.keys()},#self.no_teacher_dict,
                                  save_video=should_save_video,
-                                 log_prefix="VidRollout/Oracle",
+                                 log_prefix="VidRollout/OracleCC",
                                  stochastic=True,
                                  rollout_oracle=True)
 
