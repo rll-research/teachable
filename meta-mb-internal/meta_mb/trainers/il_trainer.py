@@ -264,7 +264,7 @@ class ImitationLearning(object):
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
-        log["Label_Accuracy"] = float(self.label_accuracy)
+        log["Label_A"] = float(self.label_accuracy)
         assert float(self.accuracy) <= 1.0001, "somehow accuracy is greater than 1"
         assert float(self.accuracy) <= 1.0001, float(self.accuracy)
         teacher_numerator = 0

@@ -187,6 +187,7 @@ class Trainer(object):
                 episode_logs = None
                 raw_samples_data = None
                 dagger_samples_data = None
+                samples_data = None
 
             """ -------------------- Training --------------------------"""
 

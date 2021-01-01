@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 import scipy.signal
 import json
-import tensorflow as tf
+# import tensorflow as tf
 
 def compile_function(inputs, outputs, log_name=None):
     def run(*input_vals):
@@ -202,11 +202,11 @@ def set_seed(seed):
         None
     """
     import random
-    import tensorflow as tf
+    # import tensorflow as tf
     seed %= 4294967294
     random.seed(seed)
     np.random.seed(seed)
-    tf.set_random_seed(seed)
+    # tf.set_random_seed(seed)
     print('using seed %s' % (str(seed)))
 
 

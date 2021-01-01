@@ -1,7 +1,7 @@
 import os
 import random
 import numpy
-import tensorflow as tf
+# import tensorflow as tf
 from babyai.utils.agent import load_agent, ModelAgent, DemoAgent, BotAgent
 from babyai.utils.demos import (
     load_demos, save_demos, synthesize_demos, get_demos_path)
