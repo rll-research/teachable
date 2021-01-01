@@ -25,4 +25,4 @@ def create_folders_if_necessary(path):
 def seed(seed):
     random.seed(seed)
     numpy.random.seed(seed)
-    tf.random.set_random_seed(seed)  # TODO: switch back to torch
+    # tf.random.set_random_seed(seed)  # TODO: switch back to torch

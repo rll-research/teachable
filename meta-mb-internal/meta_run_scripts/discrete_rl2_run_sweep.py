@@ -38,7 +38,7 @@ def args_type(default):
 def get_exp_name(args):
     EXP_NAME = args.prefix
     feedback_type = str(args.feedback_type)
-    feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]"]])
+    feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]", ",", " "]])
     EXP_NAME += '_teacher' + feedback_type
     # if args.distill_same_model:
     #     EXP_NAME += '_SAME'
@@ -46,9 +46,9 @@ def get_exp_name(args):
         EXP_NAME += '_SD'
     # if args.intermediate_reward:
     #     EXP_NAME += '_dense'
-    EXP_NAME += '_threshS' + str(args.success_threshold)
+    EXP_NAME += '_threshS' + str(args.success_threshold_rl)
     EXP_NAME += '_threshAR' + str(args.accuracy_threshold_rl)
-    EXP_NAME += '_threshAD' + str(args.accuracy_threshold_distill)
+    EXP_NAME += '_threshAD' + str(args.accuracy_threshold_distill_teacher)
     EXP_NAME += '_lr' + str(args.lr)
     EXP_NAME += '_ent' + str(args.entropy_coef)
     # EXP_NAME += '_currfn' + args.advance_curriculum_func
