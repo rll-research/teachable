@@ -80,6 +80,7 @@ class Trainer(object):
         self.save_videos_every = save_videos_every
         self.log_and_save = log_and_save
         self.train_with_teacher = args.feedback_type is not None
+        self.introduced_teachers = log_dict.get('introduced_teachers', set())
         self.num_feedback_advice = log_dict.get('num_feedback_advice', 0)
         self.num_feedback_reward = log_dict.get('num_feedback_reward', 0)
         self.total_distillation_frames = log_dict.get('total_distillation_frames', 0)
@@ -157,6 +158,10 @@ class Trainer(object):
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
+            for d in [teacher_train_dict, teacher_distill_dict, advancement_dict]:
+                for teacher_name, teacher_present in d.items():
+                    if teacher_present:
+                        self.introduced_teachers.add(teacher_name)
             logger.logkv("ItrsOnLevel", self.itrs_on_level)
             self.itrs_on_level += 1
 
@@ -220,7 +225,7 @@ class Trainer(object):
                 else:
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 10
-            if advance_curriculum:
+            if self.args.collect_before_threshold or advance_curriculum:
                 buffer.add_batch(raw_samples_data, self.curriculum_step)
 
                 if self.args.use_dagger:
@@ -263,15 +268,23 @@ class Trainer(object):
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
                     self.total_distillation_frames += len(sampled_batch)
-                    distill_log = self.distill(sampled_batch, is_training=True, teachers_dict=teacher_distill_dict)
+                    distill_log = self.distill(sampled_batch,
+                                               is_training=True,
+                                               teachers_dict=teacher_distill_dict,
+                                               relabel=self.args.relabel,
+                                               relabel_dict=teacher_train_dict)
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
                         sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size,
                                                                     split='train')
                         self.total_distillation_frames += len(sampled_dagger_batch)
-                        dagger_distill_log = self.distill(sampled_dagger_batch, is_training=True, source='teacher',
-                                                          teachers_dict=teacher_distill_dict)
+                        dagger_distill_log = self.distill(sampled_dagger_batch,
+                                                          is_training=True,
+                                                          source='teacher',
+                                                          teachers_dict=teacher_distill_dict,
+                                                          relabel=self.args.relabel,
+                                                          relabel_dict=teacher_train_dict)
                         distill_log = dagger_distill_log
                         for key_set, log_dict in dagger_distill_log.items():
                             key_set = '_'.join(key_set)
@@ -281,14 +294,20 @@ class Trainer(object):
                 if raw_samples_data is not None:
                     sample_start = time.time()
                     self.total_distillation_frames += len(raw_samples_data)
-                    distill_log = self.distill(trim_batch(raw_samples_data), is_training=True,
-                                               teachers_dict=teacher_distill_dict)
+                    distill_log = self.distill(trim_batch(raw_samples_data),
+                                               is_training=True,
+                                               teachers_dict=teacher_distill_dict,
+                                               relabel=self.args.relabel,
+                                               relabel_dict=teacher_train_dict)
                     time_train_distill += (time.time() - sample_start)
                 if dagger_samples_data is not None:
                     self.total_distillation_frames += len(dagger_samples_data)
-                    dagger_distill_log = self.distill(trim_batch(dagger_samples_data), is_training=True,
+                    dagger_distill_log = self.distill(trim_batch(dagger_samples_data),
+                                                      is_training=True,
                                                       source='teacher',
-                                                      teachers_dict=teacher_distill_dict)
+                                                      teachers_dict=teacher_distill_dict,
+                                                      relabel=self.args.relabel,
+                                                      relabel_dict=teacher_train_dict)
                     distill_log = dagger_distill_log
                     for key_set, log_dict in dagger_distill_log.items():
                         key_set = '_'.join(key_set)
@@ -304,13 +323,12 @@ class Trainer(object):
                 sample_start = time.time()
                 sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
                                                   split='val')  # trim_batch(raw_samples_data)
-                distill_log_val = self.distill(sampled_val_batch, is_training=False, source='teacher',
-                                               teachers_dict=teacher_distill_dict)
-                # distill_log = distill_log_val
-
-                # sampled_dagger_val_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size, split='val')
-                # dagger_distill_log_val = self.distill(sampled_dagger_val_batch, is_training=False, source='teacher',
-                #                           teachers_dict=teacher_distill_dict)
+                distill_log_val = self.distill(sampled_val_batch,
+                                               is_training=False,
+                                               source='teacher',
+                                               teachers_dict=teacher_distill_dict,
+                                               relabel=self.args.relabel,
+                                               relabel_dict=teacher_train_dict)
 
                 time_val_distill += (time.time() - sample_start)
                 for key_set, log_dict in distill_log_val.items():
@@ -318,10 +336,6 @@ class Trainer(object):
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
-                # for key_set, log_dict in dagger_distill_log_val.items():
-                #    key_set = '_'.join(key_set)
-                #    for k, v in log_dict.items():
-                #        logger.logkv(f"Distill/DAgger_{key_set}{k}_Val", v)
                 advance_curriculum = True
                 for teacher_key_set in distill_log_val.keys():
                     acc = distill_log_val[teacher_key_set]['Accuracy']
@@ -329,8 +343,10 @@ class Trainer(object):
                         advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
                     else:
                         advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
+                    key_set_name = '_'.join(list(teacher_key_set))
+                    logger.logkv(f'Distill/Advance_{key_set_name}', int(advance_teacher))
                     advance_curriculum = advance_curriculum and advance_teacher
-                logger.logkv('Distill/Advance', int(advance_curriculum))
+                logger.logkv('Distill/Advance_Overall', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
 
             else:
@@ -359,24 +375,20 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     if self.supervised_model is None:
                         last_teacher_dict = teacher_train_dict
-                        last_teacher = "_".join(teacher_train_dict.keys())
                     elif np.sum(teacher_distill_dict.values()) == 0:  # No teachers active:
                         last_teacher_dict = teacher_distill_dict
-                        last_teacher = ""
                     else:
                         last_teacher = [k for k, v in teacher_distill_dict.items() if v][-1]
                         last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
-                    _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, last_teacher_dict,
-                                                                         f"Rollout/{last_teacher}")
-                    teacher_train_name = '_'.join([k for k, v in teacher_train_dict.items() if v])
-                    _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
-                                                                         f"Rollout/{teacher_train_name}")
+                    advance_curriculum_distill_teachers, _, _ = self.run_supervised(
+                        self.algo.acmodel, last_teacher_dict, f"Rollout/")
+                    advance_curriculum_train_teachers, _, _ = self.run_supervised(
+                        self.algo.acmodel, teacher_train_dict, f"Rollout/")
 
                     run_policy_time = time.time() - time_run_policy_start
 
-                    advance_curriculum_policy = True  # TODO: decide if we want this
-                    advance_curriculum = advance_curriculum_policy and advance_curriculum_sup \
-                                         and train_advance_curriculum
+                    advance_curriculum = advance_curriculum_train_teachers and advance_curriculum_distill_teachers \
+                                         and advance_curriculum_sup and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
 
                     logger.logkv('Advance', int(advance_curriculum))
@@ -472,42 +484,31 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
-                    # self.save_videos(self.il_trainer.acmodel,
-                    #                     save_name='distilled_video_det',
-                    #                     num_rollouts=10,
-                    #                     teacher_dict=self.no_teacher_dict,
-                    #                     save_video=should_save_video,
-                    #                     log_prefix="DVidRollout/Det",
-                    #                     stochastic=False)
                     self.save_videos(self.il_trainer.acmodel,
-                                     save_name='distilled_video_stoch',
-                                     num_rollouts=20,
-                                     teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
-                                     # advancement_dict,
+                                     save_name='no_teacher_video_stoch',
+                                     num_rollouts=10,
+                                     teacher_dict=self.no_teacher_dict,
                                      save_video=should_save_video,
-                                     log_prefix="DVidRollout/Stoch",
+                                     log_prefix="VidRollout/NoTeacher_Stoch",
+                                     teacher_name='None',
                                      stochastic=True)
-                self.save_videos(self.algo.acmodel,
-                                 save_name='withTeacher_video_det',
-                                 num_rollouts=10,
-                                 teacher_dict=teacher_train_dict,
-                                 save_video=should_save_video,
-                                 log_prefix="VidRollout/Det", stochastic=False)
-                self.save_videos(self.algo.acmodel,
-                                 save_name='withTeacher_video_stoch',
-                                 num_rollouts=10,
-                                 teacher_dict=teacher_train_dict,
-                                 save_video=should_save_video,
-                                 log_prefix="VidRollout/Stoch",
-                                 stochastic=True)
-                self.save_videos(self.algo.acmodel,
+                for teacher in self.introduced_teachers:
+                    self.save_videos(self.algo.acmodel,
+                                     save_name=f'{teacher}_video_stoch',
+                                     num_rollouts=10,
+                                     teacher_dict={k: k == teacher for k in advancement_dict.keys()},
+                                     save_video=should_save_video,
+                                     log_prefix=f"VidRollout/{teacher}_Stoch",
+                                     teacher_name=teacher,
+                                     stochastic=True)
+                self.save_videos(self.algo.acmodel,  # TODO: eventually remove this?
                                  save_name='oracle_video',
                                  num_rollouts=2,
                                  teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
-                                 # self.no_teacher_dict,
                                  save_video=should_save_video,
                                  log_prefix="VidRollout/OracleCC",
                                  stochastic=True,
+                                 teacher_name='CC3 (Oracle actions)',
                                  rollout_oracle=True)
 
                 rollout_time = time.time() - time_rollout_start
@@ -656,7 +657,7 @@ class Trainer(object):
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
-    def distill(self, samples, is_training=False, teachers_dict=None, source=None):
+    def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={}):
         distill_target = 'powerset'
         if self.args.distill_all_teachers:
             distill_target = 'all'
@@ -665,7 +666,8 @@ class Trainer(object):
         if source is None:
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
-                                      teachers_dict=teachers_dict, distill_target=distill_target)
+                                      teachers_dict=teachers_dict, distill_target=distill_target,
+                                      relabel=relabel, relabel_dict=relabel_dict)
         return log
 
     def run_supervised(self, policy, teacher_dict, tag):
@@ -683,7 +685,7 @@ class Trainer(object):
         return advance_curriculum, avg_success, avg_accuracy
 
     def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
-                    log_prefix=None, stochastic=True, rollout_oracle=False):
+                    log_prefix=None, stochastic=True, teacher_name="", rollout_oracle=False):
         policy.eval()
         try:
             self.env.set_level_distribution(self.curriculum_step)
@@ -702,6 +704,7 @@ class Trainer(object):
                                                                 save_locally=True,
                                                                 num_save=20,
                                                                 obs_preprocessor=self.obs_preprocessor,
+                                                                teacher_name=teacher_name,
                                                                 rollout_oracle=rollout_oracle)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
@@ -738,6 +741,7 @@ class Trainer(object):
                      'num_train_skip_itrs': self.num_train_skip_itrs,
                      'gave_feedback': self.gave_feedback,
                      'followed_feedback': self.followed_feedback,
+                     'introduced_teachers': self.introduced_teachers,
                  })
         if self.reward_predictor is not None:
             d['reward_predictor'] = self.reward_predictor
