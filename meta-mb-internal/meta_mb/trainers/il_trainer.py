@@ -103,7 +103,10 @@ class ImitationLearning(object):
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
         obss_list, action_true, action_teacher, done, inds, mask = batch
-        obss_list = [self.preprocess_obs(o, teacher_dict, show_instrs=np.random.uniform() > self.instr_dropout_prob)
+        # Dropout instructions with probability instr_dropout_prob,
+        # unless we have no teachers present in which case we keep the instr.
+        instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
+        obss_list = [self.preprocess_obs(o, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
                      for o in obss_list]
         obss = {}
         keys = obss_list[0].keys()
