@@ -321,7 +321,7 @@ class ImitationLearning(object):
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all':
-            key_set = keys
+            key_set = tuple(set(keys))
             log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log

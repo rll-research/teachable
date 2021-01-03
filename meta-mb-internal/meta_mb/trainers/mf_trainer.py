@@ -304,7 +304,7 @@ class Trainer(object):
                 sample_start = time.time()
                 sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
                                                   split='val')  # trim_batch(raw_samples_data)
-                distill_log_val = self.distill(sampled_val_batch, is_training=False,
+                distill_log_val = self.distill(sampled_val_batch, is_training=False, source='teacher',
                                                teachers_dict=teacher_distill_dict)
                 # distill_log = distill_log_val
 
@@ -324,7 +324,7 @@ class Trainer(object):
                 #        logger.logkv(f"Distill/DAgger_{key_set}{k}_Val", v)
                 advance_curriculum = True
                 for teacher_key_set in distill_log_val.keys():
-                    acc = distill_log_val[()]['Accuracy']
+                    acc = distill_log_val[teacher_key_set]['Accuracy']
                     if teacher_key_set == ():
                         advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
                     else:
@@ -368,8 +368,9 @@ class Trainer(object):
                         last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
                     _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, last_teacher_dict,
                                                                          f"Rollout/{last_teacher}")
+                    teacher_train_name = '_'.join([k for k, v in teacher_train_dict.items() if v])
                     _, last_success, last_accuracy = self.run_supervised(self.algo.acmodel, teacher_train_dict,
-                                                                         f"Rollout/{last_teacher}")
+                                                                         f"Rollout/{teacher_train_name}")
 
                     run_policy_time = time.time() - time_run_policy_start
 
