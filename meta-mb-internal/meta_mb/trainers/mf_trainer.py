@@ -373,22 +373,13 @@ class Trainer(object):
                     time_run_policy_start = time.time()
                     logger.log("Running model with highest level teacher")
                     # Take distillation dict, keep the last teacher
-                    if self.supervised_model is None:
-                        last_teacher_dict = teacher_train_dict
-                    elif np.sum(teacher_distill_dict.values()) == 0:  # No teachers active:
-                        last_teacher_dict = teacher_distill_dict
-                    else:
-                        last_teacher = [k for k, v in teacher_distill_dict.items() if v][-1]
-                        last_teacher_dict = {k: k == last_teacher for k in teacher_distill_dict.keys()}
-                    advance_curriculum_distill_teachers, _, _ = self.run_supervised(
-                        self.algo.acmodel, last_teacher_dict, f"Rollout/")
-                    advance_curriculum_train_teachers, _, _ = self.run_supervised(
-                        self.algo.acmodel, teacher_train_dict, f"Rollout/")
-
+                    for teacher in self.introduced_teachers:
+                        advance_curriculum_teacher, _, _ = self.run_supervised(
+                            self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/")
+                        advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     run_policy_time = time.time() - time_run_policy_start
 
-                    advance_curriculum = advance_curriculum_train_teachers and advance_curriculum_distill_teachers \
-                                         and advance_curriculum_sup and train_advance_curriculum
+                    advance_curriculum = advance_curriculum and advance_curriculum_sup and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
 
                     logger.logkv('Advance', int(advance_curriculum))
