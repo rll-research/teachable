@@ -102,9 +102,7 @@ class ImitationLearning(object):
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
-        start = time.time()
-        obss_list, action_true, action_teacher, done, inds, mask = self.preprocess_batch(batch, source)
-        # print("Preprocessing", time.time() - start)
+        obss_list, action_true, action_teacher, done, inds, mask = batch
         obss_list = [self.preprocess_obs(o, teacher_dict, show_instrs=np.random.uniform() > self.instr_dropout_prob)
                      for o in obss_list]
         obss = {}
@@ -127,7 +125,6 @@ class ImitationLearning(object):
         memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
         memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
 
-        start = time.time()
         # We're going to loop through each trajectory together.
         # inds holds the current index of each trajectory (initialized to the start of each trajectory)
         # memories is currently empty, but we will fill it with memory vectors.
@@ -154,8 +151,6 @@ class ImitationLearning(object):
 
             # Incrementing the remaining indices
             inds = [index + 1 for index in inds]
-        # print("First half", time.time() - start)
-        start = time.time()
         # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
         # Indexes currently holds the first index of each chunk.
         indexes = self.starting_indexes(num_frames)
@@ -186,7 +181,6 @@ class ImitationLearning(object):
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
-        # print("Second half", time.time() - start)
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
@@ -299,9 +293,62 @@ class ImitationLearning(object):
         else:
             return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset'):
-        # Log is a dictionary with keys entropy, policy_loss, and accuracy
-        # log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source)
+    def relabel(self, batch, relabel_dict, source):
+        if source == 'teacher':
+            return batch
+        self.set_mode(False)
+        obss_list_original, action_true, action_teacher, done, inds_original, mask = batch
+        inds = inds_original.copy()
+
+        # All the batch demos are in a single flat vector.
+        # Inds holds the start of each demo
+        obss_list = [self.preprocess_obs(o, relabel_dict, show_instrs=True) for o in obss_list_original]
+        obss = {}
+        keys = obss_list[0].keys()
+        for k in keys:
+            obss[k] = torch.cat([getattr(o, k) for o in obss_list])
+        obss = DictList(obss)
+        actions = torch.zeros_like(action_true, device=self.device,
+                                   dtype=torch.float32 if source == 'agent_probs' else torch.long)
+        memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
+
+        # We're going to loop through each trajectory together.
+        # inds holds the current index of each trajectory (initialized to the start of each trajectory)
+        while True:
+            # taking observations and done located at inds
+            num_demos = len(inds)
+            obs = obss[inds]
+            done_step = done[inds]
+
+            with torch.no_grad():
+                # Taking memory up until num_demos, as demos after that have finished
+                dist, info = self.acmodel(obs, memory[:num_demos])
+                if source == 'agent':
+                    action = dist.sample().long()
+                elif source == 'agent_argmax':
+                    action = dist.probs.max(1, keepdim=False)[1].long()
+                elif source == 'agent_probs':
+                    action = dist.probs.float()
+                new_memory = info['memory']
+            actions[inds] = action[:num_demos]
+            memory[:num_demos] = new_memory
+
+            # Updating inds, by removing those indices corresponding to which the demonstrations have finished
+            num_trajs_finished = sum(done_step)
+            inds = inds[:int(num_demos - num_trajs_finished)]
+            if len(inds) == 0:
+                break
+
+            # Incrementing the remaining indices
+            inds = [index + 1 for index in inds]
+        return obss_list_original, actions, action_teacher, done, inds_original, mask
+
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset',
+                relabel=False, relabel_dict={}):
+
+        preprocessed_batch = self.preprocess_batch(demo_batch, source)
+        if relabel:
+            preprocessed_batch = self.relabel(preprocessed_batch, relabel_dict, source)
 
         # Distill to the powerset of distillation types
         keys = [key for key in teachers_dict.keys() if teachers_dict[key]]
@@ -316,13 +363,13 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = True
                     else:
                         teacher_subset_dict[k] = False
-                batch = copy.deepcopy(demo_batch)
+                batch = copy.deepcopy(preprocessed_batch)
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all':
-            key_set = keys
-            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+            key_set = tuple(set(keys))
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'none':
@@ -330,12 +377,10 @@ class ImitationLearning(object):
             teacher_subset_dict = {}
             for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
-            log = self.run_epoch_recurrence_one_batch(demo_batch, is_training=is_training, source=source,
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
             logs[key_set] = log
 
         if is_training:
             self.scheduler.step()
-            # curr_lr = self.scheduler._last_lr[0] / self.args.lr
-            # print("LR PROP", curr_lr, "!" * 100)
         return logs

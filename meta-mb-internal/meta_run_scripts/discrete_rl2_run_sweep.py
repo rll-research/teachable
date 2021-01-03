@@ -120,6 +120,15 @@ def run_experiment(**config):
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     teacher_train_dict, _, _ = teacher_schedule(0, 0, 0)
+    if args.zero_all_thresholds:
+        args.success_threshold_rl = 0
+        args.success_threshold_rollout_teacher = 0
+        args.success_threshold_rollout_no_teacher = 0
+        args.accuracy_threshold_rl = 0
+        args.accuracy_threshold_distill_teacher = 0
+        args.accuracy_threshold_distill_no_teacher = 0
+        args.accuracy_threshold_rollout_teacher = 0
+        args.accuracy_threshold_rollout_no_teacher = 0
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
                                           curriculum_type=args.curriculum_type, **arguments)

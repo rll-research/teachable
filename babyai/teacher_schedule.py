@@ -149,6 +149,21 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=3, remo
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
+def easy_swap_harder_sparse(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    if level < add_hard_level:
+        teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+        distillation_dict = copy.deepcopy(teacher_train_dict)
+    elif level < remove_easy_level:
+        teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+        distillation_dict = {easy_teacher: True, harder_teacher: True}
+    else:
+        teacher_train_dict = {easy_teacher: False, harder_teacher: True}
+        distillation_dict = {easy_teacher: False, harder_teacher: True}
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
 
 # Same as easy_swap_harder, but don't distill to the teacher you're training on
 def easy_swap_harder_noselfdistill(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
@@ -248,6 +263,9 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
     elif teacher_schedule == 'easy_swap_harder':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])
+    elif teacher_schedule == 'easy_swap_harder_sparse':
+        assert len(feedback_types) == 2
+        return lambda level, a, b: easy_swap_harder_sparse(level, feedback_types[0], feedback_types[1])
     elif teacher_schedule == 'easy_swap_harder_noselfdistill':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])

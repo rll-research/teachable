@@ -40,8 +40,8 @@ class CartesianCorrections(Teacher):
             self.next_state = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
         except Exception as e:
             print("STEP AWAY FAILED!")
-            print(e)
-            print("CURRENT VISMASK", oracle.vis_mask)
+            # print(e)
+            # print("CURRENT VISMASK", oracle.vis_mask)
             self.next_state = self.next_state * 0
             self.last_step_error = True
         oracle.mission.teacher = original_teacher

@@ -47,7 +47,7 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
         wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
 
 
-def plot_img(env, agent_action, teacher_action, record_teacher, run_index):
+def plot_img(env, agent_action, teacher_action, record_teacher, run_index, teacher_name):
     # TODO: if we reintroduce the reward predictor, plot it here too
     image = env.render(mode='rgb_array')[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
@@ -63,16 +63,17 @@ def plot_img(env, agent_action, teacher_action, record_teacher, run_index):
         else:
             label_str += f"Teacher on: {env.teacher.feedback_type}   "
     label_str += "Run: " + str(run_index)
-    cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 3, 0)
-    cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 3, 0)
-    cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 3, 0)
+    cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
+    cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
+    cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
+    cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     return background
 
 
 def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
-            save_wandb=False, obs_preprocessor=None, teacher_dict={}, rollout_oracle=False):
+            save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False):
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
@@ -151,7 +152,7 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
                 img = plot_img(env, agent_action=a, teacher_action=env_info['teacher_action'],
-                               record_teacher=record_teacher, run_index=i % reset_every)
+                               record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name)
                 curr_images.append(img)
 
             # End trajectory on 'done'

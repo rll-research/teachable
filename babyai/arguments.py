@@ -160,6 +160,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
         self.add_argument('--modify_cc3', action='store_true')
+        self.add_argument('--relabel', action='store_true')
+        self.add_argument('--collect_before_threshold', action='store_true')
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=200)
@@ -167,6 +169,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.99)
         self.add_argument('--num_envs', type=int, default=20)
+        self.add_argument('--zero_all_thresholds', action='store_true')
 
     def parse_args(self, arg=None):
         """
