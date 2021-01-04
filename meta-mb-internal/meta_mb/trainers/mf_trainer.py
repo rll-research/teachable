@@ -457,7 +457,6 @@ class Trainer(object):
                     logger.logkv(f'Feedback/Distilled_{k}', -1)
 
                 if should_policy_rollout:
-                    logger.logkv(f'Feedback/Rollout_{k}', int(last_teacher_dict[k]))
                     logger.logkv(f'Feedback/DRollout_{k}', int(advancement_dict[k]))
                 else:
                     logger.logkv(f'Feedback/Rollout_{k}', -1)
