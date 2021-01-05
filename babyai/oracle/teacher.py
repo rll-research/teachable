@@ -7,7 +7,8 @@ class Teacher:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
-    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False, cartesian_steps=5, feedback_frequency=1):
+    def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False, cartesian_steps=5,
+                 feedback_frequency=1):
         """
         :param botclass: Oracle class
         :param env: babyai env
@@ -26,6 +27,7 @@ class Teacher:
         self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
         self.next_state = env.gen_obs()['obs']
+        self.next_state_coords = np.zeros(4) - 1
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
         self.steps_since_lastfeedback = 0
@@ -34,7 +36,6 @@ class Teacher:
         self.past_timestep_feedback = None
         self.device = device
         self.last_step_error = False
-        self.coords_after_stepping = None
         self.gave_feedback = False
         if device is None:
             if torch.cuda.is_available():
@@ -96,8 +97,8 @@ class Teacher:
             else:
                 next_state,  rew,  done,  info = env_copy.step(next_action)
                 next_state = next_state['obs']
-        self.coords_after_stepping = (env_copy.agent_pos.copy(), env_copy.agent_dir)
-        return next_state
+        coords = np.concatenate([env_copy.agent_pos, [env_copy.agent_dir, int(env_copy.carrying is not None)]])
+        return next_state, coords
 
     def give_feedback(self, state, oracle):
         """

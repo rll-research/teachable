@@ -9,6 +9,8 @@ from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
+from babyai.oracle.offset_corrections import OffsetCorrections
+from babyai.oracle.xy_corrections import XYCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.dummy_advice import DummyAdvice
 from babyai.bot import Bot
@@ -66,13 +68,19 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
                     teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always,
                                                    feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
                                                  feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'OffsetCorrections':
+                    teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
+                                                feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'XYCorrections':
+                    teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
+                                            feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
