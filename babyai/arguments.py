@@ -52,8 +52,8 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=2048,
                           help="batch size for distillation")
-        self.add_argument("--entropy-coef", type=float, default=0.001,
-                          help="entropy term coefficient (default: 0.01)")
+        self.add_argument("--entropy-coef", type=float, default=0.0001,
+                          help="entropy term coefficient (default: 0.01; 'optimal' for non-distill .001)")
 
         # Model parameters
         self.add_argument("--image-dim", type=int, default=128,
@@ -132,7 +132,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
-        self.add_argument('--discount', type=float, default=.99)
+        self.add_argument('--discount', type=float, default=.25)
         self.add_argument('--num_modules', type=int, default=2)
         self.add_argument('--value_loss_coef', type=float, default=.05)  # .5 is default
         self.add_argument('--max_grad_norm', type=float, default=.5)
