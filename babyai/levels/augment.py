@@ -23,7 +23,10 @@ class DataAugmenter:
         for our_instr_idx in instr:
             instr_word = self.vocab[our_instr_idx]
             if instr_word in valid_words:
-                target_color_idx = permutation[word_to_idx[instr_word]]
+                try:
+                    target_color_idx = permutation[word_to_idx[instr_word]]
+                except:
+                    print("probs")
                 target_color_name = idx_to_word[target_color_idx]
                 our_target_color_idx = self.vocab.index(target_color_name)
                 modified_instr.append(our_target_color_idx)
@@ -62,8 +65,9 @@ class DataAugmenter:
                             obs_dict['CartesianCorrections'] = new_cc3
                 if augmentation == 'object_permutation':
                     permutation = self.make_permutation(np.arange(5, 8))  # objs you can pick up
-                    modified_instr = self.modify_instr(traj.obs[0]['instr'], permutation, list(OBJECT_TO_IDX.keys()),
-                                                       OBJECT_TO_IDX, IDX_TO_OBJECT)
+                    modified_instr = self.modify_instr(traj.obs[0]['instr'], permutation,
+                                                       [IDX_TO_OBJECT[k] for k in np.arange(5, 8)], OBJECT_TO_IDX,
+                                                        IDX_TO_OBJECT)
                     for obs_dict in traj.obs:
                         obs_dict['instr'] = modified_instr
                         # Change observation
