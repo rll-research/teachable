@@ -9,6 +9,7 @@ from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from babyai.teacher_schedule import make_teacher_schedule
+from babyai.levels.augment import DataAugmenter
 
 import torch
 import copy
@@ -244,12 +245,13 @@ def run_experiment(**config):
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    augmenter = DataAugmenter(env.vocab()) if args.augment else None
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor)
+                   obs_preprocessor=obs_preprocessor, augmenter=augmenter)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -299,6 +301,7 @@ def run_experiment(**config):
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
         log_dict=log_dict,
+        augmenter=augmenter,
     )
     trainer.train()
 

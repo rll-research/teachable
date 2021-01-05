@@ -128,6 +128,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--accuracy_threshold_rollout_teacher', type=float, default=.9)
         self.add_argument('--accuracy_threshold_rollout_no_teacher', type=float, default=.5)
         self.add_argument('--curriculum_type', type=int, default=1)
+        self.add_argument('--augment', action='store_true')
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)

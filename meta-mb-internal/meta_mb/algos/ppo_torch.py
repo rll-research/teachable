@@ -2,7 +2,7 @@ import numpy
 import numpy as np
 import torch
 import time
-
+import copy
 
 from babyai.rl.algos.base import BaseAlgo
 
@@ -15,7 +15,7 @@ class PPOAlgo(BaseAlgo):
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
-                 rollouts_per_meta_task=1, obs_preprocessor=None):
+                 rollouts_per_meta_task=1, obs_preprocessor=None, augmenter=None):
 
         super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                          value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
@@ -48,6 +48,7 @@ class PPOAlgo(BaseAlgo):
         self.beta1 = beta1
         self.beta2 = beta2
         self.adam_eps = adam_eps
+        self.augmenter = augmenter
 
         assert self.batch_size % self.recurrence == 0
 
@@ -62,7 +63,7 @@ class PPOAlgo(BaseAlgo):
         return self.optimize_policy(None, True)
 
 
-    def optimize_policy(self, exps, teacher_dict={}, entropy_coef=None):
+    def optimize_policy(self, original_exps, teacher_dict={}, entropy_coef=None):
         '''
         exps is a DictList with the following keys ['observations', 'memory', 'mask', 'actions', 'value', 'rewards',
          'advantage', 'returns', 'log_prob'] and ['collected_info', 'extra_predictions'] if we use aux_info
@@ -76,8 +77,6 @@ class PPOAlgo(BaseAlgo):
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
 
-        exps.obs = self.preprocess_obss(exps.obs, teacher_dict)
-
         self.acmodel.train()
         if entropy_coef is None:
             entropy_coef = self.entropy_coef
@@ -86,6 +85,11 @@ class PPOAlgo(BaseAlgo):
         backward_time = 0
 
         for e in range(self.epochs):
+            if self.augmenter is not None:
+                exps = self.augmenter.augment(original_exps, include_original=False)[0]
+            else:
+                exps = copy.deepcopy(original_exps)
+            exps.obs = self.preprocess_obss(exps.obs, teacher_dict)
             teacher_max = exps.teacher_action.detach().cpu().numpy()
             orig_actions = exps.action.detach().cpu().numpy()
 

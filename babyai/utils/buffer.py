@@ -7,7 +7,6 @@ import torch
 
 from babyai.rl.utils.dictlist import merge_dictlists, DictList
 
-
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation
     return DictList({
@@ -21,8 +20,9 @@ def trim_batch(batch):
 
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
 class Buffer:
-    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer'):
+    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer', augmenter=None):
         self.train_buffer_capacity = buffer_capacity
+        self.augmenter = augmenter
         # We don't need that many val samples
         self.val_buffer_capacity = max(1, int(buffer_capacity * val_prob))
         # Probability that we sample from the current level instead of a past level
@@ -135,6 +135,8 @@ class Buffer:
                 continue
             index = random.randint(0, counts[level] - 1)
             traj = self.load_traj(level, index, split)
+            if self.augmenter is not None:
+                traj = self.augmenter.augment(traj, include_original=False)[0]
             num_samples += len(traj.action)
             num_trajs += 1
             trajs.append(traj)

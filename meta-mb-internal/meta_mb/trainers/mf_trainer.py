@@ -57,6 +57,7 @@ class Trainer(object):
         obs_preprocessor=None,
         log_dict={},
         eval_heldout=True,
+        augmenter=None
     ):
         self.args = args
         self.algo = algo
@@ -95,6 +96,7 @@ class Trainer(object):
         self.next_train_itr = log_dict.get('next_train_itr', start_itr)
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
         self.eval_heldout = eval_heldout
+        self.augmenter = augmenter
 
     def check_advance_curriculum(self, episode_logs, data):
         if episode_logs is None:
@@ -132,7 +134,8 @@ class Trainer(object):
         rollout_time = 0
         saving_time = 0
 
-        buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1)
+        buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+                        augmenter=self.augmenter)
         if self.args.use_dagger:
             dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                                    buffer_name='dagger_buffer')
