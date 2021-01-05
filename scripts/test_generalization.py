@@ -34,7 +34,6 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers):
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
     paths, accuracy, stoch_accuracy, det_accuracy = rollout(env, policy,
-                                                            max_path_length=200,
                                                             reset_every=1,
                                                             stochastic=True,
                                                             record_teacher=True,
