@@ -27,7 +27,6 @@ class Teacher:
         self.next_action, self.next_subgoal = oracle.replan(-1)
         # This first one is going to be wrong
         self.next_state = env.gen_obs()['obs']
-        self.next_state_coords = np.zeros(4) - 1
         self.feedback_type = feedback_type
         self.feedback_always = feedback_always
         self.steps_since_lastfeedback = 0
