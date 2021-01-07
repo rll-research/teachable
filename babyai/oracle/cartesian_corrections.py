@@ -39,7 +39,7 @@ class CartesianCorrections(Teacher):
         try:
             self.next_state, self.next_state_coords = self.step_away_state(env_copy1, oracle, self.cartesian_steps)
         except Exception as e:
-            print("STEP AWAY FAILED!")
+            print("STEP AWAY FAILED!", e)
             self.next_state = self.next_state * 0
             self.last_step_error = True
         oracle.mission.teacher = original_teacher
