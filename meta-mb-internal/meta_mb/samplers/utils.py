@@ -70,7 +70,7 @@ def plot_img(env, agent_action, teacher_action, record_teacher, run_index, teach
     return background
 
 
-def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
+def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
             save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False):
@@ -109,7 +109,7 @@ def rollout(env, agent, max_path_length=np.inf, speedup=1, reset_every=1,
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
             # Choose action
-            o = obs_preprocessor([o], teacher_dict)
+            o = obs_preprocessor([o], teacher_dict, show_instrs=instrs)
             a, agent_info = agent.get_actions_t(o)
 
             a = a.item()

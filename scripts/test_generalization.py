@@ -18,7 +18,7 @@ def load_policy(path):
     return policy, env, args
 
 
-def eval_policy(env, policy, save_dir, num_rollouts, teachers):
+def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
     if not save_dir.exists():
         save_dir.mkdir()
     env.reset()
@@ -34,6 +34,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers):
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
     paths, accuracy, stoch_accuracy, det_accuracy = rollout(env, policy,
+                                                            instrs=not hide_instrs,
                                                             reset_every=1,
                                                             stochastic=True,
                                                             record_teacher=True,
@@ -43,7 +44,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers):
                                                             num_rollouts=num_rollouts,
                                                             save_wandb=False,
                                                             save_locally=True,
-                                                            num_save=5,
+                                                            num_save=num_rollouts,
                                                             obs_preprocessor=obs_preprocessor,
                                                             rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
@@ -99,16 +100,21 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
                    obs_preprocessor=obs_preprocessor)
 
-    teacher_schedule = make_teacher_schedule(args.feedback_type, 'last_teacher')
+    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     # Standardize args
     args.single_level = True
+    args.distill_all_teachers = True  # TODO: remove? Or make a flag
     args.n_itr = finetuning_epochs
     args.instr_dropout_prob = 0 # TODO: ??
     args.reward_when_necessary = False  # TODO: make this a flag
+    # TODO: remove
+    args.accuracy_threshold_rl = 0
+    args.success_threshold_rl = 0
 
     trainer = Trainer(
         args,
         algo=algo,
+        algo_dagger=algo,
         policy=policy,
         env=copy.deepcopy(env),
         sampler=sampler,
@@ -135,7 +141,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
 
 def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
                  policy_path=None, policy=None,
-                 policy_name="", env_name=""):
+                 policy_name="", env_name="", hide_instrs=False):
     if policy is None:
         policy, _, args = load_policy(policy_path)
     policy_env_name = f'Policy{policy_name}-{env_name}'
@@ -144,8 +150,8 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     if finetune_itrs > 0:
-        finetune_policy(env, policy, policy, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
-    success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers)
+        finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
+    success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy} \n')
@@ -162,6 +168,7 @@ def main():
     parser.add_argument("--num_rollouts", default=50, type=int)
     parser.add_argument("--train_rl_on_finetune", action='store_true')
     parser.add_argument("--save_dir", default=".")
+    parser.add_argument("--hide_instrs", action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -212,7 +219,8 @@ def main():
             test_success(env, save_dir, args.finetune_itrs,
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
-                         policy_name=policy_path.stem, env_name=env.__class__.__name__)
+                         policy_name=policy_path.stem, env_name=env.__class__.__name__, 
+                         hide_instrs=args.hide_instrs)
 
 
 if __name__ == '__main__':
