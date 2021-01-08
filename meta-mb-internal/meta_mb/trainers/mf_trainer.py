@@ -693,7 +693,7 @@ class Trainer(object):
                                                                 video_directory=self.exp_name,
                                                                 video_name=save_name + str(self.curriculum_step),
                                                                 num_rollouts=num_rollouts,
-                                                                save_wandb=save_wandb,
+                                                                save_wandb=False,#save_wandb,
                                                                 save_locally=True,
                                                                 num_save=20,
                                                                 obs_preprocessor=self.obs_preprocessor,

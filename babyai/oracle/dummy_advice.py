@@ -24,7 +24,7 @@ class DummyAdvice(Teacher):
         """
         return np.array([])
 
-    def success_check(self, action):
+    def success_check(self, action, _, another):
         opt_action = int(self.next_action)
         followed_opt_action = (opt_action == action)
         return followed_opt_action
