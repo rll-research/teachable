@@ -265,7 +265,7 @@ class Trainer(object):
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
                 time_val_distill = 0
-                for _ in range(self.args.distillation_steps - 1):
+                for _ in range(self.args.distillation_steps):
                     sample_start = time.time()
                     sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     time_sampling_from_buffer += (time.time() - sample_start)
@@ -294,15 +294,6 @@ class Trainer(object):
                             for k, v in log_dict.items():
                                 logger.logkv(f'Distill/DAgger_{key_set}{k}_Train', v)
 
-                if raw_samples_data is not None:
-                    sample_start = time.time()
-                    self.total_distillation_frames += len(raw_samples_data)
-                    distill_log = self.distill(trim_batch(raw_samples_data),
-                                               is_training=True,
-                                               teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel,
-                                               relabel_dict=teacher_train_dict)
-                    time_train_distill += (time.time() - sample_start)
                 if dagger_samples_data is not None:
                     self.total_distillation_frames += len(dagger_samples_data)
                     dagger_distill_log = self.distill(trim_batch(dagger_samples_data),
@@ -321,11 +312,10 @@ class Trainer(object):
                     for k, v in log_dict.items():
                         logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
-                # sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size, split='val')
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
                 sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
-                                                  split='val')  # trim_batch(raw_samples_data)
+                                                  split='val')
                 distill_log_val = self.distill(sampled_val_batch,
                                                is_training=False,
                                                source='teacher',
@@ -656,6 +646,8 @@ class Trainer(object):
             distill_target = 'all'
         if self.args.distill_no_teachers:
             distill_target = 'none'
+        if self.args.distill_all_but_none:
+            distill_target = 'not_none'
         if source is None:
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
@@ -685,7 +677,7 @@ class Trainer(object):
         except:
             print("no curriculum")
         save_wandb = (save_video and not self.is_debug)
-        paths, accuracy, stoch_accuracy, det_accuracy = rollout(self.env, policy,
+        paths, accuracy, stoch_accuracy, det_accuracy, cc3_followed = rollout(self.env, policy,
                                                                 max_path_length=200,
                                                                 reset_every=self.args.rollouts_per_meta_task,
                                                                 stochastic=stochastic,
@@ -708,6 +700,7 @@ class Trainer(object):
                          np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
             success = np.mean([path['env_infos'][-1]['success'] for path in paths])
             logger.logkv(log_prefix + "Success", success)
+            logger.logkv(log_prefix + "Followed_CC3", cc3_followed)
         return None
 
     def get_itr_snapshot(self, itr):

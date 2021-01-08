@@ -158,6 +158,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distill_label_weightings', action='store_true')
         self.add_argument('--distill_all_teachers', action='store_true')
         self.add_argument('--distill_no_teachers', action='store_true')
+        self.add_argument('--distill_all_but_none', action='store_true')
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
         self.add_argument('--modify_cc3', action='store_true')

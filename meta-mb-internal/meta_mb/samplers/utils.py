@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import wandb
 import os
+import copy
+
 
 def write_video(writer, frames, show_last=None):
     if show_last is not None:
@@ -35,6 +37,7 @@ def finalize_videos_local(video_filename, all_writer, success_writer, failure_wr
     if failure_writer is not None:
         failure_writer.release()
     print("Video saved at %s" % video_filename)
+
 
 def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps):
     video = np.transpose(np.stack(all_videos), (0, 3, 1, 2))[:, ::-1]
@@ -70,6 +73,22 @@ def plot_img(env, agent_action, teacher_action, record_teacher, run_index, teach
     return background
 
 
+def check_followed_cc3(obs_list):
+    if not 'CartesianCorrections' in obs_list[0]:
+        return 0
+    gave_cc3 = 0
+    followed_cc3 = 0
+    for i in range(len(obs_list) - 3):
+        obs = obs_list[i]
+        if obs['gave_CartesianCorrections']:
+            gave_cc3 += 1
+            if np.array_equal(obs_list[i + 3]['obs'], obs_list[i]['CartesianCorrections']):
+                followed_cc3 += 1
+    if gave_cc3 == 0:
+        return 0
+    return followed_cc3 / gave_cc3
+
+
 def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
@@ -94,6 +113,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
     correct, stoch_correct, det_correct, count = 0, 0, 0, 0
+    full_obs_list = []
     for i in range(num_rollouts):
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
@@ -108,6 +128,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
+            full_obs_list.append(copy.deepcopy(o))
             # Choose action
             o = obs_preprocessor([o], teacher_dict, show_instrs=instrs)
             a, agent_info = agent.get_actions_t(o)
@@ -172,12 +193,12 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 failure_videos += curr_images + [sample_img + 255] * 3
 
         paths.append(dict(
-                observations=observations,
-                actions=actions,
-                rewards=rewards,
-                agent_infos=agent_infos,
-                env_infos=env_infos
-            ))
+            observations=observations,
+            actions=actions,
+            rewards=rewards,
+            agent_infos=agent_infos,
+            env_infos=env_infos
+        ))
 
     # Finish saving videos
     if save_locally:
@@ -185,4 +206,5 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
-    return paths, correct / count, stoch_correct / count, det_correct / count
+    followed_cc3_proportion = check_followed_cc3(full_obs_list)
+    return paths, correct / count, stoch_correct / count, det_correct / count, followed_cc3_proportion

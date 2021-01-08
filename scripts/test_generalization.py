@@ -33,7 +33,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
     except Exception as e:
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
-    paths, accuracy, stoch_accuracy, det_accuracy = rollout(env, policy,
+    paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
                                                             instrs=not hide_instrs,
                                                             reset_every=1,
                                                             stochastic=True,
@@ -48,7 +48,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
                                                             obs_preprocessor=obs_preprocessor,
                                                             rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
-    return success_rate, stoch_accuracy, det_accuracy
+    return success_rate, stoch_accuracy, det_accuracy, followed_cc3
 
 
 def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict):
@@ -151,10 +151,10 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
         full_save_dir.mkdir()
     if finetune_itrs > 0:
         finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
-    success_rate, stoch_accuracy, det_accuracy = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs)
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
-        f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy} \n')
+        f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
     return success_rate, stoch_accuracy, det_accuracy
 
 
@@ -213,7 +213,7 @@ def main():
     if not save_dir.exists():
         save_dir.mkdir()
     with open(save_dir.joinpath('results.csv'), 'w') as f:
-        f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy \n')
+        f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
     for policy_name in policy_level_names:
         for env in envs:
             test_success(env, save_dir, args.finetune_itrs,

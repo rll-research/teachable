@@ -370,6 +370,20 @@ class ImitationLearning(object):
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
+        elif distill_target == 'not_none':
+            for key_set in powerset:
+                teacher_subset_dict = {}
+                if len(key_set) == 0:  # Don't distill to no teacher
+                    continue
+                for k in teachers_dict.keys():
+                    if k in key_set:
+                        teacher_subset_dict[k] = True
+                    else:
+                        teacher_subset_dict[k] = False
+                batch = copy.deepcopy(preprocessed_batch)
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                                                          teacher_dict=teacher_subset_dict)
+                logs[key_set] = log
         elif distill_target == 'all':
             key_set = tuple(set(keys))
             log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
