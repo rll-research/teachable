@@ -85,10 +85,7 @@ class PPOAlgo(BaseAlgo):
         backward_time = 0
 
         for e in range(self.epochs):
-            if self.augmenter is not None:
-                exps = self.augmenter.augment(original_exps, include_original=False)[0]
-            else:
-                exps = copy.deepcopy(original_exps)
+            exps = copy.deepcopy(original_exps)
             exps.obs = self.preprocess_obss(exps.obs, teacher_dict)
             teacher_max = exps.teacher_action.detach().cpu().numpy()
             orig_actions = exps.action.detach().cpu().numpy()
