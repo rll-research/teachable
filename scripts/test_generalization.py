@@ -15,6 +15,10 @@ def load_policy(path):
     env = saved_model['env']
     policy = saved_model['policy']
     args = saved_model['args']
+    try:
+        policy.instr_rnn.flatten_parameters()
+    except Exception as e:
+        print(e, "looks like instrs aren't rnn")
     return policy, env, args
 
 
