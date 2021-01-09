@@ -82,11 +82,9 @@ def train_first_advance_second(level, easy_teacher, harder_teacher):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
-    teacher_train_dict = copy.deepcopy(no_teacher_dict)
-    teacher_train_dict[easy_teacher] = True
-    advancement_dict = copy.deepcopy(no_teacher_dict)
-    advancement_dict[harder_teacher] = True
-    distillation_dict = copy.deepcopy(advancement_dict)
+    teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+    advancement_dict = {easy_teacher: False, harder_teacher: True}
+    distillation_dict = {easy_teacher: True, harder_teacher: True}
     return teacher_train_dict, distillation_dict, advancement_dict
 
 
