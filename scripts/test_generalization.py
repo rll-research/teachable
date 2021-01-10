@@ -112,6 +112,9 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     args.reward_when_necessary = False  # TODO: make this a flag
 
     def log_fn(rl_policy, il_policy, logger, itr):
+        if itr == 0:
+            with open(save_dir.joinpath('results.csv'), 'w') as f:
+                f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
         policy = rl_policy if il_policy is None else il_policy
         for heldout_env in heldout_envs:
             test_success_checkpoint(heldout_env, save_dir, 1, teachers, policy=policy, policy_name=policy_name,
