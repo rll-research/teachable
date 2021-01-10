@@ -108,7 +108,6 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     args.single_level = True
     # args.distill_all_teachers = True
     args.n_itr = finetuning_epochs
-    args.instr_dropout_prob = 0  # TODO: ??
     args.reward_when_necessary = False  # TODO: make this a flag
 
     def log_fn(rl_policy, il_policy, logger, itr):
@@ -121,7 +120,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
                 f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3,itr \n')
         policy = rl_policy if il_policy is None else il_policy
         for heldout_env in heldout_envs:
-            test_success_checkpoint(heldout_env, save_dir, 1, teachers, policy=policy, policy_name=policy_name,
+            test_success_checkpoint(heldout_env, save_dir, 10, teachers, policy=policy, policy_name=policy_name,
                                     env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     trainer = Trainer(
