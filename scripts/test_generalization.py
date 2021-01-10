@@ -242,6 +242,9 @@ def main():
             envs += default_env.levels_list
         elif env_name == 'test':
             envs += default_env.held_out_levels
+        elif 'test' == env_name[:4]:
+            index = int(env_name[4])
+            envs.append(default_env.held_out_levels[index])
         else:
             try:
                 env_id = int(env_name)
