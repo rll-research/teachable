@@ -14,6 +14,7 @@ import tempfile
 import joblib
 from collections import defaultdict
 import wandb
+import pathlib
 
 LOG_OUTPUT_FORMATS     = ['stdout', 'log', 'csv', 'tensorboard', 'wandb']
 LOG_OUTPUT_FORMATS_MPI = ['log']
@@ -442,8 +443,13 @@ def configure(dir=None, format_strs=None, snapshot_mode='last', snapshot_gap=1, 
     if dir is None:
         dir = osp.join(tempfile.gettempdir(),
             datetime.datetime.now().strftime("openai-%Y-%m-%d-%H-%M-%S-%f"))
-    assert isinstance(dir, str)
-    os.makedirs(dir, exist_ok=True)
+    if isinstance(dir, str):
+        os.makedirs(dir, exist_ok=True)
+    elif isinstance(dir, pathlib.PosixPath):
+        if not dir.exists():
+            dir.mkdir()
+    else:
+        raise NotImplementedError("Weird dir type " + str(type(dir)))
 
     log_suffix = ''
     # from mpi4py import MPI

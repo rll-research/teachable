@@ -7,6 +7,7 @@ import argparse
 import pathlib
 
 from meta_mb.samplers.utils import rollout
+from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
 
@@ -123,6 +124,10 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
             test_success_checkpoint(heldout_env, save_dir, 10, teachers, policy=policy, policy_name=policy_name,
                                     env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
+    log_formats = ['stdout', 'log', 'csv', 'tensorboard']
+    logger.configure(dir=save_name, format_strs=log_formats,
+                     snapshot_mode=args.save_option,
+                     snapshot_gap=50, step=0, name=args.prefix + str(args.seed), config={})
     trainer = Trainer(
         args,
         algo=algo,
