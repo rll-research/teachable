@@ -540,7 +540,7 @@ class Trainer(object):
                 save_dir.mkdir()
             finetune_itrs = 0
             with open(save_dir.joinpath('results.csv'), 'w') as f:
-                f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy \n')
+                f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
             try:
                 teacher_null_dict = env.teacher.null_feedback()
             except Exception as e:

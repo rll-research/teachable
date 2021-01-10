@@ -22,7 +22,7 @@ def load_policy(path):
     return policy, env, args
 
 
-def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
+def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic):
     if not save_dir.exists():
         save_dir.mkdir()
     env.reset()
@@ -40,7 +40,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
     paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
                                                             instrs=not hide_instrs,
                                                             reset_every=1,
-                                                            stochastic=True,
+                                                            stochastic=stochastic,
                                                             record_teacher=True,
                                                             teacher_dict=teacher_dict,
                                                             video_directory=save_dir,
@@ -145,7 +145,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
 
 def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
                  policy_path=None, policy=None,
-                 policy_name="", env_name="", hide_instrs=False):
+                 policy_name="", env_name="", hide_instrs=False, stochastic=True):
     if policy is None:
         policy, _, args = load_policy(policy_path)
     policy_env_name = f'Policy{policy_name}-{env_name}'
@@ -155,7 +155,7 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
         full_save_dir.mkdir()
     if finetune_itrs > 0:
         finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs)
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
@@ -173,6 +173,7 @@ def main():
     parser.add_argument("--train_rl_on_finetune", action='store_true')
     parser.add_argument("--save_dir", default=".")
     parser.add_argument("--hide_instrs", action='store_true')
+    parser.add_argument("--deterministic", action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -224,7 +225,7 @@ def main():
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
                          policy_name=policy_path.stem, env_name=env.__class__.__name__, 
-                         hide_instrs=args.hide_instrs)
+                         hide_instrs=args.hide_instrs, stochastic=not args.deterministic)
 
 
 if __name__ == '__main__':
