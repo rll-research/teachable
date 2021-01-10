@@ -131,7 +131,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         env=copy.deepcopy(env),
         sampler=sampler,
         sample_processor=sample_processor,
-        buffer_name=save_name.parent,
+        buffer_name=save_name,
         exp_name=save_name,
         curriculum_step=0,
         il_trainer=il_trainer,
@@ -162,8 +162,11 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     if finetune_itrs > 0:
+        finetune_path = full_save_dir.joinpath('finetuned_policy')
+        if not finetune_path.exists():
+            finetune_path.mkdir()
         finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs,
-                        full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict,
+                        finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic)
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
