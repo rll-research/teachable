@@ -57,7 +57,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
-                    hide_instrs=False, heldout_envs=[]):
+                    hide_instrs=False, heldout_envs=[], stochastic=True):
     from meta_mb.algos.ppo_torch import PPOAlgo
     from meta_mb.trainers.mf_trainer import Trainer
     from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
@@ -115,7 +115,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         policy = rl_policy if il_policy is None else il_policy
         for heldout_env in heldout_envs:
             test_success_checkpoint(heldout_env, save_dir, 1, teachers, policy=policy, policy_name=policy_name,
-                                    env_name=env_name, hide_instrs=hide_instrs, itr=itr)
+                                    env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     trainer = Trainer(
         args,
@@ -159,7 +159,7 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
         finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs,
                         full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
-                        hide_instrs=hide_instrs, heldout_envs=heldout_envs)
+                        hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic)
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
                                                                            teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
@@ -170,14 +170,14 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
 
 
 def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
-                            policy_name="", env_name="", hide_instrs=False, itr=-1):
+                            policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True):
     policy_env_name = f'Policy{policy_name}-{env_name}'
     full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
     print("FSD", full_save_dir)
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
-                                                                           teachers, hide_instrs)
+                                                                           teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(full_save_dir.joinpath('results.csv'), 'a') as f:
         f.write(
