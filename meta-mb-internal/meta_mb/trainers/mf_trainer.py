@@ -57,7 +57,8 @@ class Trainer(object):
         obs_preprocessor=None,
         log_dict={},
         eval_heldout=True,
-        augmenter=None
+        augmenter=None,
+        log_fn=lambda w, x, y, z: None,
     ):
         self.args = args
         self.algo = algo
@@ -97,6 +98,7 @@ class Trainer(object):
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
         self.eval_heldout = eval_heldout
         self.augmenter = augmenter
+        self.log_fn = log_fn
 
     def check_advance_curriculum(self, episode_logs, data):
         if episode_logs is None:
@@ -456,6 +458,13 @@ class Trainer(object):
                     logger.logkv(f'Feedback/DRollout_{k}', -1)
 
             logger.dumpkvs()
+
+            if itr % self.log_every == 0:
+                if self.il_trainer is not None:
+                    il_model = self.il_trainer.acmodel
+                else:
+                    il_model = None
+                self.log_fn(self.algo.acmodel, il_model, logger, itr)
 
             """ ------------------ Video Saving ---------------------"""
 

@@ -713,7 +713,7 @@ class Level_Unlock(Level_TeachableRobot):
         # With 50% probability, ensure that the locked door is the only
         # door of that color
         if self._rand_bool():
-            colors = list(filter(lambda c: c is not obj_color, COLOR_NAMES))
+            colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
             self.connect_all(door_colors=colors)
         else:
             self.connect_all()

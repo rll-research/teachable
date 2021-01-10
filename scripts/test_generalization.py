@@ -34,24 +34,26 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs):
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
     paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
-                                                            instrs=not hide_instrs,
-                                                            reset_every=1,
-                                                            stochastic=True,
-                                                            record_teacher=True,
-                                                            teacher_dict=teacher_dict,
-                                                            video_directory=save_dir,
-                                                            video_name='generalization_vids',
-                                                            num_rollouts=num_rollouts,
-                                                            save_wandb=False,
-                                                            save_locally=True,
-                                                            num_save=num_rollouts,
-                                                            obs_preprocessor=obs_preprocessor,
-                                                            rollout_oracle=False)
+                                                                          instrs=not hide_instrs,
+                                                                          reset_every=1,
+                                                                          stochastic=True,
+                                                                          record_teacher=True,
+                                                                          teacher_dict=teacher_dict,
+                                                                          video_directory=save_dir,
+                                                                          video_name='generalization_vids',
+                                                                          num_rollouts=num_rollouts,
+                                                                          save_wandb=False,
+                                                                          save_locally=True,
+                                                                          num_save=num_rollouts,
+                                                                          obs_preprocessor=obs_preprocessor,
+                                                                          rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     return success_rate, stoch_accuracy, det_accuracy, followed_cc3
 
 
-def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict):
+def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
+                    save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
+                    hide_instrs=False, heldout_envs=[]):
     from meta_mb.algos.ppo_torch import PPOAlgo
     from meta_mb.trainers.mf_trainer import Trainer
     from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
@@ -59,11 +61,9 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     from meta_mb.trainers.il_trainer import ImitationLearning
     from babyai.teacher_schedule import make_teacher_schedule
 
-    print("TEACHER NULL DICT", teacher_null_dict)
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
     args.model = 'default_il'
-    args.instr_dropout_prob = 0 # TODO move all these together
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
                                        preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
@@ -91,7 +91,6 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         positive_adv=False,
     )
 
-
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
@@ -103,13 +102,16 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     # Standardize args
     args.single_level = True
-    args.distill_all_teachers = True  # TODO: remove? Or make a flag
+    # args.distill_all_teachers = True
     args.n_itr = finetuning_epochs
-    args.instr_dropout_prob = 0 # TODO: ??
+    args.instr_dropout_prob = 0  # TODO: ??
     args.reward_when_necessary = False  # TODO: make this a flag
-    # TODO: remove
-    args.accuracy_threshold_rl = 0
-    args.success_threshold_rl = 0
+
+    def log_fn(rl_policy, il_policy, logger, itr):
+        policy = rl_policy if il_policy is None else il_policy
+        for heldout_env in heldout_envs:
+            test_success_checkpoint(heldout_env, save_dir, 1, teachers, policy=policy, policy_name=policy_name,
+                                    env_name=env_name, hide_instrs=hide_instrs, itr=itr)
 
     trainer = Trainer(
         args,
@@ -132,16 +134,16 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         log_dict={},
         log_and_save=False,
         eval_heldout=False,
+        log_fn=log_fn,
+        log_every=1,
     )
-    trainer.train()  # TODO: add this!
-    # print("Saving policy", save_name)
-    # save_file(policy, save_name)
+    trainer.train()
     print("All done!")
 
 
 def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
                  policy_path=None, policy=None,
-                 policy_name="", env_name="", hide_instrs=False):
+                 policy_name="", env_name="", hide_instrs=False, heldout_envs=[]):
     if policy is None:
         policy, _, args = load_policy(policy_path)
     policy_env_name = f'Policy{policy_name}-{env_name}'
@@ -150,11 +152,32 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     if finetune_itrs > 0:
-        finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs, full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict)
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts, teachers, hide_instrs)
+        finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs,
+                        full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict,
+                        save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                        hide_instrs=hide_instrs, heldout_envs=heldout_envs)
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
+                                                                           teachers, hide_instrs)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
-        f.write(f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
+        f.write(
+            f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
+    return success_rate, stoch_accuracy, det_accuracy
+
+
+def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
+                            policy_name="", env_name="", hide_instrs=False, itr=-1):
+    policy_env_name = f'Policy{policy_name}-{env_name}'
+    full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
+    print("FSD", full_save_dir)
+    if not full_save_dir.exists():
+        full_save_dir.mkdir()
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
+                                                                           teachers, hide_instrs)
+    print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
+    with open(full_save_dir.joinpath('results.csv'), 'a') as f:
+        f.write(
+            f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3}, {itr} \n')
     return success_rate, stoch_accuracy, det_accuracy
 
 
@@ -219,8 +242,8 @@ def main():
             test_success(env, save_dir, args.finetune_itrs,
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
-                         policy_name=policy_path.stem, env_name=env.__class__.__name__, 
-                         hide_instrs=args.hide_instrs)
+                         policy_name=policy_path.stem, env_name=env.__class__.__name__,
+                         hide_instrs=args.hide_instrs, heldout_envs=envs)
 
 
 if __name__ == '__main__':
