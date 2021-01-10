@@ -38,20 +38,131 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
     paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
-                                                            instrs=not hide_instrs,
-                                                            reset_every=1,
-                                                            stochastic=stochastic,
-                                                            record_teacher=True,
-                                                            teacher_dict=teacher_dict,
-                                                            video_directory=save_dir,
-                                                            video_name='generalization_vids',
-                                                            num_rollouts=num_rollouts,
-                                                            save_wandb=False,
-                                                            save_locally=True,
-                                                            num_save=num_rollouts,
-                                                            obs_preprocessor=obs_preprocessor,
-                                                            rollout_oracle=False)
-print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
+                                                                          instrs=not hide_instrs,
+                                                                          reset_every=1,
+                                                                          stochastic=stochastic,
+                                                                          record_teacher=True,
+                                                                          teacher_dict=teacher_dict,
+                                                                          video_directory=save_dir,
+                                                                          video_name='generalization_vids',
+                                                                          num_rollouts=num_rollouts,
+                                                                          save_wandb=False,
+                                                                          save_locally=True,
+                                                                          num_save=num_rollouts,
+                                                                          obs_preprocessor=obs_preprocessor,
+                                                                          rollout_oracle=False)
+    success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
+    return success_rate, stoch_accuracy, det_accuracy, followed_cc3
+
+
+def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
+                    save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
+                    hide_instrs=False, heldout_envs=[]):
+    from meta_mb.algos.ppo_torch import PPOAlgo
+    from meta_mb.trainers.mf_trainer import Trainer
+    from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
+    from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
+    from meta_mb.trainers.il_trainer import ImitationLearning
+    from babyai.teacher_schedule import make_teacher_schedule
+
+    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
+    args.model = 'default_il'
+    if supervised_model is not None:
+        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
+                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
+                                       instr_dropout_prob=args.instr_dropout_prob)
+    else:
+        il_trainer = None
+    rp_trainer = None
+    sampler = MetaSampler(
+        env=env,
+        policy=policy,
+        rollouts_per_meta_task=args.rollouts_per_meta_task,
+        meta_batch_size=10,
+        max_path_length=args.max_path_length,
+        parallel=not args.sequential,
+        envs_per_task=1,
+        reward_predictor=None,
+        supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
+    )
+
+    sample_processor = RL2SampleProcessor(
+        discount=args.discount,
+        gae_lambda=args.gae_lambda,
+        normalize_adv=True,
+        positive_adv=False,
+    )
+
+    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+                   args.gae_lambda,
+                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                   args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
+                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
+                   obs_preprocessor=obs_preprocessor)
+
+    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
+    # Standardize args
+    args.single_level = True
+    # args.distill_all_teachers = True
+    args.n_itr = finetuning_epochs
+    args.instr_dropout_prob = 0  # TODO: ??
+    args.reward_when_necessary = False  # TODO: make this a flag
+
+    def log_fn(rl_policy, il_policy, logger, itr):
+        policy = rl_policy if il_policy is None else il_policy
+        for heldout_env in heldout_envs:
+            test_success_checkpoint(heldout_env, save_dir, 1, teachers, policy=policy, policy_name=policy_name,
+                                    env_name=env_name, hide_instrs=hide_instrs, itr=itr)
+
+    trainer = Trainer(
+        args,
+        algo=algo,
+        algo_dagger=algo,
+        policy=policy,
+        env=copy.deepcopy(env),
+        sampler=sampler,
+        sample_processor=sample_processor,
+        buffer_name=save_name.parent,
+        exp_name=save_name,
+        curriculum_step=0,
+        il_trainer=il_trainer,
+        supervised_model=supervised_model,
+        reward_predictor=None,
+        rp_trainer=rp_trainer,
+        is_debug=False,
+        teacher_schedule=teacher_schedule,
+        obs_preprocessor=obs_preprocessor,
+        log_dict={},
+        log_and_save=False,
+        eval_heldout=False,
+        log_fn=log_fn,
+        log_every=1,
+    )
+    trainer.train()
+    print("All done!")
+
+
+def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
+                 policy_path=None, policy=None,
+                 policy_name="", env_name="", hide_instrs=False, heldout_envs=[], stochastic=True):
+    if policy is None:
+        policy, _, args = load_policy(policy_path)
+    policy_env_name = f'Policy{policy_name}-{env_name}'
+    print("EVALUATING", policy_env_name)
+    full_save_dir = save_dir.joinpath(policy_env_name)
+    if not full_save_dir.exists():
+        full_save_dir.mkdir()
+    if finetune_itrs > 0:
+        finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs,
+                        full_save_dir.joinpath('finetuned_policy.pt'), args, teacher_null_dict,
+                        save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                        hide_instrs=hide_instrs, heldout_envs=heldout_envs)
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
+                                                                           teachers, hide_instrs, stochastic)
+    print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(
             f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
@@ -136,7 +247,7 @@ def main():
             test_success(env, save_dir, args.finetune_itrs,
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
-                         policy_name=policy_path.stem, env_name=env.__class__.__name__, 
+                         policy_name=policy_path.stem, env_name=env.__class__.__name__,
                          hide_instrs=args.hide_instrs, heldout_envs=envs, stochastic=not args.deterministic)
 
 
