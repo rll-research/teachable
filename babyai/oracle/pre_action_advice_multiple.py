@@ -51,7 +51,7 @@ class PreActionAdviceMultiple(Teacher):
         next_action = -1
         for step in range(steps):
             vis_mask = oracle.vis_mask
-            new_oracle = self.botclass(oracle.mission)
+            new_oracle = self.botclass(env_copy)
             drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
                        (not next_action == oracle.mission.actions.toggle)
             if drop_off:
@@ -63,4 +63,5 @@ class PreActionAdviceMultiple(Teacher):
                 oracle = new_oracle
             actions.append(next_action)
             env_copy.teacher = None
+            env_copy.step(next_action)
         return actions
