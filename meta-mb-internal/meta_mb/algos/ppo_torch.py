@@ -108,10 +108,12 @@ class PPOAlgo(BaseAlgo):
             log_actions_taken = {}
             log_teacher_actions_taken = {}
             log_teacher_following = {}
+            log_agent_following = {}
             for i in range(num_actions):
                 log_actions_taken[i] = []
                 log_teacher_actions_taken[i] = []
                 log_teacher_following[i] = []
+                log_agent_following[i] = []
             log_losses = []
             model_calls = 0
             model_samples_calls = 0
@@ -253,6 +255,10 @@ class PPOAlgo(BaseAlgo):
                         actions_i = orig_actions[teacher_i]
                         log_teacher_following[i].append(np.mean(actions_i == i))
                         log_teacher_actions_taken[i].append(np.mean(teacher_max == i))
+                    agent_i = orig_actions == i
+                    if np.sum(agent_i) > 0:
+                        teacher_i = teacher_max[agent_i]
+                        log_agent_following[i].append(np.mean(teacher_i == i))
 
             # Log some values
             logs = {}
@@ -284,6 +290,7 @@ class PPOAlgo(BaseAlgo):
                 # logs[f'Took{i}'] = np.mean(log_actions_taken[i])
                 if len(log_teacher_following[i]) > 0:
                     logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
+                    logs[f'Precision{i}'] = np.mean(log_agent_following[i])
                     # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
 
         return logs

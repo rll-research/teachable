@@ -201,6 +201,8 @@ class ImitationLearning(object):
         self.per_token_count = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
+        self.precision_correct = [0, 0, 0, 0, 0, 0, 0]
+        self.precision_count = [0, 0, 0, 0, 0, 0, 0]
         self.final_entropy = 0
         self.final_policy_loss = 0
         self.final_value_loss = 0
@@ -227,6 +229,12 @@ class ImitationLearning(object):
         agent_running_count = 0
         teacher_running_count = 0
         for j in range(len(self.per_token_count)):
+            # Sort by agent action
+            action_taken_indices = np.where(action_pred == j)[0]
+            self.precision_correct[j] += np.sum(action_step[action_taken_indices] == action_pred[action_taken_indices])
+            self.precision_count[j] += len(action_taken_indices)
+
+            # Sort by label action
             token_indices = np.where(action_step == j)[0]
             count = len(token_indices)
             correct = np.sum(action_step[token_indices] == action_pred[token_indices])
@@ -268,6 +276,10 @@ class ImitationLearning(object):
         teacher_denominator = 0
         agent_numerator = 0
         agent_denominator = 0
+        for i, (correct, count) in enumerate(zip(self.precision_correct, self.precision_count)):
+            if count > 0:
+                log[f'Precision{i}'] = correct / count
+
         for i, (correct, count, teacher_correct, teacher_count) in enumerate(
             zip(self.per_token_correct, self.per_token_count, self.per_token_teacher_correct,
                 self.per_token_teacher_count)):
