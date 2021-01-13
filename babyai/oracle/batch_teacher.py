@@ -13,10 +13,10 @@ class BatchTeacher:
             return_dict[k] = v.step(action, oracle[k])
         return return_dict
 
-    def give_feedback(self, state, oracle):
+    def give_feedback(self, state, next_action, oracle):
         return_dict = {}
         for k, v in self.teachers.items():
-            advice, advice_given = v.give_feedback(state, oracle[k])
+            advice, advice_given = v.give_feedback(state, next_action, oracle[k])
             return_dict[k] = advice
             return_dict['gave_' + k] = advice_given
         return return_dict

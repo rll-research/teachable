@@ -3,10 +3,12 @@ import pickle
 import copy
 import torch
 
+
 class Teacher:
     """
     Oracle which gives feedback.  Mostly a wrapper around the BabyAI bot class.
     """
+
     def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False, cartesian_steps=5,
                  feedback_frequency=1):
         """
@@ -58,8 +60,12 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        vis_mask = oracle.vis_mask
+        # Generally we create a fresh oracle each time to prevent the teacher from getting stuck telling the agent
+        # trying to undo old actions rather than correcting it from where it starts.
+        vis_mask = oracle.vis_mask.copy()
         new_oracle = self.botclass(oracle.mission)
+        # However, when we're dropping an object off to unblock a path we need to keep the existing oracle
+        # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
         drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
                    (not agent_action == oracle.mission.actions.toggle)
         self.last_action = self.next_action
@@ -74,32 +80,30 @@ class Teacher:
         self.steps_since_lastfeedback += 1
         return oracle
 
-    def step_away_state(self, env_copy, oracle, steps):
-        next_action = -1
+    def step_away_state(self, oracle, steps, last_action=-1):
+        env = oracle.mission
         for step in range(steps):
+            # Generally we create a fresh oracle each time to prevent the teacher from getting stuck telling the agent
+            # trying to undo old actions rather than correcting it from where it starts.
             vis_mask = oracle.vis_mask.copy()
-            new_oracle = self.botclass(env_copy)
-            drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
-                       (not next_action == oracle.mission.actions.toggle)
+            new_oracle = self.botclass(env)
+            # However, when we're dropping an object off to unblock a path we need to keep the existing oracle
+            # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
+            drop_off = len(oracle.stack) > 0 and env.carrying and oracle.stack[-1].reason == 'DropOff' and \
+                       (not last_action == env.actions.toggle)
             if drop_off:
-                next_action, next_subgoal = copy.deepcopy(oracle).replan(next_action)
+                last_action, next_subgoal = oracle.replan(last_action)
             else:
                 new_oracle.vis_mask = vis_mask
                 new_oracle.step = oracle.step
-                new_oracle._process_obs()
-                next_action, next_subgoal = new_oracle.replan(-1)
+                last_action, next_subgoal = new_oracle.replan(-1)
                 oracle = new_oracle
-            env_copy.teacher = None
-            if next_action == -1:
-                assert False, "It was triggered after all"
-                next_state = env_copy.gen_obs()['obs']
-            else:
-                next_state,  rew,  done,  info = env_copy.step(next_action)
-                next_state = next_state['obs']
-        coords = np.concatenate([env_copy.agent_pos, [env_copy.agent_dir, int(env_copy.carrying is not None)]])
+            next_state, rew, done, info = env.step(last_action)
+            next_state = next_state['obs']
+        coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
         return next_state, coords
 
-    def give_feedback(self, state, oracle):
+    def give_feedback(self, state, last_action, oracle):
         """
         Augment the agent's state observation with teacher feedback.
         :param oracle:
@@ -107,7 +111,7 @@ class Teacher:
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
         if self.feedback_always:
-            feedback = self.compute_feedback(oracle)
+            feedback = self.compute_feedback(oracle, last_action)
             self.past_timestep_feedback = self.last_feedback
             self.last_feedback = feedback
             gave_feedback = True
@@ -119,7 +123,7 @@ class Teacher:
             gave_feedback = True
         elif self.feedback_type == 'oracle':
             if self.feedback_condition():
-                feedback = self.compute_feedback(oracle)
+                feedback = self.compute_feedback(oracle, last_action)
                 gave_feedback = True
                 self.past_timestep_feedback = self.last_feedback
                 self.last_feedback = feedback
@@ -137,7 +141,7 @@ class Teacher:
         """
         raise NotImplementedError
 
-    def compute_feedback(self, _):
+    def compute_feedback(self, obs, action):
         """
         Returns feedback for the agent as a tensor.
         """
