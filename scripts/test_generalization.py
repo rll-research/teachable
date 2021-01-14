@@ -264,10 +264,13 @@ def main():
         f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
     for policy_name in policy_level_names:
         for env in envs:
+            inner_env = env
+            while hasattr(inner_env, '_wrapped_env'):
+                inner_env = inner_env._wrapped_env
             test_success(env, save_dir, args.finetune_itrs,
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
-                         policy_name=policy_path.stem, env_name=env.__class__.__name__,
+                         policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
                          hide_instrs=args.hide_instrs, heldout_envs=[env], stochastic=not args.deterministic)
 
 
