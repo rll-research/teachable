@@ -508,7 +508,7 @@ class Trainer(object):
             if self.args.end_on_full_buffer:
                 advance_curriculum = buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity
 
-            if advance_curriculum and not self.args.single_level:
+            if advance_curriculum and not self.args.single_level and self.steps_on_itr > self.args.min_itr_steps:
                 # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
