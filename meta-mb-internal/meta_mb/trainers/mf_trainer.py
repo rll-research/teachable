@@ -195,7 +195,7 @@ class Trainer(object):
                 except:
                     counts_train = 0
                 logger.logkv("BufferSize", counts_train)
-                if self.args.end_on_full_buffer and \
+                if self.args.single_level and self.args.end_on_full_buffer and \
                     (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
                     print("ALL DONE!")
                     return
@@ -296,19 +296,6 @@ class Trainer(object):
                             for k, v in log_dict.items():
                                 logger.logkv(f'Distill/DAgger_{key_set}{k}_Train', v)
 
-                if dagger_samples_data is not None:
-                    self.total_distillation_frames += len(dagger_samples_data)
-                    dagger_distill_log = self.distill(trim_batch(dagger_samples_data),
-                                                      is_training=True,
-                                                      source='teacher',
-                                                      teachers_dict=teacher_distill_dict,
-                                                      relabel=self.args.relabel,
-                                                      relabel_dict=teacher_train_dict)
-                    distill_log = dagger_distill_log
-                    for key_set, log_dict in dagger_distill_log.items():
-                        key_set = '_'.join(key_set)
-                        for k, v in log_dict.items():
-                            logger.logkv(f'Distill/DAgger_{key_set}{k}_Train_Recent', v)
                 for key_set, log_dict in distill_log.items():
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
@@ -517,6 +504,9 @@ class Trainer(object):
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
                     saving_time = time.time() - saving_time_start
+
+            if self.args.end_on_full_buffer:
+                advance_curriculum = buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity
 
             if advance_curriculum and not self.args.single_level:
                 # if self.il_trainer is not None:
