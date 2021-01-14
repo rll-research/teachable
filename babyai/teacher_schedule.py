@@ -87,6 +87,16 @@ def train_first_advance_second(level, easy_teacher, harder_teacher):
     distillation_dict = {easy_teacher: True, harder_teacher: True}
     return teacher_train_dict, distillation_dict, advancement_dict
 
+# Train on the first teacher, distill to the second, advance with the second
+def train_first_advance_second_sparse(level, easy_teacher, harder_teacher):
+    no_teacher_dict = {easy_teacher: False, harder_teacher: False}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+    advancement_dict = {easy_teacher: False, harder_teacher: True}
+    distillation_dict = {easy_teacher: False, harder_teacher: True}
+    return teacher_train_dict, distillation_dict, advancement_dict
+
 
 #### FIRST TEACHER ####
 # Train and distill on the first teacher
@@ -255,6 +265,9 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
     elif teacher_schedule == 'train_first_advance_second':
         assert len(feedback_types) == 2
         return lambda level, a, b: train_first_advance_second(level, feedback_types[0], feedback_types[1])
+    elif teacher_schedule == 'train_first_advance_second_sparse':
+        assert len(feedback_types) == 2
+        return lambda level, a, b: train_first_advance_second_sparse(level, feedback_types[0], feedback_types[1])
     elif teacher_schedule == 'easy_add_harder':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_add_harder(level, feedback_types[0], feedback_types[1])
