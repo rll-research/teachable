@@ -14,13 +14,15 @@ def trim_batch(batch):
         "action": batch.action.int(),
         "action_probs": batch.action_probs,
         "teacher_action": batch.env_infos.teacher_action,
-        "full_done": batch.full_done.int()
+        "full_done": batch.full_done.int(),
+        "success": batch.env_infos.success,
     })
 
 
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
 class Buffer:
-    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer', augmenter=None):
+    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer', augmenter=None,
+                 successful_only=False):
         self.train_buffer_capacity = buffer_capacity
         self.augmenter = augmenter
         # We don't need that many val samples
@@ -32,6 +34,7 @@ class Buffer:
         self.index_val = {}
         self.counts_val = {}
         self.buffer_path = pathlib.Path(path).joinpath(buffer_name)
+        self.successful_only = successful_only
         # If the buffer already exists, load it
         if self.buffer_path.exists():
             for file_name in self.buffer_path.iterdir():
@@ -63,7 +66,9 @@ class Buffer:
         end_idxs = self.to_numpy(torch.where(batch.full_done == 1)[0]) + 1
         start_idxs = np.concatenate([[0], end_idxs[:-1]])
         for start, end in zip(start_idxs, end_idxs):
-            trajs.append(batch[start: end])
+            traj = batch[start: end]
+            if (not self.successful_only) or traj.success[-1].item():
+                trajs.append(traj)
         return trajs
 
     def save_traj(self, traj, level, index, split):

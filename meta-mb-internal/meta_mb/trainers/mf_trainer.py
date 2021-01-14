@@ -137,10 +137,10 @@ class Trainer(object):
         saving_time = 0
 
         buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                        augmenter=self.augmenter)
+                        augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
         if self.args.use_dagger:
             dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                                   buffer_name='dagger_buffer')
+                                   buffer_name='dagger_buffer', successful_only=self.args.distill_successful_only)
         else:
             dagger_buffer = None
 
@@ -261,7 +261,8 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            should_distill = self.supervised_model is not None and advance_curriculum
+            should_distill = self.supervised_model is not None and advance_curriculum and \
+                             self.itrs_on_level >= self.args.min_itr_steps_distill
             if should_distill:
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
@@ -677,19 +678,21 @@ class Trainer(object):
             print("no curriculum")
         save_wandb = (save_video and not self.is_debug)
         paths, accuracy, stoch_accuracy, det_accuracy, cc3_followed = rollout(self.env, policy,
-                                                                max_path_length=200,
-                                                                reset_every=self.args.rollouts_per_meta_task,
-                                                                stochastic=stochastic,
-                                                                record_teacher=True, teacher_dict=teacher_dict,
-                                                                video_directory=self.exp_name,
-                                                                video_name=save_name + str(self.curriculum_step),
-                                                                num_rollouts=num_rollouts,
-                                                                save_wandb=False,#save_wandb,
-                                                                save_locally=True,
-                                                                num_save=20,
-                                                                obs_preprocessor=self.obs_preprocessor,
-                                                                teacher_name=teacher_name,
-                                                                rollout_oracle=rollout_oracle)
+                                                                              max_path_length=200,
+                                                                              reset_every=self.args.rollouts_per_meta_task,
+                                                                              stochastic=stochastic,
+                                                                              record_teacher=True,
+                                                                              teacher_dict=teacher_dict,
+                                                                              video_directory=self.exp_name,
+                                                                              video_name=save_name + str(
+                                                                                  self.curriculum_step),
+                                                                              num_rollouts=num_rollouts,
+                                                                              save_wandb=False,  # save_wandb,
+                                                                              save_locally=True,
+                                                                              num_save=20,
+                                                                              obs_preprocessor=self.obs_preprocessor,
+                                                                              teacher_name=teacher_name,
+                                                                              rollout_oracle=rollout_oracle)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)

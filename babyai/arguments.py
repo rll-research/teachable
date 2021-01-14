@@ -130,6 +130,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--curriculum_type', type=int, default=1)
         self.add_argument('--augment', action='store_true')
         self.add_argument('--min_itr_steps', type=int, default=0)
+        self.add_argument('--min_itr_steps_distill', type=int, default=0)
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
@@ -165,6 +166,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--modify_cc3', action='store_true')
         self.add_argument('--relabel', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
+        self.add_argument('--distill_successful_only', action='store_true')
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=200)
