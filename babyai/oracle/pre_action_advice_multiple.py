@@ -21,11 +21,13 @@ class PreActionAdviceMultiple(Teacher):
         """
         return np.concatenate([self.one_hotify(self.action_space.sample()) for _ in range(self.cartesian_steps)])
 
-    def compute_feedback(self, oracle):
+    def compute_feedback(self, oracle, last_action=-1):
         """
         Return the expert action from the previous timestep.
         """
-        self.step_ahead(oracle)
+        # Copy so we don't mess up the state of the real oracle
+        oracle_copy = pkl.loads(pkl.dumps(oracle))
+        self.step_ahead(oracle_copy, last_action=last_action)
         return np.concatenate([self.one_hotify(action) for action in self.action_list])
 
     def one_hotify(self, index):
@@ -37,39 +39,22 @@ class PreActionAdviceMultiple(Teacher):
     def success_check(self, state, action, oracle):
         return True
 
-    def step_ahead(self, oracle):
-        original_teacher = oracle.mission.teacher
+    def step_ahead(self, oracle, last_action=-1):
+        # Remove teacher so we don't end up with a recursion error
         oracle.mission.teacher = None
-        env = pkl.loads(pkl.dumps(oracle.mission))
-        env.teacher = None
         try:
-            self.action_list = self.step_away_actions(env, oracle, self.cartesian_steps)
+            self.action_list = self.step_away_actions(oracle, self.cartesian_steps, last_action=last_action)
         except Exception as e:
-            print("STEP AWAY FAILED!", e)
+            print("STEP AWAY FAILED PA-M!", e)
             self.action_list = [-1] * self.cartesian_steps
-        oracle.mission.teacher = original_teacher
         return oracle
 
-    def step_away_actions(self, env_copy, oracle, steps):
-        next_action = -1
+    def step_away_actions(self, oracle, steps, last_action=-1):
+        env = oracle.mission
         actions = []
         for step in range(steps):
-            vis_mask = oracle.vis_mask.copy()
-            new_oracle = self.botclass(env_copy)
-            drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
-                       (not next_action == oracle.mission.actions.toggle)
-            if drop_off:
-                next_action, next_subgoal = copy.deepcopy(oracle).replan(next_action)
-            else:
-                new_oracle.vis_mask = vis_mask
-                new_oracle.step = oracle.step
-                new_oracle._process_obs()
-                next_action, next_subgoal = new_oracle.replan(-1)
-                oracle = new_oracle
-            env_copy.teacher = None
-            actions.append(next_action)
-            if next_action == -1:
-                assert False, "It was triggered after all"
-            else:
-                env_copy.step(next_action)
+            oracle, replan_output = self.replan(oracle, last_action)
+            last_action = replan_output[0]
+            actions.append(last_action)
+            env.step(last_action)
         return actions

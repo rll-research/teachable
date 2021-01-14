@@ -1,6 +1,7 @@
 import numpy as np
 from babyai.oracle.teacher import Teacher
 
+
 class SubgoalCorrections(Teacher):
     def __init__(self, *args, **kwargs):
         super(SubgoalCorrections, self).__init__(*args, **kwargs)
@@ -9,7 +10,7 @@ class SubgoalCorrections(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return -1*np.ones(18)
+        return -1 * np.ones(18)
 
     def random_feedback(self):
         """
@@ -17,7 +18,7 @@ class SubgoalCorrections(Teacher):
         """
         return np.random.uniform(0, 1, size=18)
 
-    def compute_feedback(self, _):
+    def compute_feedback(self, _, last_action=-1):
         """
         Return the expert action from the previous timestep.
         """
@@ -31,7 +32,7 @@ class SubgoalCorrections(Teacher):
                 return False
         return True
 
-    def give_feedback(self, state, _):
+    def give_feedback(self, state, action, oracle):
         """
         Augment the agent's state observation with teacher feedback.
         :param state: Agent's current observation as a dictionary

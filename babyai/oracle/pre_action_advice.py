@@ -2,11 +2,10 @@ import numpy as np
 from babyai.oracle.teacher import Teacher
 
 
-
 class PreActionAdvice(Teacher):
     def __init__(self, *args, **kwargs):
         super(PreActionAdvice, self).__init__(*args, **kwargs)
-                        
+
     def empty_feedback(self):
         """
         Return a tensor corresponding to no feedback.
@@ -19,7 +18,7 @@ class PreActionAdvice(Teacher):
         """
         return self.one_hotify(self.action_space.sample())
 
-    def compute_feedback(self, _):
+    def compute_feedback(self, _, last_action=-1):
         """
         Return the expert action from the previous timestep.
         """

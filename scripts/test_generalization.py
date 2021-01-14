@@ -244,7 +244,10 @@ def main():
             envs += default_env.held_out_levels
         elif 'test' == env_name[:4]:
             index = int(env_name[4])
-            envs.append(default_env.held_out_levels[index])
+            inner_env = default_env.held_out_levels[index]
+            outer_env = copy.deepcopy(default_env)
+            outer_env._wrapped_env._wrapped_env = inner_env
+            envs.append(outer_env)
         else:
             try:
                 env_id = int(env_name)

@@ -542,9 +542,10 @@ class Bot:
 
     """
 
-    def __init__(self, mission):
+    def __init__(self, mission, rng=None):
         # Mission to be solved
         self.mission = mission
+        self.rng = rng if rng is not None else np.random.RandomState()
 
         # Grid containing what has been mapped out
         self.grid = Grid(mission.width, mission.height)
@@ -698,8 +699,9 @@ class Bot:
         if len(empty_visible_cells) > 0:
             # We don't want to go to far, so choose among the top 5 closest cells
             empty_visible_cells.sort(key=lambda x: np.abs(x[0] - self.mission.agent_pos[0]) + np.abs(x[1] - self.mission.agent_pos[1]))
-            return random.choice(empty_visible_cells[:5])
-        # self.mission.render("human")
+            index = self.rng.choice(min(5, len(empty_visible_cells)))
+            cell = empty_visible_cells[index]
+            return cell
         raise RecursionError(f"Did not find an open cell in {attempts} iterations.")
 
 

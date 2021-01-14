@@ -1,3 +1,6 @@
+import copy
+import pickle as pkl
+
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 from meta_mb.meta_envs.base import MetaEnv
 from gym_minigrid.minigrid import MiniGridEnv
@@ -51,6 +54,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type is not None:
+            rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
@@ -70,7 +74,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'CartesianCorrections':
-                    teacher = CartesianCorrections(Bot, self, feedback_always=feedback_always,
+                    obs_size = self.reset()['obs'].flatten().size
+                    teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
                                                    feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
@@ -84,7 +89,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
-                self.oracle[ft] = Bot(self)
+                self.oracle[ft] = Bot(self, rng=copy.deepcopy(rng))
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
@@ -366,7 +371,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             raise ValueError("Mission is too long: " + mission + str(pad_length))
         return mission_list
 
-    def gen_obs(self):
+    def gen_obs(self, oracle=None, past_action=None, generate_feedback=False):
         """
         Generate the agent's view (partially observable). It's a concatenation of the agent's direction and position,
         the flattened partially observable view in front of it, the encoded mission string, and the teacher's feedback,
@@ -386,21 +391,20 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         obs_dict["obs"] = image
         obs_dict['instr'] = goal
         obs_dict['extra'] = additional
-        if hasattr(self, 'teacher') and self.teacher is not None and not 'None' in self.teacher.teachers:
-            correction = self.compute_teacher_advice(image.flatten())
+        if generate_feedback and hasattr(self, 'teacher') and self.teacher is not None and not 'None' in self.teacher.teachers:
+            if oracle is None:
+                oracle = self.oracle
+            if past_action is None:
+                past_action = self.get_teacher_action()
+            correction = self.compute_teacher_advice(image.flatten(), past_action, oracle)
             obs_dict.update(correction)
         return obs_dict
 
-    def compute_teacher_advice(self, obs):
-        self.obs_shape = obs.shape
-        self.teacher.obs_size = obs.shape
-        if isinstance(self.teacher, BatchTeacher):
-            for t in self.teacher.teachers.values():
-                t.obs_size = obs.shape
+    def compute_teacher_advice(self, obs, next_action, oracle):
         if self.reset_yet is False:
             correction = self.teacher.empty_feedback()
         else:
-            correction = self.teacher.give_feedback([obs], self.oracle)
+            correction = self.teacher.give_feedback([obs], next_action, oracle)
         return correction
 
     def step(self, action):
@@ -437,6 +441,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
+            original_oracle = pkl.loads(pkl.dumps(self.oracle))
             self.oracle = self.teacher.step(action, self.oracle)
             for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():
                 info[f'followed_{k}'] = v
@@ -444,8 +449,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
         else:
+            original_oracle = None
             info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
-        obs = self.gen_obs()
+        obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action)
         # Reward at the end scaled by 1000
         reward_total = rew * 1000
         if self.intermediate_reward:
@@ -467,6 +473,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             if isinstance(self.teacher, BatchTeacher):
+                # Sanity check that all teachers have the same underlying path
+                first_action = list(self.teacher.teachers.values())[0].next_action
+                for teacher_name, teacher in self.teacher.teachers.items():
+                    if not first_action == teacher.next_action:
+                        print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
                 return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
             else:
                 return np.array([self.teacher.next_action], dtype=np.int32)
@@ -482,6 +493,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.oracle = self.teacher.reset(self.oracle)
 
         self.teacher_action = self.get_teacher_action()
-        obs = self.gen_obs()
+        obs = self.gen_obs(generate_feedback=True, past_action=-1)
         self.itr += 1
         return obs
