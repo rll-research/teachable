@@ -54,6 +54,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.feedback_type = feedback_type
         super().__init__(**kwargs)
         if feedback_type is not None:
+            rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
@@ -88,7 +89,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
-                self.oracle[ft] = Bot(self)
+                self.oracle[ft] = Bot(self, rng=copy.deepcopy(rng))
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
@@ -473,10 +474,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # We can log what action is the next one on this path (currently in teacher.next_action).
             if isinstance(self.teacher, BatchTeacher):
                 # Sanity check that all teachers have the same underlying path
-                # first_action = list(self.teacher.teachers.values())[0].next_action
-                # for teacher_name, teacher in self.teacher.teachers.items():
-                #     if not first_action == teacher.next_action:
-                #         print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
+                first_action = list(self.teacher.teachers.values())[0].next_action
+                for teacher_name, teacher in self.teacher.teachers.items():
+                    if not first_action == teacher.next_action:
+                        print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
                 return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
             else:
                 return np.array([self.teacher.next_action], dtype=np.int32)

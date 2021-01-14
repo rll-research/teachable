@@ -60,46 +60,38 @@ class Teacher:
         Steps the oracle's internal state forward with the agent's current action.
         :param agent_action: The action the agent plans to take.
         """
-        # Generally we create a fresh oracle each time to prevent the teacher from getting stuck telling the agent
-        # trying to undo old actions rather than correcting it from where it starts.
-        vis_mask = oracle.vis_mask.copy()
-        new_oracle = self.botclass(oracle.mission)
-        # However, when we're dropping an object off to unblock a path we need to keep the existing oracle
-        # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
-        drop_off = len(oracle.stack) > 0 and oracle.mission.carrying and oracle.stack[-1].reason == 'DropOff' and \
-                   (not agent_action == oracle.mission.actions.toggle)
         self.last_action = self.next_action
-        if drop_off:
-            self.next_action, self.next_subgoal = oracle.replan(agent_action)
-        else:
-            new_oracle.vis_mask = vis_mask
-            new_oracle.step = oracle.step
-            self.next_action, self.next_subgoal = new_oracle.replan(-1)
-            oracle = new_oracle
+        oracle, replan_output = self.replan(oracle, agent_action)
+        self.next_action, self.next_subgoal = replan_output
         self.last_step_error = False
         self.steps_since_lastfeedback += 1
         return oracle
 
+    def replan(self, oracle, last_action):
+        env = oracle.mission
+        # Generally we create a fresh oracle each time to prevent the teacher from getting stuck telling the agent
+        # trying to undo old actions rather than correcting it from where it starts.
+        # However, when we're dropping an object off to unblock a path we need to keep the existing oracle
+        # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
+        drop_off = len(oracle.stack) > 0 and env.carrying and oracle.stack[-1].reason == 'DropOff' and \
+                   (not last_action == env.actions.toggle)
+        if drop_off:
+            replan_output = oracle.replan(last_action)
+        else:
+            new_oracle = self.botclass(env, rng=copy.deepcopy(oracle.rng))
+            new_oracle.vis_mask = oracle.vis_mask.copy()
+            new_oracle.step = oracle.step
+            replan_output = new_oracle.replan(-1)
+            oracle = new_oracle
+        return oracle, replan_output
+
     def step_away_state(self, oracle, steps, last_action=-1):
         env = oracle.mission
         for step in range(steps):
-            # Generally we create a fresh oracle each time to prevent the teacher from getting stuck telling the agent
-            # trying to undo old actions rather than correcting it from where it starts.
-            vis_mask = oracle.vis_mask.copy()
-            new_oracle = self.botclass(env)
-            # However, when we're dropping an object off to unblock a path we need to keep the existing oracle
-            # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
-            drop_off = len(oracle.stack) > 0 and env.carrying and oracle.stack[-1].reason == 'DropOff' and \
-                       (not last_action == env.actions.toggle)
-            if drop_off:
-                last_action, next_subgoal = oracle.replan(last_action)
-            else:
-                new_oracle.vis_mask = vis_mask
-                new_oracle.step = oracle.step
-                last_action, next_subgoal = new_oracle.replan(-1)
-                oracle = new_oracle
+            oracle, replan_output = self.replan(oracle, last_action)
+            last_action = replan_output[0]
             next_state, rew, done, info = env.step(last_action)
-            next_state = next_state['obs']
+        next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
         return next_state, coords
 
@@ -159,7 +151,7 @@ class Teacher:
             return False
 
     def reset(self, oracle):
-        oracle = self.botclass(oracle.mission)
+        oracle = self.botclass(oracle.mission, rng=copy.deepcopy(oracle.rng))
         self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
         self.steps_since_lastfeedback = 0

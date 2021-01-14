@@ -22,9 +22,8 @@ else:
         "persist_goal": True,
         "persist_objs": True,
         "persist_agent": True,
-        "feedback_type": ['PreActionAdviceMultiple'],
-        # "feedback_type": ['PreActionAdviceMultiple', 'CartesianCorrections', 'XYCorrections', 'OffsetCorrections',
-        #                   'PreActionAdvice', 'SubgoalCorrections'],
+        "feedback_type": ['PreActionAdviceMultiple', 'CartesianCorrections', 'XYCorrections', 'OffsetCorrections',
+                          'PreActionAdvice', 'SubgoalCorrections'],
         "feedback_freq": [1],
         "cartesian_steps": 2,
         "num_meta_tasks": 1,
@@ -81,30 +80,13 @@ for level in range(5, 25):
                 obs_list.append(obs)
                 action = level_env.teacher_action.item()
                 teacher_action_list.append(int(list(level_env.teacher.teachers.values())[0].next_action))
-                # teacher_action_list2.append(int(list(level_env.teacher.teachers.values())[1].next_action))
-                # if not teacher_action_list[-1] == teacher_action_list2[-1]:
-                #     print("PROBS!")
-                #     print(instruction)
-                #     print(level_env.carrying)
-                #     im = level_env.render('rgb_array')
-                #     plt.imshow(im)
-                #     plt.title(
-                #         f"T1: {teacher_action_list[-1]}, T2: {teacher_action_list2[-1]}; mission {instruction}")
-                #     plt.show()
-                #     temp = 3
                 action = level_env.teacher_action.item()
+                # action = np.random.choice(7, p=[.2, .2, .3, .1, .1, .1, 0])
                 agent_action_list.append(action)
                 img_list.append(level_env.render('rgb_array'))
                 obs, r, done, info = level_env.step(action)
             level_trajs += 1
             level_succeeded += info['success']
-            # if not np.array_equal(teacher_action_list, teacher_action_list2):
-            #     print("uh oh")
-            #     for i, im in enumerate(img_list):
-            #         plt.imshow(im)
-            #         plt.title(f"step {i}; T1: {teacher_action_list[i]}, T2: {teacher_action_list2[i]}; mission {instruction}")
-            #         plt.show()
-            #         temp = 3
             traj = DictList({'obs': obs_list, 'teacher_action': np.expand_dims(np.array(teacher_action_list), 1)})
         else:
             try:
@@ -115,22 +97,22 @@ for level in range(5, 25):
         level_rare_tokens += np.sum(traj.teacher_action == 4)
         for i in range(len(traj) - 3):
             timestep = traj[i]
+            steps = arguments['cartesian_steps']
             bad = False
             if timestep.obs['gave_PreActionAdviceMultiple']:
                 curr_cc = timestep.obs['PreActionAdviceMultiple']
-                steps = arguments['cartesian_steps']
-                curr_cc = np.array([np.argmax(curr_cc[k* 8 :(k + 1) + 8]) for k in range(steps)])
+                curr_cc = np.array([np.argmax(curr_cc[k * 8 :(k + 1) * 8]) for k in range(steps)])
                 pred_cc = traj[i:i + steps].teacher_action[:, 0]
                 pa_bad = not np.array_equal(curr_cc, pred_cc)
                 bad = bad or not np.array_equal(curr_cc, pred_cc)
-            # if timestep.obs['gave_CartesianCorrections']:
-            #     curr_cc = timestep.obs['CartesianCorrections']
-            #     pred_cc = traj[i + 3].obs['obs']
-            #     bad = bad or not np.array_equal(curr_cc, pred_cc)
-            #     cc3_bad = not np.array_equal(curr_cc, pred_cc)
+            if timestep.obs['gave_CartesianCorrections']:
+                curr_cc = timestep.obs['CartesianCorrections']
+                pred_cc = traj[i + steps].obs['obs']
+                bad = bad or not np.array_equal(curr_cc, pred_cc)
+                cc3_bad = not np.array_equal(curr_cc, pred_cc)
             if bad:
-                # level_messed_up_rare += np.sum(traj.teacher_action[i:i+3, 0] == 3)
-                # level_messed_up_rare += np.sum(traj.teacher_action[i:i+3, 0] == 4)
+                level_messed_up_rare += np.sum(traj.teacher_action[i:i+steps, 0] == 3)
+                level_messed_up_rare += np.sum(traj.teacher_action[i:i+steps, 0] == 4)
                 hints = [(np.argmax(t['PreActionAdviceMultiple'][:8]), np.argmax(t['PreActionAdviceMultiple'][8:])) for
                          t in traj.obs]
                 print("Uh oh!", traj.teacher_action[i:i+steps, 0], f"{i}/ {len(traj)}")
