@@ -106,6 +106,7 @@ class Curriculum(Serializable):
                 # 31 (task was first seen 1 level before, now with the step of unlocking)
                 Level_UnblockPickup(**kwargs),  # 33 (known task, but now there's the extra step of unblocking)
             ]
+            self.levels_list += self.held_out_levels
         else:
             raise NotImplementedError(curriculum_type)
 

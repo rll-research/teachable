@@ -10,6 +10,7 @@ from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
+from scripts.test_generalization import test_success_checkpoint
 
 import torch
 import copy
@@ -82,7 +83,8 @@ def load_model(args):
         if args.self_distill and args.distill_same_model:
             supervised_model = policy
         elif args.self_distill:
-            supervised_model = saved_model['supervised_model']
+            supervised_model = joblib.load(args.saved_path)['policy']
+            print("GOT SUPERVISED MODEL! PROBLEMS?", supervised_model is policy)
         else:
             supervised_model = None
     else:
@@ -281,6 +283,23 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
 
     buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
+
+    def log_fn(rl_policy, il_policy, logger, itr):
+        env_name = 'Unlock'
+        teachers = {'PreActionAdvice': False, 'PreActionAdviceMultiple': False}
+        policy_name = args.prefix
+        if itr == 0:
+            full_save_dir = exp_dir
+            with open(full_save_dir.joinpath('results.csv'), 'w') as f:
+                f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3,itr \n')
+        policy = il_policy
+        heldout_env = copy.deepcopy(env)
+        heldout_env.set_level_distribution(26)
+        heldout_env.set_task()
+        test_success_checkpoint(heldout_env, exp_dir, 10, teachers, policy=policy, policy_name=policy_name,
+                                env_name=env_name, hide_instrs=True, itr=itr, stochastic=True)
+
+
     trainer = Trainer(
         args,
         algo=algo,
@@ -302,6 +321,7 @@ def run_experiment(**config):
         obs_preprocessor=obs_preprocessor,
         log_dict=log_dict,
         augmenter=augmenter,
+        log_fn=log_fn,
     )
     trainer.train()
 

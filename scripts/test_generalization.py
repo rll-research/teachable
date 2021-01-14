@@ -186,7 +186,7 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
 def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
                             policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True):
     policy_env_name = f'Policy{policy_name}-{env_name}'
-    full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
+    full_save_dir = save_dir#.joinpath(policy_env_name + '_checkpoint')  # TODO: uncomment
     print("FSD", full_save_dir)
     if not full_save_dir.exists():
         full_save_dir.mkdir()
