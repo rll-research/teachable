@@ -148,7 +148,7 @@ class BaseAlgo(ABC):
 
         """
         active_teachers = [k for k, v in teacher_dict.items() if v]
-        assert len(active_teachers) >= 1
+        assert len(active_teachers) <= 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
         # TODO: Make this handle the case where the meta_rollout length > 1

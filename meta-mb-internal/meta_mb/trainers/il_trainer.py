@@ -104,7 +104,10 @@ class ImitationLearning(object):
         else:
             acmodel.eval()
 
-    def run_epoch_recurrence_one_batch(self, batch, teacher_name, is_training=False, source='agent', teacher_dict={}):
+    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}):
+        active_teachers = [k for k, v in teacher_dict.items() if v]
+        assert len(active_teachers) <= 2
+        teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher_name]
         optimizer = self.optimizer_dict[teacher_name]
         self.set_mode(is_training, acmodel)
@@ -390,7 +393,7 @@ class ImitationLearning(object):
                     else:
                         teacher_subset_dict[k] = False
                 batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, key_set[0], is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'not_none':
@@ -406,7 +409,7 @@ class ImitationLearning(object):
                     else:
                         teacher_subset_dict[k] = False
                 batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, key_set[0], is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all':
@@ -415,7 +418,7 @@ class ImitationLearning(object):
                 raise NotImplementedError
             else:
                 teacher_name = key_set[0]
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, teacher_name, is_training=is_training, source=source,
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'none':
@@ -423,7 +426,7 @@ class ImitationLearning(object):
             teacher_subset_dict = {}
             for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, 'none', is_training=is_training, source=source,
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
             logs[key_set] = log
 

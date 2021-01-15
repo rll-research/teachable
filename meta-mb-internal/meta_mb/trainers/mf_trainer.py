@@ -159,6 +159,7 @@ class Trainer(object):
         last_success = 0
         last_accuracy = 0
 
+        distill_to_none = (not self.args.distill_all_teachers) and (not self.args.distill_all_but_none)
         for itr in range(self.start_itr, self.args.n_itr):
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
@@ -180,8 +181,7 @@ class Trainer(object):
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            should_collect = (not self.args.no_collect) and (
-                (not skip_training_rl) or self.supervised_model is not None)
+            should_collect = (not self.args.no_collect) and (not skip_training_rl)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
@@ -261,7 +261,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            should_distill = self.supervised_model is not None and advance_curriculum and \
+            should_distill = advance_curriculum and \
                              self.itrs_on_level >= self.args.min_itr_steps_distill
             if should_distill:
                 time_distill_start = time.time()
@@ -342,7 +342,7 @@ class Trainer(object):
             if should_policy_rollout:
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
-                    if self.supervised_model is not None:
+                    if distill_to_none:
                         # Distilled model
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
@@ -354,7 +354,7 @@ class Trainer(object):
                         advance_curriculum_sup = True
                     # Original Policy
                     time_run_policy_start = time.time()
-                    logger.log("Running model with highest level teacher")
+                    logger.log("Running model with each teacher")
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, _, _ = self.run_supervised(
@@ -459,11 +459,9 @@ class Trainer(object):
             should_save_video = (itr % self.save_videos_every == 0) or (
                 itr == self.args.n_itr - 1) or advance_curriculum
             # If we're just collecting, don't log
-            if (self.args.no_train_rl and self.supervised_model is None):
-                should_save_video = False
             if should_save_video:
                 time_rollout_start = time.time()
-                if self.supervised_model is not None:
+                if distill_to_none:
                     self.save_videos(self.policy_dict['none'],
                                      save_name='no_teacher_video_stoch',
                                      num_rollouts=10,
@@ -709,10 +707,10 @@ class Trainer(object):
         """
         Gets the current policy and env for storage
         """
-        if self.supervised_model is None:
+        if self.il_trainer is None:
             il_optimizer = None
         else:
-            il_optimizer = self.il_trainer.optimizer.state_dict()
+            il_optimizer = self.il_trainer.optimizer_dict
         d = dict(itr=itr,
                  policy=self.policy_dict,
                  env=self.env,

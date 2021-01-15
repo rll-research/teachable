@@ -83,7 +83,7 @@ class PPOAlgo(BaseAlgo):
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
         active_teachers = [k for k, v in teacher_dict.items() if v]
-        assert len(active_teachers) >= 1
+        assert len(active_teachers) <= 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
         optimizer = self.optimizer_dict[teacher]
