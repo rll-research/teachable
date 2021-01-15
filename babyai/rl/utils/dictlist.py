@@ -38,16 +38,19 @@ class DictList(dict):
 def merge_dictlists(list_of_dictlists):
     batch = list_of_dictlists[0]
     for k in batch.keys():
-        vec_type = type(getattr(list_of_dictlists[0], k))
-        if vec_type is list:
-            v = [step for dict_list in list_of_dictlists for step in getattr(dict_list, k)]
-        elif vec_type is torch.Tensor:
-            v = torch.cat([getattr(dict_list, k) for dict_list in list_of_dictlists])
-        elif vec_type is np.ndarray:
-            v = np.concatenate([getattr(dict_list, k) for dict_list in list_of_dictlists])
-        elif vec_type is DictList:
-            v = merge_dictlists([getattr(dict_list, k) for dict_list in list_of_dictlists])
-        else:
-            raise NotImplementedError(vec_type)
-        setattr(batch, k, v)
+        try:
+            vec_type = type(getattr(list_of_dictlists[0], k))
+            if vec_type is list:
+                v = [step for dict_list in list_of_dictlists for step in getattr(dict_list, k)]
+            elif vec_type is torch.Tensor:
+                v = torch.cat([getattr(dict_list, k) for dict_list in list_of_dictlists])
+            elif vec_type is np.ndarray:
+                v = np.concatenate([getattr(dict_list, k) for dict_list in list_of_dictlists])
+            elif vec_type is DictList:
+                v = merge_dictlists([getattr(dict_list, k) for dict_list in list_of_dictlists])
+            else:
+                raise NotImplementedError(vec_type)
+            setattr(batch, k, v)
+        except AttributeError as e:
+            print(f"Error setting {k}, {e}")
     return batch
