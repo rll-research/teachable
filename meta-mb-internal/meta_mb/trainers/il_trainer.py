@@ -31,7 +31,6 @@ class ImitationLearning(object):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.modify_cc3_steps = modify_cc3_steps
-        self.final_loss = None
 
     def modify_cc3(self, batch):
         obs = batch.obs
@@ -188,10 +187,9 @@ class ImitationLearning(object):
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
-            if self.final_loss is None:
-                self.final_loss = final_loss
-            else:
-                self.final_loss = self.final_loss + final_loss
+            self.optimizer.zero_grad()
+            final_loss.backward()
+            self.optimizer.step()
 
         # Store log info
         log = self.log_final()
@@ -411,12 +409,6 @@ class ImitationLearning(object):
             log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
             logs[key_set] = log
-
-        if is_training:
-            self.optimizer.zero_grad()
-            self.final_loss.backward()
-            self.optimizer.step()
-            self.final_loss = None
 
         if is_training:
             self.scheduler.step()
