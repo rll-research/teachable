@@ -63,7 +63,7 @@ class Trainer(object):
         self.args = args
         self.algo = algo
         self.algo_dagger = algo_dagger
-        self.policy = policy
+        self.policy_dict = policy
         self.env = copy.deepcopy(env)
         self.sampler = sampler
         self.sample_processor = sample_processor
@@ -346,7 +346,7 @@ class Trainer(object):
                         # Distilled model
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
-                        advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
+                        advance_curriculum_sup, _, _ = self.run_supervised(self.policy_dict['none'], advancement_dict,
                                                                            "Rollout/")
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
@@ -358,7 +358,7 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, _, _ = self.run_supervised(
-                            self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/")
+                            self.policy_dict[teacher], {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/")
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     run_policy_time = time.time() - time_run_policy_start
 
@@ -448,11 +448,11 @@ class Trainer(object):
             logger.dumpkvs()
 
             if itr % self.log_every == 0:
-                if self.il_trainer is not None:
-                    il_model = self.il_trainer.acmodel
-                else:
-                    il_model = None
-                self.log_fn(self.algo.acmodel, il_model, logger, itr)
+                # if self.il_trainer is not None:
+                #     il_model = self.il_trainer.acmodel
+                # else:
+                #     il_model = None
+                self.log_fn(self.policy_dict, None, logger, itr)
 
             """ ------------------ Video Saving ---------------------"""
 
@@ -464,7 +464,7 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 if self.supervised_model is not None:
-                    self.save_videos(self.il_trainer.acmodel,
+                    self.save_videos(self.policy_dict['none'],
                                      save_name='no_teacher_video_stoch',
                                      num_rollouts=10,
                                      teacher_dict=self.no_teacher_dict,
@@ -473,7 +473,7 @@ class Trainer(object):
                                      teacher_name='None',
                                      stochastic=True)
                 for teacher in self.introduced_teachers:
-                    self.save_videos(self.algo.acmodel,
+                    self.save_videos(self.policy_dict[teacher],
                                      save_name=f'{teacher}_video_stoch',
                                      num_rollouts=10,
                                      teacher_dict={k: k == teacher for k in advancement_dict.keys()},
@@ -481,15 +481,15 @@ class Trainer(object):
                                      log_prefix=f"VidRollout/{teacher}_Stoch",
                                      teacher_name=teacher,
                                      stochastic=True)
-                self.save_videos(self.algo.acmodel,  # TODO: eventually remove this?
-                                 save_name='oracle_video',
-                                 num_rollouts=2,
-                                 teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
-                                 save_video=should_save_video,
-                                 log_prefix="VidRollout/OracleCC",
-                                 stochastic=True,
-                                 teacher_name='CC3 (Oracle actions)',
-                                 rollout_oracle=True)
+                # self.save_videos(self.policy_dict['none'],  # TODO: eventually remove this?
+                #                  save_name='oracle_video',
+                #                  num_rollouts=2,
+                #                  teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
+                #                  save_video=should_save_video,
+                #                  log_prefix="VidRollout/OracleCC",
+                #                  stochastic=True,
+                #                  teacher_name='CC3 (Oracle actions)',
+                #                  rollout_oracle=True)
 
                 rollout_time = time.time() - time_rollout_start
             else:
@@ -525,11 +525,11 @@ class Trainer(object):
                 self.num_train_skip_itrs = 10
 
         logger.log("Training finished")
-        if self.eval_heldout:
-            policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
-            self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
-            logger.log("Evaluation finished")
-        logger.dumpkvs()
+        # if self.eval_heldout:
+        #     policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
+        #     self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
+        #     logger.log("Evaluation finished")
+        # logger.dumpkvs()
 
     def evaluate_heldout(self, policy, teachers):
         num_rollouts = 1  # 50
@@ -714,10 +714,10 @@ class Trainer(object):
         else:
             il_optimizer = self.il_trainer.optimizer.state_dict()
         d = dict(itr=itr,
-                 policy=self.policy,
+                 policy=self.policy_dict,
                  env=self.env,
                  args=self.args,
-                 optimizer=self.algo.optimizer.state_dict(),
+                 optimizer=self.algo.optimizer_dict,
                  curriculum_step=self.curriculum_step,
                  il_optimizer=il_optimizer,
                  log_dict={
@@ -733,8 +733,8 @@ class Trainer(object):
                  })
         if self.reward_predictor is not None:
             d['reward_predictor'] = self.reward_predictor
-        if self.il_trainer is not None:
-            d['supervised_model'] = self.il_trainer.acmodel
+        # if self.il_trainer is not None:
+        #     d['supervised_model'] = self.il_trainer.acmodel
         return d
 
     def _log_rew_pred(self, r_discrete, rewards, log_prefix):

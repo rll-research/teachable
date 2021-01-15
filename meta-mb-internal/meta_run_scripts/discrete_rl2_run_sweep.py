@@ -58,6 +58,7 @@ def get_exp_name(args):
 
 
 def load_model(args):
+    raise NotImplementedError
     original_config = args
     saved_model = joblib.load(args.saved_path)
     if 'args' in saved_model:
@@ -143,18 +144,28 @@ def run_experiment(**config):
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
         if args.no_teacher:
             advice_size = 0
-        policy = ACModel(action_space=env.action_space,
-                         env=env,
-                         image_dim=args.image_dim,
-                         memory_dim=args.memory_dim,
-                         instr_dim=args.instr_dim,
-                         lang_model=args.instr_arch,
-                         use_instr=not args.no_instr,
-                         use_memory=not args.no_mem,
-                         arch=args.arch,
-                         advice_dim=args.advice_dim,
-                         advice_size=advice_size,
-                         num_modules=args.num_modules)
+
+        try:
+            teacher_null_dict = env.teacher.null_feedback()
+        except Exception as e:
+            teacher_null_dict = {}
+        obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
+        policy_dict = {}
+        for teacher in list(teacher_null_dict.keys()) + ['none']:
+            policy = ACModel(action_space=env.action_space,
+                             env=env,
+                             image_dim=args.image_dim,
+                             memory_dim=args.memory_dim,
+                             instr_dim=args.instr_dim,
+                             lang_model=args.instr_arch,
+                             use_instr=not args.no_instr,
+                             use_memory=not args.no_mem,
+                             arch=args.arch,
+                             advice_dim=args.advice_dim,
+                             advice_size=advice_size,
+                             num_modules=args.num_modules)
+            policy_dict[teacher] = policy
 
         reward_predictor = ACModel(action_space=spaces.Discrete(2),
                                    env=env,
@@ -168,32 +179,10 @@ def run_experiment(**config):
                                    advice_dim=args.advice_dim,
                                    advice_size=advice_size,
                                    num_modules=args.num_modules)
-        if args.self_distill and not args.distill_same_model:
-            supervised_model = ACModel(action_space=env.action_space,
-                                       env=env,
-                                       image_dim=args.image_dim,
-                                       memory_dim=args.memory_dim,
-                                       instr_dim=args.instr_dim,
-                                       lang_model=args.instr_arch,
-                                       use_instr=not args.no_instr,
-                                       use_memory=not args.no_mem,
-                                       arch=args.arch,
-                                       advice_dim=args.advice_dim,
-                                       advice_size=advice_size,
-                                       num_modules=args.num_modules)
-        elif args.self_distill:
-            supervised_model = policy
-        else:
-            supervised_model = None
         start_itr = 0
         curriculum_step = env.index
 
-    env.reset()
-    try:
-        teacher_null_dict = env.teacher.null_feedback()
-    except Exception as e:
-        teacher_null_dict = {}
-    obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+
     if args.new_distill:
         print("ADDING SUP!!!")
         obs = env.reset()
@@ -212,28 +201,24 @@ def run_experiment(**config):
                                    num_modules=args.num_modules)
 
     args.model = 'default_il'
-    if supervised_model is not None:
-        modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
-        il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
-                                       preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                       instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps)
-        if il_optimizer is not None:
-            il_trainer.optimizer.load_state_dict(il_optimizer)
-    else:
-        il_trainer = None
-    rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
-                                   preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
+    modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
+    il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
+                                   preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
+                                   instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps)
+    if il_optimizer is not None:
+        il_trainer.optimizer.load_state_dict(il_optimizer)
+    # rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
+    #                                preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
 
     sampler = MetaSampler(
         env=env,
-        policy=policy,
+        policy=policy_dict,
         rollouts_per_meta_task=args.rollouts_per_meta_task,
         meta_batch_size=10,
         max_path_length=args.max_path_length,
         parallel=not args.sequential,
         envs_per_task=1,
         reward_predictor=reward_predictor,
-        supervised_model=supervised_model,
         obs_preprocessor=obs_preprocessor,
     )
 
@@ -246,7 +231,7 @@ def run_experiment(**config):
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+    algo = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
@@ -255,7 +240,7 @@ def run_experiment(**config):
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-    algo_dagger = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+    algo_dagger = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
@@ -285,7 +270,7 @@ def run_experiment(**config):
         args,
         algo=algo,
         algo_dagger=algo_dagger,
-        policy=policy,
+        policy=policy_dict,
         env=deepcopy(env),
         sampler=sampler,
         sample_processor=sample_processor,
@@ -294,9 +279,8 @@ def run_experiment(**config):
         exp_name=exp_dir,
         curriculum_step=curriculum_step,
         il_trainer=il_trainer,
-        supervised_model=supervised_model,
         reward_predictor=reward_predictor,
-        rp_trainer=rp_trainer,
+        # rp_trainer=rp_trainer,
         is_debug=is_debug,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,

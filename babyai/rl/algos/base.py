@@ -58,8 +58,11 @@ class BaseAlgo(ABC):
             self.env = ParallelEnv(envs, rollouts_per_meta_task)
         else:
             self.env = SequentialEnv(envs, rollouts_per_meta_task)
-        self.acmodel = acmodel
-        self.acmodel.train()
+        self.policy_dict = acmodel
+        for policy in self.policy_dict.values():
+            policy.train()
+        example_policy = list(self.policy_dict.values())[0]
+        # self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
         self.lr = lr
@@ -89,9 +92,9 @@ class BaseAlgo(ABC):
         self.obs = self.env.reset()
         self.obss = [None]*(shape[0])
 
-        self.memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
-        self.memories = torch.zeros(*shape, self.acmodel.memory_size, device=self.device)
-        self.dagger_memory = torch.zeros(shape[1], self.acmodel.memory_size, device=self.device)
+        self.memory = torch.zeros(shape[1], example_policy.memory_size, device=self.device)
+        self.memories = torch.zeros(*shape, example_policy.memory_size, device=self.device)
+        self.dagger_memory = torch.zeros(shape[1], example_policy.memory_size, device=self.device)
 
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
@@ -144,13 +147,17 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        active_teachers = [k for k, v in teacher_dict.items() if v]
+        assert len(active_teachers) >= 1
+        teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
+        acmodel = self.policy_dict[teacher]
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
 
             with torch.no_grad():
-                dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
+                dist, model_results = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
                 value = model_results['value']
                 memory = model_results['memory']
                 extra_predictions = None
@@ -164,7 +171,7 @@ class BaseAlgo(ABC):
             elif use_dagger:
                 with torch.no_grad():
                     dagger_obs = self.preprocess_obss(self.obs, dagger_dict)
-                    dagger_dist, dagger_model_results = self.acmodel(dagger_obs,
+                    dagger_dist, dagger_model_results = acmodel(dagger_obs,
                                                                      self.dagger_memory * self.mask.unsqueeze(1))
                     self.dagger_memory = dagger_model_results['memory']
                     action_to_take = dagger_dist.sample().cpu().numpy()
@@ -231,7 +238,7 @@ class BaseAlgo(ABC):
 
         preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
         with torch.no_grad():
-            next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
+            next_value = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
 
         for i in reversed(range(self.num_frames_per_proc)):
             next_mask = self.masks[i+1] if i < self.num_frames_per_proc - 1 else self.mask

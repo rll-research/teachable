@@ -20,14 +20,21 @@ class ImitationLearning(object):
         self.env = env
 
         # Define actor-critic model
-        self.acmodel = model
+        self.policy_dict = model
+        for policy in model.values():
+            policy.train()
+            if torch.cuda.is_available():
+                policy.cuda()
 
-        self.acmodel.train()
-        if torch.cuda.is_available():
-            self.acmodel.cuda()
-
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.args.lr, eps=self.args.optim_eps)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.99)
+        self.optimizer_dict = {
+            k: torch.optim.Adam(policy.parameters(), self.args.lr, eps=self.args.optim_eps) for k, policy in
+            self.policy_dict.items()
+        }
+        # self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.args.lr, eps=self.args.optim_eps)
+        self.scheduler_dict = {
+            k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in self.optimizer_dict.items()
+        }
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.99)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.modify_cc3_steps = modify_cc3_steps
@@ -91,14 +98,16 @@ class ImitationLearning(object):
 
         return obss, action_true, action_teacher, done, inds, mask
 
-    def set_mode(self, is_training):
+    def set_mode(self, is_training, acmodel):
         if is_training:
-            self.acmodel.train()
+            acmodel.train()
         else:
-            self.acmodel.eval()
+            acmodel.eval()
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}):
-        self.set_mode(is_training)
+    def run_epoch_recurrence_one_batch(self, batch, teacher_name, is_training=False, source='agent', teacher_dict={}):
+        acmodel = self.policy_dict[teacher_name]
+        optimizer = self.optimizer_dict[teacher_name]
+        self.set_mode(is_training, acmodel)
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
@@ -125,8 +134,8 @@ class ImitationLearning(object):
             weightings = torch.ones(7, dtype=torch.float32).to(self.device)
 
         # Memory to be stored
-        memories = torch.zeros([num_frames, self.acmodel.memory_size], device=self.device)
-        memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
+        memories = torch.zeros([num_frames, acmodel.memory_size], device=self.device)
+        memory = torch.zeros([len(inds), acmodel.memory_size], device=self.device)
 
         # We're going to loop through each trajectory together.
         # inds holds the current index of each trajectory (initialized to the start of each trajectory)
@@ -140,7 +149,7 @@ class ImitationLearning(object):
 
             with torch.no_grad():
                 # Taking memory up until num_demos, as demos after that have finished
-                dist, info = self.acmodel(obs, memory[:num_demos])
+                dist, info = acmodel(obs, memory[:num_demos])
                 new_memory = info['memory']
 
             memories[inds] = memory[:num_demos]
@@ -165,7 +174,7 @@ class ImitationLearning(object):
             obs = obss[indexes]
             action_step = action_true[indexes]
             mask_step = mask[indexes]
-            dist, info = self.acmodel(obs, memory * mask_step)
+            dist, info = acmodel(obs, memory * mask_step)
             memory = info["memory"]
 
             if source == 'agent_probs':
@@ -187,9 +196,9 @@ class ImitationLearning(object):
         # Update the model
         final_loss /= self.args.recurrence
         if is_training:
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             final_loss.backward()
-            self.optimizer.step()
+            optimizer.step()
 
         # Store log info
         log = self.log_final()
@@ -372,6 +381,8 @@ class ImitationLearning(object):
 
         if distill_target == 'powerset':
             for key_set in powerset:
+                if len(key_set) > 1:
+                    continue
                 teacher_subset_dict = {}
                 for k in teachers_dict.keys():
                     if k in key_set:
@@ -379,11 +390,13 @@ class ImitationLearning(object):
                     else:
                         teacher_subset_dict[k] = False
                 batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(batch, key_set[0], is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'not_none':
             for key_set in powerset:
+                if len(key_set) > 1:
+                    continue
                 teacher_subset_dict = {}
                 if len(key_set) == 0:  # Don't distill to no teacher
                     continue
@@ -393,12 +406,16 @@ class ImitationLearning(object):
                     else:
                         teacher_subset_dict[k] = False
                 batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(batch, key_set[0], is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all':
             key_set = tuple(set(keys))
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+            if len(key_set) > 1:
+                raise NotImplementedError
+            else:
+                teacher_name = key_set[0]
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, teacher_name, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'none':
@@ -406,10 +423,11 @@ class ImitationLearning(object):
             teacher_subset_dict = {}
             for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, 'none', is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
             logs[key_set] = log
 
         if is_training:
-            self.scheduler.step()
+            for scheduler in self.scheduler_dict.values():
+                scheduler.step()
         return logs

@@ -11,19 +11,22 @@ class PPOAlgo(BaseAlgo):
     """The class for the Proximal Policy Optimization algorithm
     ([Schulman et al., 2015](https://arxiv.org/abs/1707.06347))."""
 
-    def __init__(self, acmodel, envs, num_frames_per_proc=None, discount=0.99, lr=7e-4, beta1=0.9, beta2=0.999,
+    def __init__(self, policy_dict, envs, num_frames_per_proc=None, discount=0.99, lr=7e-4, beta1=0.9, beta2=0.999,
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
                  rollouts_per_meta_task=1, obs_preprocessor=None, augmenter=None):
 
-        super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
+        super().__init__(envs, policy_dict, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                          value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
                          aux_info, parallel, rollouts_per_meta_task)
 
         num_frames_per_proc = num_frames_per_proc or 128
-        self.acmodel = acmodel
-        self.acmodel.train()
+        self.policy_dict = policy_dict
+        for policy in policy_dict.values():
+            policy.train()
+            policy.to(self.device)
+        # self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
         self.lr = lr
@@ -36,7 +39,7 @@ class PPOAlgo(BaseAlgo):
         self.single_env = envs[0]
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.acmodel.to(self.device)
+        # self.acmodel.to(self.device)
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
         assert self.num_frames_per_proc % self.recurrence == 0
@@ -52,7 +55,10 @@ class PPOAlgo(BaseAlgo):
 
         assert self.batch_size % self.recurrence == 0
 
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (beta1, beta2), eps=adam_eps)
+        self.optimizer_dict = {
+            k: torch.optim.Adam(policy.parameters(), self.lr, (beta1, beta2), eps=adam_eps) for k, policy in policy_dict.items()
+        }
+        # self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (beta1, beta2), eps=adam_eps)
         self.batch_num = 0
 
     def set_optimizer(self):
@@ -76,8 +82,13 @@ class PPOAlgo(BaseAlgo):
         being the added information. They are either (n_procs * n_frames_per_proc) 1D tensors or
         (n_procs * n_frames_per_proc) x k 2D tensors where k is the number of classes for multiclass classification
         '''
+        active_teachers = [k for k, v in teacher_dict.items() if v]
+        assert len(active_teachers) >= 1
+        teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
+        acmodel = self.policy_dict[teacher]
+        optimizer = self.optimizer_dict[teacher]
 
-        self.acmodel.train()
+        acmodel.train()
         if entropy_coef is None:
             entropy_coef = self.entropy_coef
 
@@ -159,7 +170,7 @@ class PPOAlgo(BaseAlgo):
 
                     # Compute loss
                     model_running = time.time()
-                    dist, agent_info = self.acmodel(sb.obs, memory * sb.mask)
+                    dist, agent_info = acmodel(sb.obs, memory * sb.mask)
                     model_calls += 1
                     model_samples_calls += len(sb.obs)
                     model_running_end = time.time() - model_running
@@ -219,14 +230,14 @@ class PPOAlgo(BaseAlgo):
                 # Update actor-critic
 
                 backward_start = time.time()
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 batch_loss.backward()
-                grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.acmodel.parameters() if p.grad is not None) ** 0.5
+                grad_norm = sum(p.grad.data.norm(2) ** 2 for p in acmodel.parameters() if p.grad is not None) ** 0.5
                 desired_action = sb.teacher_action.int()
                 accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
 
-                torch.nn.utils.clip_grad_norm_(self.acmodel.parameters(), self.max_grad_norm)
-                self.optimizer.step()
+                torch.nn.utils.clip_grad_norm_(acmodel.parameters(), self.max_grad_norm)
+                optimizer.step()
 
                 backward_end = time.time() - backward_start
                 backward_time += backward_end
