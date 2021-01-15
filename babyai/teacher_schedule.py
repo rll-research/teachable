@@ -62,6 +62,16 @@ def last_teacher(level, teacher_list):
     return teacher_train_dict, distillation_dict, advancement_dict
 
 
+def last_teacher_advance_last_sparse(level, teacher_list):
+    no_teacher_dict = {t: False for t in teacher_list}
+    teacher_train_dict = {t: t == teacher_list[-1] for t in teacher_list}
+    distillation_dict = {t: t == teacher_list[-1] for t in teacher_list}
+    advancement_dict = {t: t == teacher_list[-1] for t in teacher_list}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    return teacher_train_dict, distillation_dict, advancement_dict
+
+
 #### FIRST TEACHER ####
 # Train on the first teacher, distill to first
 def train_first_advance_first(level, teacher_list):
@@ -86,6 +96,7 @@ def train_first_advance_second(level, easy_teacher, harder_teacher):
     advancement_dict = {easy_teacher: False, harder_teacher: True}
     distillation_dict = {easy_teacher: True, harder_teacher: True}
     return teacher_train_dict, distillation_dict, advancement_dict
+
 
 # Train on the first teacher, distill to the second, advance with the second
 def train_first_advance_second_sparse(level, easy_teacher, harder_teacher):
@@ -157,6 +168,7 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=3, remo
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
 
+
 def easy_swap_harder_sparse(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
@@ -172,6 +184,7 @@ def easy_swap_harder_sparse(level, easy_teacher, harder_teacher, add_hard_level=
         distillation_dict = {easy_teacher: False, harder_teacher: True}
     advancement_dict = copy.deepcopy(no_teacher_dict)
     return teacher_train_dict, distillation_dict, advancement_dict
+
 
 # Same as easy_swap_harder, but don't distill to the teacher you're training on
 def easy_swap_harder_noselfdistill(level, easy_teacher, harder_teacher, add_hard_level=3, remove_easy_level=13):
@@ -255,6 +268,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         return lambda level, a, b: first_teacher(level, feedback_types)
     elif teacher_schedule == 'last_teacher':
         return lambda level, a, b: last_teacher(level, feedback_types)
+    elif teacher_schedule == 'last_teacher_advance_last_sparse':
+        return lambda level, a, b: last_teacher_advance_last_sparse(level, feedback_types)
     elif teacher_schedule == 'train_first_advance_first':
         return lambda level, a, b: train_first_advance_first(level, feedback_types)
     elif teacher_schedule == 'first_teacher_both':
@@ -288,8 +303,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
     elif teacher_schedule == 'easy_swap_harder_help':
         assert len(feedback_types) == 2
         return lambda level, success_rate, accuracy_rate: easy_swap_harder_help(level, success_rate, accuracy_rate,
-                                                                                     feedback_types[0],
-                                                                                     feedback_types[1])
+                                                                                feedback_types[0],
+                                                                                feedback_types[1])
     elif teacher_schedule == 'easy_swap_harder_advance_harder':
         assert len(feedback_types) == 2
         return lambda level: easy_swap_harder_advance_harder(level, feedback_types[0], feedback_types[1])
