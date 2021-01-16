@@ -59,7 +59,7 @@ class Curriculum(Serializable):
                 Level_UnblockPickup(**kwargs),  # 33
             ]
         elif curriculum_type == 1:
-            self.levels_list = [
+            self.train_levels = [
                 # Easy levels; intro all PreAction tokens and most subgoals
                 Level_GoToRedBallNoDists(**kwargs),
                 # 0 --> intro L, R, Forward PreAction, Explore and GoNextTo subgoals
@@ -93,19 +93,20 @@ class Curriculum(Serializable):
                 Level_Open(**kwargs),  # 22
                 Level_GoTo(**kwargs),  # 23
                 Level_Pickup(**kwargs),  # 24
-                # Level_PutNext(**kwargs),  # 25 Removed b/c the bot can't reliably beat this
+                # Level_PutNext(**kwargs),  # Removed b/c the bot can't reliably beat this
             ]
 
             self.held_out_levels = [
                 # Held out levels (some bigger sizes, some new tasks, no new feedback)
                 # NOTE: this won't work with subgoals. We should consider introducing a NOVEL task which involves SUBGOALS
                 # we've seen before
-                Level_GoToObjMaze(**kwargs),  # 26 (new size only)
-                Level_Unlock(**kwargs),  # 30 ("unlock" is a completely new instruction)
-                Level_GoToImpUnlock(**kwargs),
+                Level_GoToObjMaze(**kwargs),  # 25 (new size only)
+                Level_Unlock(**kwargs),  # 26 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlock(**kwargs),  # 27
                 # 31 (task was first seen 1 level before, now with the step of unlocking)
-                Level_UnblockPickup(**kwargs),  # 33 (known task, but now there's the extra step of unblocking)
+                Level_UnblockPickup(**kwargs),  # 28 (known task, but now there's the extra step of unblocking)
             ]
+            self.levels_list = self.train_levels + self.held_out_levels
         else:
             raise NotImplementedError(curriculum_type)
 
@@ -143,6 +144,10 @@ class Curriculum(Serializable):
                 return hooked
             else:
                 return orig_attr
+
+    def update_distribution_from_other(self, other):
+        self.distribution = other.distribution.copy()
+        self.index = other.index
 
     def advance_curriculum(self, index=None):
         if index is None:
@@ -188,5 +193,6 @@ class Curriculum(Serializable):
         Then set the task as usual.
         """
         env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
+        print("Setting task! Index is currently", env_index, np.random.uniform())
         self._wrapped_env = self.levels_list[env_index]
         return self._wrapped_env.set_task(args)

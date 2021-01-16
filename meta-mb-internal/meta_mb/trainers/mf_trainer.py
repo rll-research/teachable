@@ -382,7 +382,7 @@ class Trainer(object):
             logger.logkv('Time/Itr', time_itr)
 
             try:
-                logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.levels_list))
+                logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.train_levels))
             except:
                 print("no curriculum")
 
@@ -514,6 +514,8 @@ class Trainer(object):
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
                 self.curriculum_step += 1
+                if self.curriculum_step >= len(self.env.train_levels):
+                    break  # We've finished the curriculum!
                 try:
                     self.sampler.advance_curriculum()
                     self.algo.advance_curriculum()
