@@ -535,7 +535,7 @@ class Trainer(object):
 
     def evaluate_heldout(self, policy, teachers):
         num_rollouts = 1  # 50
-        for env in self.env.held_out_levels:
+        for i, env in enumerate(self.env.held_out_levels):
             level_name = env.__class__.__name__[6:]
             save_dir = pathlib.Path(self.exp_name)
             if not save_dir.exists():
@@ -547,7 +547,9 @@ class Trainer(object):
                 teacher_null_dict = env.teacher.null_feedback()
             except Exception as e:
                 teacher_null_dict = {}
-            success_rate, stoch_accuracy, det_accuracy = test_success(env, save_dir, finetune_itrs, num_rollouts,
+            num_train_levels = len(self.env.train_levels)
+            index = i + num_train_levels
+            success_rate, stoch_accuracy, det_accuracy = test_success(env, index, save_dir, finetune_itrs, num_rollouts,
                                                                       teachers, teacher_null_dict, policy=policy,
                                                                       policy_name='latest', env_name=level_name)
             logger.logkv(f'Heldout/{level_name}Success', success_rate)
