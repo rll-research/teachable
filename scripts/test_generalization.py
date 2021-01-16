@@ -241,9 +241,9 @@ def main():
     env_indices = []
     for env_name in env_names:
         if env_name == 'train':
-            env_indices += list(range(default_env.train_levels))
+            env_indices += list(range(len(default_env.train_levels)))
         elif env_name == 'test':
-            env_indices += list(range(default_env.held_out_levels))
+            env_indices += list(range(len(default_env.held_out_levels)))
         elif 'test' == env_name[:4]:
             index = int(env_name[4])
             # Test levels start directly after train levels, so add the length of the train levels list
