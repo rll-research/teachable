@@ -245,6 +245,8 @@ def run_experiment(**config):
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    for new_env in envs:
+        new_env.update_distribution_from_other(env)
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,

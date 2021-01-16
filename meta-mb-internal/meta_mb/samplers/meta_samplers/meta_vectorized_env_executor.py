@@ -19,6 +19,8 @@ class MetaIterativeEnvExecutor(object):
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
         self.envs = np.asarray([copy.deepcopy(env) for _ in range(meta_batch_size * envs_per_task)])
+        for new_env in self.envs:
+            new_env.update_distribution_from_other(env)
         self.ts = np.zeros(len(self.envs), dtype='int')  # time steps
         self.max_path_length = max_path_length
 

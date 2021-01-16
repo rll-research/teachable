@@ -56,7 +56,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
     return success_rate, stoch_accuracy, det_accuracy, followed_cc3
 
 
-def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
+def finetune_policy(env, env_index, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
                     hide_instrs=False, heldout_envs=[], stochastic=True):
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -97,6 +97,8 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    for new_env in envs:
+        new_env.update_distribution_from_other(env)
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
@@ -138,7 +140,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
         sample_processor=sample_processor,
         buffer_name=save_name,
         exp_name=save_name,
-        curriculum_step=0,
+        curriculum_step=env_index,
         il_trainer=il_trainer,
         supervised_model=supervised_model,
         reward_predictor=None,
@@ -156,7 +158,7 @@ def finetune_policy(env, policy, supervised_model, finetuning_epochs, save_name,
     print("All done!")
 
 
-def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
+def test_success(env, env_index, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
                  policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_envs=[], stochastic=True):
     if policy is None:
@@ -170,7 +172,7 @@ def test_success(env, save_dir, finetune_itrs, num_rollouts, teachers, teacher_n
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
-        finetune_policy(env, policy, policy if args.self_distill else None, finetune_itrs,
+        finetune_policy(env, env_index, policy, policy if args.self_distill else None, finetune_itrs,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic)
@@ -236,26 +238,31 @@ def main():
 
     # Get the levels of the envs to test on
     env_names = args.envs
-    envs = []
+    env_indices = []
     for env_name in env_names:
         if env_name == 'train':
-            envs += default_env.levels_list
+            env_indices += list(range(default_env.train_levels))
         elif env_name == 'test':
-            envs += default_env.held_out_levels
+            env_indices += list(range(default_env.held_out_levels))
         elif 'test' == env_name[:4]:
             index = int(env_name[4])
-            inner_env = default_env.held_out_levels[index]
-            outer_env = copy.deepcopy(default_env)
-            outer_env._wrapped_env._wrapped_env = inner_env
-            envs.append(outer_env)
+            # Test levels start directly after train levels, so add the length of the train levels list
+            env_indices.append(index + len(default_env.train_levels))
         else:
             try:
                 env_id = int(env_name)
-                envs.append(default_env.levels_list[env_id])
+                env_indices.append(env_id)
             except ValueError:
-                for level in default_env.levels_list:
+                for i, level in enumerate(default_env.levels_list):
                     if env_name in level.__class__.__name__:
-                        envs.append(level)
+                        env_indices.append(i)
+    envs = []
+    for env_index in env_indices:
+        env = copy.deepcopy(default_env)
+        env.set_level_distribution(env_index)
+        env.set_task()
+        env.reset()
+        envs.append((env, env_index))
 
     # Test every policy with every level
     if not save_dir.exists():
@@ -263,11 +270,11 @@ def main():
     with open(save_dir.joinpath('results.csv'), 'w') as f:
         f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
     for policy_name in policy_level_names:
-        for env in envs:
+        for env, env_index in envs:
             inner_env = env
             while hasattr(inner_env, '_wrapped_env'):
                 inner_env = inner_env._wrapped_env
-            test_success(env, save_dir, args.finetune_itrs,
+            test_success(env, env_index, save_dir, args.finetune_itrs,
                          args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
                          policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
