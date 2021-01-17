@@ -216,6 +216,8 @@ def main():
     parser.add_argument('--distillation_strategy', type=str, choices=[
             'all_teachers', 'no_teachers', 'all_but_none', 'powerset'
         ], default='distill_powerset')
+    parser.add_argument('--no_distill', action='store_true')
+    parser.add_argument('--yes_distill', action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -274,6 +276,9 @@ def main():
     additional_args['teacher_schedule'] = args.teacher_schedule
     additional_args['distillation_strategy'] = args.distillation_strategy
     additional_args['no_train_rl'] = args.no_train_rl
+    additional_args['no_rollouts'] = True
+    additional_args['yes_distill'] = args.yes_distill
+    additional_args['no_distill'] = args.no_distill
 
     # Test every policy with every level
     if not save_dir.exists():
