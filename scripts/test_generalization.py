@@ -167,7 +167,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
     full_save_dir = save_dir.joinpath(policy_env_name)
     if not full_save_dir.exists():
         full_save_dir.mkdir()
-    if args.n_itrs > 0:
+    if args.n_itr > 0:
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
@@ -272,7 +272,7 @@ def main():
         envs.append((env, env_index))
 
     additional_args = {}
-    additional_args['n_itrs'] = args.finetune_itrs
+    additional_args['n_itr'] = args.finetune_itrs
     additional_args['teacher_schedule'] = args.teacher_schedule
     additional_args['distillation_strategy'] = args.distillation_strategy
     additional_args['no_train_rl'] = args.no_train_rl
