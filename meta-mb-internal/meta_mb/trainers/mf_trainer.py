@@ -645,17 +645,10 @@ class Trainer(object):
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
     def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={}):
-        distill_target = 'powerset'
-        if self.args.distill_all_teachers:
-            distill_target = 'all'
-        if self.args.distill_no_teachers:
-            distill_target = 'none'
-        if self.args.distill_all_but_none:
-            distill_target = 'not_none'
         if source is None:
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
-                                      teachers_dict=teachers_dict, distill_target=distill_target,
+                                      teachers_dict=teachers_dict, distill_target=self.args.distillation_strategy,
                                       relabel=relabel, relabel_dict=relabel_dict)
         return log
 

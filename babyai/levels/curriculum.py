@@ -193,6 +193,6 @@ class Curriculum(Serializable):
         Then set the task as usual.
         """
         env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
-        print("Setting task! Index is currently", env_index, np.random.uniform())
+        # print("Setting task! Index is currently", env_index, np.random.uniform())
         self._wrapped_env = self.levels_list[env_index]
         return self._wrapped_env.set_task(args)

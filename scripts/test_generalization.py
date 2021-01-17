@@ -56,7 +56,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
     return success_rate, stoch_accuracy, det_accuracy, followed_cc3
 
 
-def finetune_policy(env, env_index, policy, supervised_model, finetuning_epochs, save_name, args, teacher_null_dict,
+def finetune_policy(env, env_index, policy, supervised_model, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
                     hide_instrs=False, heldout_envs=[], stochastic=True):
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -109,8 +109,6 @@ def finetune_policy(env, env_index, policy, supervised_model, finetuning_epochs,
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     # Standardize args
     args.single_level = True
-    # args.distill_all_teachers = True
-    args.n_itr = finetuning_epochs
     args.reward_when_necessary = False  # TODO: make this a flag
 
     def log_fn(rl_policy, il_policy, logger, itr):
@@ -158,21 +156,22 @@ def finetune_policy(env, env_index, policy, supervised_model, finetuning_epochs,
     print("All done!")
 
 
-def test_success(env, env_index, save_dir, finetune_itrs, num_rollouts, teachers, teacher_null_dict,
-                 policy_path=None, policy=None,
-                 policy_name="", env_name="", hide_instrs=False, heldout_envs=[], stochastic=True):
+def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
+                 policy_name="", env_name="", hide_instrs=False, heldout_envs=[], stochastic=True, additional_args={}):
     if policy is None:
         policy, _, args = load_policy(policy_path)
+        for k, v in additional_args.items():
+            setattr(args, k, v)
     policy_env_name = f'Policy{policy_name}-{env_name}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
     if not full_save_dir.exists():
         full_save_dir.mkdir()
-    if finetune_itrs > 0:
+    if args.n_itrs > 0:
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
-        finetune_policy(env, env_index, policy, policy if args.self_distill else None, finetune_itrs,
+        finetune_policy(env, env_index, policy, policy if args.self_distill else None,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic)
@@ -209,10 +208,14 @@ def main():
     parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
     parser.add_argument("--finetune_itrs", default=0, type=int)
     parser.add_argument("--num_rollouts", default=50, type=int)
-    parser.add_argument("--train_rl_on_finetune", action='store_true')
+    parser.add_argument("--no_train_rl", action='store_true')
     parser.add_argument("--save_dir", default=".")
     parser.add_argument("--hide_instrs", action='store_true')
     parser.add_argument("--deterministic", action='store_true')
+    parser.add_argument('--teacher_schedule', type=str, default='all_teachers')
+    parser.add_argument('--distillation_strategy', type=str, choices=[
+            'all_teachers', 'no_teachers', 'all_but_none', 'powerset'
+        ], default='distill_powerset')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -266,6 +269,12 @@ def main():
         env.reset()
         envs.append((env, env_index))
 
+    additional_args = {}
+    additional_args['n_itrs'] = args.finetune_itrs
+    additional_args['teacher_schedule'] = args.teacher_schedule
+    additional_args['distillation_strategy'] = args.distillation_strategy
+    additional_args['no_train_rl'] = args.no_train_rl
+
     # Test every policy with every level
     if not save_dir.exists():
         save_dir.mkdir()
@@ -276,11 +285,11 @@ def main():
             inner_env = env
             while hasattr(inner_env, '_wrapped_env'):
                 inner_env = inner_env._wrapped_env
-            test_success(env, env_index, save_dir, args.finetune_itrs,
-                         args.num_rollouts, args.teachers, teacher_null_dict,
+            test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
                          policy_path=policy_path.joinpath(policy_name),
                          policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
-                         hide_instrs=args.hide_instrs, heldout_envs=[env], stochastic=not args.deterministic)
+                         hide_instrs=args.hide_instrs, heldout_envs=[env], stochastic=not args.deterministic,
+                         additional_args=additional_args)
 
 
 if __name__ == '__main__':

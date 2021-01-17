@@ -358,7 +358,7 @@ class ImitationLearning(object):
             inds = [index + 1 for index in inds]
         return obss_list_original, actions, action_teacher, done, inds_original, mask
 
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset',
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='distill_powerset',
                 relabel=False, relabel_dict={}):
 
         preprocessed_batch = self.preprocess_batch(demo_batch, source)
@@ -382,7 +382,7 @@ class ImitationLearning(object):
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
-        elif distill_target == 'not_none':
+        elif distill_target == 'all_but_none':
             for key_set in powerset:
                 teacher_subset_dict = {}
                 if len(key_set) == 0:  # Don't distill to no teacher
@@ -396,12 +396,12 @@ class ImitationLearning(object):
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
-        elif distill_target == 'all':
+        elif distill_target == 'all_teachers':
             key_set = tuple(set(keys))
             log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
-        elif distill_target == 'none':
+        elif distill_target == 'no_teachers':
             key_set = tuple(set())
             teacher_subset_dict = {}
             for k in teachers_dict.keys():
