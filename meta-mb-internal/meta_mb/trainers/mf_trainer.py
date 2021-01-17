@@ -263,6 +263,10 @@ class Trainer(object):
             """ ------------------ Distillation ---------------------"""
             should_distill = self.supervised_model is not None and advance_curriculum and \
                              self.itrs_on_level >= self.args.min_itr_steps_distill
+            if self.args.yes_distill:
+                should_distill = True
+            if self.args.no_distill:
+                should_distill = False
             if should_distill:
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
@@ -339,6 +343,10 @@ class Trainer(object):
             run_policy_time = 0
             should_policy_rollout = ((itr % self.eval_every == 0) or (
                 itr == self.args.n_itr - 1) or advance_curriculum)
+            if self.args.yes_rollouts:
+                should_policy_rollout = True
+            if self.args.no_rollouts:
+                should_policy_rollout = False
             if should_policy_rollout:
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
@@ -460,6 +468,10 @@ class Trainer(object):
                 itr == self.args.n_itr - 1) or advance_curriculum
             # If we're just collecting, don't log
             if (self.args.no_train_rl and self.supervised_model is None):
+                should_save_video = False
+            if self.args.yes_rollouts:
+                should_save_video = True
+            if self.args.no_rollouts:
                 should_save_video = False
             if should_save_video:
                 time_rollout_start = time.time()

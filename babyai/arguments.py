@@ -176,6 +176,12 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--num_envs', type=int, default=20)
         self.add_argument('--zero_all_thresholds', action='store_true')
 
+        # Arguments mostly used with finetuning
+        self.add_argument('--no_distill', action='store_true')
+        self.add_argument('--yes_distill', action='store_true')
+        self.add_argument('--no_rollouts', action='store_true')
+        self.add_argument('--yes_rollouts', action='store_true')
+
     def parse_args(self, arg=None):
         """
         Parse the arguments and perform some basic validation
