@@ -238,7 +238,8 @@ class Trainer(object):
                 else:
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 10
-            should_store_data = raw_samples_data is not None and (self.args.collect_before_threshold or advance_curriculum)
+            should_store_data = raw_samples_data is not None and (
+                    self.args.collect_before_threshold or advance_curriculum)
             if self.args.yes_distill:
                 should_store_data = True
             if should_store_data:
@@ -366,7 +367,7 @@ class Trainer(object):
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
                         advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
-                                                                           "Rollout/")
+                                                                           "Rollout/", show_instrs=True)
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
                         run_supervised_time = 0
@@ -377,7 +378,8 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, _, _ = self.run_supervised(
-                            self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/")
+                            self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
+                            show_instrs=not self.args.rollout_without_instrs)
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     run_policy_time = time.time() - time_run_policy_start
 
@@ -487,7 +489,8 @@ class Trainer(object):
                                      save_video=should_save_video,
                                      log_prefix="VidRollout/NoTeacher_Stoch",
                                      teacher_name='None',
-                                     stochastic=True)
+                                     stochastic=True,
+                                     show_instrs=True)
                 for teacher in self.introduced_teachers:
                     self.save_videos(self.algo.acmodel,
                                      save_name=f'{teacher}_video_stoch',
@@ -496,16 +499,18 @@ class Trainer(object):
                                      save_video=should_save_video,
                                      log_prefix=f"VidRollout/{teacher}_Stoch",
                                      teacher_name=teacher,
-                                     stochastic=True)
-                self.save_videos(self.algo.acmodel,  # TODO: eventually remove this?
-                                 save_name='oracle_video',
-                                 num_rollouts=2,
-                                 teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
-                                 save_video=should_save_video,
-                                 log_prefix="VidRollout/OracleCC",
-                                 stochastic=True,
-                                 teacher_name='CC3 (Oracle actions)',
-                                 rollout_oracle=True)
+                                     stochastic=True,
+                                     show_instrs=not self.args.rollout_without_instrs)
+                # self.save_videos(self.algo.acmodel,  # TODO: eventually remove this?
+                #                  save_name='oracle_video',
+                #                  num_rollouts=2,
+                #                  teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
+                #                  save_video=should_save_video,
+                #                  log_prefix="VidRollout/OracleCC",
+                #                  stochastic=True,
+                #                  teacher_name='CC3 (Oracle actions)',
+                #                  rollout_oracle=True,
+                #                  show_instrs=not self.args.rollout_without_instrs)
 
                 rollout_time = time.time() - time_rollout_start
             else:
@@ -668,10 +673,10 @@ class Trainer(object):
                                       relabel=relabel, relabel_dict=relabel_dict)
         return log
 
-    def run_supervised(self, policy, teacher_dict, tag):
+    def run_supervised(self, policy, teacher_dict, tag, show_instrs):
         policy.eval()
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-                                            teacher_dict=teacher_dict, max_action=False)
+                                            teacher_dict=teacher_dict, max_action=False, show_instrs=show_instrs)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag,
                                                              log_teacher=self.train_with_teacher)
         key_set = '_'.join([k for k, v in teacher_dict.items() if v])
@@ -683,7 +688,7 @@ class Trainer(object):
         return advance_curriculum, avg_success, avg_accuracy
 
     def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
-                    log_prefix=None, stochastic=True, teacher_name="", rollout_oracle=False):
+                    log_prefix=None, stochastic=True, teacher_name="", rollout_oracle=False, show_instrs=True):
         policy.eval()
         try:
             self.env.set_level_distribution(self.curriculum_step)
@@ -705,7 +710,8 @@ class Trainer(object):
                                                                               num_save=20,
                                                                               obs_preprocessor=self.obs_preprocessor,
                                                                               teacher_name=teacher_name,
-                                                                              rollout_oracle=rollout_oracle)
+                                                                              rollout_oracle=rollout_oracle,
+                                                                              instrs=show_instrs)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)

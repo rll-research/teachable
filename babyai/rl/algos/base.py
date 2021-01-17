@@ -169,7 +169,8 @@ class BaseAlgo(ABC):
                 action_to_take = self.env.get_teacher_action()
             elif use_dagger:
                 with torch.no_grad():
-                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict)
+                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
                     dagger_dist, dagger_model_results = self.acmodel(dagger_obs,
                                                                      self.dagger_memory * self.mask.unsqueeze(1))
                     self.dagger_memory = dagger_model_results['memory']
@@ -235,7 +236,8 @@ class BaseAlgo(ABC):
 
         # Add advantage and return to experiences
 
-        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
+        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
         with torch.no_grad():
             next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
 
