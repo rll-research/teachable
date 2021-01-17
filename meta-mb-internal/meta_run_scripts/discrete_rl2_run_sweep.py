@@ -253,7 +253,7 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, augmenter=augmenter)
+                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.instr_dropout_prob)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -262,7 +262,7 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor)
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)

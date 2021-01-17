@@ -7,6 +7,7 @@ import time
 from babyai.rl.format import default_preprocess_obss
 from babyai.rl.utils import DictList, ParallelEnv, SequentialEnv
 from babyai.rl.utils.supervised_losses import ExtraInfoCollector
+from babyai.rl.utils.dictlist import merge_dictlists
 
 
 class BaseAlgo(ABC):
@@ -14,7 +15,7 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
-                 rollouts_per_meta_task=1):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -72,6 +73,7 @@ class BaseAlgo(ABC):
         self.reshape_reward = reshape_reward
         self.aux_info = aux_info
         self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.instr_dropout_prob = instr_dropout_prob
 
         # Store helpers values
 
@@ -147,7 +149,11 @@ class BaseAlgo(ABC):
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-            preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
+            instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
+            preprocessed_obs = [self.preprocess_obss([o], teacher_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
+                for o in self.obs]
+            preprocessed_obs = merge_dictlists(preprocessed_obs)
 
             with torch.no_grad():
                 dist, model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
