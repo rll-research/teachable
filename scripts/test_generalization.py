@@ -239,15 +239,17 @@ def main():
     # Get the levels of the envs to test on
     env_names = args.envs
     env_indices = []
+    num_train_envs = len(default_env.train_levels)
+    num_test_envs = len(default_env.held_out_levels)
     for env_name in env_names:
         if env_name == 'train':
-            env_indices += list(range(len(default_env.train_levels)))
+            env_indices += list(range(num_train_envs))
         elif env_name == 'test':
-            env_indices += list(range(len(default_env.held_out_levels)))
+            env_indices += list(range(num_train_envs, num_train_envs + num_test_envs))
         elif 'test' == env_name[:4]:
             index = int(env_name[4])
             # Test levels start directly after train levels, so add the length of the train levels list
-            env_indices.append(index + len(default_env.train_levels))
+            env_indices.append(index + num_train_envs)
         else:
             try:
                 env_id = int(env_name)
