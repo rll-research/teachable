@@ -160,6 +160,14 @@ class Trainer(object):
         last_accuracy = 0
 
         for itr in range(self.start_itr, self.args.n_itr):
+
+            if itr % self.log_every == 0:
+                if self.il_trainer is not None:
+                    il_model = self.il_trainer.acmodel
+                else:
+                    il_model = None
+                self.log_fn(self.algo.acmodel, il_model, logger, itr)
+
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
@@ -457,13 +465,6 @@ class Trainer(object):
                     logger.logkv(f'Feedback/DRollout_{k}', -1)
 
             logger.dumpkvs()
-
-            if itr % self.log_every == 0:
-                if self.il_trainer is not None:
-                    il_model = self.il_trainer.acmodel
-                else:
-                    il_model = None
-                self.log_fn(self.algo.acmodel, il_model, logger, itr)
 
             """ ------------------ Video Saving ---------------------"""
 
