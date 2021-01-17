@@ -137,7 +137,7 @@ class Trainer(object):
         saving_time = 0
 
         buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                        augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
+                        augmenter=self.augmenter)#, successful_only=self.args.distill_successful_only)
         if self.args.use_dagger:
             dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                                    buffer_name='dagger_buffer', successful_only=self.args.distill_successful_only)
@@ -264,8 +264,8 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            should_distill = self.supervised_model is not None and advance_curriculum and \
-                             self.itrs_on_level >= self.args.min_itr_steps_distill
+            should_distill = self.supervised_model is not None and advance_curriculum #and \
+                             #self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.yes_distill:
                 should_distill = True
             if self.args.no_distill:
