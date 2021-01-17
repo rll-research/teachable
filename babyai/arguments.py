@@ -131,6 +131,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--augment', action='store_true')
         self.add_argument('--min_itr_steps', type=int, default=0)
         self.add_argument('--min_itr_steps_distill', type=int, default=0)
+        self.add_argument('--advancement_count', type=int, default=1)
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)

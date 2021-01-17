@@ -99,6 +99,8 @@ class Trainer(object):
         self.eval_heldout = eval_heldout
         self.augmenter = augmenter
         self.log_fn = log_fn
+        self.advancement_count_threshold = getattr(args, 'advancement_count', 1)
+        self.advancement_count = 0
 
     def check_advance_curriculum(self, episode_logs, data):
         if episode_logs is None:
@@ -530,7 +532,13 @@ class Trainer(object):
             if self.args.end_on_full_buffer:
                 advance_curriculum = buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity
 
-            if advance_curriculum and not self.args.single_level and self.itrs_on_level > self.args.min_itr_steps:
+            advance_curriculum = advance_curriculum and not self.args.single_level and self.itrs_on_level > self.args.min_itr_steps
+            if advance_curriculum:
+                self.advancement_count += 1
+            else:
+                self.advancement_count = 0
+
+            if self.advancement_count >= self.advancement_count_threshold:
                 # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
