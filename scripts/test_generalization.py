@@ -277,6 +277,7 @@ def main():
     additional_args['distillation_strategy'] = args.distillation_strategy
     additional_args['no_train_rl'] = args.no_train_rl
     additional_args['no_rollouts'] = True
+    additional_args['yes_rollouts'] = False
     additional_args['yes_distill'] = args.yes_distill
     additional_args['no_distill'] = args.no_distill
 
