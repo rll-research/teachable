@@ -230,7 +230,10 @@ class Trainer(object):
                 else:
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 10
-            if raw_samples_data is not None and (self.args.collect_before_threshold or advance_curriculum):
+            should_store_data = raw_samples_data is not None and (self.args.collect_before_threshold or advance_curriculum)
+            if self.args.yes_distill:
+                should_store_data = True
+            if should_store_data:
                 buffer.add_batch(raw_samples_data, self.curriculum_step)
 
                 if self.args.use_dagger:
