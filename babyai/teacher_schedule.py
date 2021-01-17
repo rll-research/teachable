@@ -46,6 +46,19 @@ def first_teacher(level, teacher_list):
     return teacher_train_dict, distillation_dict, advancement_dict
 
 
+def first_teacher_sparse(level, teacher_list):
+    no_teacher_dict = {}
+    for teacher in teacher_list:
+        no_teacher_dict[teacher] = False
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = copy.deepcopy(no_teacher_dict)
+    teacher_train_dict[teacher_list[0]] = True
+    distillation_dict = copy.deepcopy(teacher_train_dict)
+    advancement_dict = copy.deepcopy(no_teacher_dict)
+    return teacher_train_dict, distillation_dict, advancement_dict
+
+
 #### Last TEACHER ####
 # Train on the last teacher, distill to all the others
 def last_teacher(level, teacher_list):
@@ -266,6 +279,8 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         return lambda level, a, b: all_teachers(level, feedback_types)
     elif teacher_schedule == 'first_teacher':
         return lambda level, a, b: first_teacher(level, feedback_types)
+    elif teacher_schedule == 'first_teacher_sparse':
+        return lambda level, a, b: first_teacher_sparse(level, feedback_types)
     elif teacher_schedule == 'last_teacher':
         return lambda level, a, b: last_teacher(level, feedback_types)
     elif teacher_schedule == 'last_teacher_advance_last_sparse':
