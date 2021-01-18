@@ -712,11 +712,13 @@ class Level_Unlock(Level_TeachableRobot):
 
         # With 50% probability, ensure that the locked door is the only
         # door of that color
-        if self._rand_bool():
-            colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
-            self.connect_all(door_colors=colors)
-        else:
-            self.connect_all()
+        colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
+        self.connect_all(door_colors=colors)
+        # if self._rand_bool():
+        #     colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
+        #     self.connect_all(door_colors=colors)
+        # else:
+        #     self.connect_all()
 
         # Add distractors to all but the locked room.
         # We do this to speed up the reachability test,
