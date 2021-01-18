@@ -591,6 +591,9 @@ class Bot:
         # Check that no box has been opened
         self._check_erroneous_box_opening(action_taken)
 
+        if len(self.stack) == 0:
+            return self.mission.actions.done, None
+
         # TODO: instead of updating all subgoals, just add a couple
         # properties to the `Subgoal` class.
         for subgoal in self.stack:
