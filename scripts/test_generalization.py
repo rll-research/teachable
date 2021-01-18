@@ -58,7 +58,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 def finetune_policy(env, env_index, policy, supervised_model, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
-                    hide_instrs=False, heldout_envs=[], stochastic=True):
+                    hide_instrs=False, heldout_envs=[], stochastic=True, num_rollouts=1):
     from meta_mb.algos.ppo_torch import PPOAlgo
     from meta_mb.trainers.mf_trainer import Trainer
     from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
@@ -97,8 +97,11 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-    for new_env in envs:
+    for i, new_env in enumerate(envs):
         new_env.update_distribution_from_other(env)
+        new_env.seed(i)
+        new_env.set_task()
+        new_env.reset()
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
@@ -121,7 +124,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                 f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3,itr \n')
         policy = rl_policy if il_policy is None else il_policy
         for heldout_env in heldout_envs:
-            test_success_checkpoint(heldout_env, save_dir, 10, teachers, policy=policy, policy_name=policy_name,
+            test_success_checkpoint(heldout_env, save_dir, num_rollouts, teachers, policy=policy, policy_name=policy_name,
                                     env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']
@@ -174,7 +177,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_policy(env, env_index, policy, policy if args.self_distill else None,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
-                        hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic)
+                        hide_instrs=hide_instrs, heldout_envs=heldout_envs, stochastic=stochastic, num_rollouts=num_rollouts)
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
                                                                            teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")

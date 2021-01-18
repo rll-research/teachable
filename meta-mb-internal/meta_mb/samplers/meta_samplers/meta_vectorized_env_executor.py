@@ -90,6 +90,13 @@ class MetaIterativeEnvExecutor(object):
         advances = [env.set_dropout_proportion(dropout_proportion) for env in self.envs]
         return advances
 
+    def render(self):
+        """
+        Changes the dropout level
+        """
+        imgs = [env.render('rgb_array') for env in self.envs]
+        return imgs
+
     @property
     def num_envs(self):
         """
@@ -200,6 +207,12 @@ class MetaParallelEnvExecutor(object):
             remote.send(('set_task', task))
         for remote in self.remotes:
             remote.recv()
+
+    def render(self):
+        for remote in self.remotes:
+            remote.send(('render', 'rgb_array'))
+        imgs = [remote.recv() for remote in self.remotes]
+        return imgs
 
     @property
     def num_envs(self):

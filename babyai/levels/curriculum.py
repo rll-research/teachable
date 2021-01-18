@@ -187,12 +187,16 @@ class Curriculum(Serializable):
         self.distribution[index] = 1
         self.index = index
 
+    def seed(self, i):
+        for level in self.levels_list:
+            level.seed(i)
+
     def set_task(self, args=None):
         """
         Each time we set a task, sample which babyai level to use from the categorical distribution array.
         Then set the task as usual.
         """
-        env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
+        env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
         # print("Setting task! Index is currently", env_index, np.random.uniform())
         self._wrapped_env = self.levels_list[env_index]
         return self._wrapped_env.set_task(args)

@@ -101,11 +101,11 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :return: (object type, object color).  Both are strings.
         """
         if self.include_holdout_obj:
-            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
-            obj_type = np.random.choice(['key', 'ball', 'box'])
+            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
+            obj_type = self.np_random.choice(['key', 'ball', 'box'])
         else:
-            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
-            obj_type = np.random.choice(['box', 'ball'])
+            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
+            obj_type = self.np_random.choice(['box', 'ball'])
         return obj_type, color
 
     def make_mission(self):

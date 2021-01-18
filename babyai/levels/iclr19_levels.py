@@ -27,14 +27,14 @@ class Level_IntroPrimitives(Level_TeachableRobot):
 
     def make_mission(self):
         action = self.action_space.sample()
-        delay = np.random.randint(0, self.max_delay + 1)
+        delay = self.np_random.randint(0, self.max_delay + 1)
         return {
             "task": (action, delay),
             "instrs": TakeActionInstr(action, delay, self.strict)
         }
 
     def add_objs(self, task):
-        num_dists = np.random.randint(0, min(20, (self.room_size - 3) ** 2))
+        num_dists = self.np_random.randint(0, min(20, (self.room_size - 3) ** 2))
         dists = self.add_distractors(num_distractors=num_dists, all_unique=False)
         return dists, None
 
