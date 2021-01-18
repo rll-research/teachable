@@ -75,7 +75,7 @@ class Teacher:
         # so the agent doesn't lose track of why it's doing this and where it wants to drop it.
         drop_off = len(oracle.stack) > 0 and env.carrying and oracle.stack[-1].reason == 'DropOff' and \
                    (not last_action == env.actions.toggle)
-        if drop_off:
+        if drop_off or self.next_action == last_action:
             replan_output = oracle.replan(last_action)
         else:
             new_oracle = self.botclass(env, rng=copy.deepcopy(oracle.rng))
