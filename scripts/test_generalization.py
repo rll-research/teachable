@@ -128,9 +128,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     )
 
     def log_fn(rl_policy, il_policy, logger, itr):
+        policy_env_name = f'Policy{policy_name}-{env_name}'
+        full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
         if itr == 0:
-            policy_env_name = f'Policy{policy_name}-{env_name}'
-            full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
             with open(full_save_dir.joinpath('results.csv'), 'w') as f:
