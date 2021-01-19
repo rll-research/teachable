@@ -67,9 +67,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
     from meta_mb.trainers.il_trainer import ImitationLearning
     from babyai.teacher_schedule import make_teacher_schedule
-    from meta_mb.meta_envs.rl2_env import rl2env
-    from meta_mb.envs.normalized_env import normalize
-    from babyai.levels.curriculum import Curriculum
+    # from meta_mb.meta_envs.rl2_env import rl2env
+    # from meta_mb.envs.normalized_env import normalize
+    # from babyai.levels.curriculum import Curriculum
 
     # TODO: consider deleting this!
     arguments = {
@@ -84,10 +84,10 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         "num_meta_tasks": args.rollouts_per_meta_task,
         "intermediate_reward": args.intermediate_reward,
     }
-    curriculum_step = 26  # TODO: don't hardcode this!
-    env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
-                                      curriculum_type=args.curriculum_type, **arguments)
-                           ), ceil_reward=args.ceil_reward)
+    # curriculum_step = 26  # TODO: don't hardcode this!
+    # env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
+    #                                   curriculum_type=args.curriculum_type, **arguments)
+    #                        ), ceil_reward=args.ceil_reward)
 
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
