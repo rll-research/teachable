@@ -67,6 +67,27 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
     from meta_mb.trainers.il_trainer import ImitationLearning
     from babyai.teacher_schedule import make_teacher_schedule
+    from meta_mb.meta_envs.rl2_env import rl2env
+    from meta_mb.envs.normalized_env import normalize
+    from babyai.levels.curriculum import Curriculum
+
+    # TODO: consider deleting this!
+    arguments = {
+        "start_loc": 'all',
+        "include_holdout_obj": True,
+        "persist_goal": not args.reset_goal,
+        "persist_objs": not args.reset_objs,
+        "persist_agent": not args.reset_agent,
+        "feedback_type": args.feedback_type,
+        "feedback_freq": args.feedback_freq,
+        "cartesian_steps": args.cartesian_steps,
+        "num_meta_tasks": args.rollouts_per_meta_task,
+        "intermediate_reward": args.intermediate_reward,
+    }
+    curriculum_step = 26  # TODO: don't hardcode this!
+    env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
+                                      curriculum_type=args.curriculum_type, **arguments)
+                           ), ceil_reward=args.ceil_reward)
 
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
@@ -103,9 +124,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
         new_env.update_distribution_from_other(env)
-        new_env.seed(i)
-        new_env.set_task()
-        new_env.reset()
+        # new_env.seed(i)
+        # new_env.set_task()
+        # new_env.reset()
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
