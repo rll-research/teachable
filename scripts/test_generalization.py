@@ -124,9 +124,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
         new_env.update_distribution_from_other(env)
-        # new_env.seed(i)
-        # new_env.set_task()
-        # new_env.reset()
+        new_env.seed(i)
+        new_env.set_task()
+        new_env.reset()
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
