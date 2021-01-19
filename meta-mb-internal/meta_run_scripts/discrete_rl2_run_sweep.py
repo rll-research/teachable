@@ -67,7 +67,6 @@ def load_model(args):
     policy = saved_model['policy']
     optimizer = saved_model.get('optimizer', None)
     policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
-    policy.hidden_state = None
     if original_config.continue_train is True:
         start_itr = saved_model['itr']
         curriculum_step = saved_model['curriculum_step']

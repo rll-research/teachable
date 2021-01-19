@@ -20,7 +20,7 @@ def load_policy(path):
         policy.instr_rnn.flatten_parameters()
     except Exception as e:
         print(e, "looks like instrs aren't rnn")
-    return policy, env, args
+    return policy, env, args, saved_model
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic):
@@ -58,7 +58,9 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 def finetune_policy(env, env_index, policy, supervised_model, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
-                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1):
+                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}):
+    # Normally we would put the imports up top, but we also import this file in Trainer
+    # Importing here prevents us from getting stuck in infinite loops
     from meta_mb.algos.ppo_torch import PPOAlgo
     from meta_mb.trainers.mf_trainer import Trainer
     from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
@@ -73,6 +75,8 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
                                        preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                        instr_dropout_prob=args.instr_dropout_prob)
+        if 'il_optimizer' in model_data:
+            il_trainer.optimizer.load_state_dict(model_data['il_optimizer'])
     else:
         il_trainer = None
     rp_trainer = None
@@ -107,7 +111,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor)
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
+    if 'optimizer' in model_data:
+        algo.optimizer.load_state_dict(model_data['optimizer'])
 
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     # Standardize args
@@ -202,7 +208,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
 def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={}):
     if policy is None:
-        policy, _, args = load_policy(policy_path)
+        policy, _, args, model_data = load_policy(policy_path)
         for k, v in additional_args.items():
             setattr(args, k, v)
         n_itr = args.n_itr
@@ -221,7 +227,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_policy(env, env_index, policy, il_model,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
-                        hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic, num_rollouts=num_rollouts)
+                        hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
+                        num_rollouts=num_rollouts, model_data=model_data)
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
                                                                            teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
@@ -270,7 +277,7 @@ def main():
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
 
-    _, default_env, config = load_policy(policy_path.joinpath('latest.pkl'))
+    _, default_env, config, model_data = load_policy(policy_path.joinpath('latest.pkl'))
     default_env.reset()
     teacher_null_dict = default_env.teacher.null_feedback()
 
