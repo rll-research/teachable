@@ -684,11 +684,11 @@ class Trainer(object):
 
     def run_supervised(self, policy, teacher_dict, tag, show_instrs):
         policy.eval()
+        key_set = '_'.join([k for k, v in teacher_dict.items() if v])
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                             teacher_dict=teacher_dict, max_action=False, show_instrs=show_instrs)
-        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag,
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag+key_set,
                                                              log_teacher=self.train_with_teacher)
-        key_set = '_'.join([k for k, v in teacher_dict.items() if v])
         use_teacher = not key_set == ''
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data, use_teacher)
         logger.logkv(f"{tag}{key_set}Advance", int(advance_curriculum))
