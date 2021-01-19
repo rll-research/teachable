@@ -154,7 +154,6 @@ class Trainer(object):
         all_time_rp_train = 0
         all_run_policy_time = 0
         all_distill_time = 0
-        all_run_supervised_time = 0
         all_rollout_time = 0
         all_saving_time = 0
         all_unaccounted_time = 0
@@ -173,10 +172,20 @@ class Trainer(object):
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
-            for d in [teacher_train_dict, teacher_distill_dict, advancement_dict]:
-                for teacher_name, teacher_present in d.items():
-                    if teacher_present:
-                        self.introduced_teachers.add(teacher_name)
+            for teacher_name, teacher_present in teacher_train_dict.items():
+                if teacher_present:
+                    self.introduced_teachers.add(teacher_name)
+            # Not using any teacher
+            if np.sum([int(v) for v in teacher_train_dict.values()]) == 0:
+                self.introduced_teachers.add('none')
+            if self.il_trainer is not None:
+                if self.args.distillation_strategy in ['all_teachers', 'all_but_none', 'powerset']:
+                    for teacher_name, teacher_present in teacher_distill_dict.items():
+                        if teacher_present:
+                            self.introduced_teachers.add(teacher_name)
+                if self.args.distillation_strategy in ['no_teachers', 'powerset']:
+                    self.introduced_teachers.add('none')
+
             logger.logkv("ItrsOnLevel", self.itrs_on_level)
             self.itrs_on_level += 1
 
@@ -355,7 +364,6 @@ class Trainer(object):
                 distill_time = 0
 
             """ ------------------ Policy rollouts ---------------------"""
-            run_policy_time = 0
             should_policy_rollout = ((itr % self.eval_every == 0) or (
                 itr == self.args.n_itr - 1) or advance_curriculum)
             if self.args.yes_rollouts:
@@ -363,41 +371,28 @@ class Trainer(object):
             if self.args.no_rollouts:
                 should_policy_rollout = False
             if should_policy_rollout:
+                run_policy_start = time.time()
                 train_advance_curriculum = advance_curriculum
                 with torch.no_grad():
-                    if self.supervised_model is not None:
-                        # Distilled model
-                        time_run_supervised_start = time.time()
-                        logger.log("Running supervised model")
-                        advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
-                                                                           "Rollout/", show_instrs=True)
-                        run_supervised_time = time.time() - time_run_supervised_start
-                    else:
-                        run_supervised_time = 0
-                        advance_curriculum_sup = True
-                    # Original Policy
-                    time_run_policy_start = time.time()
-                    logger.log("Running model with highest level teacher")
+                    logger.log("Running model with each teacher")
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, _, _ = self.run_supervised(
                             self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
-                            show_instrs=not self.args.rollout_without_instrs)
+                            show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
-                    run_policy_time = time.time() - time_run_policy_start
-
-                    advance_curriculum = advance_curriculum and advance_curriculum_sup and train_advance_curriculum
+                    advance_curriculum = advance_curriculum and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
 
                     logger.logkv('Advance', int(advance_curriculum))
+                run_policy_time = time.time() - run_policy_start
             else:
-                run_supervised_time = 0
                 advance_curriculum = False
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
             logger.logkv('n_timesteps', self.sampler.total_timesteps_sampled)
-            logger.logkv('Train/TrainRL', int(skip_training_rl))
+            logger.logkv('Train/SkipTrainRL', int(skip_training_rl))
 
             time_total = time.time() - start_time
             time_itr = time.time() - itr_start_time
@@ -422,12 +417,10 @@ class Trainer(object):
             logger.logkv('Time/RPTrain', time_rp_train)
             logger.logkv('Time/RunwTeacher', run_policy_time)
             logger.logkv('Time/Distillation', distill_time)
-            logger.logkv('Time/RunDistilled', run_supervised_time)
             logger.logkv('Time/VidRollout', rollout_time)
             logger.logkv('Time/Saving', saving_time)
             time_unaccounted = time_itr - time_training - time_collection - \
-                               rp_splice_time - time_rp_train - run_policy_time - distill_time - run_supervised_time - \
-                               rollout_time
+                               rp_splice_time - time_rp_train - run_policy_time - distill_time - rollout_time
             logger.logkv('Time/Unaccounted', time_unaccounted)
 
             all_time_training += time_training
@@ -436,7 +429,6 @@ class Trainer(object):
             all_time_rp_train += time_rp_train
             all_run_policy_time += run_policy_time
             all_distill_time += distill_time
-            all_run_supervised_time += run_supervised_time
             all_rollout_time += rollout_time
             all_saving_time += saving_time
             all_unaccounted_time += time_unaccounted
@@ -447,7 +439,6 @@ class Trainer(object):
             logger.logkv('Time/All_RPTrain', all_time_rp_train / time_total)
             logger.logkv('Time/All_RunwTeacher', all_run_policy_time / time_total)
             logger.logkv('Time/All_Distillation', all_distill_time / time_total)
-            logger.logkv('Time/All_RunDistilled', all_run_supervised_time / time_total)
             logger.logkv('Time/All_VidRollout', all_rollout_time / time_total)
             logger.logkv('Time/All_Saving', all_saving_time / time_total)
             logger.logkv('Time/All_Unaccounted', all_unaccounted_time / time_total)
@@ -484,16 +475,6 @@ class Trainer(object):
                 should_save_video = False
             if should_save_video:
                 time_rollout_start = time.time()
-                if self.supervised_model is not None:
-                    self.save_videos(self.il_trainer.acmodel,
-                                     save_name='no_teacher_video_stoch',
-                                     num_rollouts=10,
-                                     teacher_dict=self.no_teacher_dict,
-                                     save_video=should_save_video,
-                                     log_prefix="VidRollout/NoTeacher_Stoch",
-                                     teacher_name='None',
-                                     stochastic=True,
-                                     show_instrs=True)
                 for teacher in self.introduced_teachers:
                     self.save_videos(self.algo.acmodel,
                                      save_name=f'{teacher}_video_stoch',
@@ -503,18 +484,7 @@ class Trainer(object):
                                      log_prefix=f"VidRollout/{teacher}_Stoch",
                                      teacher_name=teacher,
                                      stochastic=True,
-                                     show_instrs=not self.args.rollout_without_instrs)
-                # self.save_videos(self.algo.acmodel,  # TODO: eventually remove this?
-                #                  save_name='oracle_video',
-                #                  num_rollouts=2,
-                #                  teacher_dict={k: k == 'CartesianCorrections' for k in advancement_dict.keys()},
-                #                  save_video=should_save_video,
-                #                  log_prefix="VidRollout/OracleCC",
-                #                  stochastic=True,
-                #                  teacher_name='CC3 (Oracle actions)',
-                #                  rollout_oracle=True,
-                #                  show_instrs=not self.args.rollout_without_instrs)
-
+                                     show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                 rollout_time = time.time() - time_rollout_start
             else:
                 rollout_time = 0
