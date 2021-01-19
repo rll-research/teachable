@@ -388,6 +388,7 @@ class Trainer(object):
                 run_policy_time = time.time() - run_policy_start
             else:
                 advance_curriculum = False
+                run_policy_time = 0
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)
