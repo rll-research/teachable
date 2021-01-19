@@ -93,7 +93,6 @@ class Curriculum(Serializable):
                 Level_Open(**kwargs),  # 22
                 Level_GoTo(**kwargs),  # 23
                 Level_Pickup(**kwargs),  # 24
-                # Level_PutNext(**kwargs),  # Removed b/c the bot can't reliably beat this
             ]
 
             self.held_out_levels = [
@@ -105,6 +104,7 @@ class Curriculum(Serializable):
                 Level_GoToImpUnlock(**kwargs),  # 27
                 # 31 (task was first seen 1 level before, now with the step of unlocking)
                 Level_UnblockPickup(**kwargs),  # 28 (known task, but now there's the extra step of unblocking)
+                Level_PutNext(**kwargs),  # Removed b/c the bot can't reliably beat this
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         else:
