@@ -183,6 +183,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--yes_distill', action='store_true')
         self.add_argument('--no_rollouts', action='store_true')
         self.add_argument('--yes_rollouts', action='store_true')
+        self.add_argument('--leave_out_object', action='store_true')
 
     def parse_args(self, arg=None):
         """

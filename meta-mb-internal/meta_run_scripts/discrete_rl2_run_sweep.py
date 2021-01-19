@@ -109,7 +109,7 @@ def run_experiment(**config):
         log_dict = {}
     arguments = {
         "start_loc": 'all',
-        "include_holdout_obj": True,
+        "include_holdout_obj": not args.leave_out_object,
         "persist_goal": not args.reset_goal,
         "persist_objs": not args.reset_objs,
         "persist_agent": not args.reset_agent,
