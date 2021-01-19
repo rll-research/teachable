@@ -19,8 +19,12 @@ class MetaIterativeEnvExecutor(object):
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
         self.envs = np.asarray([copy.deepcopy(env) for _ in range(meta_batch_size * envs_per_task)])
-        for new_env in self.envs:
+        seeds = np.random.choice(range(10 ** 6), size=meta_batch_size, replace=False)
+        for new_env, seed in zip(self.envs, seeds):
             new_env.update_distribution_from_other(env)
+            new_env.seed(int(seed))
+            new_env.set_task()
+            new_env.reset()
         self.ts = np.zeros(len(self.envs), dtype='int')  # time steps
         self.max_path_length = max_path_length
 
@@ -123,6 +127,7 @@ class MetaParallelEnvExecutor(object):
     """
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
+        raise NotImplementedError("Make sure you can seed envs!")
         self.n_envs = meta_batch_size * envs_per_task
         self.meta_batch_size = meta_batch_size
         self.envs_per_task = envs_per_task
@@ -138,6 +143,11 @@ class MetaParallelEnvExecutor(object):
             p.start()
         for remote in self.work_remotes:
             remote.close()
+        self.update_distribution_from_other(env)
+        rand_start = np.random.randint(100, 200)
+        self.seed(np.arange(rand_start, rand_start + len(self.remotes)))
+        self.set_tasks()
+        self.reset()
 
     def step(self, actions):
         """
@@ -203,8 +213,34 @@ class MetaParallelEnvExecutor(object):
         Args:
             tasks (list): list of the tasks for each worker
         """
+        if tasks is None:
+            tasks = [None] * len(self.remotes)
         for remote, task in zip(self.remotes, tasks):
             remote.send(('set_task', task))
+        for remote in self.remotes:
+            remote.recv()
+
+    def seed(self, seeds):
+        """
+        Sets a list of tasks to each worker
+
+        Args:
+            tasks (list): list of the tasks for each worker
+        """
+        for remote, seed in zip(self.remotes, seeds):
+            remote.send(('seed', seed))
+        for remote in self.remotes:
+            remote.recv()
+
+    def update_distribution_from_other(self, env):
+        """
+        Sets a list of tasks to each worker
+
+        Args:
+            tasks (list): list of the tasks for each worker
+        """
+        for remote in self.remotes:
+            remote.send(('update_distribution_from_other', env))
         for remote in self.remotes:
             remote.recv()
 
@@ -282,6 +318,16 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
         elif cmd == 'close':
             remote.close()
             break
+
+        elif cmd == 'seed':
+            for env in envs:
+                env.seed(int(data))
+            remote.send(None)
+
+        elif cmd == 'update_distribution_from_other':
+            for env in envs:
+                env.update_distribution_from_other(data)
+            remote.send(None)
 
         else:
             raise NotImplementedError
