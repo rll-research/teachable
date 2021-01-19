@@ -38,6 +38,7 @@ def args_type(default):
 
 def get_exp_name(args):
     EXP_NAME = args.prefix
+    return EXP_NAME
     feedback_type = str(args.feedback_type)
     feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]", ",", " "]])
     EXP_NAME += '_teacher' + feedback_type

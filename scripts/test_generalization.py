@@ -134,6 +134,8 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     )
 
     def log_fn(rl_policy, il_policy, logger, itr):
+        if not itr % 10 == 0:
+            return
         policy_env_name = f'Policy{policy_name}-{env_name}'
         full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
         if itr == 0:
@@ -223,7 +225,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
-        il_model = copy.deepcopy(policy)
+        il_model = policy#copy.deepcopy(policy)
         finetune_policy(env, env_index, policy, il_model,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
@@ -334,6 +336,10 @@ def main():
     additional_args['yes_rollouts'] = False
     additional_args['yes_distill'] = args.yes_distill
     additional_args['no_distill'] = args.no_distill
+
+    # TODO: eventually remove!
+    additional_args['distill_successful_only'] = False
+    #additional_args['min_itr_steps_distill'] = 0
 
     # Test every policy with every level
     if not save_dir.exists():
