@@ -125,7 +125,7 @@ class BaseAlgo(ABC):
         self.log_success = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True):
+                            collect_reward=True, train=True):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -146,6 +146,10 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        if train:
+            self.acmodel.train()
+        else:
+            self.acmodel.eval()
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction

@@ -192,11 +192,13 @@ class Trainer(object):
             time_env_sampling_start = time.time()
             should_collect = (not self.args.no_collect) and (
                 (not skip_training_rl) or self.supervised_model is not None)
+            should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
-                                                                           collect_reward=not skip_training_rl)
+                                                                           collect_reward=not skip_training_rl,
+                                                                           train=should_train_rl)
                 raw_samples_data = copy.deepcopy(samples_data)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
 
@@ -219,7 +221,6 @@ class Trainer(object):
 
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_train_rl:
                 early_entropy_coef = self.args.early_entropy_coef if self.itrs_on_level < 10 else None
                 summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict,
@@ -368,7 +369,7 @@ class Trainer(object):
                         # Distilled model
                         time_run_supervised_start = time.time()
                         logger.log("Running supervised model")
-                        advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, advancement_dict,
+                        advance_curriculum_sup, _, _ = self.run_supervised(self.il_trainer.acmodel, self.no_teacher_dict,
                                                                            "Rollout/", show_instrs=True)
                         run_supervised_time = time.time() - time_run_supervised_start
                     else:
