@@ -13,6 +13,7 @@ class Level_IntroPrimitives(Level_TeachableRobot):
     """
     Get a reward for doing what the teacher tells you to do.
     """
+
     def __init__(self, max_delay=0, room_size=8, strict=False, seed=None, **kwargs):
         self.room_size = room_size
         self.max_delay = max_delay
@@ -43,13 +44,16 @@ class Level_IntroPrimitivesD0(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=0, seed=seed, **kwargs)
 
+
 class Level_IntroPrimitivesD1(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=1, seed=seed, **kwargs)
 
+
 class Level_IntroPrimitivesD5(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=5, seed=seed, **kwargs)
+
 
 class Level_IntroPrimitivesD10(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
@@ -60,13 +64,16 @@ class Level_IntroPrimitivesD0Strict(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=0, seed=seed, strict=True, **kwargs)
 
+
 class Level_IntroPrimitivesD1Strict(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=1, seed=seed, strict=True, **kwargs)
 
+
 class Level_IntroPrimitivesD5Strict(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
         super().__init__(max_delay=5, seed=seed, strict=True, **kwargs)
+
 
 class Level_IntroPrimitivesD10Strict(Level_IntroPrimitives):
     def __init__(self, seed=None, **kwargs):
@@ -174,17 +181,21 @@ class Level_GoToObjS4(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=4, seed=seed, **kwargs)
 
+
 class Level_GoToObjS5(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=5, seed=seed, **kwargs)
+
 
 class Level_GoToObjS6(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=6, seed=seed, **kwargs)
 
+
 class Level_GoToObjS7(Level_GoToObj):
     def __init__(self, seed=None, **kwargs):
         super().__init__(room_size=7, seed=seed, **kwargs)
+
 
 class Level_GoToLocal(Level_TeachableRobot):
     """
@@ -402,7 +413,6 @@ class Level_OpenLocal(Level_TeachableRobot):
             "instrs": OpenInstr(ObjDesc("door", obj_color))
         }
 
-
     def add_objs(self, task):
         obj_color = task
         self.connect_all()
@@ -486,6 +496,25 @@ class Level_GoTo(Level_TeachableRobot):
             self.open_all_doors()
         self.check_objs_reachable()
         return dists + self.get_doors() + [obj], obj
+
+
+class Level_Seek(Level_GoTo):
+    def make_mission(self):
+        obj_type, obj_color = self.sample_object()
+        return {
+            "task": (obj_type, obj_color),
+            "instrs": SeekInstr(ObjDesc(obj_type, obj_color))
+        }
+
+
+class Level_GoToHeldout(Level_GoTo):
+    def make_mission(self):
+        obj_type = 'key'
+        obj_color = 'grey'
+        return {
+            "task": (obj_type, obj_color),
+            "instrs": GoToInstr(ObjDesc(obj_type, obj_color))
+        }
 
 
 class Level_GoToOpen(Level_GoTo):
@@ -616,12 +645,12 @@ class Level_Pickup(Level_TeachableRobot):
         return dists + self.get_doors() + [obj], obj
 
 
-
 class Level_UnblockPickup(Level_TeachableRobot):
     """
     Pick up an object, the object may be in another room. The path may
     be blocked by one or more obstructors.
     """
+
     def make_mission(self):
         obj_type, obj_color = self.sample_object()
         return {
@@ -645,6 +674,7 @@ class Level_Open(Level_TeachableRobot):
     """
     Open a door, which may be in another room
     """
+
     def make_mission(self):
         # We only need the color
         _, obj_color = self.sample_object()
@@ -652,7 +682,6 @@ class Level_Open(Level_TeachableRobot):
             "task": obj_color,
             "instrs": OpenInstr(ObjDesc("door", obj_color))
         }
-
 
     def add_objs(self, task):
         obj_color = task
@@ -680,13 +709,13 @@ class Level_Unlock(Level_TeachableRobot):
 
     Competencies: Maze, Open, Unlock. No unblocking.
     """
+
     def make_mission(self):
         _, obj_color = self.sample_object()
         return {
             "task": obj_color,
             "instrs": OpenInstr(ObjDesc("door", obj_color))
         }
-
 
     def add_objs(self, task):
 

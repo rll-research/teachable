@@ -342,6 +342,15 @@ class GoToInstr(ActionInstr):
         return 'continue'
 
 
+class SeekInstr(GoToInstr):
+    """
+    Exactly the same as GoToInstr, but different text string.
+    """
+
+    def surface(self, env):
+        return 'seek ' + self.desc.surface(env)
+
+
 class PickupInstr(ActionInstr):
     """
     Pick up an object matching a given description
