@@ -171,7 +171,7 @@ class TensorBoardOutputFormat(KVWriter):
         path = osp.join(osp.abspath(dir), prefix)
         import tensorflow as tf
         self.tf = tf
-        self.writer = tf.summary.FileWriter(path)
+        self.writer = tf.compat.v1.summary.FileWriter(path)
 
     def writekvs(self, kvs):
         def summary_val(k, v):
