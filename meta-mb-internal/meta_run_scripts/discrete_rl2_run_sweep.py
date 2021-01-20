@@ -280,7 +280,7 @@ def run_experiment(**config):
 
     if not is_debug:
         log_formats.append('tensorboard')
-        log_formats.append('wandb')
+        # log_formats.append('wandb')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
