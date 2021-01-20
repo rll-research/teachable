@@ -171,15 +171,13 @@ class TensorBoardOutputFormat(KVWriter):
         path = osp.join(osp.abspath(dir), prefix)
         import tensorflow as tf
         self.tf = tf
-        self.writer = tf.compat.v1.summary.FileWriter(path)
+        self.writer = tf.summary.create_file_writer(path)
 
     def writekvs(self, kvs):
-        def summary_val(k, v):
-            kwargs = {'tag': k, 'simple_value': float(v)}
-            return self.tf.Summary.Value(**kwargs)
-        summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items()])
-        self.writer.add_summary(summary, self.step)
-        self.writer.flush()
+        with self.writer.as_default():
+            for k, v in kvs.items():
+                self.tf.summary.scalar(k, v, step=self.step)
+            self.writer.flush()
         self.step += 1
 
     def close(self):
