@@ -157,7 +157,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
 
     def log_fn_vidrollout(rl_policy, il_policy, itr):
         policy = rl_policy if il_policy is None else il_policy
-        test_success_checkpoint(heldout_env, save_dir, num_rollouts, teachers, policy=policy, policy_name=policy_name,
+        test_success_checkpoint(heldout_env, save_dir, 3, teachers, policy=policy, policy_name=policy_name,
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     def log_fn(rl_policy, il_policy, logger, itr):
