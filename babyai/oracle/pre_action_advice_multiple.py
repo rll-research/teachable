@@ -8,6 +8,7 @@ class PreActionAdviceMultiple(Teacher):
     def __init__(self, *args, **kwargs):
         super(PreActionAdviceMultiple, self).__init__(*args, **kwargs)
         self.next_state_coords = self.empty_feedback()
+        self.action_list = [-1, -1, -1]
 
     def empty_feedback(self):
         """
