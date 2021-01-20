@@ -155,8 +155,6 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     )
 
     def log_fn(rl_policy, il_policy, logger, itr):
-        if not itr % 10 == 0:
-            return
         policy_env_name = f'Policy{policy_name}-{env_name}'
         full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
         if itr == 0:
