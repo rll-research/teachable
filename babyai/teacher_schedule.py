@@ -171,10 +171,10 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, add_hard_level=3, remo
         return no_teacher_dict, None
     if level < add_hard_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
-        distillation_dict = copy.deepcopy(teacher_train_dict)
+        distillation_dict = {easy_teacher: True, harder_teacher: False}
     elif level < remove_easy_level:
-        teacher_train_dict = {easy_teacher: True, harder_teacher: True}
-        distillation_dict = copy.deepcopy(teacher_train_dict)
+        teacher_train_dict = {easy_teacher: True, harder_teacher: False}
+        distillation_dict = {easy_teacher: True, harder_teacher: True}
     else:
         teacher_train_dict = {easy_teacher: False, harder_teacher: True}
         distillation_dict = {easy_teacher: True, harder_teacher: True}
@@ -191,7 +191,7 @@ def easy_swap_harder_sparse(level, easy_teacher, harder_teacher, add_hard_level=
         distillation_dict = copy.deepcopy(teacher_train_dict)
     elif level < remove_easy_level:
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
-        distillation_dict = {easy_teacher: True, harder_teacher: True}
+        distillation_dict = {easy_teacher: False, harder_teacher: True}
     else:
         teacher_train_dict = {easy_teacher: False, harder_teacher: True}
         distillation_dict = {easy_teacher: False, harder_teacher: True}
@@ -208,7 +208,7 @@ def easy_swap_harder_noselfdistill(level, easy_teacher, harder_teacher, add_hard
         teacher_train_dict = {easy_teacher: True, harder_teacher: False}
         distillation_dict = {easy_teacher: False, harder_teacher: False}
     elif level < remove_easy_level:
-        teacher_train_dict = {easy_teacher: True, harder_teacher: True}
+        teacher_train_dict = {easy_teacher: True, harder_teacher: False}
         distillation_dict = {easy_teacher: False, harder_teacher: True}
     else:
         teacher_train_dict = {easy_teacher: False, harder_teacher: True}
@@ -236,7 +236,7 @@ def easy_swap_harder_advance_harder(level, easy_teacher, harder_teacher, add_har
 
 
 def easy_swap_harder_help(level, success_rate, accuracy_rate, easy_teacher, harder_teacher,
-                          success_intervention_cutoff=.95, accuracy_intervention_cutoff=.75,
+                          success_intervention_cutoff=.95, accuracy_intervention_cutoff=.95,
                           add_hard_level=3, remove_easy_level=13):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
@@ -256,7 +256,7 @@ def easy_swap_harder_help(level, success_rate, accuracy_rate, easy_teacher, hard
 
 
 def easy_swap_harder_each_time(level, success_rate, accuracy_rate, easy_teacher, harder_teacher,
-                               success_intervention_cutoff=.95, accuracy_intervention_cutoff=.75):
+                               success_intervention_cutoff=1, accuracy_intervention_cutoff=.95):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None

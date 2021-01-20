@@ -172,6 +172,10 @@ class Trainer(object):
             teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
+            if len(teacher_train_dict) > 0:
+                last_teacher = list(teacher_train_dict.values())[-1]
+            else:
+                last_teacher = 'none'
             for teacher_name, teacher_present in teacher_train_dict.items():
                 if teacher_present:
                     self.introduced_teachers.add(teacher_name)
@@ -206,7 +210,7 @@ class Trainer(object):
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
-                                                                           collect_reward=not skip_training_rl,
+                                                                           collect_reward=should_train_rl,
                                                                            train=should_train_rl)
                 raw_samples_data = copy.deepcopy(samples_data)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
@@ -377,9 +381,12 @@ class Trainer(object):
                     logger.log("Running model with each teacher")
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
-                        advance_curriculum_teacher, _, _ = self.run_supervised(
+                        advance_curriculum_teacher, success, accuracy = self.run_supervised(
                             self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
+                        if teacher == last_teacher:
+                            last_success = success
+                            last_accuracy = accuracy
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     advance_curriculum = advance_curriculum and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
@@ -451,15 +458,15 @@ class Trainer(object):
                     logger.logkv(f'Feedback/Trained_{k}', -1)
 
                 if should_distill:
-                    logger.logkv(f'Feedback/Distilled_{k}', int(teacher_distill_dict[k]))
+                    if self.args.distillation_stragety in ['all_teachers', 'all_but_none', 'powerset']:
+                        logger.logkv(f'Feedback/Distilled_{k}', int(teacher_distill_dict[k]))
                 else:
                     logger.logkv(f'Feedback/Distilled_{k}', -1)
 
                 if should_policy_rollout:
-                    logger.logkv(f'Feedback/DRollout_{k}', int(advancement_dict[k]))
+                    logger.logkv(f'Feedback/Rollout_{k}', int(k in self.introduced_teachers))
                 else:
                     logger.logkv(f'Feedback/Rollout_{k}', -1)
-                    logger.logkv(f'Feedback/DRollout_{k}', -1)
 
             logger.dumpkvs()
 
@@ -514,6 +521,8 @@ class Trainer(object):
                 # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
+                last_accuracy = 0
+                last_success = 0
                 self.curriculum_step += 1
                 if self.curriculum_step >= len(self.env.train_levels):
                     break  # We've finished the curriculum!
