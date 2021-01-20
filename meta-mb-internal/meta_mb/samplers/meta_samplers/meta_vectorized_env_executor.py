@@ -52,6 +52,7 @@ class MetaIterativeEnvExecutor(object):
         self.ts += 1
         dones = np.logical_or(self.ts >= self.max_path_length, dones)
         for i in np.argwhere(dones).flatten():
+            self.envs[i].set_task()
             obs[i] = self.envs[i].reset()
             self.ts[i] = 0
 
@@ -76,6 +77,8 @@ class MetaIterativeEnvExecutor(object):
         Returns:
             (list): list of (np.ndarray) with the new initial observations.
         """
+        for env in self.envs:
+            env.set_task()
         obses = [env.reset() for env in self.envs]
         self.ts[:] = 0
         return obses
@@ -127,7 +130,6 @@ class MetaParallelEnvExecutor(object):
     """
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
-        raise NotImplementedError("Make sure you can seed envs!")
         self.n_envs = meta_batch_size * envs_per_task
         self.meta_batch_size = meta_batch_size
         self.envs_per_task = envs_per_task
@@ -143,9 +145,7 @@ class MetaParallelEnvExecutor(object):
             p.start()
         for remote in self.work_remotes:
             remote.close()
-        self.update_distribution_from_other(env)
-        rand_start = np.random.randint(100, 200)
-        self.seed(np.arange(rand_start, rand_start + len(self.remotes)))
+        self.set_level_distribution(env.index)
         self.set_tasks()
         self.reset()
 
@@ -232,7 +232,7 @@ class MetaParallelEnvExecutor(object):
         for remote in self.remotes:
             remote.recv()
 
-    def update_distribution_from_other(self, env):
+    def set_level_distribution(self, index):
         """
         Sets a list of tasks to each worker
 
@@ -240,7 +240,7 @@ class MetaParallelEnvExecutor(object):
             tasks (list): list of the tasks for each worker
         """
         for remote in self.remotes:
-            remote.send(('update_distribution_from_other', env))
+            remote.send(('set_level_distribution', index))
         for remote in self.remotes:
             remote.recv()
 
@@ -277,6 +277,8 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
     parent_remote.close()
 
     envs = [pickle.loads(env_pickle) for _ in range(n_envs)]
+    for env in envs:
+        env.seed(int(seed))
     np.random.seed(seed)
 
     ts = np.zeros(n_envs, dtype='int')
@@ -293,12 +295,15 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
             for i in range(n_envs):
                 if dones[i] or (ts[i] >= max_path_length):
                     dones[i] = True
+                    envs[i].set_task()
                     obs[i] = envs[i].reset()
                     ts[i] = 0
             remote.send((obs, rewards, dones, infos))
 
         # reset all the environments of the worker
         elif cmd == 'reset':
+            for env in envs:
+                env.set_task()
             obs = [env.reset() for env in envs]
             ts[:] = 0
             remote.send(obs)
@@ -324,10 +329,14 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
                 env.seed(int(data))
             remote.send(None)
 
-        elif cmd == 'update_distribution_from_other':
+        elif cmd == 'set_level_distribution':
             for env in envs:
-                env.update_distribution_from_other(data)
+                env.set_level_distribution(data)
             remote.send(None)
 
+        elif cmd == 'render':
+            img = [env.render('rgb_array') for env in envs]
+            remote.send(img)
+
         else:
-            raise NotImplementedError
+            raise NotImplementedError(cmd)

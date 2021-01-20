@@ -153,7 +153,7 @@ class BaseAlgo(ABC):
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-            instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
+            instr_dropout_prob = 0# if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
             preprocessed_obs = [self.preprocess_obss([o], teacher_dict,
                                                      show_instrs=np.random.uniform() > instr_dropout_prob)
                 for o in self.obs]

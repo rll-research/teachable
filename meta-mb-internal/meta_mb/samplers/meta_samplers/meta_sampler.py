@@ -51,7 +51,6 @@ class MetaSampler(BaseSampler):
         self.reward_predictor = reward_predictor
         self.supervised_model = supervised_model
         # setup vectorized environment
-        self.parallel = False  # TODO: remove
         self.obs_preprocessor = obs_preprocessor
         if self.parallel:
             self.vec_env = MetaParallelEnvExecutor(env, self.meta_batch_size, self.envs_per_task, self.max_path_length)
