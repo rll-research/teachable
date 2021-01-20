@@ -23,7 +23,8 @@ def load_policy(path):
     return policy, env, args, saved_model
 
 
-def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic):
+def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic,
+                video_name='generalization_vids'):
     if not save_dir.exists():
         save_dir.mkdir()
     env.reset()
@@ -45,7 +46,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           record_teacher=True,
                                                                           teacher_dict=teacher_dict,
                                                                           video_directory=save_dir,
-                                                                          video_name='generalization_vids',
+                                                                          video_name=video_name,
                                                                           num_rollouts=num_rollouts,
                                                                           save_wandb=False,
                                                                           save_locally=True,
@@ -147,6 +148,18 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         rollouts_per_meta_task=args.rollouts_per_meta_task,
         meta_batch_size=num_rollouts,
         max_path_length=args.max_path_length,
+        parallel=True,
+        envs_per_task=1,
+        reward_predictor=None,
+        supervised_model=supervised_model,
+        obs_preprocessor=obs_preprocessor,
+    )
+    finetune_sampler_seq = MetaSampler(
+        env=env,
+        policy=policy,
+        rollouts_per_meta_task=args.rollouts_per_meta_task,
+        meta_batch_size=num_rollouts,
+        max_path_length=args.max_path_length,
         parallel=False,
         envs_per_task=1,
         reward_predictor=None,
@@ -154,9 +167,14 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         obs_preprocessor=obs_preprocessor,
     )
 
+    def log_fn_vidrollout(rl_policy, il_policy, itr):
+        policy = rl_policy if il_policy is None else il_policy
+        test_success_checkpoint(heldout_env, save_dir, num_rollouts, teachers, policy=policy, policy_name=policy_name,
+                                env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
+
     def log_fn(rl_policy, il_policy, logger, itr):
-        if not itr % 10 == 0:
-            return
+        if itr % 10 == 0:
+            log_fn_vidrollout(rl_policy, il_policy, itr)
         policy_env_name = f'Policy{policy_name}-{env_name}'
         full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
         if itr == 0:
@@ -167,7 +185,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         policy = il_policy if il_policy is not None else rl_policy
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-                                            teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
+                                                teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
         data = sample_processor.process_samples(paths, log_prefix='n/a', log_teacher=False)
 
         num_total_episodes = data['dones'].sum()
@@ -182,19 +200,6 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
             f.write(
                 f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr} \n')
         return avg_success, avg_accuracy
-
-
-    # def log_fn_vidrollout(rl_policy, il_policy, logger, itr, tag):
-    #     if itr == 0:
-    #         policy_env_name = f'Policy{policy_name}-{env_name}'
-    #         full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
-    #         if not full_save_dir.exists():
-    #             full_save_dir.mkdir()
-    #         with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-    #             f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3,itr \n')
-    #     policy = rl_policy if il_policy is None else il_policy
-    #     test_success_checkpoint(heldout_env, save_dir, num_rollouts, teachers, policy=policy, policy_name=policy_name,
-    #                             env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, tag=tag)
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']
     logger.configure(dir=save_name, format_strs=log_formats,
@@ -262,18 +267,15 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
 
 
 def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
-                            policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True, tag=""):
+                            policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True):
     policy_env_name = f'Policy{policy_name}-{env_name}'
     full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
-    print("FSD", full_save_dir)
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
-                                                                           teachers, hide_instrs, stochastic)
-    print(f"{tag} Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
-    with open(full_save_dir.joinpath('results.csv'), 'a') as f:
-        f.write(
-            f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3}, {itr} \n')
+                                                                           teachers, hide_instrs, stochastic,
+                                                                           f'vid_{itr}')
+    print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     return success_rate, stoch_accuracy, det_accuracy
 
 
