@@ -154,18 +154,6 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         supervised_model=supervised_model,
         obs_preprocessor=obs_preprocessor,
     )
-    finetune_sampler_seq = MetaSampler(
-        env=env,
-        policy=policy,
-        rollouts_per_meta_task=args.rollouts_per_meta_task,
-        meta_batch_size=num_rollouts,
-        max_path_length=args.max_path_length,
-        parallel=False,
-        envs_per_task=1,
-        reward_predictor=None,
-        supervised_model=supervised_model,
-        obs_preprocessor=obs_preprocessor,
-    )
 
     def log_fn_vidrollout(rl_policy, il_policy, itr):
         policy = rl_policy if il_policy is None else il_policy
@@ -184,6 +172,8 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                 f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr \n')
         policy = il_policy if il_policy is not None else rl_policy
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
+        seeds = np.random.choice(range(10 ** 6), size=finetune_sampler.meta_batch_size, replace=False)
+        finetune_sampler.vec_env.seed(seeds)
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                                 teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
         data = sample_processor.process_samples(paths, log_prefix='n/a', log_teacher=False)
