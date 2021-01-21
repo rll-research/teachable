@@ -250,10 +250,10 @@ class Trainer(object):
                 # Decide whether to train RL next itr
                 if advance_curriculum:
                     self.next_train_itr = itr + self.num_train_skip_itrs
-                    self.num_train_skip_itrs += 10
+                    self.num_train_skip_itrs += 2
                 else:
                     self.next_train_itr = itr + 1
-                    self.num_train_skip_itrs = 10
+                    self.num_train_skip_itrs = 2
             should_store_data = raw_samples_data is not None and (
                     self.args.collect_before_threshold or advance_curriculum)
             if self.args.yes_distill:
