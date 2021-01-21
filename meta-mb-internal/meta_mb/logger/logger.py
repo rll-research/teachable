@@ -169,16 +169,46 @@ class TensorBoardOutputFormat(KVWriter):
         self.step = step + 1
         prefix = 'events'
         path = osp.join(osp.abspath(dir), prefix)
-        import tensorflow as tf
-        self.tf = tf
-        self.writer = tf.summary.create_file_writer(path)
+        try:
+            from tensorflow.python import pywrap_tensorflow
+            from tensorflow.core.util import event_pb2
+            from tensorflow.python.util import compat
+            self.tf = tf
+            self.event_pb2 = event_pb2
+            self.pywrap_tensorflow = pywrap_tensorflow
+            self.writer = pywrap_tensorflow.EventsWriter(compat.as_bytes(path))
+            self.writer = tf.summary.create_file_writer(path)
+            self.old_tf = True
+            print("using older version of TF")
+        except:
+            import tensorflow as tf
+            self.tf = tf
+            self.writer = tf.summary.create_file_writer(path)
+            self.old_tf = False
+            print("using newer version of tf")
 
     def writekvs(self, kvs):
-        with self.writer.as_default():
-            for k, v in kvs.items():
-                self.tf.summary.scalar(k, v, step=self.step)
+        if self.old_tf:
+            def summary_val(k, v):
+                kwargs = {'tag': k, 'simple_value': float(v)}
+                return self.tf.Summary.Value(**kwargs)
+            summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items()])
+            event = self.event_pb2.Event(wall_time=time.time(), summary=summary)
+            event.step = self.step  # is there any reason why you'd want to specify the step?
+            self.writer.WriteEvent(event)
+            self.writer.Flush()
+
+            with self.writer.as_default():
+                for k, v in kvs.items():
+                    self.tf.summary.scalar(k, v, step=self.step)
             self.writer.flush()
-        self.step += 1
+            self.step += 1
+        else:
+            with self.writer.as_default():
+                for k, v in kvs.items():
+                    self.tf.summary.scalar(k, v, step=self.step)
+                self.writer.flush()
+            self.step += 1
 
     def close(self):
         if self.writer:
