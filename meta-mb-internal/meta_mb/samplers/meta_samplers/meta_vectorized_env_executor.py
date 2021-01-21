@@ -106,7 +106,7 @@ class MetaIterativeEnvExecutor(object):
 
     def seed(self, seeds):
         for env, seed in zip(self.envs, seeds):
-            env.seed(seed)
+            env.seed(int(seed))
 
     @property
     def num_envs(self):
