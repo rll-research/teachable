@@ -173,7 +173,7 @@ class Trainer(object):
                                                                                                last_success,
                                                                                                last_accuracy)
             if len(teacher_train_dict) > 0:
-                last_teacher = list(teacher_train_dict.values())[-1]
+                last_teacher = list(teacher_train_dict.keys())[-1]
             else:
                 last_teacher = 'none'
             for teacher_name, teacher_present in teacher_train_dict.items():
