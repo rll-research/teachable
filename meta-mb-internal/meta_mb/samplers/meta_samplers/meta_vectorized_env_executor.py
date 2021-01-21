@@ -20,6 +20,7 @@ class MetaIterativeEnvExecutor(object):
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
         self.envs = np.asarray([copy.deepcopy(env) for _ in range(meta_batch_size * envs_per_task)])
         seeds = np.random.choice(range(10 ** 6), size=meta_batch_size, replace=False)
+        self.meta_batch_size = meta_batch_size
         for new_env, seed in zip(self.envs, seeds):
             new_env.update_distribution_from_other(env)
             new_env.seed(int(seed))
@@ -58,7 +59,7 @@ class MetaIterativeEnvExecutor(object):
 
         return obs, rewards, dones, env_infos
 
-    def set_tasks(self, tasks):
+    def set_tasks(self, tasks=[None]):
         """
         Sets a list of tasks to each environment
 
@@ -104,7 +105,9 @@ class MetaIterativeEnvExecutor(object):
         imgs = [env.render('rgb_array') for env in self.envs]
         return imgs
 
-    def seed(self, seeds):
+    def seed(self, seeds=None):
+        if seeds is None:
+            seeds = np.random.choice(range(10 ** 6), size=self.meta_batch_size, replace=False)
         for env, seed in zip(self.envs, seeds):
             env.seed(int(seed))
 
