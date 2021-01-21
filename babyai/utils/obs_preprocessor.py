@@ -38,6 +38,7 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
 
         for k, v in obs_output.items():
             if len(v) == 0:
+                del obs_output[k]
                 continue
             obs_output[k] = torch.FloatTensor(v).to(device)
         return DictList(obs_output)
