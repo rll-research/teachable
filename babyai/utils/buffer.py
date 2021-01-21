@@ -139,7 +139,11 @@ class Buffer:
             if not level in self.counts_train:
                 continue
             index = random.randint(0, counts[level] - 1)
-            traj = self.load_traj(level, index, split)
+            try:
+                traj = self.load_traj(level, index, split)
+            except Exception as e:
+                print("error loading traj", level, index, split, e)
+                continue
             if self.augmenter is not None:
                 traj = self.augmenter.augment(traj, include_original=False)[0]
             num_samples += len(traj.action)
