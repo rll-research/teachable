@@ -181,7 +181,8 @@ class TensorBoardOutputFormat(KVWriter):
             self.writer = tf.summary.create_file_writer(path)
             self.old_tf = True
             print("using older version of TF")
-        except:
+        except Exception as e:
+            print("Couldn't use old version of TF because", e)
             self.tf = tf
             self.writer = tf.summary.create_file_writer(path)
             self.old_tf = False
