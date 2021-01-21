@@ -202,7 +202,7 @@ class TensorBoardOutputFormat(KVWriter):
                 for k, v in kvs.items():
                     self.tf.summary.scalar(k, v, step=self.step)
                 self.writer.flush()
-            self.step += 1
+        self.step += 1
 
     def close(self):
         if self.writer:
