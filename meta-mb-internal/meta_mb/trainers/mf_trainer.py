@@ -458,7 +458,7 @@ class Trainer(object):
                     logger.logkv(f'Feedback/Trained_{k}', -1)
 
                 if should_distill:
-                    if self.args.distillation_stragety in ['all_teachers', 'all_but_none', 'powerset']:
+                    if self.args.distillation_strategy in ['all_teachers', 'all_but_none', 'powerset']:
                         logger.logkv(f'Feedback/Distilled_{k}', int(teacher_distill_dict[k]))
                 else:
                     logger.logkv(f'Feedback/Distilled_{k}', -1)
