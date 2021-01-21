@@ -29,12 +29,16 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                 elif k == 'instr':
                     mask = int(show_instrs)
                     obs_output[k].append(v * mask)
-                else:
+                elif k in ['obs', 'extra']:
                     obs_output[k].append(v)
+                else:
+                    continue
             if len(advice_list) > 0:
                 obs_output['advice'].append(np.concatenate(advice_list))
 
         for k, v in obs_output.items():
+            if len(v) == 0:
+                continue
             obs_output[k] = torch.FloatTensor(v).to(device)
         return DictList(obs_output)
 
