@@ -46,7 +46,7 @@ class MetaSampler(BaseSampler):
         self.envs_per_task = rollouts_per_meta_task if envs_per_task is None else envs_per_task
         assert self.envs_per_task == 1, "When we changed to the new model, we didn't check if the format could handle > 1 envs_per_task.  If it does, feel free to remove this."
         self.meta_batch_size = meta_batch_size
-        self.parallel = parallel
+        self.parallel = False
         self.total_timesteps_sampled = 0
         self.reward_predictor = reward_predictor
         self.supervised_model = supervised_model

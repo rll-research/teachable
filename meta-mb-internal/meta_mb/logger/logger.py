@@ -197,12 +197,6 @@ class TensorBoardOutputFormat(KVWriter):
             event.step = self.step  # is there any reason why you'd want to specify the step?
             self.writer.WriteEvent(event)
             self.writer.Flush()
-
-            with self.writer.as_default():
-                for k, v in kvs.items():
-                    self.tf.summary.scalar(k, v, step=self.step)
-            self.writer.flush()
-            self.step += 1
         else:
             with self.writer.as_default():
                 for k, v in kvs.items():

@@ -509,8 +509,8 @@ class Level_Seek(Level_GoTo):
 
 class Level_GoToHeldout(Level_GoTo):
     def make_mission(self):
-        obj_type = 'key'
-        obj_color = 'grey'
+        obj_type, obj_color = self.sample_object()
+        obj_color = 'yellow'
         return {
             "task": (obj_type, obj_color),
             "instrs": GoToInstr(ObjDesc(obj_type, obj_color))
