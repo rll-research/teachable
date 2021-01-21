@@ -104,6 +104,10 @@ class MetaIterativeEnvExecutor(object):
         imgs = [env.render('rgb_array') for env in self.envs]
         return imgs
 
+    def seed(self, seeds):
+        for env, seed in zip(self.envs, seeds):
+            env.seed(seed)
+
     @property
     def num_envs(self):
         """

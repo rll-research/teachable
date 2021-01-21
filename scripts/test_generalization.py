@@ -174,6 +174,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
         seeds = np.random.choice(range(10 ** 6), size=finetune_sampler.meta_batch_size, replace=False)
         finetune_sampler.vec_env.seed(seeds)
+        finetune_sampler.vec_env.set_tasks()
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                                 teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
         data = sample_processor.process_samples(paths, log_prefix='n/a', log_teacher=False)
