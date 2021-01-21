@@ -148,7 +148,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         rollouts_per_meta_task=args.rollouts_per_meta_task,
         meta_batch_size=num_rollouts,
         max_path_length=args.max_path_length,
-        parallel=True,
+        parallel=False,
         envs_per_task=1,
         reward_predictor=None,
         supervised_model=supervised_model,
