@@ -104,8 +104,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
             obj_type = self.np_random.choice(['key', 'ball', 'box'])
         else:
-            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
-            obj_type = self.np_random.choice(['box', 'ball'])
+            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'grey'])
+            obj_type = self.np_random.choice(['key', 'box', 'ball'])
         return obj_type, color
 
     def make_mission(self):
