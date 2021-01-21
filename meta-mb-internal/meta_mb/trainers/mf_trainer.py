@@ -518,6 +518,7 @@ class Trainer(object):
                 self.advancement_count = 0
 
             if self.advancement_count >= self.advancement_count_threshold:
+                self.advancement_count = 0
                 # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
