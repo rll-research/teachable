@@ -169,6 +169,7 @@ class TensorBoardOutputFormat(KVWriter):
         self.step = step + 1
         prefix = 'events'
         path = osp.join(osp.abspath(dir), prefix)
+        import tensorflow as tf
         try:
             from tensorflow.python import pywrap_tensorflow
             from tensorflow.core.util import event_pb2
@@ -181,7 +182,6 @@ class TensorBoardOutputFormat(KVWriter):
             self.old_tf = True
             print("using older version of TF")
         except:
-            import tensorflow as tf
             self.tf = tf
             self.writer = tf.summary.create_file_writer(path)
             self.old_tf = False
