@@ -14,14 +14,15 @@ class PreActionAdviceMultiple(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.one_hotify(-1) for action in self.action_list])
-        # return np.concatenate([self.one_hotify(action) for action in self.action_list]) + [np.array([self.steps_since_lastfeedback])]) #np.concatenate([self.one_hotify(-1) for _ in range(self.cartesian_steps)])
+        # return np.concatenate([self.one_hotify(-1) for action in self.action_list])
+        return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.one_hotify(self.action_space.sample()) for _ in range(self.cartesian_steps)])# + [np.array([self.steps_since_lastfeedback])])
+        # return np.concatenate([self.one_hotify(self.action_space.sample()) for _ in range(self.cartesian_steps)])
+        return np.concatenate([self.one_hotify(self.action_space.sample()) for _ in range(self.cartesian_steps)] + [np.array([self.steps_since_lastfeedback])])
 
     def compute_feedback(self, oracle, last_action=-1):
         """
@@ -30,7 +31,8 @@ class PreActionAdviceMultiple(Teacher):
         # Copy so we don't mess up the state of the real oracle
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
-        return np.concatenate([self.one_hotify(action) for action in self.action_list])# + [np.array([self.steps_since_lastfeedback])])
+        # return np.concatenate([self.one_hotify(action) for action in self.action_list])
+        return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
 
     def one_hotify(self, index):
         correction = np.zeros((self.action_space.n + 1,))
