@@ -70,6 +70,15 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'PreActionAdvice2':
+                    teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'PreActionAdviceMultiple1':
+                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
+                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                elif ft == 'PreActionAdviceMultiple2':
+                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
+                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cartesian_steps)

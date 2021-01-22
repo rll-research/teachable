@@ -190,7 +190,7 @@ class BaseAlgo(ABC):
             self.obss[i] = self.obs
             self.obs = obs
             self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
-
+    
             self.memories[i] = self.memory
             self.memory = memory
 
