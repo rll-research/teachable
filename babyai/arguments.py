@@ -107,9 +107,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollouts_per_meta_task', type=int, default=1)
 
         # Teacher
-        self.add_argument('--feedback_type', nargs='+', default=["None"],
-                          choices=["None", "PreActionAdviceMultiple", "PreActionAdvice", "CartesianCorrections",
-                                   "SubgoalCorrections", "XYCorrections", "OffsetCorrections"])
+        self.add_argument('--feedback_type', nargs='+', default=["None"])#,
+                          #choices=["None", "PreActionAdviceMultiple", "PreActionAdvice", "CartesianCorrections",
+                          #         "SubgoalCorrections", "XYCorrections", "OffsetCorrections"])
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
         self.add_argument('--cartesian_steps', type=int, default=1)
