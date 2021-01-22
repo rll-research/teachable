@@ -172,7 +172,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                 f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr \n')
         policy = il_policy if il_policy is not None else rl_policy
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
-        seeds = np.random.choice(range(10 ** 6), size=finetune_sampler.meta_batch_size, replace=False)
+        seeds = np.arange(1000, 1000 + finetune_sampler.meta_batch_size)
         finetune_sampler.vec_env.seed(seeds)
         finetune_sampler.vec_env.set_tasks()
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
