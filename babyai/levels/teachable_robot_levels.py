@@ -30,7 +30,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=1, **kwargs):
+                 cartesian_steps=[1], **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -57,44 +57,48 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
+            assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
+                "you must provide either one cartesian_steps value for all teachers or one per teacher"
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
                 "you must provide either one feedback_freq value for all teachers or one per teacher"
+            if len(cartesian_steps) == 1:
+                cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
             if len(feedback_freq) == 1:
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
-            for ft, ff in zip(feedback_type, feedback_freq):
+            for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
                 if ft == 'None':
                     teacher = DummyAdvice(Bot, self)
                 elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
-                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                               feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                              feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdvice2':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                              feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple1':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                      feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple2':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                      feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                      feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'CartesianCorrections':
                     obs_size = self.reset()['obs'].flatten().size
                     teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                   feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                 feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'OffsetCorrections':
                     teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'XYCorrections':
                     teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
-                                            feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                            feedback_frequency=ff, cartesian_steps=cs)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
