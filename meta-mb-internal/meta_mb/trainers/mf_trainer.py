@@ -382,7 +382,7 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, success, accuracy = self.run_supervised(
-                            self.algo.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
+                            self.il_trainer.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                         if teacher == last_teacher:
                             last_success = success
@@ -484,7 +484,7 @@ class Trainer(object):
             if should_save_video:
                 time_rollout_start = time.time()
                 for teacher in self.introduced_teachers:
-                    self.save_videos(self.algo.acmodel,
+                    self.save_videos(self.il_trainer.acmodel,
                                      save_name=f'{teacher}_video_stoch',
                                      num_rollouts=10,
                                      teacher_dict={k: k == teacher for k in advancement_dict.keys()},
