@@ -83,7 +83,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": args.intermediate_reward,
+        "intermediate_reward": not args.sparse_reward,
     }
     # curriculum_step = 26  # TODO: don't hardcode this!
     # env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
