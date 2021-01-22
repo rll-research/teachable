@@ -155,6 +155,7 @@ class MetaSampler(BaseSampler):
                 running_paths[idx]["rewards"].append(reward)
                 running_paths[idx]["dones"].append(done)
                 running_paths[idx]["env_infos"].append(env_info)
+                del agent_info['memory']
                 running_paths[idx]["agent_infos"].append(agent_info)
 
                 # if running path is done, add it to paths and empty the running path
