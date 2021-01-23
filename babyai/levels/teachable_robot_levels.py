@@ -57,6 +57,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
+            if type(cartesian_steps) is int:
+                cartesian_steps = [cartesian_steps]
             assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
                 "you must provide either one cartesian_steps value for all teachers or one per teacher"
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
