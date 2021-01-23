@@ -4,10 +4,10 @@ from babyai.oracle.teacher import Teacher
 import copy
 
 
-class PreActionAdviceMultiple(Teacher):
+class PreActionAdviceMultipleCopy(Teacher):
     def __init__(self, *args, **kwargs):
         self.action_list = [-1, -1, -1]
-        super(PreActionAdviceMultiple, self).__init__(*args, **kwargs)
+        super(PreActionAdviceMultipleCopy, self).__init__(*args, **kwargs)
         self.next_state_coords = self.empty_feedback()
 
     def empty_feedback(self):
@@ -16,8 +16,8 @@ class PreActionAdviceMultiple(Teacher):
         """
         return np.concatenate([self.one_hotify(-1) for action in self.action_list])
         # return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
-        # action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
-        # return self.one_hotify(action)
+        action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
+        return self.one_hotify(action)
         # return np.concatenate([self.one_hotify(action), np.array([self.steps_since_lastfeedback])])
 
     def random_feedback(self):
@@ -36,8 +36,8 @@ class PreActionAdviceMultiple(Teacher):
         self.step_ahead(oracle_copy, last_action=last_action)
         return np.concatenate([self.one_hotify(action) for action in self.action_list])
         # return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
-        # action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
-        # return self.one_hotify(action)
+        action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
+        return self.one_hotify(action)
         # return np.concatenate([self.one_hotify(action), np.array([self.steps_since_lastfeedback])])
 
     def one_hotify(self, index):
