@@ -159,7 +159,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distillation_strategy', type=str, choices=[
-            'all_teachers', 'no_teachers', 'all_but_none', 'powerset'
+            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
         ], default='distill_powerset')
         self.add_argument('--distill_label_weightings', action='store_true')
         self.add_argument('--new_distill', action='store_true')
@@ -184,6 +184,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--no_rollouts', action='store_true')
         self.add_argument('--yes_rollouts', action='store_true')
         self.add_argument('--leave_out_object', action='store_true')
+
+        # Miscellaneous
+        self.add_argument('--rollout_temperature', type=float, default=1)
 
     def parse_args(self, arg=None):
         """

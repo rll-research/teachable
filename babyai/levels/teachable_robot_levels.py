@@ -10,6 +10,7 @@ from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
+from babyai.oracle.pre_action_advice_multiple_copy import PreActionAdviceMultipleCopy
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.offset_corrections import OffsetCorrections
@@ -82,8 +83,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif ft == 'PreActionAdviceMultiple1':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cs)
-                elif ft == 'PreActionAdviceMultiple2':
-                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
+                elif ft == 'PreActionAdviceMultipleCopy':
+                    teacher = PreActionAdviceMultipleCopy(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,

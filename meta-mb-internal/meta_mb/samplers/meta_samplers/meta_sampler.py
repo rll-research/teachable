@@ -78,7 +78,7 @@ class MetaSampler(BaseSampler):
         return obs
 
     def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False,
-                       policy=None, teacher_dict={}, max_action=False, show_instrs=True):
+                       policy=None, teacher_dict={}, max_action=False, show_instrs=True, temperature=1):
         """
         Collect batch_size trajectories from each task
 
@@ -129,7 +129,7 @@ class MetaSampler(BaseSampler):
                                  'log_std': np.zeros_like(
                                      self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
-                actions, agent_infos = policy.get_actions_t(obses)
+                actions, agent_infos = policy.get_actions_t(obses, temp=temperature)
                 if max_action:
                     actions = np.array([np.argmax(d['probs']) for d in agent_infos], dtype=np.int32)
 
