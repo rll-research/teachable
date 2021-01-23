@@ -667,7 +667,8 @@ class Trainer(object):
         policy.eval()
         key_set = '_'.join([k for k, v in teacher_dict.items() if v])
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-                                            teacher_dict=teacher_dict, max_action=False, show_instrs=show_instrs)
+                                            teacher_dict=teacher_dict, max_action=False, show_instrs=show_instrs,
+                                                             temperature=self.args.rollout_temperature)
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag+key_set,
                                                              log_teacher=self.train_with_teacher)
         use_teacher = not key_set == ''
@@ -701,7 +702,8 @@ class Trainer(object):
                                                                               obs_preprocessor=self.obs_preprocessor,
                                                                               teacher_name=teacher_name,
                                                                               rollout_oracle=rollout_oracle,
-                                                                              instrs=show_instrs)
+                                                                              instrs=show_instrs,
+                                                                              temperature=self.args.rollout_temperature)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)

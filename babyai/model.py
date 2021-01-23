@@ -247,7 +247,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         actions = np.array(action_list)
         return actions, info_list
 
-    def get_actions_t(self, obs, training=False):  # TODO: this feels like a good place for a DictList
+    def get_actions_t(self, obs, training=False, temp=1):  # TODO: this feels like a good place for a DictList
         if training:
             self.train()
         else:
@@ -256,11 +256,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.memory = info['memory']
         info_list = []
         probs = info['probs'].detach().cpu().numpy()
-        actions = dist.sample()
-        log_probs = dist.log_prob(actions).detach().cpu().numpy()
+        # Temperature softmax
+        probs = np.exp(probs / temp)
+        probs = probs / np.sum(probs, axis=1, keepdims=True)
+        actions = np.stack([np.random.choice(len(p), p=p) for p in probs])
+        log_probs = dist.log_prob(torch.LongTensor(actions).to(info['probs'].device)).detach().cpu().numpy()
         values = info['value'].detach().cpu().numpy()
         memory = info['memory'].detach().cpu().numpy()
-        actions = actions.detach().cpu().numpy()
 
         for i in range(len(probs)):
             info_list.append({
