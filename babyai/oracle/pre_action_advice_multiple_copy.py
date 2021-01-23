@@ -14,7 +14,7 @@ class PreActionAdviceMultipleCopy(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.one_hotify(-1) for action in self.action_list])
+        # return np.concatenate([self.one_hotify(-1) for action in self.action_list])
         # return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
         action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
         return self.one_hotify(action)
@@ -34,7 +34,7 @@ class PreActionAdviceMultipleCopy(Teacher):
         # Copy so we don't mess up the state of the real oracle
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
-        return np.concatenate([self.one_hotify(action) for action in self.action_list])
+        # return np.concatenate([self.one_hotify(action) for action in self.action_list])
         # return np.concatenate([self.one_hotify(action) for action in self.action_list] + [np.array([self.steps_since_lastfeedback])])
         action = -1 if self.steps_since_lastfeedback in [-1, None] else self.action_list[self.steps_since_lastfeedback]
         return self.one_hotify(action)
