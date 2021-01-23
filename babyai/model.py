@@ -255,9 +255,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         dist, info = self(obs, self.memory)
         self.memory = info['memory']
         info_list = []
-        probs = info['probs'].detach().cpu().numpy()
         # Temperature softmax
-        probs = np.exp(probs / temp)
+        probs = np.exp(dist.logits.detach().cpu().numpy() / temp)
         probs = probs / np.sum(probs, axis=1, keepdims=True)
         actions = np.stack([np.random.choice(len(p), p=p) for p in probs])
         log_probs = dist.log_prob(torch.LongTensor(actions).to(info['probs'].device)).detach().cpu().numpy()
