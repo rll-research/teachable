@@ -288,6 +288,7 @@ def main():
         ], default='distill_powerset')
     parser.add_argument('--no_distill', action='store_true')
     parser.add_argument('--yes_distill', action='store_true')
+    parser.add_argument('--rollout_temperature', type=float, default=1)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -350,6 +351,7 @@ def main():
     additional_args['yes_rollouts'] = False
     additional_args['yes_distill'] = args.yes_distill
     additional_args['no_distill'] = args.no_distill
+    additional_args['rollout_temperature'] = args.rollout_temperature
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False

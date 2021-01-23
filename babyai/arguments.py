@@ -186,7 +186,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--leave_out_object', action='store_true')
 
         # Miscellaneous
-        self.add_argument('--rollout_temperature', type=float, default=None)
+        self.add_argument('--rollout_temperature', type=float, default=1)
 
     def parse_args(self, arg=None):
         """
