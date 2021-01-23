@@ -83,7 +83,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif ft == 'PreActionAdviceMultiple1':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cs)
-                elif ft == 'PreActionAdviceMultiple2':
+                elif ft == 'PreActionAdviceMultipleCopy':
                     teacher = PreActionAdviceMultipleCopy(Bot, self, feedback_always=feedback_always,
                                                       feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple':
