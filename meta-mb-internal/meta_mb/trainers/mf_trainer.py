@@ -183,11 +183,12 @@ class Trainer(object):
             if np.sum([int(v) for v in teacher_train_dict.values()]) == 0:
                 self.introduced_teachers.add('none')
             if self.il_trainer is not None:
-                if self.args.distillation_strategy in ['all_teachers', 'all_but_none', 'powerset']:
+                teachers = ['all_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none']
+                if self.args.distillation_strategy in teachers:
                     for teacher_name, teacher_present in teacher_distill_dict.items():
                         if teacher_present:
                             self.introduced_teachers.add(teacher_name)
-                if self.args.distillation_strategy in ['no_teachers', 'powerset']:
+                if self.args.distillation_strategy in ['no_teachers', 'powerset', 'single_teachers_none']:
                     self.introduced_teachers.add('none')
 
             logger.logkv("ItrsOnLevel", self.itrs_on_level)
