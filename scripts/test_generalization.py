@@ -215,7 +215,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
         log_dict={},
-        log_and_save=False,
+        log_and_save=True,#False,
         eval_heldout=False,
         log_fn=log_fn,
         log_every=1,
