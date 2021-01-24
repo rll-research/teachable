@@ -93,6 +93,7 @@ class Curriculum(Serializable):
                 Level_Open(**kwargs),  # 22
                 Level_GoTo(**kwargs),  # 23
                 Level_Pickup(**kwargs),  # 24
+                Level_PutNext(**kwargs),  # 25
             ]
 
             self.held_out_levels = [
