@@ -120,7 +120,7 @@ def run_experiment(**config):
         "intermediate_reward": not args.sparse_reward,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
-    teacher_train_dict, _, _ = teacher_schedule(0, 0, 0)
+    teacher_train_dict, _ = teacher_schedule(0, 0, 0)
     if args.zero_all_thresholds:
         args.success_threshold_rl = 0
         args.success_threshold_rollout_teacher = 0

@@ -125,7 +125,7 @@ class BaseAlgo(ABC):
         self.log_success = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True, train=True):
+                            collect_reward=True, train=True, collection_dict={}):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -320,6 +320,10 @@ class BaseAlgo(ABC):
         num_feedback_advice = 0
         for key in exps.obs[0].keys():
             if 'gave_' in key:
+                teacher_name = key[5:]
+                # Only count collection for the teachers we'll actually use
+                if not collection_dict[teacher_name]:
+                    continue
                 log[key] = np.sum([d[key] for d in exps.obs])
                 num_feedback_advice += np.sum([d[key] for d in exps.obs])
         log["num_feedback_advice"] = num_feedback_advice

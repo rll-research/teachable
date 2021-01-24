@@ -53,7 +53,7 @@ class Trainer(object):
         log_every=10,
         save_videos_every=1000,
         log_and_save=True,
-        teacher_schedule=lambda a, b, c: ({}, {}, {}),
+        teacher_schedule=lambda a, b: ({}, {}, {}),
         obs_preprocessor=None,
         log_dict={},
         eval_heldout=True,
@@ -169,9 +169,10 @@ class Trainer(object):
                     il_model = None
                 self.log_fn(self.algo.acmodel, il_model, logger, itr)
 
-            teacher_train_dict, teacher_distill_dict, advancement_dict = self.teacher_schedule(self.curriculum_step,
+            teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
+            collection_dict = {k: teacher_train_dict[k] or teacher_distill_dict[k] for k in teacher_train_dict.keys()}
             if len(teacher_train_dict) > 0:
                 last_teacher = list(teacher_train_dict.keys())[-1]
             else:
@@ -212,7 +213,8 @@ class Trainer(object):
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
-                                                                           train=should_train_rl)
+                                                                           train=should_train_rl,
+                                                                           collection_dict=collection_dict)
                 raw_samples_data = copy.deepcopy(samples_data)
                 assert len(samples_data.action.shape) == 1, samples_data.action.shape
 
@@ -228,7 +230,6 @@ class Trainer(object):
             else:
                 episode_logs = None
                 raw_samples_data = None
-                dagger_samples_data = None
                 samples_data = None
 
             """ -------------------- Training --------------------------"""
@@ -269,7 +270,7 @@ class Trainer(object):
                                                                                       dagger_dict={
                                                                                           k: k == 'CartesianCorrections'
                                                                                           for k in
-                                                                                          self.no_teacher_dict.keys()})  # self.no_teacher_dict)
+                                                                                          self.no_teacher_dict.keys()})
                         dagger_buffer.add_batch(dagger_samples_data, self.curriculum_step)
                 else:
                     dagger_samples_data = None
@@ -383,7 +384,7 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, success, accuracy = self.run_supervised(
-                            self.il_trainer.acmodel, {k: k == teacher for k in advancement_dict.keys()}, f"Rollout/",
+                            self.il_trainer.acmodel, {k: k == teacher for k in teacher_train_dict.keys()}, f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                         if teacher == last_teacher:
                             last_success = success
@@ -488,7 +489,7 @@ class Trainer(object):
                     self.save_videos(self.il_trainer.acmodel,
                                      save_name=f'{teacher}_video_stoch',
                                      num_rollouts=10,
-                                     teacher_dict={k: k == teacher for k in advancement_dict.keys()},
+                                     teacher_dict={k: k == teacher for k in teacher_train_dict.keys()},
                                      save_video=should_save_video,
                                      log_prefix=f"VidRollout/{teacher}_Stoch",
                                      teacher_name=teacher,
@@ -539,11 +540,6 @@ class Trainer(object):
                 self.num_train_skip_itrs = 10
 
         logger.log("Training finished")
-        if self.eval_heldout:
-            policy = self.supervised_model if self.supervised_model is not None else self.algo.acmodel
-            self.evaluate_heldout(policy, [teacher for teacher in advancement_dict if advancement_dict[teacher]])
-            logger.log("Evaluation finished")
-        logger.dumpkvs()
 
     def evaluate_heldout(self, policy, teachers):
         num_rollouts = 1  # 50
