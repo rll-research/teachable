@@ -101,6 +101,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     obs_size = self.reset()['obs'].flatten().size
                     teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
                                                    feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'CartesianCorrectionsB':
+                    obs_size = self.reset()['obs'].flatten().size
+                    teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
+                                                   feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
                                                  feedback_frequency=ff, cartesian_steps=cs)
