@@ -87,6 +87,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     # from meta_mb.envs.normalized_env import normalize
     # from babyai.levels.curriculum import Curriculum
 
+    if args.finetune_il:
+        policy = copy.deepcopy(supervised_model)
+
     # TODO: consider deleting this!
     arguments = {
         "start_loc": 'all',
@@ -303,6 +306,7 @@ def main():
     parser.add_argument('--no_distill', action='store_true')
     parser.add_argument('--yes_distill', action='store_true')
     parser.add_argument('--rollout_temperature', type=float, default=1)
+    parser.add_argument('--finetune_il', action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -366,6 +370,7 @@ def main():
     additional_args['yes_distill'] = args.yes_distill
     additional_args['no_distill'] = args.no_distill
     additional_args['rollout_temperature'] = args.rollout_temperature
+    additional_args['finetune_il'] = args.finetune_il
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
