@@ -9,7 +9,7 @@ import pathlib
 from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
-
+import matplotlib.pyplot as plt
 
 def load_policy(path):
     saved_model = joblib.load(path)
@@ -54,6 +54,12 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           obs_preprocessor=obs_preprocessor,
                                                                           rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
+    teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in paths]
+    agent_actions = [np.array(path['actions']) for path in paths]
+    errors = [np.sum(1 - (teacher_a == agent_a))/len(teacher_a) for teacher_a, agent_a in zip(teacher_actions, agent_actions)]
+    plt.hist(errors)
+    plt.title(f"Distribution of errors {str(teachers)}")
+    plt.savefig(save_dir.joinpath('errors.png'))
     return success_rate, stoch_accuracy, det_accuracy, followed_cc3
 
 

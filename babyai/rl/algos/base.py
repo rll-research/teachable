@@ -323,9 +323,10 @@ class BaseAlgo(ABC):
                 teacher_name = key[5:]
                 # Only count collection for the teachers we'll actually use
                 if not collection_dict[teacher_name]:
-                    continue
-                log[key] = np.sum([d[key] for d in exps.obs])
-                num_feedback_advice += np.sum([d[key] for d in exps.obs])
+                    log[key] = 0
+                else:
+                    log[key] = np.sum([d[key] for d in exps.obs])
+                    num_feedback_advice += np.sum([d[key] for d in exps.obs])
         log["num_feedback_advice"] = num_feedback_advice
         log["num_feedback_reward"] = np.sum(exps.env_infos.gave_reward) if collect_reward else 0
         for key in exps.env_infos.keys():
