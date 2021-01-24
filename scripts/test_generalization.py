@@ -9,6 +9,8 @@ import pathlib
 from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def load_policy(path):
