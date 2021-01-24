@@ -16,11 +16,17 @@ def load_policy(path):
     env = saved_model['env']
     policy = saved_model['policy']
     args = saved_model['args']
+    if 'supervised_model' in saved_model:
+        supervised_model = copy.deepcopy(saved_model['supervised_model'])  # Deepcopy to check it's not the policy
+    else:
+        supervised_model = copy.deepcopy(policy)
     try:
         policy.instr_rnn.flatten_parameters()
+        supervised_model.instr_rnn.flatten_parameters()
     except Exception as e:
         print(e, "looks like instrs aren't rnn")
-    return policy, env, args, saved_model
+    assert not policy is supervised_model
+    return policy, supervised_model, env, args, saved_model
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic,
@@ -39,6 +45,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
     except Exception as e:
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+    policy.eval()
     paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
                                                                           instrs=not hide_instrs,
                                                                           reset_every=1,
@@ -233,7 +240,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
 def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={}):
     if policy is None:
-        policy, _, args, model_data = load_policy(policy_path)
+        policy, il_model, _, args, model_data = load_policy(policy_path)
         for k, v in additional_args.items():
             setattr(args, k, v)
         n_itr = args.n_itr
@@ -248,13 +255,12 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
-        il_model = copy.deepcopy(policy)
         finetune_policy(env, env_index, policy, il_model,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                         num_rollouts=num_rollouts, model_data=model_data)
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, il_model, full_save_dir, num_rollouts,
                                                                            teachers, hide_instrs, stochastic)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
@@ -300,7 +306,7 @@ def main():
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
 
-    _, default_env, config, model_data = load_policy(policy_path.joinpath('latest.pkl'))
+    _, _, default_env, config, model_data = load_policy(policy_path.joinpath('latest.pkl'))
     default_env.reset()
     teacher_null_dict = default_env.teacher.null_feedback()
 
