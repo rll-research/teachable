@@ -179,7 +179,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     def log_fn(rl_policy, il_policy, logger, itr):
-        if not itr % 5 == 0:
+        if not itr % args.log_every == 0:
             return
         if itr % 10 == 0:
             log_fn_vidrollout(rl_policy, il_policy, itr)
@@ -309,6 +309,7 @@ def main():
     parser.add_argument('--yes_distill', action='store_true')
     parser.add_argument('--rollout_temperature', type=float, default=1)
     parser.add_argument('--finetune_il', action='store_true')
+    parser.add_argument('--log_every', type=int, default=1)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -373,6 +374,7 @@ def main():
     additional_args['no_distill'] = args.no_distill
     additional_args['rollout_temperature'] = args.rollout_temperature
     additional_args['finetune_il'] = args.finetune_il
+    additional_args['log_every'] = args.log_every
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
