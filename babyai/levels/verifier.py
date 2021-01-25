@@ -357,7 +357,7 @@ class GoToUnknownInstr(GoToInstr):
     """
 
     def surface(self, env):
-        return 'go to an object'
+        return 'go to a object'
 
 
 class PickupInstr(ActionInstr):
@@ -477,7 +477,7 @@ class PutNextInstr(ActionInstr):
 class PutNextSameColorInstr(PutNextInstr):
 
     def surface(self, env):
-        return 'put ' + self.desc_move.surface(env) + f' next to a matching {self.desc_fixed.type}'
+        return 'put ' + self.desc_move.surface(env) + f' next to a {self.desc_fixed.type}'
 
 
 class SeqInstr(Instr):

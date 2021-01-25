@@ -109,7 +109,7 @@ class Curriculum(Serializable):
                 # Task we've seen before, but new instructions
                 Level_GoToGreenBox(**kwargs),  # 29
                 Level_PutNextSameColor(**kwargs),  # 30
-                Level_Seek(**kwargs),  # 31
+                # Level_Seek(**kwargs),  # 31
 
                 # New object
                 Level_Unlock(**kwargs),  # 32 ("unlock" is a completely new instruction)
