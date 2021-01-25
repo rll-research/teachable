@@ -179,6 +179,8 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic)
 
     def log_fn(rl_policy, il_policy, logger, itr):
+        if not itr % 5 == 0:
+            return
         if itr % 10 == 0:
             log_fn_vidrollout(rl_policy, il_policy, itr)
         policy_env_name = f'Policy{policy_name}-{env_name}'
