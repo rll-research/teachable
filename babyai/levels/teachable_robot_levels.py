@@ -378,8 +378,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
         types = ['door', 'key', 'ball', 'box']
         actions = ["go", "pick", "up", "open", "put"]
-        fillers = ["to", "next", "the", "a"]
-        misc = ["seek"]
+        fillers = ["to", "next", "the", "a", "an"]
+        misc = ["seek", "matching", "object", "then", "pad1", "pad2", "pad3"]
         return ['PAD'] + colors + types + actions + fillers + misc
 
     def to_vocab_index(self, mission, pad_length=None):
@@ -390,9 +390,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param pad_length: length to pad the mission string to
         :return: list of integer indices of length pad_length (or len(mission.split(" ")) if pad_length is not provided)
         """
-        words = mission.split(" ")
+        words = mission.replace(",", "").split(" ")
         vocab = self.vocab()
-        mission_list = [vocab.index(word) for word in words]
+        try:
+            mission_list = [vocab.index(word) for word in words]
+        except:
+            print("?")
         if pad_length is not None:
             mission_list = mission_list + [0] * (pad_length - len(mission_list))
         if len(mission_list) > pad_length:
@@ -413,7 +416,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        goal = self.to_vocab_index(self.mission, pad_length=9)
+        goal = self.to_vocab_index(self.mission, pad_length=15)
         obs_dict = {}
         additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
         obs_dict["obs"] = image

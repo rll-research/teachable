@@ -97,17 +97,28 @@ class Curriculum(Serializable):
             ]
 
             self.held_out_levels = [
-                # Held out levels (some bigger sizes, some new tasks, no new feedback)
-                # NOTE: this won't work with subgoals. We should consider introducing a NOVEL task which involves SUBGOALS
-                # we've seen before
-                Level_GoToObjMaze(**kwargs),  # 25 (new size only)
-                Level_Unlock(**kwargs),  # 26 ("unlock" is a completely new instruction)
-                Level_GoToImpUnlock(**kwargs),  # 27
-                # 31 (task was first seen 1 level before, now with the step of unlocking)
-                Level_UnblockPickup(**kwargs),  # 28 (known task, but now there's the extra step of unblocking)
-                Level_PutNext(**kwargs),  # 29
-                Level_Seek(**kwargs),  # 30
-                Level_GoToHeldout(**kwargs),  # 31
+                # Larger sizes than we've seen before
+                Level_PickupObjBigger(**kwargs),  # 27
+
+                # More distractors than we've seen before
+                Level_GoToObjDistractors(**kwargs),  # 26
+
+                # New object
+                Level_GoToHeldout(**kwargs),  # 29
+
+                # Task we've seen before, but new instructions
+                Level_GoToGreenBox(**kwargs),  # 30
+                Level_PutNextSameColor(**kwargs),  # 31
+                Level_Seek(**kwargs),  # 28
+
+                # New object
+                Level_Unlock(**kwargs),  # 32 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlock(**kwargs),  # 33
+                Level_UnblockPickup(**kwargs),  # 34 (known task, but now there's the extra step of unblocking)
+
+                # Chain multiple instructions together
+                Level_OpenDoorsDouble(**kwargs),  # 35
+                Level_GoToDouble(**kwargs),  # 36
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         else:
