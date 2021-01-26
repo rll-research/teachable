@@ -93,7 +93,7 @@ class Curriculum(Serializable):
                 Level_Open(**kwargs),  # 22
                 Level_GoTo(**kwargs),  # 23
                 Level_Pickup(**kwargs),  # 24
-                Level_PutNext(**kwargs),  # 25
+                # Level_PutNext(**kwargs),  # 25
             ]
 
             self.held_out_levels = [
@@ -203,7 +203,7 @@ class Curriculum(Serializable):
 
     def seed(self, i):
         for level in self.levels_list:
-            level.seed(i)
+            level.seed(int(i))
 
     def set_task(self, args=None):
         """
