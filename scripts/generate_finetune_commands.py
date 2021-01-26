@@ -15,6 +15,7 @@ parser.add_argument("--last_teacher", type=str, default='PreActionAdviceMultiple
 parser.add_argument("--finetune_envs_together", action='store_true')
 parser.add_argument("--generate_eval", action='store_true')
 parser.add_argument("--generate_finetune", action='store_true')
+parser.add_argument("--abstract_teacher_multiplier", type=int, default=3)
 args = parser.parse_args()
 if 'all' in args.teachers:
     args.teachers = ['first', 'last', 'none']
@@ -102,6 +103,9 @@ if args.generate_finetune:
                     no_distill = True
                 else:
                     raise NotImplementedError(teacher)
+                finetune_itrs = args.finetune_itrs
+                if teacher == 'last':
+                    finetune_itrs *= args.abstract_teacher_multiplier
                 s = get_command(policy, args.envs, args.finetune_itrs, 'none', args.num_rollouts, args.log_every,
                                 no_train_rl=no_train_rl, teacher_schedule=teacher_schedule,
                                 distillation_strategy=distillation_strategy,
