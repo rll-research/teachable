@@ -1,17 +1,21 @@
 from multiprocessing import Process, Pipe
 import gym
 
-def worker(conn, env, rollouts_per_meta_task):
+def worker(conn, env, rollouts_per_meta_task, seed):
     while True:
         cmd, data = conn.recv()
         if cmd == "step":
             obs, reward, done, info = env.step(data)
             if done:
                 if env.itr == rollouts_per_meta_task:
+                    if seed is not None:
+                        env.seed(seed)
                     env.set_task(None)
                 obs = env.reset()
             conn.send((obs, reward, done, info))
         elif cmd == "reset":
+            if seed is not None:
+                env.seed(seed)
             env.set_task(None)
             obs = env.reset()
             conn.send(obs)
@@ -33,7 +37,7 @@ def worker(conn, env, rollouts_per_meta_task):
 class ParallelEnv(gym.Env):
     """A concurrent execution of environments in multiple processes."""
 
-    def __init__(self, envs, rollouts_per_meta_task):
+    def __init__(self, envs, rollouts_per_meta_task, repeated_seed=None):
         assert len(envs) >= 1, "No environment given."
 
         self.envs = envs
@@ -41,6 +45,7 @@ class ParallelEnv(gym.Env):
         self.action_space = self.envs[0].action_space
         self.locals = []
         self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.repeated_seed = repeated_seed
         self.reset_processes()
 
     def reset_processes(self):
@@ -48,10 +53,11 @@ class ParallelEnv(gym.Env):
             self.end_processes()
         self.locals = []
         self.processes = []
-        for env in self.envs[1:]:
+        repeated_seed = self.repeated_seed if self.repeated_seed is not None else [None] * len(self.envs)
+        for env, seed in zip(self.envs[1:], repeated_seed[1:]):
             local, remote = Pipe()
             self.locals.append(local)
-            p = Process(target=worker, args=(remote, env, self.rollouts_per_meta_task))
+            p = Process(target=worker, args=(remote, env, self.rollouts_per_meta_task, seed))
             p.daemon = True
             p.start()
             remote.close()
@@ -60,6 +66,8 @@ class ParallelEnv(gym.Env):
     def reset(self):
         for local in self.locals:
             local.send(("reset", None))
+        if self.repeated_seed is not None:
+            self.envs[0].seed(self.repeated_seed[0])
         self.envs[0].set_task(None)
         results = [self.envs[0].reset()] + [local.recv() for local in self.locals]
         return results
@@ -75,6 +83,8 @@ class ParallelEnv(gym.Env):
             local.send(("step", action))  # TODO: does this reset?
         obs, reward, done, info = self.envs[0].step(actions[0])
         if done:
+            if self.repeated_seed is not None:
+                self.envs[0].seed(self.repeated_seed[0])
             self.envs[0].set_task(None)
             obs = self.envs[0].reset()
         results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
@@ -109,7 +119,7 @@ class ParallelEnv(gym.Env):
 class SequentialEnv(gym.Env):
     """A concurrent execution of environments in multiple processes."""
 
-    def __init__(self, envs, rollouts_per_meta_task):
+    def __init__(self, envs, rollouts_per_meta_task, repeated_seed=None):
         assert len(envs) >= 1, "No environment given."
 
         self.envs = envs
@@ -117,10 +127,15 @@ class SequentialEnv(gym.Env):
         self.action_space = self.envs[0].action_space
         self.locals = []
         self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.repeated_seed = repeated_seed
+        assert repeated_seed is None or len(repeated_seed) == len(envs), \
+            f"repeated seed has length {len(repeated_seed)} but should have length {len(envs)}"
 
     def reset(self):
         results = []
-        for env in self.envs:
+        for i, env in enumerate(self.envs):
+            if self.repeated_seed is not None:
+                env.seed(self.repeated_seed[i])
             env.set_task(None)
             results.append(env.reset())
         return results
@@ -137,6 +152,8 @@ class SequentialEnv(gym.Env):
             obs, reward, done, info = env.step(action)
             if done:
                 if env.itr == self.rollouts_per_meta_task:
+                    if self.repeated_seed is not None:
+                        env.seed(self.repeated_seed[i])
                     env.set_task(None)
                 obs = env.reset()
             results.append((obs, reward, done, info))

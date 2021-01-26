@@ -15,7 +15,7 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
-                 rollouts_per_meta_task=1, instr_dropout_prob=.5):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -56,9 +56,9 @@ class BaseAlgo(ABC):
         # Store parameters
 
         if parallel:
-            self.env = ParallelEnv(envs, rollouts_per_meta_task)
+            self.env = ParallelEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
         else:
-            self.env = SequentialEnv(envs, rollouts_per_meta_task)
+            self.env = SequentialEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
         self.acmodel = acmodel
         self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc

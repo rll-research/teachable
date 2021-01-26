@@ -113,8 +113,6 @@ class MetaSampler(BaseSampler):
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
-        self.update_tasks()
-
         obses = self.vec_env.reset()
 
         num_paths = 0

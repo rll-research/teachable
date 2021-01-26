@@ -95,7 +95,7 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": not args.sparse_reward,
+        # "intermediate_reward": not args.sparse_reward,
     }
     # curriculum_step = 26  # TODO: don't hardcode this!
     # env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
@@ -140,12 +140,15 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
         new_env.seed(i)
         new_env.set_task()
         new_env.reset()
+    repeated_seed = None if not args.repeated_seed else np.arange(1000, 1000 + args.num_envs)
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob,
+                   repeated_seed=repeated_seed)
+
     if 'optimizer' in model_data:
         algo.optimizer.load_state_dict(model_data['optimizer'])
 
@@ -154,11 +157,12 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     args.single_level = True
     args.reward_when_necessary = False  # TODO: make this a flag
 
+    num_eval_rollouts = args.num_envs if args.repeated_seed else num_rollouts
     finetune_sampler = MetaSampler(
         env=env,
         policy=policy,
         rollouts_per_meta_task=args.rollouts_per_meta_task,
-        meta_batch_size=num_rollouts,
+        meta_batch_size=num_eval_rollouts,
         max_path_length=args.max_path_length,
         parallel=False,
         envs_per_task=1,
@@ -186,9 +190,8 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
                 f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr \n')
         policy = il_policy if il_policy is not None else rl_policy
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
-        seeds = np.arange(1000, 1000 + finetune_sampler.meta_batch_size)
+        seeds = np.arange(1000, 1000 + num_eval_rollouts)
         finetune_sampler.vec_env.seed(seeds)
-        finetune_sampler.vec_env.set_tasks()
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                                 teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
         data = sample_processor.process_samples(paths, log_prefix='n/a', log_teacher=False)
@@ -319,6 +322,7 @@ def main():
     parser.add_argument('--finetune_il', action='store_true')
     parser.add_argument('--log_every', type=int, default=1)
     parser.add_argument('--finetune_teacher_first', type=int, default=0)
+    parser.add_argument('--repeated_seed', action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -385,6 +389,7 @@ def main():
     additional_args['finetune_il'] = args.finetune_il
     additional_args['log_every'] = args.log_every
     additional_args['finetune_teacher_first'] = args.finetune_teacher_first
+    additional_args['repeated_seed'] = args.repeated_seed
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
