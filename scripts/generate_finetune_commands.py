@@ -57,9 +57,9 @@ def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=Fa
     if no_train_rl:
         s += f'--no_train_rl '
     if teacher_schedule is not None:
-        s += f'--teacher_schedule {teacher_schedule}'
+        s += f'--teacher_schedule {teacher_schedule} '
     if distillation_strategy is not None:
-        s += f'--distillation_strategy {distillation_strategy}'
+        s += f'--distillation_strategy {distillation_strategy} '
     if yes_distill:
         s += f'--yes_distill '
     if no_distill:
