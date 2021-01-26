@@ -20,12 +20,12 @@ if 'all' in args.teachers:
     args.teachers = ['first', 'last', 'none']
 
 def get_policy_path(s):
-    base_path = pathlib.Path(os.getcwd()).joinpath('../meta-mb-internal/data')
+    base_path = pathlib.Path(os.getcwd()).joinpath('data')
     runs = []
     for run in base_path.iterdir():
         if s in run.name:
             runs.append(run)
-    assert len(runs) == 1, ("Must have single run", runs)
+    assert len(runs) == 1, ("Must have single run", s, runs)
     return runs[0]
 
 def get_teacher_name(teacher):
@@ -49,10 +49,10 @@ def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=Fa
     s = f'CUDA_VISIBLE_DEVICES=X python ../scripts/test_generalization.py ' \
         f'--policy "{policy_path}" ' \
         f'--envs {env_str} ' \
-        f'--save_dir eval_runs/T{index}_EVAL_{policy_name}_FINETUNE{itrs}_INSTR_{teacher} ' \
+        f'--save_dir eval_runs/T{index:04d}_EVAL_{policy_name}_FINETUNE{itrs}_INSTR_{teacher} ' \
         f'--finetune_itrs {itrs} ' \
         f'--teachers {teacher} ' \
-        f'--rollouts {rollouts} ' \
+        f'--num_rollouts {rollouts} ' \
         f'--log_every {log_every} '
     if no_train_rl:
         s += f'--no_train_rl '
@@ -82,7 +82,6 @@ if args.generate_finetune:
     for env in envs:
         for policy in args.policies:
             for teacher in args.teachers:
-                teacher_name = get_teacher_name(teacher)
                 if teacher == 'first':
                     no_train_rl = True
                     teacher_schedule = 'first_teacher'
@@ -101,7 +100,9 @@ if args.generate_finetune:
                     distillation_strategy = None
                     yes_distill = False
                     no_distill = True
-                s = get_command(policy, args.envs, args.finetune_itrs, teacher_name, args.num_rollouts, args.log_every,
+                else:
+                    raise NotImplementedError(teacher)
+                s = get_command(policy, args.envs, args.finetune_itrs, 'none', args.num_rollouts, args.log_every,
                                 no_train_rl=no_train_rl, teacher_schedule=teacher_schedule,
                                 distillation_strategy=distillation_strategy,
                                 yes_distill=yes_distill, no_distill=no_distill)
