@@ -83,12 +83,6 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
     from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
     from meta_mb.trainers.il_trainer import ImitationLearning
     from babyai.teacher_schedule import make_teacher_schedule
-    # from meta_mb.meta_envs.rl2_env import rl2env
-    # from meta_mb.envs.normalized_env import normalize
-    # from babyai.levels.curriculum import Curriculum
-
-    if args.finetune_il:
-        policy = copy.deepcopy(supervised_model)
 
     # TODO: consider deleting this!
     arguments = {
@@ -274,6 +268,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                             num_rollouts=num_rollouts, model_data=model_data)
+            policy, il_model, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))
             policy = copy.deepcopy(il_model)
         finetune_policy(env, env_index, policy, il_model,
                         finetune_path, args, teacher_null_dict,

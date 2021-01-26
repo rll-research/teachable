@@ -98,23 +98,23 @@ class Curriculum(Serializable):
 
             self.held_out_levels = [
                 # Larger sizes than we've seen before
-                Level_PickupObjBigger(**kwargs),  # 26
+                Level_PickupObjBigger(**kwargs),  # 26 test0
 
                 # More distractors than we've seen before
-                Level_GoToObjDistractors(**kwargs),  # 27
+                Level_GoToObjDistractors(**kwargs),  # 27 test1
 
                 # New object
-                Level_GoToHeldout(**kwargs),  # 28
+                Level_GoToHeldout(**kwargs),  # 28 test2
 
                 # Task we've seen before, but new instructions
-                Level_GoToGreenBox(**kwargs),  # 29
-                Level_PutNextSameColor(**kwargs),  # 30
-                # Level_Seek(**kwargs),  # 31
+                Level_GoToGreenBox(**kwargs),  # 29 test3
+                Level_PutNextSameColor(**kwargs),  # 30 test4
+                # Level_Seek(**kwargs),
 
                 # New object
-                Level_Unlock(**kwargs),  # 32 ("unlock" is a completely new instruction)
-                Level_GoToImpUnlock(**kwargs),  # 33
-                Level_UnblockPickup(**kwargs),  # 34 (known task, but now there's the extra step of unblocking)
+                Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlock(**kwargs),  # 32 test6
+                Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
 
                 # Chain multiple instructions together
                 # Level_OpenDoorsDouble(**kwargs),  # 35

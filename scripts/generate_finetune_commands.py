@@ -4,11 +4,13 @@ import pathlib
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--envs', nargs='+', type=str)
-parser.add_argument('--teachers', nargs='+', type=str, choices=['first', 'last', 'none', 'all'], default=['all'])
+parser.add_argument('--teachers', nargs='+', type=str, choices=['first', 'last', 'last_finetune', 'none', 'all'],
+                    default=['all'])
 parser.add_argument('--policies', nargs='+', required=True, type=str)
 parser.add_argument("--num_rollouts", type=int, default=10)
 parser.add_argument("--starting_index", type=int, default=0)
 parser.add_argument("--finetune_itrs", type=int, default=10)
+parser.add_argument("--finetune_teacher_itrs", type=int, default=3)
 parser.add_argument("--log_every", type=int, default=1)
 parser.add_argument("--first_teacher", type=str, default='PreActionAdvice')
 parser.add_argument("--last_teacher", type=str, default='PreActionAdviceMultiple')
@@ -42,7 +44,8 @@ def get_teacher_name(teacher):
 index = args.starting_index
 
 def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=False, teacher_schedule=None,
-                distillation_strategy=None, yes_distill=None, no_distill=None, finetune_il=None):
+                distillation_strategy=None, yes_distill=None, no_distill=None, finetune_il=None,
+                finetune_teacher_itrs=0):
     policy_path = get_policy_path(policy)
     policy_name = policy[1:5] if policy[0] == 'T' else policy[:4] # Assumes the policy name starts with Txxx or xxxx.
     env_str = ' '.join(envs)
@@ -54,7 +57,9 @@ def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=Fa
         f'--finetune_itrs {itrs} ' \
         f'--teachers {teacher} ' \
         f'--num_rollouts {rollouts} ' \
-        f'--log_every {log_every} '
+        f'--log_every {log_every} ' \
+        f'--finetune_teacher_itrs {finetune_teacher_itrs} '
+
     if no_train_rl:
         s += f'--no_train_rl '
     if teacher_schedule is not None:
@@ -73,6 +78,8 @@ def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=Fa
 if args.generate_eval:
     for policy in args.policies:
         for teacher in args.teachers:
+            if teacher == 'last_finetune':
+                continue
             teacher_name = get_teacher_name(teacher)
             s = get_command(policy, args.envs, 0, teacher_name, args.num_rollouts, 0)
             print(s)
@@ -89,7 +96,7 @@ if args.generate_finetune:
                     distillation_strategy = 'no_teachers'
                     yes_distill = True
                     no_distill = False
-                elif teacher == 'last':
+                elif teacher in ['last', 'last_finetune']:
                     no_train_rl = True
                     teacher_schedule = 'last_teacher'
                     distillation_strategy = 'no_teachers'
@@ -104,10 +111,12 @@ if args.generate_finetune:
                 else:
                     raise NotImplementedError(teacher)
                 finetune_itrs = args.finetune_itrs
+                finetune_teacher_itrs = args.finetune_teacher_itrs if teacher == 'last_finetune' else 0
                 if teacher == 'last':
                     finetune_itrs *= args.abstract_teacher_multiplier
                 s = get_command(policy, args.envs, finetune_itrs, 'none', args.num_rollouts, args.log_every,
                                 no_train_rl=no_train_rl, teacher_schedule=teacher_schedule,
                                 distillation_strategy=distillation_strategy,
-                                yes_distill=yes_distill, no_distill=no_distill)
+                                yes_distill=yes_distill, no_distill=no_distill,
+                                finetune_teacher_itrs=finetune_teacher_itrs)
                 print(s)
