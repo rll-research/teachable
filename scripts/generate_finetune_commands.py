@@ -58,7 +58,7 @@ def get_command(policy, envs, itrs, teacher, rollouts, log_every, no_train_rl=Fa
         f'--teachers {teacher} ' \
         f'--num_rollouts {rollouts} ' \
         f'--log_every {log_every} ' \
-        f'--finetune_teacher_itrs {finetune_teacher_itrs} '
+        f'--finetune_teacher_first {finetune_teacher_itrs} '
 
     if no_train_rl:
         s += f'--no_train_rl '
@@ -112,7 +112,7 @@ if args.generate_finetune:
                     raise NotImplementedError(teacher)
                 finetune_itrs = args.finetune_itrs
                 finetune_teacher_itrs = args.finetune_teacher_itrs if teacher == 'last_finetune' else 0
-                if teacher == 'last':
+                if teacher in ['last', 'last_finetune']:
                     finetune_itrs *= args.abstract_teacher_multiplier
                 s = get_command(policy, args.envs, finetune_itrs, 'none', args.num_rollouts, args.log_every,
                                 no_train_rl=no_train_rl, teacher_schedule=teacher_schedule,
