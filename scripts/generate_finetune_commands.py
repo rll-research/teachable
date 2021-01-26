@@ -106,7 +106,7 @@ if args.generate_finetune:
                 finetune_itrs = args.finetune_itrs
                 if teacher == 'last':
                     finetune_itrs *= args.abstract_teacher_multiplier
-                s = get_command(policy, args.envs, args.finetune_itrs, 'none', args.num_rollouts, args.log_every,
+                s = get_command(policy, args.envs, finetune_itrs, 'none', args.num_rollouts, args.log_every,
                                 no_train_rl=no_train_rl, teacher_schedule=teacher_schedule,
                                 distillation_strategy=distillation_strategy,
                                 yes_distill=yes_distill, no_distill=no_distill)
