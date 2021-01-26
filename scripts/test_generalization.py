@@ -262,6 +262,19 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
+        if args.finetune_teacher_first > 0:
+            finetune_teacher_args = copy.deepcopy(args)
+            finetune_teacher_args.n_itr = args.finetune_teacher_first
+            finetune_teacher_args.teacher_schedule = 'first_teacher'
+            finetune_teacher_args.distillation_strategy = 'all_teachers'
+            finetune_teacher_args.yes_distill = True
+            finetune_teacher_args.no_distill = False
+            finetune_policy(env, env_index, policy, il_model,
+                            finetune_path, finetune_teacher_args, teacher_null_dict,
+                            save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                            hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
+                            num_rollouts=num_rollouts, model_data=model_data)
+            policy = copy.deepcopy(il_model)
         finetune_policy(env, env_index, policy, il_model,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
@@ -310,6 +323,7 @@ def main():
     parser.add_argument('--rollout_temperature', type=float, default=1)
     parser.add_argument('--finetune_il', action='store_true')
     parser.add_argument('--log_every', type=int, default=1)
+    parser.add_argument('--finetune_teacher_first', type=int, default=0)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -375,6 +389,7 @@ def main():
     additional_args['rollout_temperature'] = args.rollout_temperature
     additional_args['finetune_il'] = args.finetune_il
     additional_args['log_every'] = args.log_every
+    additional_args['finetune_teacher_first'] = args.finetune_teacher_first
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
