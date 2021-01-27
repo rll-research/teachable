@@ -389,8 +389,8 @@ class Trainer(object):
                             self.il_trainer.acmodel, {k: k == teacher for k in teacher_train_dict.keys()}, f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                         if teacher == last_teacher:
-                            last_success = success
-                            last_accuracy = accuracy
+                            last_success = (success * self.args.swap_factor + last_success * (1 - self.args.swap_factor))
+                            last_accuracy = (accuracy * self.args.swap_factor + last_accuracy * (1 - self.args.swap_factor))
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     advance_curriculum = advance_curriculum and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
@@ -400,6 +400,9 @@ class Trainer(object):
             else:
                 advance_curriculum = False
                 run_policy_time = 0
+
+            logger.logkv('Rollout/last_success', last_success)
+            logger.logkv('Rollout/last_accuracy', last_accuracy)
 
             """ ------------------- Logging Stuff --------------------------"""
             logger.logkv('Itr', itr)

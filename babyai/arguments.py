@@ -116,6 +116,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--teacher_schedule', type=str, default='all_teachers')
         self.add_argument('--use_dagger', action='store_true')
         self.add_argument('--collect_with_oracle', action='store_true')
+        self.add_argument('--swap_factor', type=int, default=.5)
 
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])

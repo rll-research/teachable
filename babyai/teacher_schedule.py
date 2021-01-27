@@ -102,7 +102,7 @@ def easy_swap_harder_help(level, success_rate, accuracy_rate, easy_teacher, hard
 
 
 def easy_swap_harder_each_time(level, success_rate, accuracy_rate, easy_teacher, harder_teacher,
-                               success_intervention_cutoff=1, accuracy_intervention_cutoff=.95):
+                               success_intervention_cutoff=.99, accuracy_intervention_cutoff=.95):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
         return no_teacher_dict, None
