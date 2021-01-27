@@ -104,6 +104,9 @@ def finetune_policy(env, env_index, policy, supervised_model, save_name, args, t
 
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
 
+    if args.repeated_seed:
+        print("using repeated seed")
+        args.num_envs = num_rollouts
     args.model = 'default_il'
     if supervised_model is not None:
         il_trainer = ImitationLearning(supervised_model, env, args, distill_with_teacher=False,
