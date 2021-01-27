@@ -33,11 +33,30 @@ class ImitationLearning(object):
         self.modify_cc3_steps = modify_cc3_steps
 
     def modify_cc3(self, batch):
+        # Modify PAIO
         obs = batch.obs
-        for i in range(len(obs) - self.modify_cc3_steps):
-            future_obs = obs[i + self.modify_cc3_steps]['obs']
-            obs[i]['CartesianCorrections'] = future_obs
+        for i in range(len(obs) - 3):
+            if obs[i]['gave_PreActionAdviceMultipleRepeatedIndex']:
+                new_pa = np.zeros_like(obs[i]['PreActionAdviceMultipleRepeatedIndex'])
+                for j in range(3):  # next 3 actions
+                    timestep = i + 3
+                    next_action = batch.action[timestep].item()
+                    new_pa[j * 8 + next_action] = 1
+                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = new_pa
+                temp = 3
+            else:
+                if i == 0:
+                    continue
+                prev_pa = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][:-1]
+                prev_pa_index = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][-1]
+                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = np.concatenate([prev_pa, [prev_pa_index + 1]])
+                temp = 3
         batch.obs = obs
+        # obs = batch.obs
+        # for i in range(len(obs) - self.modify_cc3_steps):
+        #     future_obs = obs[i + self.modify_cc3_steps]['obs']
+        #     obs[i]['CartesianCorrections'] = future_obs
+        # batch.obs = obs
         return batch
 
     def preprocess_batch(self, batch, source):
