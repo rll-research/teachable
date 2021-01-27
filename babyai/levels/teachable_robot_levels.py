@@ -3,7 +3,7 @@ import pickle as pkl
 
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 from meta_mb.meta_envs.base import MetaEnv
-from gym_minigrid.minigrid import MiniGridEnv
+from gym_minigrid.minigrid import MiniGridEnv, OBJECT_TO_IDX, COLOR_TO_IDX
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
@@ -33,7 +33,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], **kwargs):
+                 cartesian_steps=[1], fully_observed=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -55,6 +55,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.task = {}
         self.itr = 0
         self.feedback_type = feedback_type
+        self.fully_observed = fully_observed
         super().__init__(**kwargs)
         if feedback_type is not None:
             rng = np.random.RandomState()
@@ -122,6 +123,16 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         else:
             teacher = None
         self.teacher = teacher
+
+    def get_full_observation(self):
+        env = self.unwrapped
+        full_grid = env.grid.encode()
+        full_grid[env.agent_pos[0]][env.agent_pos[1]] = np.array([
+            OBJECT_TO_IDX['agent'],
+            COLOR_TO_IDX['red'],
+            env.agent_dir
+        ])
+        return full_grid
 
     def sample_object(self):
         """
@@ -410,10 +421,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if available.
         :return: np array of the agent's observation
         """
-        grid, vis_mask = self.gen_obs_grid()
-
-        # Encode the partially observable view into a numpy array
-        image = grid.encode(vis_mask)
+        if self.fully_observed:
+            image = self.get_full_observation()
+        else:
+            grid, vis_mask = self.gen_obs_grid()
+            # Encode the partially observable view into a numpy array
+            image = grid.encode(vis_mask)
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 

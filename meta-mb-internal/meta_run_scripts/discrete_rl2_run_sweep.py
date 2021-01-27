@@ -118,6 +118,7 @@ def run_experiment(**config):
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
         "intermediate_reward": not args.sparse_reward,
+        "fully_observed": args.fully_observed,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     teacher_train_dict, _ = teacher_schedule(0, 0, 0)

@@ -144,6 +144,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--advice_dim', type=int, default=128)
         self.add_argument('--no_teacher', action='store_true')
         self.add_argument('--early_entropy_coef', type=float, default=None)
+        self.add_argument('--fully_observed', action='store_true')
 
         # Reward
         self.add_argument('--sparse_reward', action='store_true')
