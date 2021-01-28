@@ -12,13 +12,13 @@ class CartesianCorrectionsRepeatedIndex(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.next_state.flatten(), np.array([self.steps_since_lastfeedback])])
+        return np.concatenate([self.next_state.flatten(), self.get_last_feedback_indicator()])
 
     def random_feedback(self):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.random.uniform(0, 1, size=self.obs_size)
+        return np.concatenate([np.random.uniform(0, 1, size=self.obs_size), self.get_last_feedback_indicator()])
 
     def compute_feedback(self, oracle, last_action=-1):
         """
@@ -27,7 +27,7 @@ class CartesianCorrectionsRepeatedIndex(Teacher):
         # Copy so we don't mess up the state of the real oracle
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
-        return np.concatenate([self.next_state.flatten(), np.array([self.steps_since_lastfeedback])])
+        return np.concatenate([self.next_state.flatten(), self.get_last_feedback_indicator()])
 
     def success_check(self, state, action, oracle):
         if self.past_timestep_feedback is None:

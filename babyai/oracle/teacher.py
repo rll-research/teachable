@@ -139,6 +139,11 @@ class Teacher:
         """
         raise NotImplementedError
 
+    def get_last_feedback_indicator(self):
+        vec = np.zeros(self.feedback_frequency)
+        vec[self.steps_since_lastfeedback] = 1
+        return vec
+
     def feedback_condition(self):
         """
         Returns true when we should give feedback.
