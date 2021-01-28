@@ -35,7 +35,6 @@ class MetaSampler(BaseSampler):
         envs_per_task=None,
         parallel=False,
         reward_predictor=None,
-        # supervised_model=None,
         obs_preprocessor=None
     ):
         super(MetaSampler, self).__init__(env, policy, rollouts_per_meta_task, max_path_length)
@@ -109,8 +108,6 @@ class MetaSampler(BaseSampler):
         policy.reset(dones=[True] * self.meta_batch_size)
         if self.reward_predictor is not None:
             self.reward_predictor.reset(dones=[True] * self.meta_batch_size)
-        # if self.supervised_model is not None:
-        #     self.supervised_model.reset(dones=[True] * self.meta_batch_size)
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()

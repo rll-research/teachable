@@ -719,10 +719,7 @@ class Trainer(object):
         """
         Gets the current policy and env for storage
         """
-        if self.il_trainer is None:
-            il_optimizer = None
-        else:
-            il_optimizer = self.il_trainer.optimizer_dict
+        il_optimizer = self.il_trainer.optimizer_dict
         d = dict(itr=itr,
                  policy=self.policy_dict,
                  env=self.env,

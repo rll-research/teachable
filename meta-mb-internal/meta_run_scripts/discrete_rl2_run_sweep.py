@@ -286,7 +286,6 @@ def run_experiment(**config):
         curriculum_step=curriculum_step,
         il_trainer=il_trainer,
         reward_predictor=reward_predictor,
-        # rp_trainer=rp_trainer,
         is_debug=is_debug,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,

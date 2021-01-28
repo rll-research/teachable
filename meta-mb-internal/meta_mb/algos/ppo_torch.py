@@ -28,7 +28,6 @@ class PPOAlgo(BaseAlgo):
         for policy in policy_dict.values():
             policy.train()
             policy.to(self.device)
-        # self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
         self.lr = lr
@@ -41,7 +40,6 @@ class PPOAlgo(BaseAlgo):
         self.single_env = envs[0]
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # self.acmodel.to(self.device)
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
         assert self.num_frames_per_proc % self.recurrence == 0
@@ -60,7 +58,6 @@ class PPOAlgo(BaseAlgo):
         self.optimizer_dict = {
             k: torch.optim.Adam(policy.parameters(), self.lr, (beta1, beta2), eps=adam_eps) for k, policy in policy_dict.items()
         }
-        # self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (beta1, beta2), eps=adam_eps)
         self.batch_num = 0
 
     def set_optimizer(self):

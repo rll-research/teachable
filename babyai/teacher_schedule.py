@@ -62,16 +62,6 @@ def last_teacher(level, teacher_list):
     return teacher_train_dict, distillation_dict
 
 
-def last_teacher_advance_last_sparse(level, teacher_list):
-    no_teacher_dict = {t: False for t in teacher_list}
-    teacher_train_dict = {t: t == teacher_list[-1] for t in teacher_list}
-    distillation_dict = {t: t == teacher_list[-1] for t in teacher_list}
-    advancement_dict = {t: t == teacher_list[-1] for t in teacher_list}
-    if level == -1:  # Generate no_teacher_dict
-        return no_teacher_dict, None
-    return teacher_train_dict, distillation_dict, advancement_dict
-
-
 #### FIRST TEACHER ####
 # Train on the first teacher, distill to first
 def train_first_distill_first(level, teacher_list):
