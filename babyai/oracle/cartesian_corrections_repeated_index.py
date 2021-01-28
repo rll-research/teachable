@@ -32,7 +32,7 @@ class CartesianCorrectionsRepeatedIndex(Teacher):
     def success_check(self, state, action, oracle):
         if self.past_timestep_feedback is None:
             return False
-        followed_opt_action = np.allclose(state.flatten(), self.past_timestep_feedback[:-1])
+        followed_opt_action = np.allclose(state.flatten(), self.past_timestep_feedback[:-self.feedback_frequency])
         return followed_opt_action
 
     def step_ahead(self, oracle, last_action=-1):
