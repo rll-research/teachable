@@ -40,11 +40,30 @@ class ImitationLearning(object):
         self.modify_cc3_steps = modify_cc3_steps
 
     def modify_cc3(self, batch):
+        # Modify PAIO
         obs = batch.obs
-        for i in range(len(obs) - self.modify_cc3_steps):
-            future_obs = obs[i + self.modify_cc3_steps]['obs']
-            obs[i]['CartesianCorrections'] = future_obs
+        for i in range(len(obs) - 3):
+            if obs[i]['gave_PreActionAdviceMultipleRepeatedIndex']:
+                new_pa = np.zeros_like(obs[i]['PreActionAdviceMultipleRepeatedIndex'])
+                for j in range(3):  # next 3 actions
+                    timestep = i + 3
+                    next_action = batch.action[timestep].item()
+                    new_pa[j * 8 + next_action] = 1
+                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = new_pa
+                temp = 3
+            else:
+                if i == 0:
+                    continue
+                prev_pa = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][:-1]
+                prev_pa_index = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][-1]
+                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = np.concatenate([prev_pa, [prev_pa_index + 1]])
+                temp = 3
         batch.obs = obs
+        # obs = batch.obs
+        # for i in range(len(obs) - self.modify_cc3_steps):
+        #     future_obs = obs[i + self.modify_cc3_steps]['obs']
+        #     obs[i]['CartesianCorrections'] = future_obs
+        # batch.obs = obs
         return batch
 
     def preprocess_batch(self, batch, source):
@@ -370,7 +389,7 @@ class ImitationLearning(object):
             inds = [index + 1 for index in inds]
         return obss_list_original, actions, action_teacher, done, inds_original, mask
 
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='powerset',
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='distill_powerset',
                 relabel=False, relabel_dict={}):
 
         preprocessed_batch = self.preprocess_batch(demo_batch, source)
@@ -396,7 +415,7 @@ class ImitationLearning(object):
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
-        elif distill_target == 'not_none':
+        elif distill_target == 'all_but_none':
             for key_set in powerset:
                 if len(key_set) > 1:
                     continue
@@ -412,7 +431,28 @@ class ImitationLearning(object):
                 log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
-        elif distill_target == 'all':
+        elif distill_target == 'single_teachers':
+            for key in teachers_dict.keys():
+                if not teachers_dict[key]:
+                    continue
+                teacher_subset_dict = {k: k == key for k in teachers_dict.keys()}
+                batch = copy.deepcopy(preprocessed_batch)
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                                                          teacher_dict=teacher_subset_dict)
+                logs[(key,)] = log
+        elif distill_target == 'single_teachers_none':
+            teacher_dict_list = [((), {k: False for k in teachers_dict.keys()})]
+            for key in teachers_dict.keys():
+                if not teachers_dict[key]:
+                    continue
+                teacher_dict_list.append(((key,), {k: k == key for k in teachers_dict.keys()}))
+            for key_set, teacher_subset_dict in teacher_dict_list:
+                batch = copy.deepcopy(preprocessed_batch)
+                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                                                          teacher_dict=teacher_subset_dict)
+                logs[key_set] = log
+
+        elif distill_target == 'all_teachers':
             key_set = tuple(set(keys))
             if len(key_set) > 1:
                 raise NotImplementedError
@@ -421,7 +461,7 @@ class ImitationLearning(object):
             log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
-        elif distill_target == 'none':
+        elif distill_target == 'no_teachers':
             key_set = tuple(set())
             teacher_subset_dict = {}
             for k in teachers_dict.keys():

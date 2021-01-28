@@ -59,7 +59,7 @@ class Curriculum(Serializable):
                 Level_UnblockPickup(**kwargs),  # 33
             ]
         elif curriculum_type == 1:
-            self.levels_list = [
+            self.train_levels = [
                 # Easy levels; intro all PreAction tokens and most subgoals
                 Level_GoToRedBallNoDists(**kwargs),
                 # 0 --> intro L, R, Forward PreAction, Explore and GoNextTo subgoals
@@ -93,19 +93,34 @@ class Curriculum(Serializable):
                 Level_Open(**kwargs),  # 22
                 Level_GoTo(**kwargs),  # 23
                 Level_Pickup(**kwargs),  # 24
-                # Level_PutNext(**kwargs),  # 25 Removed b/c the bot can't reliably beat this
+                Level_PutNext(**kwargs),  # 25
             ]
 
             self.held_out_levels = [
-                # Held out levels (some bigger sizes, some new tasks, no new feedback)
-                # NOTE: this won't work with subgoals. We should consider introducing a NOVEL task which involves SUBGOALS
-                # we've seen before
-                Level_GoToObjMaze(**kwargs),  # 26 (new size only)
-                Level_Unlock(**kwargs),  # 30 ("unlock" is a completely new instruction)
-                Level_GoToImpUnlock(**kwargs),
-                # 31 (task was first seen 1 level before, now with the step of unlocking)
-                Level_UnblockPickup(**kwargs),  # 33 (known task, but now there's the extra step of unblocking)
+                # Larger sizes than we've seen before
+                Level_PickupObjBigger(**kwargs),  # 26 test0
+
+                # More distractors than we've seen before
+                Level_GoToObjDistractors(**kwargs),  # 27 test1
+
+                # New object
+                Level_GoToHeldout(**kwargs),  # 28 test2
+
+                # Task we've seen before, but new instructions
+                Level_GoToGreenBox(**kwargs),  # 29 test3
+                Level_PutNextSameColor(**kwargs),  # 30 test4
+                # Level_Seek(**kwargs),
+
+                # New object
+                Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlock(**kwargs),  # 32 test6
+                Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
+
+                # Chain multiple instructions together
+                # Level_OpenDoorsDouble(**kwargs),  # 35
+                # Level_GoToDouble(**kwargs),  # 36
             ]
+            self.levels_list = self.train_levels + self.held_out_levels
         else:
             raise NotImplementedError(curriculum_type)
 
@@ -143,6 +158,10 @@ class Curriculum(Serializable):
                 return hooked
             else:
                 return orig_attr
+
+    def update_distribution_from_other(self, other):
+        self.distribution = other.distribution.copy()
+        self.index = other.index
 
     def advance_curriculum(self, index=None):
         if index is None:
@@ -182,11 +201,17 @@ class Curriculum(Serializable):
         self.distribution[index] = 1
         self.index = index
 
+    def seed(self, i):
+        for level in self.levels_list:
+            level.seed(int(i))
+
     def set_task(self, args=None):
         """
         Each time we set a task, sample which babyai level to use from the categorical distribution array.
         Then set the task as usual.
         """
-        env_index = np.random.choice(np.arange(len(self.distribution)), p=self.distribution)
+        env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
+        # print("Setting task! Index is currently", env_index, np.random.uniform())
         self._wrapped_env = self.levels_list[env_index]
+        # print(type(self._wrapped_env))
         return self._wrapped_env.set_task(args)

@@ -46,12 +46,11 @@ class MetaSampler(BaseSampler):
         self.envs_per_task = rollouts_per_meta_task if envs_per_task is None else envs_per_task
         assert self.envs_per_task == 1, "When we changed to the new model, we didn't check if the format could handle > 1 envs_per_task.  If it does, feel free to remove this."
         self.meta_batch_size = meta_batch_size
-        self.parallel = parallel
+        self.parallel = False
         self.total_timesteps_sampled = 0
         self.reward_predictor = reward_predictor
         # self.supervised_model = supervised_model
         # setup vectorized environment
-        self.parallel = False  # TODO: remove
         self.obs_preprocessor = obs_preprocessor
         self.policy = None
         if self.parallel:
@@ -80,7 +79,7 @@ class MetaSampler(BaseSampler):
         return obs
 
     def obtain_samples(self, log=False, log_prefix='', random=False, advance_curriculum=False,
-                       policy=None, teacher_dict={}, max_action=False):
+                       policy=None, teacher_dict={}, max_action=False, show_instrs=True, temperature=1):
         """
         Collect batch_size trajectories from each task
 
@@ -115,8 +114,6 @@ class MetaSampler(BaseSampler):
         # initial reset of meta_envs
         if advance_curriculum:
             self.vec_env.advance_curriculum()
-        self.update_tasks()
-
         obses = self.vec_env.reset()
 
         num_paths = 0
@@ -124,14 +121,14 @@ class MetaSampler(BaseSampler):
         while num_paths < total_paths:
             itrs += 1
             t = time.time()
-            obses = self.obs_preprocessor(obses, teacher_dict)
+            obses = self.obs_preprocessor(obses, teacher_dict, show_instrs=show_instrs)
             if random:
                 actions = np.stack([[self.env.action_space.sample()] for _ in range(len(obses.obs))], axis=0)
                 agent_infos = [[{'mean': np.zeros_like(self.env.action_space.sample()),
                                  'log_std': np.zeros_like(
                                      self.env.action_space.sample())}] * self.envs_per_task] * self.meta_batch_size
             else:
-                actions, agent_infos = policy.get_actions_t(obses)
+                actions, agent_infos = policy.get_actions_t(obses, temp=temperature)
                 if max_action:
                     actions = np.array([np.argmax(d['probs']) for d in agent_infos], dtype=np.int32)
 
@@ -157,6 +154,7 @@ class MetaSampler(BaseSampler):
                 running_paths[idx]["rewards"].append(reward)
                 running_paths[idx]["dones"].append(done)
                 running_paths[idx]["env_infos"].append(env_info)
+                del agent_info['memory']
                 running_paths[idx]["agent_infos"].append(agent_info)
 
                 # if running path is done, add it to paths and empty the running path

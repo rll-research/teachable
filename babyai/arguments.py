@@ -107,15 +107,16 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollouts_per_meta_task', type=int, default=1)
 
         # Teacher
-        self.add_argument('--feedback_type', nargs='+', default=["None"],
-                          choices=["None", "PreActionAdviceMultiple", "PreActionAdvice", "CartesianCorrections",
-                                   "SubgoalCorrections", "XYCorrections", "OffsetCorrections"])
+        self.add_argument('--feedback_type', nargs='+', default=["None"])#,
+                          #choices=["None", "PreActionAdviceMultiple", "PreActionAdvice", "CartesianCorrections",
+                          #         "SubgoalCorrections", "XYCorrections", "OffsetCorrections"])
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
-        self.add_argument('--cartesian_steps', type=int, default=1)
+        self.add_argument('--cartesian_steps', nargs='+', type=int, default=[1])
         self.add_argument('--teacher_schedule', type=str, default='all_teachers')
         self.add_argument('--use_dagger', action='store_true')
         self.add_argument('--collect_with_oracle', action='store_true')
+        self.add_argument('--swap_factor', type=float, default=.5)
 
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])
@@ -131,6 +132,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--augment', action='store_true')
         self.add_argument('--min_itr_steps', type=int, default=0)
         self.add_argument('--min_itr_steps_distill', type=int, default=0)
+        self.add_argument('--advancement_count', type=int, default=1)
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
@@ -142,9 +144,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--advice_dim', type=int, default=128)
         self.add_argument('--no_teacher', action='store_true')
         self.add_argument('--early_entropy_coef', type=float, default=None)
+        self.add_argument('--fully_observed', action='store_true')
 
         # Reward
-        self.add_argument('--intermediate_reward', type=bool, default=True)
+        self.add_argument('--sparse_reward', action='store_true')
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--use_rp_inner', action='store_true')
         self.add_argument('--use_rp_outer', action='store_true')
@@ -157,12 +160,13 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--buffer_capacity', type=int, default=500)
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
+        self.add_argument('--distillation_strategy', type=str, choices=[
+            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
+        ], default='distill_powerset')
         self.add_argument('--distill_label_weightings', action='store_true')
-        self.add_argument('--distill_all_teachers', action='store_true')
-        self.add_argument('--distill_no_teachers', action='store_true')
-        self.add_argument('--distill_all_but_none', action='store_true')
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--instr_dropout_prob', type=float, default=0.)
+        self.add_argument('--rollout_without_instrs', action='store_true')
         self.add_argument('--modify_cc3', action='store_true')
         self.add_argument('--relabel', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
@@ -175,6 +179,16 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--gae_lambda', type=float, default=.99)
         self.add_argument('--num_envs', type=int, default=20)
         self.add_argument('--zero_all_thresholds', action='store_true')
+
+        # Arguments mostly used with finetuning
+        self.add_argument('--no_distill', action='store_true')
+        self.add_argument('--yes_distill', action='store_true')
+        self.add_argument('--no_rollouts', action='store_true')
+        self.add_argument('--yes_rollouts', action='store_true')
+        self.add_argument('--leave_out_object', action='store_true')
+
+        # Miscellaneous
+        self.add_argument('--rollout_temperature', type=float, default=1)
 
     def parse_args(self, arg=None):
         """

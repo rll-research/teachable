@@ -7,6 +7,7 @@ import time
 from babyai.rl.format import default_preprocess_obss
 from babyai.rl.utils import DictList, ParallelEnv, SequentialEnv
 from babyai.rl.utils.supervised_losses import ExtraInfoCollector
+from babyai.rl.utils.dictlist import merge_dictlists
 
 
 class BaseAlgo(ABC):
@@ -14,7 +15,7 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
-                 rollouts_per_meta_task=1):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -55,14 +56,13 @@ class BaseAlgo(ABC):
         # Store parameters
 
         if parallel:
-            self.env = ParallelEnv(envs, rollouts_per_meta_task)
+            self.env = ParallelEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
         else:
-            self.env = SequentialEnv(envs, rollouts_per_meta_task)
+            self.env = SequentialEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
         self.policy_dict = acmodel
         for policy in self.policy_dict.values():
             policy.train()
         example_policy = list(self.policy_dict.values())[0]
-        # self.acmodel.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
         self.lr = lr
@@ -75,6 +75,7 @@ class BaseAlgo(ABC):
         self.reshape_reward = reshape_reward
         self.aux_info = aux_info
         self.rollouts_per_meta_task = rollouts_per_meta_task
+        self.instr_dropout_prob = instr_dropout_prob
 
         # Store helpers values
 
@@ -126,7 +127,7 @@ class BaseAlgo(ABC):
         self.log_success = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True):
+                            collect_reward=True, train=True, collection_dict={}):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -148,13 +149,21 @@ class BaseAlgo(ABC):
 
         """
         active_teachers = [k for k, v in teacher_dict.items() if v]
-        assert len(active_teachers) <= 2
+        assert len(active_teachers) < 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
+        if train:
+            acmodel.train()
+        else:
+            acmodel.eval()
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-            preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
+            instr_dropout_prob = 0# if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
+            preprocessed_obs = [self.preprocess_obss([o], teacher_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
+                for o in self.obs]
+            preprocessed_obs = merge_dictlists(preprocessed_obs)
 
             with torch.no_grad():
                 dist, model_results = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
@@ -170,8 +179,13 @@ class BaseAlgo(ABC):
                 action_to_take = self.env.get_teacher_action()
             elif use_dagger:
                 with torch.no_grad():
-                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict)
-                    dagger_dist, dagger_model_results = acmodel(dagger_obs,
+                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
+                    dagger_teachers = [k for k, v in teacher_dict.items() if v]
+                    assert len(dagger_teachers) < 2
+                    teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
+                    dagger_model = self.policy_dict[teacher]
+                    dagger_dist, dagger_model_results = dagger_model(dagger_obs,
                                                                      self.dagger_memory * self.mask.unsqueeze(1))
                     self.dagger_memory = dagger_model_results['memory']
                     action_to_take = dagger_dist.sample().cpu().numpy()
@@ -186,7 +200,7 @@ class BaseAlgo(ABC):
             self.obss[i] = self.obs
             self.obs = obs
             self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
-
+    
             self.memories[i] = self.memory
             self.memory = memory
 
@@ -236,7 +250,8 @@ class BaseAlgo(ABC):
 
         # Add advantage and return to experiences
 
-        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict)
+        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict,
+                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
         with torch.no_grad():
             next_value = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
 
@@ -315,8 +330,13 @@ class BaseAlgo(ABC):
         num_feedback_advice = 0
         for key in exps.obs[0].keys():
             if 'gave_' in key:
-                log[key] = np.sum([d[key] for d in exps.obs])
-                num_feedback_advice += np.sum([d[key] for d in exps.obs])
+                teacher_name = key[5:]
+                # Only count collection for the teachers we'll actually use
+                if not collection_dict[teacher_name]:
+                    log[key] = 0
+                else:
+                    log[key] = np.sum([d[key] for d in exps.obs])
+                    num_feedback_advice += np.sum([d[key] for d in exps.obs])
         log["num_feedback_advice"] = num_feedback_advice
         log["num_feedback_reward"] = np.sum(exps.env_infos.gave_reward) if collect_reward else 0
         for key in exps.env_infos.keys():

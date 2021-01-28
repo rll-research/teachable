@@ -38,6 +38,7 @@ def args_type(default):
 
 def get_exp_name(args):
     EXP_NAME = args.prefix
+    return EXP_NAME
     feedback_type = str(args.feedback_type)
     feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]", ",", " "]])
     EXP_NAME += '_teacher' + feedback_type
@@ -68,7 +69,6 @@ def load_model(args):
     policy = saved_model['policy']
     optimizer = saved_model.get('optimizer', None)
     policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
-    policy.hidden_state = None
     if original_config.continue_train is True:
         start_itr = saved_model['itr']
         curriculum_step = saved_model['curriculum_step']
@@ -110,7 +110,7 @@ def run_experiment(**config):
         log_dict = {}
     arguments = {
         "start_loc": 'all',
-        "include_holdout_obj": True,
+        "include_holdout_obj": not args.leave_out_object,
         "persist_goal": not args.reset_goal,
         "persist_objs": not args.reset_objs,
         "persist_agent": not args.reset_agent,
@@ -118,10 +118,11 @@ def run_experiment(**config):
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": args.intermediate_reward,
+        "intermediate_reward": not args.sparse_reward,
+        "fully_observed": args.fully_observed,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
-    teacher_train_dict, _, _ = teacher_schedule(0, 0, 0)
+    teacher_train_dict, _ = teacher_schedule(0, 0, 0)
     if args.zero_all_thresholds:
         args.success_threshold_rl = 0
         args.success_threshold_rollout_teacher = 0
@@ -230,13 +231,18 @@ def run_experiment(**config):
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    for i, new_env in enumerate(envs):
+        new_env.update_distribution_from_other(env)
+        new_env.seed(i)
+        new_env.set_task()
+        new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
     algo = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, augmenter=augmenter)
+                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.instr_dropout_prob)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -245,7 +251,7 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor)
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
 
     if optimizer is not None:
         algo.optimizer.load_state_dict(optimizer)
@@ -260,7 +266,7 @@ def run_experiment(**config):
 
     if not is_debug:
         log_formats.append('tensorboard')
-        log_formats.append('wandb')
+        # log_formats.append('wandb')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)

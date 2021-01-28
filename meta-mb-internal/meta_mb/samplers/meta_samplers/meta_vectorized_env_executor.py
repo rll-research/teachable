@@ -19,6 +19,13 @@ class MetaIterativeEnvExecutor(object):
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
         self.envs = np.asarray([copy.deepcopy(env) for _ in range(meta_batch_size * envs_per_task)])
+        seeds = np.random.choice(range(10 ** 6), size=meta_batch_size, replace=False)
+        self.meta_batch_size = meta_batch_size
+        for new_env, seed in zip(self.envs, seeds):
+            new_env.update_distribution_from_other(env)
+            new_env.seed(int(seed))
+            new_env.set_task()
+            new_env.reset()
         self.ts = np.zeros(len(self.envs), dtype='int')  # time steps
         self.max_path_length = max_path_length
 
@@ -46,12 +53,13 @@ class MetaIterativeEnvExecutor(object):
         self.ts += 1
         dones = np.logical_or(self.ts >= self.max_path_length, dones)
         for i in np.argwhere(dones).flatten():
+            self.envs[i].set_task()
             obs[i] = self.envs[i].reset()
             self.ts[i] = 0
 
         return obs, rewards, dones, env_infos
 
-    def set_tasks(self, tasks):
+    def set_tasks(self, tasks=[None]):
         """
         Sets a list of tasks to each environment
 
@@ -70,6 +78,8 @@ class MetaIterativeEnvExecutor(object):
         Returns:
             (list): list of (np.ndarray) with the new initial observations.
         """
+        for env in self.envs:
+            env.set_task()
         obses = [env.reset() for env in self.envs]
         self.ts[:] = 0
         return obses
@@ -87,6 +97,19 @@ class MetaIterativeEnvExecutor(object):
         """
         advances = [env.set_dropout_proportion(dropout_proportion) for env in self.envs]
         return advances
+
+    def render(self):
+        """
+        Changes the dropout level
+        """
+        imgs = [env.render('rgb_array') for env in self.envs]
+        return imgs
+
+    def seed(self, seeds=None):
+        if seeds is None:
+            seeds = np.random.choice(range(10 ** 6), size=self.meta_batch_size, replace=False)
+        for env, seed in zip(self.envs, seeds):
+            env.seed(int(seed))
 
     @property
     def num_envs(self):
@@ -129,6 +152,9 @@ class MetaParallelEnvExecutor(object):
             p.start()
         for remote in self.work_remotes:
             remote.close()
+        self.set_level_distribution(env.index)
+        self.set_tasks()
+        self.reset()
 
     def step(self, actions):
         """
@@ -194,10 +220,42 @@ class MetaParallelEnvExecutor(object):
         Args:
             tasks (list): list of the tasks for each worker
         """
+        if tasks is None:
+            tasks = [None] * len(self.remotes)
         for remote, task in zip(self.remotes, tasks):
             remote.send(('set_task', task))
         for remote in self.remotes:
             remote.recv()
+
+    def seed(self, seeds):
+        """
+        Sets a list of tasks to each worker
+
+        Args:
+            tasks (list): list of the tasks for each worker
+        """
+        for remote, seed in zip(self.remotes, seeds):
+            remote.send(('seed', seed))
+        for remote in self.remotes:
+            remote.recv()
+
+    def set_level_distribution(self, index):
+        """
+        Sets a list of tasks to each worker
+
+        Args:
+            tasks (list): list of the tasks for each worker
+        """
+        for remote in self.remotes:
+            remote.send(('set_level_distribution', index))
+        for remote in self.remotes:
+            remote.recv()
+
+    def render(self):
+        for remote in self.remotes:
+            remote.send(('render', 'rgb_array'))
+        imgs = [remote.recv() for remote in self.remotes]
+        return imgs
 
     @property
     def num_envs(self):
@@ -226,6 +284,8 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
     parent_remote.close()
 
     envs = [pickle.loads(env_pickle) for _ in range(n_envs)]
+    for env in envs:
+        env.seed(int(seed))
     np.random.seed(seed)
 
     ts = np.zeros(n_envs, dtype='int')
@@ -242,12 +302,15 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
             for i in range(n_envs):
                 if dones[i] or (ts[i] >= max_path_length):
                     dones[i] = True
+                    envs[i].set_task()
                     obs[i] = envs[i].reset()
                     ts[i] = 0
             remote.send((obs, rewards, dones, infos))
 
         # reset all the environments of the worker
         elif cmd == 'reset':
+            for env in envs:
+                env.set_task()
             obs = [env.reset() for env in envs]
             ts[:] = 0
             remote.send(obs)
@@ -268,5 +331,19 @@ def worker(remote, parent_remote, env_pickle, n_envs, max_path_length, seed):
             remote.close()
             break
 
+        elif cmd == 'seed':
+            for env in envs:
+                env.seed(int(data))
+            remote.send(None)
+
+        elif cmd == 'set_level_distribution':
+            for env in envs:
+                env.set_level_distribution(data)
+            remote.send(None)
+
+        elif cmd == 'render':
+            img = [env.render('rgb_array') for env in envs]
+            remote.send(img)
+
         else:
-            raise NotImplementedError
+            raise NotImplementedError(cmd)

@@ -3,14 +3,18 @@ import pickle as pkl
 
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 from meta_mb.meta_envs.base import MetaEnv
-from gym_minigrid.minigrid import MiniGridEnv
+from gym_minigrid.minigrid import MiniGridEnv, OBJECT_TO_IDX, COLOR_TO_IDX
 from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
 from babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
+from babyai.oracle.pre_action_advice_multiple_copy import PreActionAdviceMultipleCopy
+from babyai.oracle.pre_action_advice_repeated import PreActionAdviceMultipleRepeated
+from babyai.oracle.pre_action_advice_repeated_index import PreActionAdviceMultipleRepeatedIndex
 from babyai.oracle.cartesian_corrections import CartesianCorrections
+from babyai.oracle.cartesian_corrections_repeated_index import CartesianCorrectionsRepeatedIndex
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.offset_corrections import OffsetCorrections
 from babyai.oracle.xy_corrections import XYCorrections
@@ -30,7 +34,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=1, **kwargs):
+                 cartesian_steps=[1], fully_observed=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -52,40 +56,66 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.task = {}
         self.itr = 0
         self.feedback_type = feedback_type
+        self.fully_observed = fully_observed
         super().__init__(**kwargs)
         if feedback_type is not None:
             rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
+            if type(cartesian_steps) is int:
+                cartesian_steps = [cartesian_steps]
+            assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
+                "you must provide either one cartesian_steps value for all teachers or one per teacher"
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
                 "you must provide either one feedback_freq value for all teachers or one per teacher"
+            if len(cartesian_steps) == 1:
+                cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
             if len(feedback_freq) == 1:
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
-            for ft, ff in zip(feedback_type, feedback_freq):
+            for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
                 if ft == 'None':
                     teacher = DummyAdvice(Bot, self)
                 elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
-                                               feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                               feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                              feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdvice2':
+                    teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdviceMultiple1':
+                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
+                                                      feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdviceMultipleCopy':
+                    teacher = PreActionAdviceMultipleCopy(Bot, self, feedback_always=feedback_always,
+                                                      feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdviceMultipleRepeated':
+                    teacher = PreActionAdviceMultipleRepeated(Bot, self, feedback_always=feedback_always,
+                                                      feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdviceMultipleRepeatedIndex':
+                    teacher = PreActionAdviceMultipleRepeatedIndex(Bot, self, feedback_always=feedback_always,
+                                                              feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                      feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'CartesianCorrections':
                     obs_size = self.reset()['obs'].flatten().size
                     teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                   feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'CCIO':
+                    obs_size = self.reset()['obs'].flatten().size
+                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
+                                                   feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                 feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'OffsetCorrections':
                     teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                                feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'XYCorrections':
                     teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
-                                            feedback_frequency=ff, cartesian_steps=cartesian_steps)
+                                            feedback_frequency=ff, cartesian_steps=cs)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
@@ -95,17 +125,27 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             teacher = None
         self.teacher = teacher
 
+    def get_full_observation(self):
+        env = self.unwrapped
+        full_grid = env.grid.encode()
+        full_grid[env.agent_pos[0]][env.agent_pos[1]] = np.array([
+            OBJECT_TO_IDX['agent'],
+            COLOR_TO_IDX['red'],
+            env.agent_dir
+        ])
+        return full_grid
+
     def sample_object(self):
         """
         Choose a random object (not a door).  If specified, hold out the color grey and type box.
         :return: (object type, object color).  Both are strings.
         """
         if self.include_holdout_obj:
-            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
-            obj_type = np.random.choice(['key', 'ball', 'box'])
+            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'yellow', 'grey'])
+            obj_type = self.np_random.choice(['key', 'ball', 'box'])
         else:
-            color = np.random.choice(['red', 'green', 'blue', 'purple', 'yellow'])
-            obj_type = np.random.choice(['box', 'ball'])
+            color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'grey'])
+            obj_type = self.np_random.choice(['key', 'box', 'ball'])
         return obj_type, color
 
     def make_mission(self):
@@ -351,7 +391,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         types = ['door', 'key', 'ball', 'box']
         actions = ["go", "pick", "up", "open", "put"]
         fillers = ["to", "next", "the", "a"]
-        misc = ["follow_teacher"]
+        misc = ["object"]
+        # misc = ["seek", "matching", "object", "then", "pad1", "pad2", "pad3"]
         return ['PAD'] + colors + types + actions + fillers + misc
 
     def to_vocab_index(self, mission, pad_length=None):
@@ -362,9 +403,12 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :param pad_length: length to pad the mission string to
         :return: list of integer indices of length pad_length (or len(mission.split(" ")) if pad_length is not provided)
         """
-        words = mission.split(" ")
+        words = mission.replace(",", "").split(" ")
         vocab = self.vocab()
-        mission_list = [vocab.index(word) for word in words]
+        try:
+            mission_list = [vocab.index(word) for word in words]
+        except:
+            print("?")
         if pad_length is not None:
             mission_list = mission_list + [0] * (pad_length - len(mission_list))
         if len(mission_list) > pad_length:
@@ -378,14 +422,16 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if available.
         :return: np array of the agent's observation
         """
-        grid, vis_mask = self.gen_obs_grid()
-
-        # Encode the partially observable view into a numpy array
-        image = grid.encode(vis_mask)
+        if self.fully_observed:
+            image = self.get_full_observation()
+        else:
+            grid, vis_mask = self.gen_obs_grid()
+            # Encode the partially observable view into a numpy array
+            image = grid.encode(vis_mask)
 
         assert hasattr(self, 'mission'), "environments must define a textual mission string"
 
-        goal = self.to_vocab_index(self.mission, pad_length=9)
+        goal = self.to_vocab_index(self.mission, pad_length=15)
         obs_dict = {}
         additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
         obs_dict["obs"] = image

@@ -25,7 +25,7 @@ else:
         "feedback_type": ['PreActionAdviceMultiple', 'CartesianCorrections', 'XYCorrections', 'OffsetCorrections',
                           'PreActionAdvice', 'SubgoalCorrections'],
         "feedback_freq": [1],
-        "cartesian_steps": 2,
+        "cartesian_steps": 3,
         "num_meta_tasks": 1,
         "intermediate_reward": True,
     }
