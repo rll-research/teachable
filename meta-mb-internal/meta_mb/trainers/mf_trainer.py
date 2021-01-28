@@ -102,6 +102,7 @@ class Trainer(object):
         self.advancement_count_threshold = getattr(args, 'advancement_count', 1)
         self.advancement_count = 0
         self.success_dict = {k: 0 for k in self.no_teacher_dict.keys()}
+        self.success_dict['none'] = 0
 
     def check_advance_curriculum(self, episode_logs, data):
         if episode_logs is None:
