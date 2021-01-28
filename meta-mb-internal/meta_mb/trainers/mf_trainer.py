@@ -101,6 +101,7 @@ class Trainer(object):
         self.log_fn = log_fn
         self.advancement_count_threshold = getattr(args, 'advancement_count', 1)
         self.advancement_count = 0
+        self.success_dict = {k: 0 for k in self.no_teacher_dict.keys()}
 
     def check_advance_curriculum(self, episode_logs, data):
         if episode_logs is None:
@@ -384,6 +385,10 @@ class Trainer(object):
                         advance_curriculum_teacher, success, accuracy = self.run_supervised(
                             self.policy_dict[teacher], {k: k == teacher for k in teacher_train_dict.keys()}, f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
+                        past_success = self.success_dict[teacher]
+                        self.success_dict[teacher] = success * self.args.swap_factor + past_success * (
+                                1 - self.args.swap_factor)
+                        advance_curriculum_teacher = advance_curriculum_teacher and self.success_dict[teacher]
                         if teacher == last_teacher:
                             last_success = (success * self.args.swap_factor + last_success * (1 - self.args.swap_factor))
                             last_accuracy = (accuracy * self.args.swap_factor + last_accuracy * (1 - self.args.swap_factor))
@@ -528,6 +533,7 @@ class Trainer(object):
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
                 last_accuracy = 0
                 last_success = 0
+                self.success_dict = {k: 0 for k in self.success_dict.keys()}
                 self.curriculum_step += 1
                 if self.curriculum_step >= len(self.env.train_levels):
                     break  # We've finished the curriculum!
