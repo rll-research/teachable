@@ -291,7 +291,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Distillation ---------------------"""
-            should_distill = advance_curriculum and \
+            should_distill = self.args.self_distill and advance_curriculum and \
                              self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.yes_distill:
                 should_distill = True
