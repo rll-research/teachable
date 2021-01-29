@@ -9,6 +9,7 @@ import numpy as np
 from copy import deepcopy
 from babyai.oracle.post_action_advice import PostActionAdvice
 from babyai.oracle.pre_action_advice import PreActionAdvice
+from babyai.oracle.pre_action_advice_bad1 import PreActionAdviceBad1
 from babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
 from babyai.oracle.pre_action_advice_multiple_copy import PreActionAdviceMultipleCopy
 from babyai.oracle.pre_action_advice_repeated import PreActionAdviceMultipleRepeated
@@ -80,6 +81,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                                feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'PreActionAdviceBad1':
+                    teacher = PreActionAdviceBad1(Bot, self, feedback_always=feedback_always,
                                               feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'PreActionAdvice2':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
