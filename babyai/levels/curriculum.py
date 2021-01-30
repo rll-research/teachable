@@ -126,8 +126,13 @@ class Curriculum(Serializable):
 
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
-        self.distribution = np.zeros((len(self.levels_list)))
-        self.distribution[start_index] = 1
+        if advance_curriculum_func == 'uniform':
+            prob_mass = 1 / (start_index + 1)
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[:start_index + 1] = prob_mass
+        else:
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[start_index] = 1
         self._wrapped_env = self.levels_list[start_index]
         self.index = start_index
 
@@ -179,6 +184,11 @@ class Curriculum(Serializable):
             num_past_levels = index
             prev_env_prob = 0.1 / num_past_levels
             self.distribution[:index] = prev_env_prob
+        elif self.advance_curriculum_func == 'uniform':
+            # uniform probability over all envs we've seen so far
+            self.distribution = np.zeros((len(self.levels_list)))
+            prob = 0.1 / (index + 1)
+            self.distribution[:index + 1] = prob
         else:
             raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
         self.index = index

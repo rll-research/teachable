@@ -119,7 +119,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--swap_factor', type=float, default=.5)
 
         # Curriculum
-        self.add_argument('--advance_curriculum_func', type=str, default='one_hot', choices=["one_hot", "smooth"])
+        self.add_argument('--advance_curriculum_func', type=str, default='one_hot',
+                          choices=["one_hot", "smooth", "uniform"])
         self.add_argument('--success_threshold_rl', type=float, default=1)
         self.add_argument('--success_threshold_rollout_teacher', type=float, default=1)
         self.add_argument('--success_threshold_rollout_no_teacher', type=float, default=1)
