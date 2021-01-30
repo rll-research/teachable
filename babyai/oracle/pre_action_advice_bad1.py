@@ -27,7 +27,7 @@ class PreActionAdviceBad1(Teacher):
         true_index = np.random.randint(3)
         arrs = [self.one_hotify([i]) for i in random]
         arrs[true_index] = self.one_hotify(self.next_action)
-        return np.concatenate(arrs + [true_index])
+        return np.concatenate(arrs + [np.array([true_index])])
 
     def one_hotify(self, index):
         correction = np.zeros((self.action_space.n + 1,))
