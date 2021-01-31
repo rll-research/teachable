@@ -93,7 +93,7 @@ class Trainer(object):
         self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.no_teacher_dict.keys()})
         self.obs_preprocessor = obs_preprocessor
         self.next_train_itr = log_dict.get('next_train_itr', start_itr)
-        self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 10)
+        self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 5)
         self.eval_heldout = eval_heldout
         self.augmenter = augmenter
         self.log_fn = log_fn
@@ -248,10 +248,10 @@ class Trainer(object):
                 # Decide whether to train RL next itr
                 if advance_curriculum:
                     self.next_train_itr = itr + self.num_train_skip_itrs
-                    self.num_train_skip_itrs += 2
+                    self.num_train_skip_itrs += 5
                 else:
                     self.next_train_itr = itr + 1
-                    self.num_train_skip_itrs = 2
+                    self.num_train_skip_itrs = 5
                     last_success = 0
                     last_accuracy = 0
             should_store_data = raw_samples_data is not None and (
@@ -544,7 +544,7 @@ class Trainer(object):
                     break
                 self.itrs_on_level = 0
                 self.next_train_itr = itr + 1
-                self.num_train_skip_itrs = 10
+                self.num_train_skip_itrs = 5
 
         logger.log("Training finished")
 
