@@ -117,10 +117,11 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--use_dagger', action='store_true')
         self.add_argument('--collect_with_oracle', action='store_true')
         self.add_argument('--swap_factor', type=float, default=.5)
+        self.add_argument('--include_zeros', action='store_true')
 
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot',
-                          choices=["one_hot", "smooth", "uniform"])
+                          choices=["one_hot", "smooth", "uniform", 'four_levels'])
         self.add_argument('--success_threshold_rl', type=float, default=1)
         self.add_argument('--success_threshold_rollout_teacher', type=float, default=1)
         self.add_argument('--success_threshold_rollout_no_teacher', type=float, default=1)

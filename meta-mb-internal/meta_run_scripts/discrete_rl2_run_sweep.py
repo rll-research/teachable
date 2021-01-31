@@ -140,10 +140,12 @@ def run_experiment(**config):
             teacher_null_dict = env.teacher.null_feedback()
         except Exception as e:
             teacher_null_dict = {}
-        obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
+        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
 
         policy_dict = {}
         for teacher in list(teacher_null_dict.keys()) + ['none']:
+            if not args.include_zeros:
+                advice_size = 0 if teacher == 'none' else sum(obs[teacher].shape)
             policy = ACModel(action_space=env.action_space,
                              env=env,
                              image_dim=args.image_dim,
