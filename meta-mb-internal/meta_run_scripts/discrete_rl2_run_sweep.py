@@ -78,19 +78,9 @@ def load_model(args):
 
     reward_predictor = saved_model['reward_predictor']
     reward_predictor.hidden_state = None
-    if 'supervised_model' in saved_model:
-        # The supervised model can either be the same model as the policy or a different model
-        if args.self_distill and args.distill_same_model:
-            supervised_model = policy
-        elif args.self_distill:
-            supervised_model = saved_model['supervised_model']
-        else:
-            supervised_model = None
-    else:
-        supervised_model = None
     il_optimizer = saved_model.get('il_optimizer', None)
     log_dict = saved_model.get('log_dict', {})
-    return policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+    return policy, reward_predictor, optimizer, start_itr, curriculum_step, args, \
         il_optimizer, log_dict
 
 
@@ -103,7 +93,7 @@ def run_experiment(**config):
     set_seed(args.seed)
     original_saved_path = args.saved_path
     if original_saved_path is not None:
-        policy, supervised_model, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+        policy, reward_predictor, optimizer, start_itr, curriculum_step, args, \
             il_optimizer, log_dict = load_model(args)
     else:
         il_optimizer = None
@@ -188,18 +178,6 @@ def run_experiment(**config):
         print("ADDING SUP!!!")
         obs = env.reset()
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
-        supervised_model = ACModel(action_space=env.action_space,
-                                   env=env,
-                                   image_dim=args.image_dim,
-                                   memory_dim=args.memory_dim,
-                                   instr_dim=args.instr_dim,
-                                   lang_model=args.instr_arch,
-                                   use_instr=not args.no_instr,
-                                   use_memory=not args.no_mem,
-                                   arch=args.arch,
-                                   advice_dim=args.advice_dim,
-                                   advice_size=advice_size,
-                                   num_modules=args.num_modules)
 
     args.model = 'default_il'
     modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None

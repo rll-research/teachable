@@ -44,7 +44,6 @@ class Trainer(object):
         exp_name="",
         curriculum_step=0,
         il_trainer=None,
-        supervised_model=None,
         reward_predictor=None,
         rp_trainer=None,
         is_debug=False,
@@ -72,7 +71,6 @@ class Trainer(object):
         self.exp_name = exp_name
         self.curriculum_step = curriculum_step
         self.il_trainer = il_trainer
-        self.supervised_model = supervised_model
         self.reward_predictor = reward_predictor
         self.rp_trainer = rp_trainer
         self.is_debug = is_debug
@@ -204,7 +202,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             should_collect = (not self.args.no_collect) and (
-                (not skip_training_rl) or self.supervised_model is not None)
+                (not skip_training_rl) or self.args.self_distill)
             should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
@@ -485,7 +483,7 @@ class Trainer(object):
             should_save_video = (itr % self.save_videos_every == 0) or (
                 itr == self.args.n_itr - 1) or advance_curriculum
             # If we're just collecting, don't log
-            if (self.args.no_train_rl and self.supervised_model is None):
+            if self.args.no_train_rl and self.args.self_distill:
                 should_save_video = False
             if self.args.yes_rollouts:
                 should_save_video = True
