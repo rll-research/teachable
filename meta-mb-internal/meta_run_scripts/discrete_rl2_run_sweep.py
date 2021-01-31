@@ -145,7 +145,7 @@ def run_experiment(**config):
         policy_dict = {}
         for teacher in list(teacher_null_dict.keys()) + ['none']:
             if not args.include_zeros:
-                advice_size = 0 if teacher == 'none' else sum(obs[teacher].shape)
+                advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
             policy = ACModel(action_space=env.action_space,
                              env=env,
                              image_dim=args.image_dim,
