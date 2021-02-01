@@ -329,6 +329,7 @@ def main():
     parser.add_argument('--log_every', type=int, default=1)
     parser.add_argument('--finetune_teacher_first', type=int, default=0)
     parser.add_argument('--repeated_seed', action='store_true')
+    parser.add_argument('--distillation_steps', type=int, default=None)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -396,6 +397,8 @@ def main():
     additional_args['log_every'] = args.log_every
     additional_args['finetune_teacher_first'] = args.finetune_teacher_first
     additional_args['repeated_seed'] = args.repeated_seed
+    if args.distillation_steps is not None:
+        additional_args['distillation_steps'] = args.distillation_steps
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
