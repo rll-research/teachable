@@ -37,10 +37,11 @@ def load_policy(path):
     return policy, env, args, saved_model
 
 
-def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic, args,
+def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic, args, seed=0,
                 video_name='generalization_vids'):
     if not save_dir.exists():
         save_dir.mkdir()
+    env.seed(seed)
     env.reset()
     if teachers == ['all']:
         teacher_dict = {f: True for f in env.feedback_type}
@@ -80,7 +81,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
-                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}):
+                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0):
     # Normally we would put the imports up top, but we also import this file in Trainer
     # Importing here prevents us from getting stuck in infinite loops
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -141,12 +142,13 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     )
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    offset = seed
     for i, new_env in enumerate(envs):
         new_env.update_distribution_from_other(env)
-        new_env.seed(i)
+        new_env.seed(i + offset * 100)
         new_env.set_task()
         new_env.reset()
-    repeated_seed = None if not args.repeated_seed else np.arange(1000, 1000 + args.num_envs)
+    repeated_seed = None if not args.repeated_seed else np.arange(1000 * seed, 1000 * seed + args.num_envs)
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
@@ -179,7 +181,8 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
 
     def log_fn_vidrollout(policy, itr):
         test_success_checkpoint(heldout_env, save_dir, 3, teachers, policy=policy, policy_name=policy_name,
-                                env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args)
+                                env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args,
+                                seed=seed)
 
     def log_fn(policy, logger, itr):
         assert len(teachers) == 1
@@ -196,7 +199,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
             with open(full_save_dir.joinpath('results.csv'), 'w') as f:
                 f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr \n')
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
-        seeds = np.arange(1000, 1000 + num_eval_rollouts)
+        seeds = np.arange(1000 * seed, 1000 * seed + num_eval_rollouts)
         finetune_sampler.vec_env.seed(seeds)
         paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                                 teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
@@ -247,7 +250,8 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
 
 
 def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
-                 policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={}):
+                 policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
+                 seed=0):
     if policy is None:
         policy, _, args, model_data = load_policy(policy_path)
         for k, v in additional_args.items():
@@ -264,6 +268,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         finetune_path = full_save_dir.joinpath('finetuned_policy')
         if not finetune_path.exists():
             finetune_path.mkdir()
+        args.seed = seed
         if args.finetune_teacher_first > 0:
             finetune_teacher_args = copy.deepcopy(args)
             finetune_teacher_args.n_itr = args.finetune_teacher_first
@@ -271,6 +276,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
             finetune_teacher_args.distillation_strategy = 'all_teachers'
             finetune_teacher_args.yes_distill = True
             finetune_teacher_args.no_distill = False
+            if seed is not None:
+                finetune_teacher_args.seed = seed
             finetune_policy(env, env_index, policy,
                             finetune_path, finetune_teacher_args, teacher_null_dict,
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
@@ -285,7 +292,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
     assert len(teachers) == 1
     teacher_policy = policy[teachers[0]]
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir, num_rollouts,
-                                                                           teachers, hide_instrs, stochastic, args)
+                                                                           teachers, hide_instrs, stochastic, args, seed)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(
@@ -294,14 +301,15 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
 
 
 def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
-                            policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True, args=None):
+                            policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True, args=None,
+                            seed=0):
     policy_env_name = f'Policy{policy_name}-{env_name}'
     full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
                                                                            teachers, hide_instrs, stochastic, args,
-                                                                           f'vid_{itr}')
+                                                                           seed, f'vid_{itr}')
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     return success_rate, stoch_accuracy, det_accuracy
 
@@ -330,6 +338,7 @@ def main():
     parser.add_argument('--finetune_teacher_first', type=int, default=0)
     parser.add_argument('--repeated_seed', action='store_true')
     parser.add_argument('--distillation_steps', type=int, default=None)
+    parser.add_argument('--seeds', nargs='+', default=[0], type=int)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -414,11 +423,12 @@ def main():
             inner_env = env
             while hasattr(inner_env, '_wrapped_env'):
                 inner_env = inner_env._wrapped_env
-            test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
-                         policy_path=policy_path.joinpath(policy_name),
-                         policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
-                         hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
-                         additional_args=additional_args)
+            for seed in args.seeds:
+                test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
+                             policy_path=policy_path.joinpath(policy_name),
+                             policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
+                             hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
+                             additional_args=additional_args, seed=seed)
 
 
 if __name__ == '__main__':
