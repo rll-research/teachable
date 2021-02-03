@@ -192,7 +192,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         if itr % 10 == 0:
             log_fn_vidrollout(policy, itr)
         policy_env_name = f'Policy{policy_name}-{env_name}'
-        full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
+        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
         if itr == 0:
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
@@ -265,7 +265,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     if n_itr > 0:
-        finetune_path = full_save_dir.joinpath('finetuned_policy')
+        finetune_path = full_save_dir.joinpath(f'finetuned_policy{seed}')
         if not finetune_path.exists():
             finetune_path.mkdir()
         args.seed = seed
@@ -304,7 +304,7 @@ def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
                             policy_name="", env_name="", hide_instrs=False, itr=-1, stochastic=True, args=None,
                             seed=0):
     policy_env_name = f'Policy{policy_name}-{env_name}'
-    full_save_dir = save_dir.joinpath(policy_env_name + '_checkpoint')
+    full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
