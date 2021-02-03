@@ -10,7 +10,7 @@ from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def load_policy(path):
@@ -344,7 +344,7 @@ def main():
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
 
-    _, default_env, config, model_data = load_policy(policy_path.joinpath('latest.pkl'))
+    _, default_env, config, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_env.reset()
     teacher_null_dict = default_env.teacher.null_feedback()
 
