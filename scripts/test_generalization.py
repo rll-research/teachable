@@ -282,13 +282,13 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                             finetune_path, finetune_teacher_args, teacher_null_dict,
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                            num_rollouts=num_rollouts, model_data=model_data)
+                            num_rollouts=num_rollouts, model_data=model_data, seed=seed)
             policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))
         finetune_policy(env, env_index, policy,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                        num_rollouts=num_rollouts, model_data=model_data)
+                        num_rollouts=num_rollouts, model_data=model_data, seed=seed)
     assert len(teachers) == 1
     teacher_policy = policy[teachers[0]]
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir, num_rollouts,
