@@ -127,7 +127,8 @@ def easy_swap_harder_each_time(level, success_rate, accuracy_rate, easy_teacher,
     return teacher_train_dict, distillation_dict
 
 
-def make_teacher_schedule(feedback_types, teacher_schedule):
+def make_teacher_schedule(feedback_types, teacher_schedule, success_intervention_cutoff=.95,
+                          accuracy_intervention_cutoff=.95, remove_easy_level=13):
     feedback_types = [teacher for teacher in feedback_types if not teacher == 'None']
     if teacher_schedule == 'none':
         return lambda level, a, b: no_teacher(level, feedback_types)
@@ -152,11 +153,15 @@ def make_teacher_schedule(feedback_types, teacher_schedule):
         assert len(feedback_types) == 2
         return lambda level, success_rate, accuracy_rate: easy_swap_harder_each_time(level, success_rate, accuracy_rate,
                                                                                      feedback_types[0],
-                                                                                     feedback_types[1])
+                                                                                     feedback_types[1],
+                                                                                     success_intervention_cutoff=success_intervention_cutoff,
+                                                                                     accuracy_intervention_cutoff=accuracy_intervention_cutoff)
     elif teacher_schedule == 'easy_swap_harder_help':
         assert len(feedback_types) == 2
         return lambda level, success_rate, accuracy_rate: easy_swap_harder_help(level, success_rate, accuracy_rate,
                                                                                 feedback_types[0],
-                                                                                feedback_types[1])
+                                                                                feedback_types[1],
+                                                                                success_intervention_cutoff=success_intervention_cutoff,
+                                                                                accuracy_intervention_cutoff=accuracy_intervention_cutoff)
     else:
         raise ValueError(f'Unknown distillation scheme {teacher_schedule}, {feedback_types}')

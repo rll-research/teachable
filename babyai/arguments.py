@@ -118,6 +118,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--collect_with_oracle', action='store_true')
         self.add_argument('--swap_factor', type=float, default=.5)
         self.add_argument('--include_zeros', action='store_true')
+        self.add_argument('--success_intervention_cutoff', type=float, default=.95)
+        self.add_argument('--accuracy_intervention_cutoff', type=float, default=.95)
 
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot',

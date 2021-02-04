@@ -111,7 +111,9 @@ def run_experiment(**config):
         "intermediate_reward": not args.sparse_reward,
         "fully_observed": args.fully_observed,
     }
-    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
+    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule,
+                                             args.success_intervention_cutoff,
+                                             args.accuracy_intervention_cutoff)
     teacher_train_dict, _ = teacher_schedule(0, 0, 0)
     if args.zero_all_thresholds:
         args.success_threshold_rl = 0
