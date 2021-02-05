@@ -6,6 +6,7 @@ import pickle as pkl
 import torch
 
 from babyai.rl.utils.dictlist import merge_dictlists, DictList
+from babyai.utils.obs_preprocessor import obss_preprocessor_distill
 
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation

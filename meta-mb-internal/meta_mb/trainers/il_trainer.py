@@ -184,7 +184,7 @@ class ImitationLearning(object):
                 break
 
             # Incrementing the remaining indices
-            inds = [index + 1 for index in inds]
+            inds += 1
         # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
         # Indexes currently holds the first index of each chunk.
         indexes = self.starting_indexes(num_frames)
@@ -411,8 +411,7 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = True
                     else:
                         teacher_subset_dict[k] = False
-                batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all_but_none':
@@ -427,8 +426,7 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = True
                     else:
                         teacher_subset_dict[k] = False
-                batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'single_teachers':
@@ -436,8 +434,7 @@ class ImitationLearning(object):
                 if not teachers_dict[key]:
                     continue
                 teacher_subset_dict = {k: k == key for k in teachers_dict.keys()}
-                batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[(key,)] = log
         elif distill_target == 'single_teachers_none':
@@ -447,8 +444,7 @@ class ImitationLearning(object):
                     continue
                 teacher_dict_list.append(((key,), {k: k == key for k in teachers_dict.keys()}))
             for key_set, teacher_subset_dict in teacher_dict_list:
-                batch = copy.deepcopy(preprocessed_batch)
-                log = self.run_epoch_recurrence_one_batch(batch, is_training=is_training, source=source,
+                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
 

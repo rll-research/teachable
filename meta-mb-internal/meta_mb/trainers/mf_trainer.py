@@ -47,10 +47,10 @@ class Trainer(object):
         reward_predictor=None,
         rp_trainer=None,
         is_debug=False,
-        eval_every=200,
+        eval_every=10,
         save_every=10,
         log_every=10,
-        save_videos_every=1000,
+        save_videos_every=100,
         log_and_save=True,
         teacher_schedule=lambda a, b: ({}, {}),
         obs_preprocessor=None,
@@ -369,7 +369,7 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             should_policy_rollout = ((itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or advance_curriculum)
+                itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum))
             if self.args.yes_rollouts:
                 should_policy_rollout = True
             if self.args.no_rollouts:
@@ -435,7 +435,7 @@ class Trainer(object):
             logger.logkv('Time/VidRollout', rollout_time)
             logger.logkv('Time/Saving', saving_time)
             time_unaccounted = time_itr - time_training - time_collection - \
-                               rp_splice_time - time_rp_train - run_policy_time - distill_time - rollout_time
+                               rp_splice_time - time_rp_train - run_policy_time - distill_time - rollout_time - saving_time
             logger.logkv('Time/Unaccounted', time_unaccounted)
 
             all_time_training += time_training
@@ -481,7 +481,7 @@ class Trainer(object):
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (
-                itr == self.args.n_itr - 1) or advance_curriculum
+                itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum)
             # If we're just collecting, don't log
             if self.args.no_train_rl and self.args.self_distill:
                 should_save_video = False
@@ -509,7 +509,8 @@ class Trainer(object):
             step = self.curriculum_step
 
             if self.log_and_save:
-                if (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or advance_curriculum:
+                if (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or \
+                   (not self.args.single_level and advance_curriculum):
                     saving_time_start = time.time()
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)

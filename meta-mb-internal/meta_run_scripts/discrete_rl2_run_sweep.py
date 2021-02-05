@@ -7,7 +7,7 @@ from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcess
 from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
-from babyai.utils.obs_preprocessor import make_obs_preprocessor
+from babyai.utils.obs_preprocessor import make_obs_preprocessor, make_obs_preprocessor_choose_teachers
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
 

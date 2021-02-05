@@ -27,7 +27,7 @@ class CartesianCorrections(Teacher):
         # Copy so we don't mess up the state of the real oracle
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
-        return np.array(self.next_state)
+        return np.array(self.next_state).flatten()
 
     def success_check(self, state, action, oracle):
         if self.past_timestep_feedback is None:
