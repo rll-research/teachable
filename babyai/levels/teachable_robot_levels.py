@@ -18,6 +18,7 @@ from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.cartesian_corrections_repeated_index import CartesianCorrectionsRepeatedIndex
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
 from babyai.oracle.offset_corrections import OffsetCorrections
+from babyai.oracle.offset_corrections_repeated_index import OFFIO
 from babyai.oracle.xy_corrections import XYCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.dummy_advice import DummyAdvice
@@ -116,6 +117,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                                  feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'OffsetCorrections':
                     teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
+                                                feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'OFFIO':
+                    teacher = OFFIO(Bot, self, feedback_always=feedback_always,
                                                 feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'XYCorrections':
                     teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
