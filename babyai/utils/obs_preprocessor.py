@@ -33,7 +33,7 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                     advice_list.append(v)
                 elif k == 'instr':
                     mask = int(show_instrs)
-                    obs_output[k].append(v * mask)
+                    obs_output[k].append(np.array(v) * mask)
                 elif k in ['obs', 'extra']:
                     obs_output[k].append(v)
                 else:
