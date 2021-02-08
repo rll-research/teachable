@@ -66,7 +66,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
-                 advice_size=-1, num_modules=1, reconstruction=False):
+                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -93,6 +93,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.advice_size = advice_size
         self.num_modules = num_modules
         self.reconstruction = reconstruction
+        self.reconstruct_advice_size = reconstruct_advice_size
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -178,7 +179,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.reconstructor = nn.Sequential(
                 nn.Linear(self.embedding_size + self.advice_dim, 64),
                 nn.Tanh(),
-                nn.Linear(64, self.advice_size)
+                nn.Linear(64, self.reconstruct_advice_size * 2)
             )
 
         # Initialize parameters correctly
@@ -346,17 +347,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         x = self.critic(embedding)
         value = x.squeeze(1)
 
-        # if self.reconstruction:
-        #     reconstructed_advice = self.reconstructor(embedding)
-        # else:
-        #     reconstructed_advice = None
-
         info = {
             "probs": probs,
             "value": value,
             "memory": memory,
-            # "advice": reconstructed_advice,
         }
+
+        if self.reconstruction:
+            info['advice'] = self.reconstructor(embedding)
 
         return dist, info
 

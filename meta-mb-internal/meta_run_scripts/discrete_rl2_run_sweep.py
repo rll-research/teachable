@@ -145,6 +145,7 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
 
         policy_dict = {}
+        full_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys()])
         for teacher in list(teacher_null_dict.keys()) + ['none']:
             if not args.include_zeros:
                 advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
@@ -160,7 +161,8 @@ def run_experiment(**config):
                              advice_dim=args.advice_dim,
                              advice_size=advice_size,
                              num_modules=args.num_modules,
-                         reconstruction=args.reconstruction)
+                             reconstruction=args.reconstruction,
+                             reconstruct_advice_size=full_advice_size)
             policy_dict[teacher] = policy
 
         reward_predictor = None
@@ -171,7 +173,8 @@ def run_experiment(**config):
     modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                   instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps)
+                                   instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps,
+                                   reconstruct=args.reconstruction)
     if il_optimizer is not None:
         il_trainer.optimizer.load_state_dict(il_optimizer)
 

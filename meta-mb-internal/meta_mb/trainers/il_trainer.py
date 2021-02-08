@@ -8,13 +8,14 @@ from babyai.rl.utils.dictlist import DictList
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5, modify_cc3_steps=None):
+                 label_weightings=False, instr_dropout_prob=.5, modify_cc3_steps=None, reconstruct=False):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
         self.preprocess_obs = preprocess_obs
         self.label_weightings = label_weightings
         self.instr_dropout_prob = instr_dropout_prob
+        self.reconstruct = reconstruct
 
         utils.seed(self.args.seed)
         self.env = env
@@ -30,11 +31,9 @@ class ImitationLearning(object):
             k: torch.optim.Adam(policy.parameters(), self.args.lr, eps=self.args.optim_eps) for k, policy in
             self.policy_dict.items()
         }
-        # self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.args.lr, eps=self.args.optim_eps)
         self.scheduler_dict = {
             k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in self.optimizer_dict.items()
         }
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.99)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.modify_cc3_steps = modify_cc3_steps
@@ -83,18 +82,6 @@ class ImitationLearning(object):
         action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done
 
-        # # Advice if you need reconstruction
-        # teacher_names = list(teacher_dict.keys())
-        # teacher_defaults =
-        # teacher_advice_dict = []
-        # for i in range(len(obss)):
-        #     o = obss[i]
-        #     for teacher in teachers:
-        #         if
-        # action =
-        # gave_mask =
-
-
         # rearrange all demos to be in descending order of length
         inds = np.concatenate([[0], torch.where(done == 1)[0].detach().cpu().numpy() + 1])
         obss_list = []
@@ -113,7 +100,6 @@ class ImitationLearning(object):
         trajs.sort(key=lambda x: len(x[0]), reverse=True)
         obss_list, action_true_list, action_teacher_list, done_list = zip(*trajs)
 
-        # obss = [o for traj in obss_list for o in traj]
         obss = obss_list
         action_true = torch.cat(action_true_list, dim=0)
         action_teacher = np.concatenate(action_teacher_list, axis=0)
@@ -221,10 +207,30 @@ class ImitationLearning(object):
             policy_loss = policy_loss.mean()
             # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()
-            loss = policy_loss - self.args.entropy_coef * entropy
+
+            # Optional loss for reconstructing the latent state (currently, all models all teachers)
+            if self.reconstruct:
+                # batch x 2 * num_advice
+                reconstruction = info['advice']
+                full_advice_size = int(len(reconstruction[0]) / 2)
+                mean = reconstruction[:, :full_advice_size]
+                eps = 1e-6
+                log_var = reconstruction[:, full_advice_size:]#torch.clip(reconstruction[:, full_advice_size:], torch.log(eps), float('inf'))
+                var = torch.exp(log_var)
+                loss_fn = torch.nn.GaussianNLLLoss()
+                true_advice = obs.full_advice
+                # mask = obs.full_advice_mask
+                # Mask out bad indices
+                # reconstruction_loss = torch.log(log_var + ((true_advice - ) ** 2)/var)
+                reconstruction_loss = loss_fn(true_advice, mean, var)
+                # reconstruction_loss = torch.mean(reconstruction_loss * mask)
+            else:
+                reconstruction_loss = 0
+
+            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss / 10
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             final_loss += loss
-            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss)
+            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
         # Update the model
@@ -248,6 +254,7 @@ class ImitationLearning(object):
         self.precision_count = [0, 0, 0, 0, 0, 0, 0]
         self.final_entropy = 0
         self.final_policy_loss = 0
+        self.final_reconstruction_loss = 0
         self.final_value_loss = 0
         self.accuracy = 0
         self.label_accuracy = 0
@@ -257,7 +264,7 @@ class ImitationLearning(object):
         self.agent_running_count_long = 0
         self.teacher_running_count_long = 0
 
-    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss):
+    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss):
         self.accuracy_list.append(float((action_pred == action_step).sum()))
         self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
         self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
@@ -266,6 +273,7 @@ class ImitationLearning(object):
 
         self.final_entropy += entropy
         self.final_policy_loss += policy_loss
+        self.final_reconstruction_loss += reconstruction_loss
 
         action_step = action_step.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
@@ -311,6 +319,7 @@ class ImitationLearning(object):
         log = {}
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
+        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
         log["Label_A"] = float(self.label_accuracy)
         assert float(self.accuracy) <= 1.0001, "somehow accuracy is greater than 1"

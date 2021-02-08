@@ -16,15 +16,19 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                 obs_output[k] = []
         if len(teacher_dict) > 0:
             obs_output['advice'] = []
+            obs_output['full_advice'] = []
+            obs_output['full_advice_mask'] = []
 
         for o in obs:
             advice_list = []
+            full_advice_list = []
+            full_advice_mask = []
             for k, v in o.items():
                 if k == 'extra':
                     continue
-                # if type(v) is list:
-                #     v = np.array(v)
                 if k in teacher_dict:
+                    full_advice_list.append(v)
+                    full_advice_mask.append(np.array([int(teacher_dict[k])]))
                     # Mask out particular teachers
                     if not teacher_dict[k]:
                         if not include_zeros:  # If we're not including 0's, filter out all teachers we aren't giving
@@ -40,6 +44,9 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                     continue
             if len(advice_list) > 0:
                 obs_output['advice'].append(np.concatenate(advice_list))
+            if len(full_advice_list) > 0:
+                obs_output['full_advice'].append(np.concatenate(full_advice_list))
+                obs_output['full_advice_mask'].append(np.concatenate(full_advice_mask))
 
         obs_final = {}
         for k, v in obs_output.items():
