@@ -40,8 +40,8 @@ class XYCorrections(Teacher):
         try:
             curr_coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]]).astype(
                 np.float32)
-            self.next_state, next_state_coords = self.step_away_state(oracle, self.cartesian_steps,
-                                                                           last_action=last_action)
+            self.next_state, next_state_coords, _, _ = self.step_away_state(oracle, self.cartesian_steps,
+                                                                            last_action=last_action)
             # Coords are quite large, so normalize them to between [-1, 1]
             self.next_state_coords = next_state_coords.astype(np.float32)
             self.next_state_coords[:2] = (self.next_state_coords[:2].astype(np.float32) - 12) / 12

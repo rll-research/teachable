@@ -39,8 +39,8 @@ class CartesianCorrections(Teacher):
         # Remove teacher so we don't end up with a recursion error
         oracle.mission.teacher = None
         try:
-            self.next_state, self.next_state_coords = self.step_away_state(oracle, self.cartesian_steps,
-                                                                           last_action=last_action)
+            self.next_state, self.next_state_coords, _, _ = self.step_away_state(oracle, self.cartesian_steps,
+                                                                                 last_action=last_action)
         except Exception as e:
             print("STEP AWAY FAILED CC!", e)
             self.next_state = self.next_state * 0

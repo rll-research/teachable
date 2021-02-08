@@ -39,8 +39,8 @@ class OffsetCorrections(Teacher):
         env.teacher = None
         try:
             original_coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
-            self.next_state, next_coords = self.step_away_state(oracle, self.cartesian_steps,
-                                                                last_action=last_action)
+            self.next_state, next_coords, _, _ = self.step_away_state(oracle, self.cartesian_steps,
+                                                                      last_action=last_action)
             self.next_state_coords = np.concatenate([next_coords, [env.agent_dir]])
             self.next_state_coords[:4] -= original_coords
             # When we rotate, make sure it's always +/- 1

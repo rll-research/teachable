@@ -87,13 +87,15 @@ class Teacher:
 
     def step_away_state(self, oracle, steps, last_action=-1):
         env = oracle.mission
+        actions = []
         for step in range(steps):
             oracle, replan_output = self.replan(oracle, last_action)
             last_action = replan_output[0]
+            actions.append(last_action)
             next_state, rew, done, info = env.step(last_action)
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
-        return next_state, coords
+        return next_state, coords, actions, env
 
     def give_feedback(self, state, last_action, oracle):
         """
