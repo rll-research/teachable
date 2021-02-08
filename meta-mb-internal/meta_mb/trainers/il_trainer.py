@@ -83,6 +83,18 @@ class ImitationLearning(object):
         action_teacher = batch.teacher_action[:, 0]
         done = batch.full_done
 
+        # # Advice if you need reconstruction
+        # teacher_names = list(teacher_dict.keys())
+        # teacher_defaults =
+        # teacher_advice_dict = []
+        # for i in range(len(obss)):
+        #     o = obss[i]
+        #     for teacher in teachers:
+        #         if
+        # action =
+        # gave_mask =
+
+
         # rearrange all demos to be in descending order of length
         inds = np.concatenate([[0], torch.where(done == 1)[0].detach().cpu().numpy() + 1])
         obss_list = []

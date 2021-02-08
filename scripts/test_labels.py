@@ -22,10 +22,11 @@ else:
         "persist_goal": True,
         "persist_objs": True,
         "persist_agent": True,
-        "feedback_type": ['PreActionAdviceMultiple', 'CartesianCorrections', 'XYCorrections', 'OffsetCorrections',
-                          'PreActionAdvice', 'SubgoalCorrections'],
-        "feedback_freq": [1],
-        "cartesian_steps": 3,
+        "feedback_type": ['PreActionAdviceMultiple', 'PreActionAdvice'],
+        # "feedback_type": ['PreActionAdviceMultiple', 'CartesianCorrections', 'XYCorrections', 'OffsetCorrections',
+        #                   'PreActionAdvice', 'SubgoalCorrections'],
+        "feedback_freq": [3, 1],
+        "cartesian_steps": [3, 1],
         "num_meta_tasks": 1,
         "intermediate_reward": True,
     }
@@ -39,7 +40,7 @@ total = 0
 level_total = 0
 level_rare_tokens = 0
 level_trajs = 0
-for level in range(5, 25):
+for level in range(26, 37):
     if level > 0:
         if level_total > 0:
             print(">>>>>>>>>>>>>>>>>>>>>>>level correct", level_correct / level_total)
@@ -58,9 +59,9 @@ for level in range(5, 25):
     level_rare_tokens = 0
     level_succeeded = 0
     level_trajs = 0
-    for index in range(200):
-        if index % 10 == 0:
-            print(index)
+    for index in range(50):
+        # if index % 10 == 0:
+        print(index)
         if not use_buffer:
             env.set_task(None)
             level_ = env.levels_list[level]
@@ -95,21 +96,23 @@ for level in range(5, 25):
                 break
         level_rare_tokens += np.sum(traj.teacher_action == 3)
         level_rare_tokens += np.sum(traj.teacher_action == 4)
-        for i in range(len(traj) - 3):
+        steps = arguments['cartesian_steps'][0]
+        for i in range(len(traj) - steps):
             timestep = traj[i]
-            steps = arguments['cartesian_steps']
             bad = False
+            # bad = not match
+            # bad = bad or paa_bad
             if timestep.obs['gave_PreActionAdviceMultiple']:
                 curr_cc = timestep.obs['PreActionAdviceMultiple']
                 curr_cc = np.array([np.argmax(curr_cc[k * 8 :(k + 1) * 8]) for k in range(steps)])
                 pred_cc = traj[i:i + steps].teacher_action[:, 0]
                 pa_bad = not np.array_equal(curr_cc, pred_cc)
-                bad = bad or not np.array_equal(curr_cc, pred_cc)
-            if timestep.obs['gave_CartesianCorrections']:
-                curr_cc = timestep.obs['CartesianCorrections']
-                pred_cc = traj[i + steps].obs['obs']
-                bad = bad or not np.array_equal(curr_cc, pred_cc)
-                cc3_bad = not np.array_equal(curr_cc, pred_cc)
+                bad = bad or pa_bad
+            # if timestep.obs['gave_CartesianCorrections']:
+            #     curr_cc = timestep.obs['CartesianCorrections']
+            #     pred_cc = traj[i + steps].obs['obs']
+            #     bad = bad or not np.array_equal(curr_cc, pred_cc)
+            #     cc3_bad = not np.array_equal(curr_cc, pred_cc)
             if bad:
                 level_messed_up_rare += np.sum(traj.teacher_action[i:i+steps, 0] == 3)
                 level_messed_up_rare += np.sum(traj.teacher_action[i:i+steps, 0] == 4)

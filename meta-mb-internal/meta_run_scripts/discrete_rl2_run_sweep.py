@@ -159,29 +159,13 @@ def run_experiment(**config):
                              arch=args.arch,
                              advice_dim=args.advice_dim,
                              advice_size=advice_size,
-                             num_modules=args.num_modules)
+                             num_modules=args.num_modules,
+                         reconstruction=args.reconstruction)
             policy_dict[teacher] = policy
 
-        reward_predictor = ACModel(action_space=spaces.Discrete(2),
-                                   env=env,
-                                   image_dim=args.image_dim,
-                                   memory_dim=args.memory_dim,
-                                   instr_dim=args.instr_dim,
-                                   lang_model=args.instr_arch,
-                                   use_instr=not args.no_instr,
-                                   use_memory=not args.no_mem,
-                                   arch=args.arch,
-                                   advice_dim=args.advice_dim,
-                                   advice_size=advice_size,
-                                   num_modules=args.num_modules)
+        reward_predictor = None
         start_itr = 0
         curriculum_step = env.index
-
-
-    if args.new_distill:
-        print("ADDING SUP!!!")
-        obs = env.reset()
-        advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
 
     args.model = 'default_il'
     modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
@@ -190,8 +174,6 @@ def run_experiment(**config):
                                    instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps)
     if il_optimizer is not None:
         il_trainer.optimizer.load_state_dict(il_optimizer)
-    # rp_trainer = ImitationLearning(reward_predictor, env, args, distill_with_teacher=True, reward_predictor=True,
-    #                                preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings)
 
     sampler = MetaSampler(
         env=env,
