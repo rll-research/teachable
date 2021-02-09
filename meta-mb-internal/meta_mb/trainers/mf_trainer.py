@@ -531,8 +531,8 @@ class Trainer(object):
                 # if self.il_trainer is not None:
                 #    self.run_with_bad_teachers(buffer, teacher_train_dict)
                 # buffer.trim_level(self.curriculum_step, max_trajs=20000)
-                last_accuracy = 0
-                last_success = 0
+                # last_accuracy = 0
+                # last_success = 0
                 self.success_dict = {k: 0 for k in self.success_dict.keys()}
                 self.curriculum_step += 1
                 if self.curriculum_step >= len(self.env.train_levels):
