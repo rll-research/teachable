@@ -217,17 +217,19 @@ class ImitationLearning(object):
                 eps = .001
                 log_var = reconstruction[:, full_advice_size:]#torch.clip(reconstruction[:, full_advice_size:], torch.log(eps), float('inf'))
                 var = torch.exp(log_var)
-                loss_fn = torch.nn.GaussianNLLLoss(eps=eps)
+                loss_fn = torch.nn.MSELoss()
+                # loss_fn = torch.nn.GaussianNLLLoss(eps=eps)
                 true_advice = obs.full_advice
                 # mask = obs.full_advice_mask
                 # Mask out bad indices
                 # reconstruction_loss = torch.log(log_var + ((true_advice - ) ** 2)/var)
-                reconstruction_loss = loss_fn(true_advice, mean, var)
+                # reconstruction_loss = loss_fn(true_advice, mean, var)
                 # reconstruction_loss = torch.mean(reconstruction_loss * mask)
+                reconstruction_loss = loss_fn(true_advice, mean)
             else:
                 reconstruction_loss = 0
 
-            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss / 100
+            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             final_loss += loss
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss)
