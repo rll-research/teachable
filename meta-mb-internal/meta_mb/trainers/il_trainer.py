@@ -413,7 +413,7 @@ class ImitationLearning(object):
         return obss_list_original, actions, action_teacher, done, inds_original, mask
 
     def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='distill_powerset',
-                relabel=False, relabel_dict={}):
+                relabel=False, relabel_dict={}, distill_to_none=True):
 
         preprocessed_batch = self.preprocess_batch(demo_batch, source)
         if relabel:
@@ -423,6 +423,9 @@ class ImitationLearning(object):
         keys = [key for key in teachers_dict.keys() if teachers_dict[key]]
         powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
         logs = {}
+        if distill_target =='single_teachers_none' and not distill_to_none:
+            distill_target = 'single_teachers'
+            print('NOT distilling to none this itr')
 
         if distill_target == 'powerset':
             for key_set in powerset:

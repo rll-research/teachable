@@ -103,14 +103,18 @@ class Trainer(object):
         self.success_dict['none'] = 0
 
     def check_advance_curriculum(self, episode_logs, data):
+        if data.obs[0]['gave_PreActionAdvice']:
+            acc_threshold = .99
+        else:
+            acc_threshold = self.args.accuracy_threshold_rl
         if episode_logs is None:
             return True
         avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
                                 data.teacher_action).float().mean().item()
         avg_success = np.mean(episode_logs["success_per_episode"])
         should_advance_curriculum = (avg_success >= self.args.success_threshold_rl) \
-                                    and (avg_accuracy >= self.args.accuracy_threshold_rl)
-        return should_advance_curriculum
+                                    and (avg_accuracy >= acc_threshold)
+        return should_advance_curriculum, avg_success, avg_accuracy
 
     def check_advance_curriculum_rollout(self, data, use_teacher):
         num_total_episodes = data['dones'].sum()
@@ -165,6 +169,9 @@ class Trainer(object):
             if itr % self.log_every == 0:
                 self.log_fn(self.policy_dict, logger, itr)
 
+            #if itr > 200:
+            #    last_success = 1
+            #    last_accuracy = 1
             teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)
@@ -241,7 +248,7 @@ class Trainer(object):
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum = self.check_advance_curriculum(episode_logs, raw_samples_data)
+            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum(episode_logs, raw_samples_data)
             if self.args.no_train_rl or skip_training_rl:
                 advance_curriculum = True
             else:
@@ -300,7 +307,7 @@ class Trainer(object):
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
                 time_val_distill = 0
-                for _ in range(self.args.distillation_steps):
+                for dist_i in range(self.args.distillation_steps):
                     sample_start = time.time()
                     sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     time_sampling_from_buffer += (time.time() - sample_start)
@@ -310,7 +317,7 @@ class Trainer(object):
                                                is_training=True,
                                                teachers_dict=teacher_distill_dict,
                                                relabel=self.args.relabel,
-                                               relabel_dict=teacher_train_dict)
+                                               relabel_dict=teacher_train_dict, distill_to_none=dist_i < 5)
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
@@ -660,12 +667,12 @@ class Trainer(object):
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
-    def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={}):
+    def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={}, distill_to_none=True):
         if source is None:
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
                                       teachers_dict=teachers_dict, distill_target=self.args.distillation_strategy,
-                                      relabel=relabel, relabel_dict=relabel_dict)
+                                      relabel=relabel, relabel_dict=relabel_dict, distill_to_none=distill_to_none)
         return log
 
     def run_supervised(self, policy, teacher_dict, tag, show_instrs):
