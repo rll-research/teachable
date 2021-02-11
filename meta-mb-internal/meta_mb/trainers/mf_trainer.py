@@ -104,7 +104,7 @@ class Trainer(object):
 
     def check_advance_curriculum(self, episode_logs, data):
         if data.obs[0]['gave_PreActionAdvice']:
-            acc_threshold = .99
+            acc_threshold = .98
         else:
             acc_threshold = self.args.accuracy_threshold_rl
         if episode_logs is None:
@@ -259,8 +259,6 @@ class Trainer(object):
                 else:
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 5
-                    last_success = 0
-                    last_accuracy = 0
             should_store_data = raw_samples_data is not None and (
                     self.args.collect_before_threshold or advance_curriculum)
             if self.args.yes_distill:
