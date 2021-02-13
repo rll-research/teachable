@@ -103,12 +103,12 @@ class Trainer(object):
         self.success_dict['none'] = 0
 
     def check_advance_curriculum(self, episode_logs, data):
-        if data.obs[0]['gave_PreActionAdvice']:
+        if False:#data.obs[0]['gave_PreActionAdvice']:
             acc_threshold = .98
         else:
             acc_threshold = self.args.accuracy_threshold_rl
         if episode_logs is None:
-            return True
+            return True, -1, -1
         avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
                                 data.teacher_action).float().mean().item()
         avg_success = np.mean(episode_logs["success_per_episode"])
@@ -315,7 +315,7 @@ class Trainer(object):
                                                is_training=True,
                                                teachers_dict=teacher_distill_dict,
                                                relabel=self.args.relabel,
-                                               relabel_dict=teacher_train_dict, distill_to_none=dist_i < 5)
+                                               relabel_dict=teacher_train_dict, distill_to_none=True)#dist_i < 5)
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
