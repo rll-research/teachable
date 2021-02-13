@@ -262,7 +262,7 @@ class Trainer(object):
             should_store_data = raw_samples_data is not None and (
                     self.args.collect_before_threshold or advance_curriculum)
             if self.args.yes_distill:
-                should_store_data = True
+                should_store_data = raw_samples_data is not None
             if should_store_data:
                 buffer.add_batch(raw_samples_data, self.curriculum_step)
 
