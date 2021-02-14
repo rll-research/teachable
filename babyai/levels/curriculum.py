@@ -109,16 +109,16 @@ class Curriculum(Serializable):
                 # Task we've seen before, but new instructions
                 Level_GoToGreenBox(**kwargs),  # 29 test3
                 Level_PutNextSameColor(**kwargs),  # 30 test4
-                # Level_Seek(**kwargs),
 
                 # New object
                 Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
                 Level_GoToImpUnlock(**kwargs),  # 32 test6
                 Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
+                Level_Seek(**kwargs),  # 34 test 8
 
                 # Chain multiple instructions together
-                # Level_OpenDoorsDouble(**kwargs),  # 35
-                # Level_GoToDouble(**kwargs),  # 36
+                # Level_OpenDoorsDouble(**kwargs),  # 35  # TODO: teacher fails
+                # Level_GoToDouble(**kwargs),  # 36 # TODO: teacher fails
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         else:

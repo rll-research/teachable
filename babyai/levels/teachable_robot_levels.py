@@ -424,7 +424,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         try:
             mission_list = [vocab.index(word) for word in words]
         except:
-            print("?")
+            print("?", words, [word in vocab for word in words])
         if pad_length is not None:
             mission_list = mission_list + [0] * (pad_length - len(mission_list))
         if len(mission_list) > pad_length:

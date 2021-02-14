@@ -625,7 +625,16 @@ class Level_GoToObjMazeS6(Level_GoTo):
 
 class Level_GoToObjDistractors(Level_GoTo):
     def __init__(self, seed=None, **kwargs):
-        super().__init__(num_dists=50, room_size=8, seed=seed, **kwargs)
+        super().__init__(num_dists=60, room_size=8, seed=seed, **kwargs)
+
+    def add_objs(self, task):
+        obj_list, obj = super().add_objs(task)
+        obj_type = obj.type
+        obj_color = obj.color
+        for dist in obj_list[:-1]:
+            if dist.type == obj_type and dist.color == obj_color:
+                dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
+        return obj_list, obj
 
 class Level_GoToImpUnlock(Level_TeachableRobot):
     """
@@ -653,7 +662,6 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
             if not (locked_room is agent_room):
                 break
         door, pos = self.add_door(id, jd, locked=True)
-        door.color = obj_color
 
         # Add the key to a different room
         while True:
@@ -678,9 +686,12 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
                         i,
                         j,
                         num_distractors=2,
-                        all_unique=False
+                        all_unique=False,
                     )
                     all_dists += dists
+        for dist in all_dists:
+            if dist.type == obj_type and dist.color == obj_color:
+                dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
 
         self.check_objs_reachable()
 
@@ -721,7 +732,7 @@ class Level_Pickup(Level_TeachableRobot):
 
 class Level_PickupObjBigger(Level_Pickup):
     def __init__(self, seed=None, **kwargs):
-        super().__init__(num_dists=18, room_size=10, seed=seed, **kwargs)
+        super().__init__(num_dists=18, room_size=6, num_rows=5, num_cols=5, seed=seed, **kwargs)
 
 class Level_UnblockPickup(Level_TeachableRobot):
     """
@@ -742,7 +753,7 @@ class Level_UnblockPickup(Level_TeachableRobot):
         room_j = self._rand_int(0, self.num_cols)
         obj_type, obj_color = task
         obj, _ = self.add_object(room_i, room_j, obj_type, obj_color)
-        dists = self.add_distractors(num_distractors=19, all_unique=False)
+        dists = self.add_distractors(num_distractors=39, all_unique=False)
         if self.check_objs_reachable(raise_exc=False):
             raise RejectSampling('all objects reachable')
         return dists + self.get_doors() + [obj], obj
@@ -845,15 +856,10 @@ class Level_Unlock(Level_TeachableRobot):
             key, _ = self.add_object(ik, jk, 'key', door.color)
             break
 
-        # With 50% probability, ensure that the locked door is the only
+        # Ensure that the locked door is the only
         # door of that color
         colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
         self.connect_all(door_colors=colors)
-        # if self._rand_bool():
-        #     colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
-        #     self.connect_all(door_colors=colors)
-        # else:
-        #     self.connect_all()
 
         # Add distractors to all but the locked room.
         # We do this to speed up the reachability test,

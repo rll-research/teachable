@@ -348,7 +348,8 @@ class SeekInstr(GoToInstr):
     """
 
     def surface(self, env):
-        return 'seek ' + self.desc.surface(env) + ' seek'
+        words = self.desc.surface(env).split()
+        return 'object ' + 'object ' + 'object ' + ' '.join(words[::-1]) + ' object ' + 'object ' + 'object'
 
 
 class GoToUnknownInstr(GoToInstr):
@@ -477,7 +478,7 @@ class PutNextInstr(ActionInstr):
 class PutNextSameColorInstr(PutNextInstr):
 
     def surface(self, env):
-        return 'put ' + self.desc_move.surface(env) + f' next to a {self.desc_fixed.type}'
+        return f'put a {self.desc_move.type} next to a {self.desc_fixed.type} object {self.desc_move.color}'
 
 
 class SeqInstr(Instr):
