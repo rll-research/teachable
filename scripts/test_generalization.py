@@ -256,6 +256,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         policy, _, args, model_data = load_policy(policy_path)
         for k, v in additional_args.items():
             setattr(args, k, v)
+        if args.target_policy is not None:
+            policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         n_itr = args.n_itr
     else:
         n_itr = 0
@@ -284,6 +286,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                             num_rollouts=num_rollouts, model_data=model_data, seed=seed)
             policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))
+            if args.target_policy is not None:
+                policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         finetune_policy(env, env_index, policy,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
@@ -317,6 +321,8 @@ def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--policy", required=True)
+    parser.add_argument('--target_policy', type=str, default=None)
+    parser.add_argument('--target_policy_key', type=str, default='none')
     parser.add_argument('--envs', nargs='+', required=True, type=str)
     parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
     parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
@@ -409,6 +415,8 @@ def main():
     additional_args['repeated_seed'] = args.repeated_seed
     if args.distillation_steps is not None:
         additional_args['distillation_steps'] = args.distillation_steps
+    additional_args['target_policy'] = args.target_policy
+    additional_args['target_policy_key'] = args.target_policy_key
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
