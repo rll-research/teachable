@@ -285,7 +285,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                             num_rollouts=num_rollouts, model_data=model_data, seed=seed)
-            policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))
+            # policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))  # TODO: this might be important!
             if args.target_policy is not None:
                 policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         finetune_policy(env, env_index, policy,
