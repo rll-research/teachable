@@ -478,8 +478,6 @@ class ImitationLearning(object):
             key_set = tuple(set(keys))
             if len(key_set) > 1:
                 raise NotImplementedError
-            else:
-                teacher_name = key_set[0]
             log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
