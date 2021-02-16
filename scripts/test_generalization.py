@@ -346,6 +346,7 @@ def main():
     parser.add_argument('--repeated_seed', action='store_true')
     parser.add_argument('--distillation_steps', type=int, default=None)
     parser.add_argument('--seeds', nargs='+', default=[0], type=int)
+    parser.add_argument('--distill_successful_only', action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -418,6 +419,7 @@ def main():
         additional_args['distillation_steps'] = args.distillation_steps
     additional_args['target_policy'] = args.target_policy
     additional_args['target_policy_key'] = args.target_policy_key
+    additional_args['distill_successful_only'] = args.distill_successful_only
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
