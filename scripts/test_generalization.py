@@ -327,6 +327,7 @@ def main():
     parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
     parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
     parser.add_argument("--finetune_itrs", default=0, type=int)
+    parser.add_argument("--min_itr_steps_distill", default=0, type=int)
     parser.add_argument("--num_rollouts", default=50, type=int)
     parser.add_argument("--no_train_rl", action='store_true')
     parser.add_argument("--save_dir", default=".")
@@ -420,7 +421,7 @@ def main():
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
-    additional_args['min_itr_steps_distill'] = 0
+    additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
 
     # Test every policy with every level
     if not save_dir.exists():

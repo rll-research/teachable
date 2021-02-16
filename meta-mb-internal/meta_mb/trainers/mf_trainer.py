@@ -297,7 +297,7 @@ class Trainer(object):
             should_distill = self.args.self_distill and advance_curriculum and \
                              self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.yes_distill:
-                should_distill = True
+                should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.no_distill:
                 should_distill = False
             if should_distill:
