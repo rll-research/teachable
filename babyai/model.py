@@ -103,20 +103,20 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.image_conv = nn.Sequential(*[
                 *([ImageBOWEmbedding(147, 128)] if use_bow else []),
                 *([nn.Conv2d(
-                    in_channels=3, out_channels=128, kernel_size=(8, 8),
-                    stride=2, padding=0)] if pixel else []),
+                    in_channels=3, out_channels=32, kernel_size=(8, 8),
+                    stride=8, padding=0)] if pixel else []),
                 nn.Conv2d(
                     in_channels=128 if use_bow or pixel else 3, out_channels=128,
-                    kernel_size=(3, 3) if endpool else (2, 2), stride=2, padding=1),
+                    kernel_size=(3, 3) if endpool else (2, 2), stride=4, padding=1),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
-                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1, stride=2),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
             ])
-            self.film_pool = nn.MaxPool2d(kernel_size=(26, 26) if endpool else (2, 2), stride=2)
+            self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
         else:
             self.image_conv = nn.Sequential(*[
                 *([ImageBOWEmbedding(147, 128)] if use_bow else []),
