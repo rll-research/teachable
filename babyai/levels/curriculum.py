@@ -129,6 +129,9 @@ class Curriculum(Serializable):
         if self.advance_curriculum_func == 'four_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24]] = .25
+        elif self.advance_curriculum_func == 'five_levels':
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[[16, 22, 23, 24, 25]] = .2
         elif advance_curriculum_func == 'uniform':
             prob_mass = 1 / (start_index + 1)
             self.distribution = np.zeros((len(self.levels_list)))
@@ -190,6 +193,9 @@ class Curriculum(Serializable):
         elif self.advance_curriculum_func == 'four_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24]] = .25
+        elif self.advance_curriculum_func == 'five_levels':
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[[16, 22, 23, 24, 25]] = .2
         elif self.advance_curriculum_func == 'uniform':
             # uniform probability over all envs we've seen so far
             self.distribution = np.zeros((len(self.levels_list)))
