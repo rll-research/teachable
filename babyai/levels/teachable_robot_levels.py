@@ -38,7 +38,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], fully_observed=False, **kwargs):
+                 cartesian_steps=[1], fully_observed=False, padding=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -61,6 +61,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         self.itr = 0
         self.feedback_type = feedback_type
         self.fully_observed = fully_observed
+        self.padding = padding
         super().__init__(**kwargs)
         if feedback_type is not None:
             rng = np.random.RandomState()
@@ -438,7 +439,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if available.
         :return: np array of the agent's observation
         """
-        if self.fully_observed:
+        if self.padding:
+            image = np.zeros((51, 51, 3))
+            image_segment = self.get_full_observation()
+            y = 25 - self.agent_pos[0]
+            x = 25 - self.agent_pos[1]
+            image[y:y + len(image_segment), x:x + len(image_segment[0])] = image_segment
+        elif self.fully_observed:
             image = self.get_full_observation()
         else:
             grid, vis_mask = self.gen_obs_grid()

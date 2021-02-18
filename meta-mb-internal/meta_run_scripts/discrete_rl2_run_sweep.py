@@ -110,6 +110,7 @@ def run_experiment(**config):
         "num_meta_tasks": args.rollouts_per_meta_task,
         "intermediate_reward": not args.sparse_reward,
         "fully_observed": args.fully_observed,
+        "padding": args.padding,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule,
                                              args.success_intervention_cutoff,
@@ -162,7 +163,8 @@ def run_experiment(**config):
                              advice_size=advice_size,
                              num_modules=args.num_modules,
                              reconstruction=args.reconstruction,
-                             reconstruct_advice_size=full_advice_size)
+                             reconstruct_advice_size=full_advice_size,
+                             padding=args.padding)
             policy_dict[teacher] = policy
 
         reward_predictor = None

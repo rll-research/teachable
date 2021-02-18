@@ -66,7 +66,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
-                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1):
+                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1, padding=False):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -99,23 +99,42 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
 
-        self.image_conv = nn.Sequential(*[
-            *([ImageBOWEmbedding(147, 128)] if use_bow else []),
-            *([nn.Conv2d(
-                in_channels=3, out_channels=128, kernel_size=(8, 8),
-                stride=8, padding=0)] if pixel else []),
-            nn.Conv2d(
-                in_channels=128 if use_bow or pixel else 3, out_channels=128,
-                kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
-        ])
-        self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
+        if padding:
+            self.image_conv = nn.Sequential(*[
+                *([ImageBOWEmbedding(147, 128)] if use_bow else []),
+                *([nn.Conv2d(
+                    in_channels=3, out_channels=128, kernel_size=(8, 8),
+                    stride=2, padding=0)] if pixel else []),
+                nn.Conv2d(
+                    in_channels=128 if use_bow or pixel else 3, out_channels=128,
+                    kernel_size=(3, 3) if endpool else (2, 2), stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
+            ])
+            self.film_pool = nn.MaxPool2d(kernel_size=(26, 26) if endpool else (2, 2), stride=2)
+        else:
+            self.image_conv = nn.Sequential(*[
+                *([ImageBOWEmbedding(147, 128)] if use_bow else []),
+                *([nn.Conv2d(
+                    in_channels=3, out_channels=128, kernel_size=(8, 8),
+                    stride=8, padding=0)] if pixel else []),
+                nn.Conv2d(
+                    in_channels=128 if use_bow or pixel else 3, out_channels=128,
+                    kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
+            ])
+            self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
         if self.advice_size > 0:
             self.advice_embedding = nn.Sequential(

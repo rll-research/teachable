@@ -52,8 +52,8 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 
 def get_readable_feedback(env_info, obs, teacher_name):
     gave_key = 'gave_' + teacher_name
-    # if obs[gave_key]:
-    #     return 'empty feedback'
+    if obs[gave_key]:
+        return 'empty feedback'
     if teacher_name == 'PreActionAdvice':
         return env_info['teacher_action']
     if teacher_name == 'SubgoalCorrections':
