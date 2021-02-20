@@ -52,10 +52,10 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 
 def get_readable_feedback(env_info, obs, teacher_name):
     gave_key = 'gave_' + teacher_name
-    if obs[gave_key]:
-        return 'empty feedback'
+    # if obs[gave_key]:
+    #     return 'empty feedback'
     if teacher_name == 'PreActionAdvice':
-        return env_info['teacher_action']
+        return env_info['teacher_action'].item()
     if teacher_name == 'SubgoalCorrections':
         subgoal_names = ['CloseSubgoal',
                         'OpenSubgoal',
@@ -74,7 +74,8 @@ def get_readable_feedback(env_info, obs, teacher_name):
                         'DropOff']
         subgoal = obs['SubgoalCorrections']
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
-        subgoal_reason = reason_names[np.argmax(subgoal[len(subgoal_names): len(subgoal_names) + len(reason_names)]).item()]
+        curr_idx = len(subgoal_names)
+        subgoal_reason = reason_names[np.argmax(subgoal[curr_idx: curr_idx + len(reason_names)]).item()]
         subgoal_type = ['int', 'tuple', 'obj', 'none'][int(subgoal[len(subgoal_names) + len(reason_names)].item())]
         subgoal_val = subgoal[-2:]
         return f"Name: {subgoal_name}, Reason: {subgoal_reason}, Type: {subgoal_type}, Val: {subgoal_val}"
@@ -105,7 +106,10 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
-    cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
+    try:
+        cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
+    except:
+        print("huh?")
     return background
 
 
@@ -152,6 +156,10 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     correct, stoch_correct, det_correct, count = 0, 0, 0, 0
     full_obs_list = []
     for i in range(num_rollouts):
+        num_correct_no_holding = 1
+        num_no_holding = 1
+        num_holding = 1
+        num_correct_holding = 1
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
 
@@ -176,6 +184,15 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             det_a = np.argmax(agent_info[0]['probs'])
             if not stochastic:
                 a = np.argmax(agent_info[0]['probs'])
+
+            correct = int(a == env.teacher_action.item())
+            if env.carrying:
+                num_correct_holding += correct
+                num_holding += 1
+            else:
+                num_correct_no_holding += correct
+                num_no_holding += 1
+
 
             # Step env
             if rollout_oracle:
@@ -237,6 +254,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             agent_infos=agent_infos,
             env_infos=env_infos
         ))
+        print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding", num_correct_holding/num_holding)
 
     # Finish saving videos
     if save_locally:

@@ -39,6 +39,6 @@ class SubgoalCorrections(Teacher):
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
         feedback = self.compute_feedback(None)
-        gave_feedback = self.last_feedback is None or not np.array_equal(feedback, self.last_feedback)
+        gave_feedback = self.last_feedback is None or not np.array_equal(feedback[:19], self.last_feedback[:19])
         self.last_feedback = feedback
         return feedback, gave_feedback

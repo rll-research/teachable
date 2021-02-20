@@ -61,7 +61,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           stochastic=stochastic,
                                                                           record_teacher=True,
                                                                           teacher_dict=teacher_dict,
-                                                                          teacher_name=env.feedback_type[0],
+                                                                          teacher_name=teachers[0],
                                                                           video_directory=save_dir,
                                                                           video_name=video_name,
                                                                           num_rollouts=num_rollouts,

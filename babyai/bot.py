@@ -655,38 +655,65 @@ class Bot:
                 subgoal_type = 0
                 # Repeat the datum twice
                 subgoal_val = np.array([subgoal.datum, subgoal.datum])
+                color_idx = len(COLOR_NAMES)
+                type_idx = len(OBJ_TYPES)
             elif type(subgoal.datum) == tuple or type(subgoal.datum) == list or type(subgoal.datum) == np.ndarray:
                 subgoal_type = 1
                 # Position to go to
-                subgoal_val = np.array(subgoal.datum)
+                subgoal_val = np.array(subgoal.datum) - self.mission.agent_pos / 10
+                color_idx = len(COLOR_NAMES)
+                type_idx = len(OBJ_TYPES)
             elif type(subgoal.datum) == ObjDesc:
                 subgoal_type = 2
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
                 type_idx = OBJ_TYPES.index(subgoal.datum.type)
-                subgoal_val = np.array([color_idx, type_idx])
+                subgoal_val = np.array([-1, -1])
             elif subgoal.datum is None:
                 subgoal_type = 3
                 subgoal_val = np.array([-1, -1])
+                color_idx = len(COLOR_NAMES)
+                type_idx = len(OBJ_TYPES)
             else:
                 # Object type
                 subgoal_type = 2
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
                 type_idx = OBJ_TYPES.index(subgoal.datum.type)
-                subgoal_val = np.array([color_idx, type_idx])
+                subgoal_val = np.array([-1, -1])
         except Exception as e:
             print("EXCEPTION IN BOT, bot.py line 669")
             import IPython
             IPython.embed()
 
-        subgoal_idx_all = np.zeros(len(subgoal_names) + len(reason_names) + 3)
+        subgoal_idx_all = np.zeros(len(subgoal_names)
+                                   + len(reason_names)
+                                   + 4
+                                   + 2
+                                   + len(COLOR_NAMES) + 1
+                                   + len(OBJ_TYPES) + 1
+                                   + 3)
         # Index the subgoal type
         subgoal_idx_all[subgoal_name_idx] = 1.0
+        curr_idx = len(subgoal_names)
         # Index the reason
-        subgoal_idx_all[len(subgoal_names) + subgoal_reason_idx] = 1.0
+        subgoal_idx_all[curr_idx + subgoal_reason_idx] = 1.0
+        curr_idx += len(reason_names)
         # Index the datum type
-        subgoal_idx_all[len(subgoal_names) + len(reason_names)] = subgoal_type
-        # Index the datum value
-        subgoal_idx_all[len(subgoal_names) + len(reason_names) + 1:] = subgoal_val
+        subgoal_idx_all[curr_idx + subgoal_type] = 1.0
+        curr_idx += 4
+        # Index the target coordinate
+        subgoal_idx_all[curr_idx:curr_idx + 2] = subgoal_val
+        curr_idx += 2
+        # Index target object color
+        subgoal_idx_all[curr_idx + color_idx] = 1.0
+        curr_idx += len(COLOR_NAMES)
+        # Index target object name
+        subgoal_idx_all[curr_idx + type_idx] = 1.0
+        curr_idx += len(OBJ_TYPES)
+        # Index current agent position
+        subgoal_idx_all[curr_idx: curr_idx + 2] = (self.mission.agent_pos - 12) / 12
+        curr_idx += 2
+        # Index current agent orientation
+        subgoal_idx_all[curr_idx] = self.mission.agent_dir / 3
         return subgoal_idx_all
 
     def find_open_cell(self, attempts=100):
