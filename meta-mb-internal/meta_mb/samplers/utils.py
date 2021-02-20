@@ -55,7 +55,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
     # if obs[gave_key]:
     #     return 'empty feedback'
     if teacher_name == 'PreActionAdvice':
-        return env_info['teacher_action'].item()
+        return str(env_info['teacher_action'].item())
     if teacher_name == 'SubgoalCorrections':
         subgoal_names = ['CloseSubgoal',
                         'OpenSubgoal',
