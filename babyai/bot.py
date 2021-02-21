@@ -660,7 +660,7 @@ class Bot:
             elif type(subgoal.datum) == tuple or type(subgoal.datum) == list or type(subgoal.datum) == np.ndarray:
                 subgoal_type = 1
                 # Position to go to
-                subgoal_val = np.array(subgoal.datum) - self.mission.agent_pos / 10
+                subgoal_val = (np.array(subgoal.datum) - self.mission.agent_pos) / 10
                 color_idx = len(COLOR_NAMES)
                 type_idx = len(OBJ_TYPES)
             elif type(subgoal.datum) == ObjDesc:
@@ -678,7 +678,7 @@ class Bot:
                 subgoal_type = 2
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
                 type_idx = OBJ_TYPES.index(subgoal.datum.type)
-                subgoal_val = np.array([-1, -1])
+                subgoal_val = (np.array(subgoal.datum.cur_pos) - self.mission.agent_pos) / 10
         except Exception as e:
             print("EXCEPTION IN BOT, bot.py line 669")
             import IPython
@@ -705,10 +705,10 @@ class Bot:
         curr_idx += 2
         # Index target object color
         subgoal_idx_all[curr_idx + color_idx] = 1.0
-        curr_idx += len(COLOR_NAMES)
+        curr_idx += len(COLOR_NAMES) + 1
         # Index target object name
         subgoal_idx_all[curr_idx + type_idx] = 1.0
-        curr_idx += len(OBJ_TYPES)
+        curr_idx += len(OBJ_TYPES) + 1
         # Index current agent position
         subgoal_idx_all[curr_idx: curr_idx + 2] = (self.mission.agent_pos - 12) / 12
         curr_idx += 2

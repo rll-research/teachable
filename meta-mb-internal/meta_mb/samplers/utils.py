@@ -3,7 +3,8 @@ import cv2
 import wandb
 import os
 import copy
-
+from gym_minigrid.minigrid import COLOR_NAMES
+OBJ_TYPES = ['box', 'ball', 'key', 'door']
 
 def write_video(writer, frames, show_last=None):
     if show_last is not None:
@@ -73,12 +74,27 @@ def get_readable_feedback(env_info, obs, teacher_name):
                         'KeepKey',
                         'DropOff']
         subgoal = obs['SubgoalCorrections']
+        types = ['int', 'tuple', 'obj', 'none']
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
         curr_idx = len(subgoal_names)
         subgoal_reason = reason_names[np.argmax(subgoal[curr_idx: curr_idx + len(reason_names)]).item()]
-        subgoal_type = ['int', 'tuple', 'obj', 'none'][int(subgoal[len(subgoal_names) + len(reason_names)].item())]
-        subgoal_val = subgoal[-2:]
-        return f"Name: {subgoal_name}, Reason: {subgoal_reason}, Type: {subgoal_type}, Val: {subgoal_val}"
+        curr_idx += len(reason_names)
+        subgoal_type = types[np.argmax(subgoal[curr_idx: curr_idx + len(types)]).item()]
+        curr_idx += len(types)
+        coordinate = subgoal[curr_idx: curr_idx + 2]
+        curr_idx += 2
+        obj_color = (COLOR_NAMES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(COLOR_NAMES)]).item()]
+        curr_idx += len(COLOR_NAMES) + 1
+        obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES)]).item()]
+        curr_idx += len(OBJ_TYPES) + 1
+        agent_pos = subgoal[curr_idx: curr_idx + 2] * 12 + 12
+        curr_idx += 2
+        agent_dir = subgoal[curr_idx] * 3
+        if not np.array_equal(coordinate, np.array([-1, -1])):
+            coordinate = (coordinate * 10) + agent_pos
+
+        return f"Name: {subgoal_name}, Reason: {subgoal_reason}, Type: {subgoal_type}, Coord: {coordinate}, " \
+               f"obj {obj_color} {obj_type}, pos {agent_pos}, dir {agent_dir}"
     return 'no feedback string available'
 
 
@@ -254,7 +270,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             agent_infos=agent_infos,
             env_infos=env_infos
         ))
-        print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding", num_correct_holding/num_holding)
+        print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding",
+              num_correct_holding/num_holding, "succeeded?", success)
 
     # Finish saving videos
     if save_locally:
