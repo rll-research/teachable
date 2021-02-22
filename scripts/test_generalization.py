@@ -67,7 +67,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           num_rollouts=num_rollouts,
                                                                           save_wandb=False,
                                                                           save_locally=True,
-                                                                          num_save=num_rollouts,
+                                                                          num_save=5,#num_rollouts,
                                                                           obs_preprocessor=obs_preprocessor,
                                                                           rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
@@ -185,7 +185,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args,
                                 seed=seed)
 
-    def log_fn(policy, logger, itr):
+    def log_fn(policy, logger, itr, num_feedback):
         assert len(teachers) == 1
         policy = policy[teachers[0]]
         if not itr % args.log_every == 0:
@@ -198,7 +198,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
             with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr \n')
+                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
         teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
         seeds = np.arange(1000 * seed, 1000 * seed + num_eval_rollouts)
         finetune_sampler.vec_env.seed(seeds)
@@ -216,7 +216,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
         with open(full_save_dir.joinpath('results.csv'), 'a') as f:
             f.write(
-                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr} \n')
+                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},{num_feedback} \n')
         return avg_success, avg_accuracy
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']
@@ -276,7 +276,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
             finetune_teacher_args = copy.deepcopy(args)
             finetune_teacher_args.n_itr = args.finetune_teacher_first
             finetune_teacher_args.teacher_schedule = 'first_teacher'
-            finetune_teacher_args.distillation_strategy = 'all_teachers'
+            finetune_teacher_args.distillation_strategy = 'single_teachers'
             finetune_teacher_args.yes_distill = True
             finetune_teacher_args.no_distill = False
             if seed is not None:
@@ -334,10 +334,10 @@ def main():
     parser.add_argument("--save_dir", default=".")
     parser.add_argument("--hide_instrs", action='store_true')
     parser.add_argument("--deterministic", action='store_true')
-    parser.add_argument('--teacher_schedule', type=str, default='all_teachers')
+    parser.add_argument('--teacher_schedule', type=str, default='last_teacher')
     parser.add_argument('--distillation_strategy', type=str, choices=[
-            'all_teachers', 'no_teachers', 'all_but_none', 'powerset'
-        ], default='distill_powerset')
+            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
+        ], default='single_teachers_none')
     parser.add_argument('--no_distill', action='store_true')
     parser.add_argument('--yes_distill', action='store_true')
     parser.add_argument('--rollout_temperature', type=float, default=1)

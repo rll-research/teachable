@@ -57,7 +57,7 @@ class Trainer(object):
         log_dict={},
         eval_heldout=True,
         augmenter=None,
-        log_fn=lambda w, x, y: None,
+        log_fn=lambda w, x, y, z: None,
     ):
         self.args = args
         self.algo = algo
@@ -167,7 +167,7 @@ class Trainer(object):
         for itr in range(self.start_itr, self.args.n_itr):
 
             if itr % self.log_every == 0:
-                self.log_fn(self.policy_dict, logger, itr)
+                self.log_fn(self.policy_dict, logger, itr, self.num_feedback_advice + self.num_feedback_reward)
 
             #if itr > 200:
             #    last_success = 1
