@@ -445,6 +445,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             y = 25 - self.agent_pos[0]
             x = 25 - self.agent_pos[1]
             image[y:y + len(image_segment), x:x + len(image_segment[0])] = image_segment
+            # Rotate image
+            image = np.rot90(image, k=self.agent_dir)
         elif self.fully_observed:
             image = self.get_full_observation()
         else:
