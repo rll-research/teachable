@@ -59,28 +59,26 @@ def get_exp_name(args):
 
 
 def load_model(args):
-    raise NotImplementedError
     original_config = args
     saved_model = joblib.load(args.saved_path)
     if 'args' in saved_model:
         if not args.override_old_config:
             args = saved_model['args']
     set_seed(args.seed)
-    policy = saved_model['policy']
+    policy_dict = saved_model['policy']
     optimizer = saved_model.get('optimizer', None)
-    policy.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # TODO: is this necessary?
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    for policy in policy_dict.values():
+        policy.device = device
     if original_config.continue_train is True:
         start_itr = saved_model['itr']
         curriculum_step = saved_model['curriculum_step']
     else:
         start_itr = 0
         curriculum_step = args.level
-
-    reward_predictor = saved_model['reward_predictor']
-    reward_predictor.hidden_state = None
     il_optimizer = saved_model.get('il_optimizer', None)
     log_dict = saved_model.get('log_dict', {})
-    return policy, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+    return policy_dict, optimizer, start_itr, curriculum_step, args, \
         il_optimizer, log_dict
 
 
@@ -93,7 +91,7 @@ def run_experiment(**config):
     set_seed(args.seed)
     original_saved_path = args.saved_path
     if original_saved_path is not None:
-        policy, reward_predictor, optimizer, start_itr, curriculum_step, args, \
+        policy_dict, optimizer, start_itr, curriculum_step, args, \
             il_optimizer, log_dict = load_model(args)
     else:
         il_optimizer = None
@@ -129,6 +127,11 @@ def run_experiment(**config):
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
                                           curriculum_type=args.curriculum_type, **arguments)
                                ), ceil_reward=args.ceil_reward)
+        try:
+            teacher_null_dict = env.teacher.null_feedback()
+        except Exception as e:
+            teacher_null_dict = {}
+        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level,
@@ -167,7 +170,6 @@ def run_experiment(**config):
                              padding=args.padding)
             policy_dict[teacher] = policy
 
-        reward_predictor = None
         start_itr = 0
         curriculum_step = env.index
 
@@ -178,7 +180,8 @@ def run_experiment(**config):
                                    instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps,
                                    reconstruct=args.reconstruction)
     if il_optimizer is not None:
-        il_trainer.optimizer.load_state_dict(il_optimizer)
+        for k, v in il_optimizer.items():
+            il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
 
     sampler = MetaSampler(
         env=env,
@@ -188,7 +191,6 @@ def run_experiment(**config):
         max_path_length=args.max_path_length,
         parallel=not args.sequential,
         envs_per_task=1,
-        reward_predictor=reward_predictor,
         obs_preprocessor=obs_preprocessor,
     )
 
@@ -223,7 +225,8 @@ def run_experiment(**config):
                    obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
 
     if optimizer is not None:
-        algo.optimizer.load_state_dict(optimizer)
+        for k, v in optimizer.items():
+            algo.optimizer_dict[k].load_state_dict(v.state_dict())
 
     EXP_NAME = get_exp_name(args)
     exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(args.seed)
@@ -254,7 +257,6 @@ def run_experiment(**config):
         exp_name=exp_dir,
         curriculum_step=curriculum_step,
         il_trainer=il_trainer,
-        reward_predictor=reward_predictor,
         is_debug=is_debug,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
