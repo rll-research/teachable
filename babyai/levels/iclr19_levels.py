@@ -661,7 +661,8 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
             agent_room = self.room_from_pos(*self.agent_pos)
             if not (locked_room is agent_room):
                 break
-        door, pos = self.add_door(id, jd, locked=True)
+        _, color = self.sample_object()
+        door, pos = self.add_door(id, jd, color=color, locked=True)
 
         # Add the key to a different room
         while True:
