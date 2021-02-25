@@ -372,7 +372,7 @@ def main():
         elif env_name == 'test':
             env_indices += list(range(num_train_envs, num_train_envs + num_test_envs))
         elif 'test' == env_name[:4]:
-            index = int(env_name[4])
+            index = int(env_name[4:])
             # Test levels start directly after train levels, so add the length of the train levels list
             env_indices.append(index + num_train_envs)
         else:
