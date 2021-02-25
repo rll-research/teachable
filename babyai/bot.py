@@ -667,10 +667,10 @@ class Bot:
                 subgoal_type = 2
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
                 type_idx = OBJ_TYPES.index(subgoal.datum.type)
-                if len(subgoal.datum.obj_poss) == 1:
-                    subgoal_val = np.array(subgoal.datum.obj_poss[0])
-                else:
-                    subgoal_val = np.array([-1, -1])
+                # if len(subgoal.datum.obj_poss) == 1:
+                #     subgoal_val = np.array(subgoal.datum.obj_poss[0])
+                # else:
+                subgoal_val = np.array([-1, -1])
             elif subgoal.datum is None:
                 subgoal_type = 3
                 subgoal_val = np.array([-1, -1])
