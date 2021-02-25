@@ -507,6 +507,20 @@ class Level_Seek(Level_GoTo):
         }
 
 
+class Level_SeekLocal(Level_GoToLocal):
+    def __init__(self, **kwargs):
+        super().__init__(
+            **kwargs
+        )
+
+    def make_mission(self):
+        obj_type, obj_color = self.sample_object()
+        return {
+            "task": (obj_type, obj_color),
+            "instrs": SeekInstr(ObjDesc(obj_type, obj_color))
+        }
+
+
 class Level_GoToHeldout(Level_GoTo):
     def make_mission(self):
         obj_type, obj_color = self.sample_object()
@@ -518,6 +532,15 @@ class Level_GoToHeldout(Level_GoTo):
 
 
 class Level_GoToGreenBox(Level_GoTo):
+    def make_mission(self):
+        obj_color = 'green'
+        obj_type = 'box'
+        return {
+            "task": (obj_type, obj_color),
+            "instrs": GoToUnknownInstr(ObjDesc(obj_type, obj_color))
+        }
+
+class Level_GoToGreenBoxLocal(Level_GoToLocal):
     def make_mission(self):
         obj_color = 'green'
         obj_type = 'box'
@@ -655,8 +678,8 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
         obj_type, obj_color = task
 
         while True:
-            id = self._rand_int(0, self.num_rows)
-            jd = self._rand_int(0, self.num_cols)
+            jd = self._rand_int(0, self.num_rows)
+            id = self._rand_int(0, self.num_cols)
             locked_room = self.get_room(id, jd)
             agent_room = self.room_from_pos(*self.agent_pos)
             if not (locked_room is agent_room):
@@ -666,8 +689,8 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
 
         # Add the key to a different room
         while True:
-            ik = self._rand_int(0, self.num_rows)
-            jk = self._rand_int(0, self.num_cols)
+            jk = self._rand_int(0, self.num_rows)
+            ik = self._rand_int(0, self.num_cols)
             if ik == id and jk == jd:
                 continue
             key, _ = self.add_object(ik, jk, 'key', door.color)
@@ -680,8 +703,8 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
         # which otherwise will reject all levels with
         # objects in the locked room.
         all_dists = []
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
                 if i is not id or j is not jd:
                     dists = self.add_distractors(
                         i,
@@ -698,6 +721,14 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
 
         obj, _ = self.add_object(id, jd, obj_type, obj_color)
         return all_dists + self.get_doors() + [obj, key], obj
+
+class Level_GoToImpUnlockLocal(Level_GoToImpUnlock):
+    def __init__(self, **kwargs):
+        super().__init__(
+            num_rows=1,
+            num_cols=2,
+            **kwargs
+        )
 
 
 class Level_Pickup(Level_TeachableRobot):
@@ -840,8 +871,8 @@ class Level_Unlock(Level_TeachableRobot):
         obj_color = task
 
         while True:
-            id = self._rand_int(0, self.num_rows)
-            jd = self._rand_int(0, self.num_cols)
+            jd = self._rand_int(0, self.num_rows)
+            id = self._rand_int(0, self.num_cols)
             locked_room = self.get_room(id, jd)
             agent_room = self.room_from_pos(*self.agent_pos)
             if not locked_room is agent_room:
@@ -850,8 +881,8 @@ class Level_Unlock(Level_TeachableRobot):
 
         # Add the key to a different room
         while True:
-            ik = self._rand_int(0, self.num_rows)
-            jk = self._rand_int(0, self.num_cols)
+            jk = self._rand_int(0, self.num_rows)
+            ik = self._rand_int(0, self.num_cols)
             if ik == id and jk == jd:
                 continue
             key, _ = self.add_object(ik, jk, 'key', door.color)
@@ -867,8 +898,8 @@ class Level_Unlock(Level_TeachableRobot):
         # which otherwise will reject all levels with
         # objects in the locked room.
         all_dists = []
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
                 if i is not id or j is not jd:
                     dists = self.add_distractors(
                         i,
@@ -880,6 +911,14 @@ class Level_Unlock(Level_TeachableRobot):
 
         self.check_objs_reachable()
         return [key] + all_dists + self.get_doors(), door
+
+class Level_UnlockLocal(Level_Unlock):
+    def __init__(self, **kwargs):
+        super().__init__(
+            num_rows=1,
+            num_cols=2,
+            **kwargs
+        )
 
 
 class Level_PutNext(Level_TeachableRobot):
@@ -920,6 +959,17 @@ class Level_PutNext(Level_TeachableRobot):
 
 
 class Level_PutNextSameColor(Level_PutNext):
+    def make_mission(self):
+        o1_type, o1_color = self.sample_object()
+        o2_type, o2_color = o1_type, o1_color
+        while o1_type == o2_type:
+            o2_type, o2_color = self.sample_object()
+        return {
+            "task": (o1_type, o1_color, o2_type, o1_color),
+            "instrs": PutNextSameColorInstr(ObjDesc(o1_type, o1_color), ObjDesc(o2_type, o1_color))
+        }
+
+class Level_PutNextSameColorLocal(Level_PutNextLocal):
     def make_mission(self):
         o1_type, o1_color = self.sample_object()
         o2_type, o2_color = o1_type, o1_color

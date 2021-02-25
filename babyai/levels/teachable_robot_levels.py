@@ -245,8 +245,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :return: List of Door objects
         """
         doors = []
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
                 room = self.get_room(i, j)
                 for door in room.doors:
                     if door:

@@ -12,7 +12,7 @@ base_path = pathlib.Path(args.save_path)
 if not base_path.exists():
     base_path.mkdir()
 
-curriculum = Curriculum('on_hot', curriculum_type=args.curriculum_type)
+curriculum = Curriculum('one_hot', curriculum_type=args.curriculum_type)
 for i, env in enumerate(curriculum.levels_list):
     env.reset()
     img = env.render('rgb_array')
