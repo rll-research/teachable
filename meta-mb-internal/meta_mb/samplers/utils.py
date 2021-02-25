@@ -171,6 +171,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     paths, agent_actions, teacher_actions = [], [], []
     correct, stoch_correct, det_correct, count = 0, 0, 0, 0
     full_obs_list = []
+    num_feedback = 0
+    num_steps = 0
     for i in range(num_rollouts):
         num_correct_no_holding = 1
         num_no_holding = 1
@@ -189,6 +191,9 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
+            if o['gave_SubgoalCorrections']:
+                num_feedback += 1
+            num_steps += 1
             past_o = o
             full_obs_list.append(copy.deepcopy(o))
             # Choose action
@@ -270,8 +275,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             agent_infos=agent_infos,
             env_infos=env_infos
         ))
-        print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding",
-              num_correct_holding/num_holding, "succeeded?", success)
+        # print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding",
+        #       num_correct_holding/num_holding, "succeeded?", success)
 
     # Finish saving videos
     if save_locally:
@@ -280,4 +285,5 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
     followed_cc3_proportion = check_followed_cc3(full_obs_list)
+    print("FEEDBACK RATIO", num_feedback / num_steps)
     return paths, correct / count, stoch_correct / count, det_correct / count, followed_cc3_proportion

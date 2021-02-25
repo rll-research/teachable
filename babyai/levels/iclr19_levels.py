@@ -541,6 +541,13 @@ class Level_GoToGreenBox(Level_GoTo):
         }
 
 class Level_GoToGreenBoxLocal(Level_GoToLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(
+            room_size=16,
+            seed=seed,
+            **kwargs
+        )
+
     def make_mission(self):
         obj_color = 'green'
         obj_type = 'box'
@@ -723,6 +730,13 @@ class Level_GoToImpUnlock(Level_TeachableRobot):
         return all_dists + self.get_doors() + [obj, key], obj
 
 class Level_GoToImpUnlockLocal(Level_GoToImpUnlock):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(
+            room_size=16,
+            seed=seed,
+            **kwargs
+        )
+
     def __init__(self, **kwargs):
         super().__init__(
             num_rows=1,
@@ -917,6 +931,7 @@ class Level_UnlockLocal(Level_Unlock):
         super().__init__(
             num_rows=1,
             num_cols=2,
+            room_size=16,
             **kwargs
         )
 
@@ -970,6 +985,13 @@ class Level_PutNextSameColor(Level_PutNext):
         }
 
 class Level_PutNextSameColorLocal(Level_PutNextLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(
+            room_size=16,
+            seed=seed,
+            **kwargs
+        )
+
     def make_mission(self):
         o1_type, o1_color = self.sample_object()
         o2_type, o2_color = o1_type, o1_color
