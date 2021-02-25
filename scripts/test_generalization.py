@@ -253,6 +253,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         if not finetune_path.exists():
             finetune_path.mkdir()
         args.seed = seed
+        num_feedback = 0
         if args.finetune_teacher_first > 0:
             finetune_teacher_args = copy.deepcopy(args)
             finetune_teacher_args.n_itr = args.finetune_teacher_first
