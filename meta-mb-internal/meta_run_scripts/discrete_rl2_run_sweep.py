@@ -177,7 +177,7 @@ def run_experiment(**config):
     modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                   instr_dropout_prob=args.instr_dropout_prob, modify_cc3_steps=modify_cc3_steps,
+                                   instr_dropout_prob=args.distill_dropout_prob, modify_cc3_steps=modify_cc3_steps,
                                    reconstruct=args.reconstruction)
     if il_optimizer is not None:
         for k, v in il_optimizer.items():
@@ -213,7 +213,7 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.instr_dropout_prob)
+                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.collect_dropout_prob)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -222,7 +222,7 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob)
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.collect_dropout_prob)
 
     if optimizer is not None:
         for k, v in optimizer.items():

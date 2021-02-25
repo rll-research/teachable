@@ -116,9 +116,12 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         print("using repeated seed")
         args.num_envs = num_rollouts
     args.model = 'default_il'
+    if hasattr(args, 'instr_dropout_prob'):
+        # TODO: remove this once the current runs are irrelevant
+        args.distill_dropout_prob = args.instr_dropout_prob
     il_trainer = ImitationLearning(policy, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                   instr_dropout_prob=args.instr_dropout_prob)
+                                   instr_dropout_prob=args.distill_dropout_prob)
     if 'il_optimizer' in model_data:
         for k, optimizer in model_data['il_optimizer'].items():
             il_trainer.optimizer_dict[k].load_state_dict(optimizer.state_dict())
@@ -150,12 +153,13 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         new_env.set_task()
         new_env.reset()
     repeated_seed = None if not args.repeated_seed else np.arange(1000 * seed, 1000 * seed + args.num_envs)
+    collect_dropout_prob = 1 if hide_instrs else 0
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.instr_dropout_prob,
+                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=collect_dropout_prob,
                    repeated_seed=repeated_seed)
 
     if 'optimizer' in model_data:
