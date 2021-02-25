@@ -82,7 +82,8 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
-                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0):
+                    hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0,
+                    start_num_feedback=0):
     # Normally we would put the imports up top, but we also import this file in Trainer
     # Importing here prevents us from getting stuck in infinite loops
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -195,7 +196,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
         with open(full_save_dir.joinpath('results.csv'), 'a') as f:
             f.write(
-                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},{num_feedback} \n')
+                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},{num_feedback + start_num_feedback} \n')
         return avg_success, avg_accuracy
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']
@@ -228,6 +229,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     print("TRAINING!!!")
     trainer.train()
     print("All done!")
+    return trainer
 
 def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
@@ -267,11 +269,12 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                     with open(finetune_teacher_path.joinpath('results.csv'), 'w') as f:
                         f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
                 finetune_teacher_args.seed = seed
-            finetune_policy(env, env_index, policy,
+            trainer = finetune_policy(env, env_index, policy,
                             finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                             num_rollouts=num_rollouts, model_data=model_data, seed=seed)
+            num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
             # policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))  # TODO: this might be important!
             if args.target_policy is not None:
                 policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
@@ -279,7 +282,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                        num_rollouts=num_rollouts, model_data=model_data, seed=seed)
+                        num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback)
     assert len(teachers) == 1
     teacher_policy = policy[teachers[0]]
     success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir, num_rollouts,
