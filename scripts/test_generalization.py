@@ -38,7 +38,7 @@ def load_policy(path):
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic, args, seed=0,
-                video_name='generalization_vids', num_save=5):
+                video_name='generalization_vids', num_save=10):
     if not save_dir.exists():
         save_dir.mkdir()
     env.seed(seed)
@@ -166,26 +166,21 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     # Standardize args
     args.single_level = True
     args.reward_when_necessary = False  # TODO: make this a flag
-
-    num_eval_rollouts = args.num_envs if args.repeated_seed else num_rollouts
-    finetune_sampler = MetaSampler(
-        env=env,
-        policy=policy,
-        rollouts_per_meta_task=args.rollouts_per_meta_task,
-        meta_batch_size=num_eval_rollouts,
-        max_path_length=args.max_path_length,
-        parallel=False,
-        envs_per_task=1,
-        reward_predictor=None,
-        obs_preprocessor=obs_preprocessor,
-    )
-
     def log_fn_vidrollout(policy, itr, num_save):
-        return test_success_checkpoint(heldout_env, save_dir, 3, teachers, policy=policy, policy_name=policy_name,
+        return test_success_checkpoint(heldout_env, save_dir, 10, teachers, policy=policy, policy_name=policy_name,
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args,
                                 seed=seed, num_save=num_save)
 
     def log_fn(policy, logger, itr, num_feedback):
+        policy_env_name = f'Policy{policy_name}-{env_name}'
+        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
+        if itr == 0:
+            if not full_save_dir.exists():
+                full_save_dir.mkdir()
+            with open(full_save_dir.joinpath('results.csv'), 'w') as f:
+                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
+        if not itr % args.log_every == 0:
+            return
         assert len(teachers) == 1
         policy = policy[teachers[0]]
         if itr % 10 == 0:
@@ -193,32 +188,6 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         else:
             num_save = 0
         avg_success, avg_accuracy, det_accuracy = log_fn_vidrollout(policy, itr, num_save)
-
-        # if not itr % args.log_every == 0:
-        #     return
-        # if itr % 10 == 0:
-        #     log_fn_vidrollout(policy, itr)
-        policy_env_name = f'Policy{policy_name}-{env_name}'
-        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
-        # if itr == 0:
-        #     if not full_save_dir.exists():
-        #         full_save_dir.mkdir()
-        #     with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-        #         f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
-        # teacher_dict = {k: k in teachers for k, v in teacher_null_dict.items()}
-        # seeds = np.arange(1000 * seed, 1000 * seed + num_eval_rollouts)
-        # finetune_sampler.vec_env.seed(seeds)
-        # paths = finetune_sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
-        #                                         teacher_dict=teacher_dict, max_action=False, show_instrs=not hide_instrs)
-        # data = sample_processor.process_samples(paths, log_prefix='n/a', log_teacher=False)
-        #
-        # num_total_episodes = data['dones'].sum()
-        # num_successes = data['env_infos']['success'].sum()
-        # avg_success = num_successes / num_total_episodes
-        # # Episode length contains the timestep, starting at 1.  Padding values are 0.
-        # pad_steps = (data['env_infos']['episode_length'] == 0).sum()
-        # correct_actions = (data['actions'] == data['env_infos']['teacher_action'][:, :, 0]).sum() - pad_steps
-        # avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
         with open(full_save_dir.joinpath('results.csv'), 'a') as f:
             f.write(
@@ -286,9 +255,16 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
             finetune_teacher_args.yes_distill = True
             finetune_teacher_args.no_distill = False
             if seed is not None:
+                finetune_teacher_path = full_save_dir.joinpath(f'finetuned_teachers{seed}')
+                if not finetune_teacher_path.exists():
+                    finetune_teacher_path.mkdir()
+                    if not finetune_teacher_path.exists():
+                        finetune_teacher_path.mkdir()
+                    with open(finetune_teacher_path.joinpath('results.csv'), 'w') as f:
+                        f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
                 finetune_teacher_args.seed = seed
             finetune_policy(env, env_index, policy,
-                            finetune_path, finetune_teacher_args, teacher_null_dict,
+                            finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
                             save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
                             hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                             num_rollouts=num_rollouts, model_data=model_data, seed=seed)
