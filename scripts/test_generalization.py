@@ -188,10 +188,10 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
             return
         assert len(teachers) == 1
         policy = policy[teachers[0]]
-        if itr % 10 == 0:
-            num_save = 10
-        else:
-            num_save = 0
+        # if itr % 10 == 0:
+        #     num_save = 10
+        # else:
+        num_save = 0
         avg_success, avg_accuracy, det_accuracy = log_fn_vidrollout(policy, itr, num_save)
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
         with open(full_save_dir.joinpath('results.csv'), 'a') as f:
