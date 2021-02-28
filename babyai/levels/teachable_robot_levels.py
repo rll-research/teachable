@@ -17,6 +17,7 @@ from babyai.oracle.pre_action_advice_repeated_index import PreActionAdviceMultip
 from babyai.oracle.cartesian_corrections import CartesianCorrections
 from babyai.oracle.cartesian_corrections_repeated_index import CartesianCorrectionsRepeatedIndex
 from babyai.oracle.subgoal_corrections import SubgoalCorrections
+from babyai.oracle.subgoal_simple_corrections import SubgoalSimpleCorrections
 from babyai.oracle.offset_corrections import OffsetCorrections
 from babyai.oracle.offset_corrections_repeated_index import OFFIO
 from babyai.oracle.offset_sparse import OFFSparse
@@ -117,6 +118,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                                                    feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
+                                                 feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'SubgoalSimple':
+                    teacher = SubgoalSimpleCorrections(Bot, self, feedback_always=feedback_always,
                                                  feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'OffsetCorrections':
                     teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
