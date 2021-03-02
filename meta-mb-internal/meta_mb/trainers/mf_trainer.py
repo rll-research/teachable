@@ -301,6 +301,7 @@ class Trainer(object):
             if self.args.no_distill:
                 should_distill = False
             if should_distill:
+                logger.log("Distilling ...")
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
                 time_train_distill = 0

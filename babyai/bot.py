@@ -631,14 +631,6 @@ class Bot:
                         'DropSubgoal',
                         'PickupSubgoal',
                         'GoNextToSubgoal']
-        reason_names = ['Unlock',
-                        None,
-                        'UnlockAndKeepKey',
-                        'PutNext',
-                        'Open',
-                        'Explore',
-                        'KeepKey',
-                        'DropOff']
                         
         # Name of the subgoal
         try:
@@ -659,7 +651,10 @@ class Bot:
                 else:
                     # find the closest object
                     norm_fn = lambda x: np.linalg.norm(np.array(x) - self.mission.agent_pos)
-                    subgoal_val = min(subgoal.datum.obj_poss, key=norm_fn)
+                    try:
+                        subgoal_val = min(subgoal.datum.obj_poss, key=norm_fn)
+                    except:
+                        subgoal_val = np.array([-1, -1])
             elif subgoal.datum is None:
                 if type(subgoal).__name__ in ['DropSubgoal', 'PickupSubgoal']:
                     subgoal_val = subgoal.fwd_pos
