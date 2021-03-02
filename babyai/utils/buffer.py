@@ -126,6 +126,10 @@ class Buffer:
         else:
             index = self.index_val
             counts = self.counts_val
+            if len(counts) == 0:
+                split = 'train'
+                index = self.index_train
+                counts = self.counts_train
 
         trajs = []
         num_samples = 0
