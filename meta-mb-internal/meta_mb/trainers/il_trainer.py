@@ -70,7 +70,7 @@ class ImitationLearning(object):
             batch = self.modify_cc3(batch)
         obss = batch.obs
         if source == 'teacher':
-            action_true = batch.teacher_action[:, 0]
+            action_true = batch.teacher_action#[:, 0]
         elif source == 'agent':
             action_true = batch.action
         elif source == 'agent_argmax':
@@ -79,7 +79,9 @@ class ImitationLearning(object):
             action_true = batch.action_probs
         if not source == 'agent_probs':
             action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
-        action_teacher = batch.teacher_action[:, 0]
+        action_teacher = batch.teacher_action
+        if len(action_teacher.shape) == 2:
+            action_teacher = action_teacher[:, 0]
         done = batch.full_done
 
         # rearrange all demos to be in descending order of length

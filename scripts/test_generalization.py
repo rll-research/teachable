@@ -10,7 +10,7 @@ from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def load_policy(path):
@@ -145,7 +145,6 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         normalize_adv=True,
         positive_adv=False,
     )
-
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     offset = seed
     for i, new_env in enumerate(envs):
@@ -211,7 +210,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         env=copy.deepcopy(env),
         sampler=sampler,
         sample_processor=sample_processor,
-        buffer_name=save_name,
+        buffer_name=args.buffer_name if args.buffer_name is not None else save_name,
         exp_name=save_name,
         curriculum_step=env_index,
         il_trainer=il_trainer,
@@ -228,6 +227,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     )
     print("TRAINING!!!")
     trainer.train()
+    print("TOTAL FEEDBACK", trainer.num_feedback_reward / 800, trainer.num_feedback_advice / 800)
     print("All done!")
     return trainer
 
@@ -338,6 +338,7 @@ def main():
     parser.add_argument('--distillation_steps', type=int, default=None)
     parser.add_argument('--seeds', nargs='+', default=[0], type=int)
     parser.add_argument('--distill_successful_only', action='store_true')
+    parser.add_argument('--buffer_name', default=None)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -411,6 +412,8 @@ def main():
     additional_args['target_policy'] = args.target_policy
     additional_args['target_policy_key'] = args.target_policy_key
     additional_args['distill_successful_only'] = args.distill_successful_only
+    if args.buffer_name is not None:
+        additional_args['buffer_name'] = args.buffer_name
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False

@@ -83,8 +83,9 @@ class Buffer:
             batch = pkl.load(f)
         return batch
 
-    def add_trajs(self, batch, level):
-        batch = trim_batch(batch)
+    def add_trajs(self, batch, level, trim=True):
+        if trim:
+            batch = trim_batch(batch)
         trajs = self.split_batch(batch)
         random.shuffle(trajs)
         split = int(self.val_prob * len(trajs))
@@ -100,14 +101,14 @@ class Buffer:
             self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
             self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
 
-    def add_batch(self, batch, level):
+    def add_batch(self, batch, level, trim=True):
         # Starting a new level
         if not level in self.index_train:
             self.counts_train[level] = 0
             self.index_train[level] = 0
             self.counts_val[level] = 0
             self.index_val[level] = 0
-        self.add_trajs(batch, level)
+        self.add_trajs(batch, level, trim)
 
     def trim_level(self, level, max_trajs=20000):
         if not level in self.counts_train:
