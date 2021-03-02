@@ -104,7 +104,7 @@ class ImitationLearning(object):
 
         obss = obss_list
         action_true = torch.cat(action_true_list, dim=0)
-        action_teacher = np.concatenate(action_teacher_list, axis=0)
+        action_teacher = np.concatenate([a.detach().cpu().numpy() for a in action_teacher_list], axis=0)
         done = torch.cat(done_list, dim=0)
 
         inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
