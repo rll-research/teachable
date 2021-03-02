@@ -70,7 +70,9 @@ class ImitationLearning(object):
             batch = self.modify_cc3(batch)
         obss = batch.obs
         if source == 'teacher':
-            action_true = batch.teacher_action#[:, 0]
+            action_true = batch.teacher_action
+            if len(action_true.shape) == 2:
+                action_true = action_true[:, 0]
         elif source == 'agent':
             action_true = batch.action
         elif source == 'agent_argmax':
@@ -104,7 +106,8 @@ class ImitationLearning(object):
 
         obss = obss_list
         action_true = torch.cat(action_true_list, dim=0)
-        action_teacher = np.concatenate([a.detach().cpu().numpy() for a in action_teacher_list], axis=0)
+        action_teacher = np.concatenate([a.detach().cpu().numpy() if type(a) is torch.Tensor else a
+                                         for a in action_teacher_list], axis=0)
         done = torch.cat(done_list, dim=0)
 
         inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1

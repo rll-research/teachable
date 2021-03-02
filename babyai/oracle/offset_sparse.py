@@ -13,7 +13,7 @@ class OFFSparse(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.next_state_coords, self.get_last_feedback_indicator()])
+        return np.concatenate([self.next_state_coords, np.array([-1, -1, -1]), self.get_last_feedback_indicator()])
 
     def random_feedback(self):
         """
@@ -28,7 +28,9 @@ class OFFSparse(Teacher):
         # Copy so we don't mess up the state of the real oracle
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
-        return np.concatenate([self.next_state_coords, self.get_last_feedback_indicator()])
+        env = oracle.mission
+        return np.concatenate([self.next_state_coords, (env.agent_pos - 12) / 12, [env.agent_dir / 3],
+                               self.get_last_feedback_indicator()])
 
     # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
     def success_check(self, state, action, oracle):
