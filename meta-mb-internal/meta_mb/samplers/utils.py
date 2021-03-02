@@ -74,26 +74,25 @@ def get_readable_feedback(env_info, obs, teacher_name):
                         'KeepKey',
                         'DropOff']
         subgoal = obs['SubgoalCorrections']
-        types = ['int', 'tuple', 'obj', 'none']
+        # Subgoal Name
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
         curr_idx = len(subgoal_names)
-        subgoal_reason = reason_names[np.argmax(subgoal[curr_idx: curr_idx + len(reason_names)]).item()]
-        curr_idx += len(reason_names)
-        subgoal_type = types[np.argmax(subgoal[curr_idx: curr_idx + len(types)]).item()]
-        curr_idx += len(types)
-        coordinate = subgoal[curr_idx: curr_idx + 2]
-        curr_idx += 2
+        # Obj color
         obj_color = (COLOR_NAMES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(COLOR_NAMES)]).item()]
         curr_idx += len(COLOR_NAMES) + 1
+        # Obj name
         obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES)]).item()]
         curr_idx += len(OBJ_TYPES) + 1
+        # Target coordinate
+        coordinate = subgoal[curr_idx: curr_idx + 2]
+        curr_idx += 2
+        # Agent pos
         agent_pos = subgoal[curr_idx: curr_idx + 2] * 12 + 12
         curr_idx += 2
+        # Agent Dir
         agent_dir = subgoal[curr_idx] * 3
-        if not np.array_equal(coordinate, np.array([-1, -1])):
-            coordinate = (coordinate * 10) + agent_pos
-
-        return f"Name: {subgoal_name}, Reason: {subgoal_reason}, Type: {subgoal_type}, Coord: {coordinate}, " \
+        coordinate = (coordinate * 10) + agent_pos
+        return f"Name: {subgoal_name}, Coord: {coordinate}, " \
                f"obj {obj_color} {obj_type}, pos {agent_pos}, dir {agent_dir}"
     return 'no feedback string available'
 
@@ -289,5 +288,5 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
     followed_cc3_proportion = check_followed_cc3(full_obs_list)
-    print("FEEDBACK RATIO", num_feedback / num_steps)
+    print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
     return paths, correct / count, stoch_correct / count, det_correct / count, followed_cc3_proportion
