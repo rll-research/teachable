@@ -10,7 +10,7 @@ from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def load_policy(path):
@@ -154,9 +154,9 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         new_env.reset()
     repeated_seed = None if not args.repeated_seed else np.arange(1000 * seed, 1000 * seed + args.num_envs)
     collect_dropout_prob = 1 if hide_instrs else 0
-    algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+    algo = PPOAlgo(policy, envs, 80, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
-                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, 80,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
                    obs_preprocessor=obs_preprocessor, instr_dropout_prob=collect_dropout_prob,
@@ -414,6 +414,7 @@ def main():
     additional_args['distill_successful_only'] = args.distill_successful_only
     if args.buffer_name is not None:
         additional_args['buffer_name'] = args.buffer_name
+    additional_args['no_collect'] = True
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False

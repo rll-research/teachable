@@ -83,7 +83,6 @@ class BaseAlgo(ABC):
         self.num_procs = len(envs)
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
-
         assert self.num_frames_per_proc % self.recurrence == 0
 
         # Initialize experience values

@@ -191,8 +191,12 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
-            if o['gave_SubgoalCorrections']:
-                num_feedback += 1
+            if 'gave_SubgoalCorrections' in o:
+                if o['gave_SubgoalCorrections']:
+                    num_feedback += 1
+            elif 'gave_PreActionAdvice' in o:
+                if o['gave_PreActionAdvice']:
+                    num_feedback += 1
             num_steps += 1
             past_o = o
             full_obs_list.append(copy.deepcopy(o))
