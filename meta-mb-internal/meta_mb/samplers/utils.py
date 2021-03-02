@@ -52,27 +52,13 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 
 
 def get_readable_feedback(env_info, obs, teacher_name):
-    gave_key = 'gave_' + teacher_name
-    # if obs[gave_key]:
-    #     return 'empty feedback'
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
     if teacher_name == 'SubgoalCorrections':
-        subgoal_names = ['CloseSubgoal',
-                        'OpenSubgoal',
-                        'DropSubgoal',
-                        'PickupSubgoal',
-                        'TakeActionSubgoal',
-                        'GoNextToSubgoal',
-                        'ExploreSubgoal']
-        reason_names = ['Unlock',
-                        None,
-                        'UnlockAndKeepKey',
-                        'PutNext',
-                        'Open',
-                        'Explore',
-                        'KeepKey',
-                        'DropOff']
+        subgoal_names = ['OpenSubgoal',
+                         'DropSubgoal',
+                         'PickupSubgoal',
+                         'GoNextToSubgoal']
         subgoal = obs['SubgoalCorrections']
         # Subgoal Name
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
