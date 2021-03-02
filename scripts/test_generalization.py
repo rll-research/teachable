@@ -414,7 +414,8 @@ def main():
     additional_args['distill_successful_only'] = args.distill_successful_only
     if args.buffer_name is not None:
         additional_args['buffer_name'] = args.buffer_name
-    additional_args['no_collect'] = True
+        additional_args['no_collect'] = True
+        additional_args['source'] = 'agent'
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
