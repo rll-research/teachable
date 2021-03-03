@@ -193,19 +193,19 @@ class OpenSubgoal(Subgoal):
 
                 # Take back the object being carried
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur, reason='PickUp'))
 
                 # Go back to the door and open it
                 self.bot.stack.append(OpenSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos)))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos), reason='Open2'))
 
                 # Go to the key and pick it up
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
 
                 # Drop the object being carried
                 self.bot.stack.append(DropSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='Drop')
             else:
                 # This branch is will be used very rarely, given that
                 # GoNextToSubGoal(..., reason='Open') should plan
@@ -217,11 +217,11 @@ class OpenSubgoal(Subgoal):
 
                 # Go back to the door and open it
                 self.bot.stack.append(OpenSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos)))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos)), reason='Open2')
 
                 # Go to the key and pick it up
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
             return
 
         if self.fwd_cell.is_open:
@@ -245,7 +245,7 @@ class OpenSubgoal(Subgoal):
                 # be occupied.
                 drop_key_pos = self.bot._find_drop_pos()
                 self.bot.stack.append(DropSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_key_pos))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_key_pos), reason='Drop')
         else:
             self._plan_undo_action(action_taken)
 
@@ -341,7 +341,7 @@ class GoNextToSubgoal(Subgoal):
                 self.bot.stack.pop()
                 self.bot.stack.append(GoNextToSubgoal(self.bot, target_obj, reason='Open'))
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc))
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
                 return
 
         # The position we are on is the one we should go next to
@@ -418,17 +418,17 @@ class GoNextToSubgoal(Subgoal):
                     drop_pos_block = self.bot._find_drop_pos(drop_pos_cur)
                     # Take back the object being carried
                     self.bot.stack.append(PickupSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur))
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='PickUp')
 
                     # Pick up the blocking object and drop it
                     self.bot.stack.append(DropSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_block))
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_block), reason='Drop')
                     self.bot.stack.append(PickupSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, self.fwd_pos))
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, self.fwd_pos), reason='PickUp')
 
                     # Drop the object being carried
                     self.bot.stack.append(DropSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur))
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='Drop')
                     return
                 else:
                     drop_pos = self.bot._find_drop_pos()
@@ -633,8 +633,25 @@ class Bot:
                         'GoNextToSubgoal']
                         
         # Name of the subgoal
+        subgoal_name = type(subgoal).__name__
+        if subgoal_name == 'OpenSubgoal':
+            print("?")
+        if subgoal_name == 'GoNextToSubgoal':
+            # Going to an object to pick it up
+            if subgoal.reason == 'PickUp':
+                subgoal_name = 'PickupSubgoal'
+            # Going to an object to drop it
+            elif subgoal.reason in ['Drop', 'Dropoff', 'PutNext']:
+                subgoal_name = 'DropSubgoal'
+            # Going to an object to open it
+            elif subgoal.reason in ['Open', 'Open2']:
+                subgoal_name = 'OpenSubgoal'
+            else:
+                if not ((subgoal.datum is None) or type(subgoal.datum) == tuple or type(subgoal.datum) == list or type(subgoal.datum) == np.ndarray):
+                    if not type(self.mission.instrs).__name__ in ['GoToInstr', 'GoToUnknownInstr', 'SeekInstr']:
+                        print("huh?")
         try:
-            subgoal_name_idx = subgoal_names.index(type(subgoal).__name__)
+            subgoal_name_idx = subgoal_names.index(subgoal_name)
         except:
             subgoal_name_idx = len(subgoal_names)
         try:
@@ -656,12 +673,17 @@ class Bot:
                     except:
                         subgoal_val = np.array([-1, -1])
             elif subgoal.datum is None:
-                if type(subgoal).__name__ in ['DropSubgoal', 'PickupSubgoal']:
+                if type(subgoal).__name__ in ['DropSubgoal', 'PickupSubgoal', 'OpenSubgoal']:
                     subgoal_val = subgoal.fwd_pos
                 else:
                     subgoal_val = np.array([-1, -1])
-                color_idx = len(COLOR_NAMES)
-                type_idx = len(OBJ_TYPES)
+                fwd_cell = self.mission.grid.get(*subgoal.fwd_pos)
+                if fwd_cell is None:
+                    color_idx = len(COLOR_NAMES)
+                    type_idx = len(OBJ_TYPES)
+                else:
+                    color_idx = COLOR_NAMES.index(fwd_cell.color)
+                    type_idx = OBJ_TYPES.index(fwd_cell.type)
             else:
                 # Object type
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
@@ -678,7 +700,7 @@ class Bot:
                                    + 2)
         # Index the subgoal name
         subgoal_idx_all[subgoal_name_idx] = 1.0
-        curr_idx = len(subgoal_names)
+        curr_idx = len(subgoal_names) + 1 # TODO: how do we handle the one training?
         # Index target object color
         subgoal_idx_all[curr_idx + color_idx] = 1.0
         curr_idx += len(COLOR_NAMES) + 1
@@ -1143,7 +1165,7 @@ class Bot:
             # that we may carry other objects
             self.stack.append(DropSubgoal(self))
             self.stack.append(PickupSubgoal(self))
-            self.stack.append(GoNextToSubgoal(self, instr.desc))
+            self.stack.append(GoNextToSubgoal(self, instr.desc, reason='PickUp'))
             # If we're carrying an object, drop it first
             if self.mission.carrying:
                 self.stack.append(DropSubgoal(self))
@@ -1167,7 +1189,7 @@ class Bot:
                     self.stack.append(DropSubgoal(self))
                     self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))
                     self.stack.append(PickupSubgoal(self))
-                    self.stack.append(GoNextToSubgoal(self, instr.desc_move))
+                    self.stack.append(GoNextToSubgoal(self, instr.desc_move, reason='PickUp'))
                     self.stack.append(DropSubgoal(self))
                     fwd_cell = self.mission.grid.get(*self.mission.agent_pos + self.mission.dir_vec)
                     if fwd_cell is not None:
@@ -1177,7 +1199,7 @@ class Bot:
             self.stack.append(DropSubgoal(self))
             self.stack.append(GoNextToSubgoal(self, instr.desc_fixed, reason='PutNext'))
             self.stack.append(PickupSubgoal(self))
-            self.stack.append(GoNextToSubgoal(self, instr.desc_move))
+            self.stack.append(GoNextToSubgoal(self, instr.desc_move, reason='PickUp'))
             return
 
         if isinstance(instr, BeforeInstr) or isinstance(instr, AndInstr):

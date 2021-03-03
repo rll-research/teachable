@@ -62,12 +62,12 @@ def get_readable_feedback(env_info, obs, teacher_name):
         subgoal = obs['SubgoalCorrections']
         # Subgoal Name
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
-        curr_idx = len(subgoal_names)
+        curr_idx = len(subgoal_names) + 1
         # Obj color
-        obj_color = (COLOR_NAMES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(COLOR_NAMES)]).item()]
+        obj_color = (COLOR_NAMES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(COLOR_NAMES) + 1]).item()]
         curr_idx += len(COLOR_NAMES) + 1
         # Obj name
-        obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES)]).item()]
+        obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES)]).item() + 1]
         curr_idx += len(OBJ_TYPES) + 1
         # Target coordinate
         coordinate = subgoal[curr_idx: curr_idx + 2]
