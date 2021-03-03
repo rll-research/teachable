@@ -418,7 +418,7 @@ class GoNextToSubgoal(Subgoal):
                     drop_pos_block = self.bot._find_drop_pos(drop_pos_cur)
                     # Take back the object being carried
                     self.bot.stack.append(PickupSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='PickUp')
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur, reason='PickUp'))
 
                     # Pick up the blocking object and drop it
                     self.bot.stack.append(DropSubgoal(self.bot))
