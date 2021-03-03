@@ -201,11 +201,11 @@ class OpenSubgoal(Subgoal):
 
                 # Go to the key and pick it up
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc, reason='PickUp'))
 
                 # Drop the object being carried
                 self.bot.stack.append(DropSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='Drop')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur, reason='Drop'))
             else:
                 # This branch is will be used very rarely, given that
                 # GoNextToSubGoal(..., reason='Open') should plan
@@ -217,11 +217,11 @@ class OpenSubgoal(Subgoal):
 
                 # Go back to the door and open it
                 self.bot.stack.append(OpenSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos)), reason='Open2')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, tuple(self.fwd_pos), reason='Open2'))
 
                 # Go to the key and pick it up
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc, reason='PickUp'))
             return
 
         if self.fwd_cell.is_open:
@@ -245,7 +245,7 @@ class OpenSubgoal(Subgoal):
                 # be occupied.
                 drop_key_pos = self.bot._find_drop_pos()
                 self.bot.stack.append(DropSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_key_pos), reason='Drop')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, drop_key_pos, reason='Drop'))
         else:
             self._plan_undo_action(action_taken)
 
@@ -341,7 +341,7 @@ class GoNextToSubgoal(Subgoal):
                 self.bot.stack.pop()
                 self.bot.stack.append(GoNextToSubgoal(self.bot, target_obj, reason='Open'))
                 self.bot.stack.append(PickupSubgoal(self.bot))
-                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc), reason='PickUp')
+                self.bot.stack.append(GoNextToSubgoal(self.bot, key_desc, reason='PickUp'))
                 return
 
         # The position we are on is the one we should go next to
@@ -422,13 +422,13 @@ class GoNextToSubgoal(Subgoal):
 
                     # Pick up the blocking object and drop it
                     self.bot.stack.append(DropSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_block), reason='Drop')
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_block, reason='Drop'))
                     self.bot.stack.append(PickupSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, self.fwd_pos), reason='PickUp')
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, self.fwd_pos, reason='PickUp'))
 
                     # Drop the object being carried
                     self.bot.stack.append(DropSubgoal(self.bot))
-                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur), reason='Drop')
+                    self.bot.stack.append(GoNextToSubgoal(self.bot, drop_pos_cur, reason='Drop'))
                     return
                 else:
                     drop_pos = self.bot._find_drop_pos()
