@@ -634,8 +634,6 @@ class Bot:
                         
         # Name of the subgoal
         subgoal_name = type(subgoal).__name__
-        if subgoal_name == 'OpenSubgoal':
-            print("?")
         if subgoal_name == 'GoNextToSubgoal':
             # Going to an object to pick it up
             if subgoal.reason == 'PickUp':
@@ -646,10 +644,6 @@ class Bot:
             # Going to an object to open it
             elif subgoal.reason in ['Open', 'Open2']:
                 subgoal_name = 'OpenSubgoal'
-            else:
-                if not ((subgoal.datum is None) or type(subgoal.datum) == tuple or type(subgoal.datum) == list or type(subgoal.datum) == np.ndarray):
-                    if not type(self.mission.instrs).__name__ in ['GoToInstr', 'GoToUnknownInstr', 'SeekInstr']:
-                        print("huh?")
         try:
             subgoal_name_idx = subgoal_names.index(subgoal_name)
         except:
@@ -678,12 +672,13 @@ class Bot:
                 else:
                     subgoal_val = np.array([-1, -1])
                 fwd_cell = self.mission.grid.get(*subgoal.fwd_pos)
-                if fwd_cell is None:
-                    color_idx = len(COLOR_NAMES)
-                    type_idx = len(OBJ_TYPES)
-                else:
+                if fwd_cell is not None and type(fwd_cell) in [Ball, Box, Key, Door]:
                     color_idx = COLOR_NAMES.index(fwd_cell.color)
                     type_idx = OBJ_TYPES.index(fwd_cell.type)
+                else:
+                    color_idx = len(COLOR_NAMES)
+                    type_idx = len(OBJ_TYPES)
+
             else:
                 # Object type
                 color_idx = COLOR_NAMES.index(subgoal.datum.color)
