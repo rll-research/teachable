@@ -412,8 +412,8 @@ def main():
     additional_args['target_policy'] = args.target_policy
     additional_args['target_policy_key'] = args.target_policy_key
     additional_args['distill_successful_only'] = args.distill_successful_only
+    additional_args['buffer_name'] = args.buffer_name
     if args.buffer_name is not None:
-        additional_args['buffer_name'] = args.buffer_name
         additional_args['no_collect'] = True
         additional_args['source'] = 'agent'
 
