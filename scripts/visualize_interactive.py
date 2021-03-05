@@ -32,7 +32,8 @@ def cc3_modify(advice, obs, env):
     return obs
 
 
-with tf.Session() as sess:
+# with tf.Session() as sess:
+if True:
     # ACTION SPACE
     # left = 0
     # right = 1
@@ -60,7 +61,7 @@ with tf.Session() as sess:
         agent = data['supervised_model']
     else:
         agent = data['policy']
-    agent.eval()
+    # agent.eval()
     env = data['env']
     if args.level is not None:
         env.set_level_distribution(args.level)
@@ -77,7 +78,7 @@ with tf.Session() as sess:
     skip_to_error = False
     teacher_recommendations = []
     agent_actions = []
-    hidden_state = torch.zeros([1, agent.memory_size], device=agent.device)
+    # hidden_state = torch.zeros([1, agent.memory_size], device=agent.device)
     teacher_null_dict = env.teacher.null_feedback()
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict)
     skip_time = False
@@ -90,11 +91,11 @@ with tf.Session() as sess:
         except:
             obs_processed = obs
             x = 3
-        dist, agent_info = agent(obs_processed, hidden_state)
-        agent_action = torch.argmax(dist.probs, dim=1).item()
-        print("The Teacher is saying to take", teacher_action)
-        print("The Agent is most likely to take", agent_action)
-        error = not teacher_action == agent_action
+        # dist, agent_info = agent(obs_processed)
+        # agent_action = torch.argmax(dist.probs, dim=1).item()
+        # print("The Teacher is saying to take", teacher_action)
+        # print("The Agent is most likely to take", agent_action)
+        # error = not teacher_action == agent_action
         while (not skip_to_done):
             print("please type a command below")
             ready = input()
@@ -103,11 +104,11 @@ with tf.Session() as sess:
                       "version of the observation with the alt teacher action (note: if none has been specified, it"
                       "functions the same as 'c'.  Type a number to make the teacher suggest the action at that index.")
             elif ready in ['r', 'render']:
-                img = env.render(mode='rgb_array')
-                plt.imshow(img)
-                plt.title(env.mission)
-                plt.show()
-                # env.render(mode='human')
+                # img = env.render(mode='rgb_array')
+                # plt.imshow(img)
+                # plt.title(env.mission)
+                # plt.show()
+                env.render(mode='human')
             elif ready in ['c', 'continue']:
                 obs = copy.deepcopy(obs_orig)
                 obs = obs_preprocessor([obs], teacher_dict)

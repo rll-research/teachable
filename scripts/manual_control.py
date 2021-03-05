@@ -37,6 +37,14 @@ def step(action):
     else:
         redraw(obs)
 
+def onclick(event):
+    global ix, iy
+    ix, iy = event.xdata, event.ydata
+    print('x = %d, y = %d'%(ix, iy))
+
+def on_scroll(event):
+    step(env.actions.forward)
+
 def key_handler(event):
     print('pressed', event.key)
 
@@ -108,6 +116,8 @@ if args.agent_view:
 
 window = Window('gym_minigrid - ' + args.env)
 window.reg_key_handler(key_handler)
+window.fig.canvas.mpl_connect('button_press_event', onclick)
+window.fig.canvas.mpl_connect('scroll_event', on_scroll)
 
 reset()
 
