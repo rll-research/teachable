@@ -164,7 +164,7 @@ class HumanFeedback:
         )
         parser.add_argument(
             '--train_concurrently',
-            default=None,
+            action='store_true'
         )
         args = parser.parse_args()
         return args
