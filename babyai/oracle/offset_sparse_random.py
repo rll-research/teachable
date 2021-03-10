@@ -95,6 +95,10 @@ class OFFSparseRandom(Teacher):
             feedback = self.empty_feedback()
             gave_feedback = False
         self.gave_feedback = gave_feedback
+        if self.next_state_coords is not None:
+            l = len(self.next_state_coords)
+            feedback[l: l + 2] = (env.agent_pos - 12) / 12
+            feedback[l + 2] = env.agent_dir / 3
         return feedback, gave_feedback
 
     def feedback_condition(self, env):
