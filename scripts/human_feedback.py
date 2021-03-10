@@ -190,6 +190,7 @@ class HumanFeedback:
         # print('Taking action', action, 'suggested action', self.env.teacher_action)
         if action == self.env.teacher_action.item():
             self.num_correct += 1
+        print(f"Taking action {action}")
         new_obs, reward, done, info = self.env.step(action)
         # print("teacher subgoal")#, new_obs['SubgoalCorrections'])
         # self.decode_offset(new_obs['OFFSparseRandom'], tag='  bot')
@@ -444,6 +445,9 @@ class HumanFeedback:
 
     def key_handler(self, event):
         demo = self.args.demos
+        if event.key == ' ':
+            self.step()
+            return
         if event.key == 'r':
             self.end_trajectory()
             return
