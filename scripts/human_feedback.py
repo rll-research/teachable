@@ -3,6 +3,8 @@ import joblib
 import os
 import pathlib
 import torch
+import matplotlib
+matplotlib.use('TkAgg')
 from babyai.utils.buffer import Buffer
 from babyai.bot import OBJ_TYPES
 from gym_minigrid.window import Window
@@ -78,7 +80,7 @@ class HumanFeedback:
         self.obs = self.env.reset()
         print("teacher subgoal")#, self.obs['SubgoalCorrections'])
         # self.decode_offset(self.obs['OFFSparseRandom'])
-        self.decode_subgoal(self.obs['SubgoalCorrections'], preprocessed=True)
+        #self.decode_subgoal(self.obs['SubgoalCorrections'], preprocessed=True)
         self.clear_feedback()
         plt.title(f"Trajectory {self.num_trajs}, frame {self.num_frames}, acc {self.num_correct / self.num_frames}")
         if hasattr(self.env, 'mission'):
@@ -87,8 +89,9 @@ class HumanFeedback:
         self.redraw(self.obs)
 
     def load_policy(self, path):
-        base_path = "/Users/oliviawatkins/Documents/Research/Teachable/babyai/meta-mb-internal/data/"
+        base_path = os.path.join(os.getcwd(), "data")
         path = os.path.join(base_path, path)
+        print("PATH", path)
         saved_model = joblib.load(path)
         env = saved_model['env']
         policy = saved_model['policy']
@@ -190,7 +193,7 @@ class HumanFeedback:
         new_obs, reward, done, info = self.env.step(action)
         # print("teacher subgoal")#, new_obs['SubgoalCorrections'])
         # self.decode_offset(new_obs['OFFSparseRandom'], tag='  bot')
-        self.decode_subgoal(new_obs['SubgoalCorrections'], preprocessed=True)
+        #self.decode_subgoal(new_obs['SubgoalCorrections'], preprocessed=True)
         self.obs_list.append(self.obs)
         self.action_list.append(action)
         self.teacher_action.append(0)
@@ -418,7 +421,7 @@ class HumanFeedback:
         for _ in range(self.advance_count):
             self.step()
         # print("human subgoal")#, self.obs['SubgoalCorrections'])
-        self.decode_subgoal(self.obs['SubgoalCorrections'], preprocessed=False)
+        #self.decode_subgoal(self.obs['SubgoalCorrections'], preprocessed=False)
         # self.clear_feedback() # TODO: consider re-adding
 
     def end_trajectory(self):
