@@ -358,7 +358,7 @@ class GoToUnknownInstr(GoToInstr):
     """
 
     def surface(self, env):
-        return 'go to a object'
+        return 'go to a lime chest'
 
 
 class PickupInstr(ActionInstr):

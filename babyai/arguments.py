@@ -196,6 +196,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollout_temperature', type=float, default=1)
         self.add_argument('--reconstruction', action='store_true')
         self.add_argument('--padding', action='store_true')
+        self.add_argument('--feedback_from_buffer', action='store_true')
 
     def parse_args(self, arg=None):
         """

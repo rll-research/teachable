@@ -3,7 +3,7 @@ import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
 from babyai.utils.buffer import Buffer, trim_batch
-from scripts.test_generalization import eval_policy, test_success
+# from scripts.test_generalization import eval_policy, test_success
 import os.path as osp
 import joblib
 import time
@@ -144,6 +144,7 @@ class Trainer(object):
 
         buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                         augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
+        self.buffer = buffer
         if self.args.use_dagger:
             dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                                    buffer_name='dagger_buffer', successful_only=self.args.distill_successful_only)
@@ -167,11 +168,12 @@ class Trainer(object):
         for itr in range(self.start_itr, self.args.n_itr):
 
             if itr % self.log_every == 0:
-                self.log_fn(self.policy_dict, logger, itr, self.num_feedback_advice + self.num_feedback_reward)
+                if self.args.feedback_from_buffer:
+                    num_feedback = self.buffer.num_feedback
+                else:
+                    num_feedback = self.num_feedback_advice + self.num_feedback_reward
+                self.log_fn(self.policy_dict, logger, itr, num_feedback)
 
-            #if itr > 200:
-            #    last_success = 1
-            #    last_accuracy = 1
             teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step,
                                                                                                last_success,
                                                                                                last_accuracy)

@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import argparse
 import pathlib
+import time
 
 from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
@@ -175,6 +176,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                                 env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args,
                                 seed=seed, num_save=num_save)
 
+    start = time.time()
     def log_fn(policy, logger, itr, num_feedback):
         policy_env_name = f'Policy{policy_name}-{env_name}'
         full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
@@ -182,7 +184,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
             with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
+                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time\n')
         if not itr % args.log_every == 0:
             return
         assert len(teachers) == 1
@@ -195,7 +197,8 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
         with open(full_save_dir.joinpath('results.csv'), 'a') as f:
             f.write(
-                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},{num_feedback + start_num_feedback} \n')
+                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},'
+                f'{num_feedback + start_num_feedback},{time.time() - start} \n')
         return avg_success, avg_accuracy
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']

@@ -36,27 +36,40 @@ class Buffer:
         self.counts_val = {}
         self.buffer_path = pathlib.Path(path).joinpath(buffer_name)
         self.successful_only = successful_only
+        self.num_feedback = 0
         # If the buffer already exists, load it
         if self.buffer_path.exists():
+            self.load_buffer()
+        else:
+            self.buffer_path.mkdir()
+        self.val_prob = val_prob
+
+    def load_buffer(self):
+        # If the buffer stats exist, we don't have to load each file individually
+        buffer_stats_path = self.buffer_path.joinpath('buffer_stats.pkl')
+        if buffer_stats_path.exists():
+            with open(buffer_stats_path, 'rb') as f:
+                buffer_stats = pkl.load(f)
+                self.counts_train, self.index_train, self.counts_val, self.index_val, self.num_feedback = buffer_stats
+        else:
+            # Otherwise, loop through
             for file_name in self.buffer_path.iterdir():
                 file_name = file_name.name
                 if 'train' in file_name:
                     index = self.index_train
                     counts = self.counts_train
                     capacity = self.train_buffer_capacity
-                else:
+                elif 'val' in file_name:
                     index = self.index_val
                     counts = self.counts_val
                     capacity = self.val_buffer_capacity
+                # otherwise, we probably have a buffer stats file
                 level = int(file_name[file_name.index('_level') + 6: file_name.index('_idx')])
                 if level in counts:
                     counts[level] += 1
                 else:
                     counts[level] = 1
                 index[level] = counts[level] % capacity
-        else:
-            self.buffer_path.mkdir()
-        self.val_prob = val_prob
 
     def to_numpy(self, t):
         return t.detach().cpu().numpy()
@@ -109,6 +122,15 @@ class Buffer:
             self.counts_val[level] = 0
             self.index_val[level] = 0
         self.add_trajs(batch, level, trim)
+        self.update_stats(batch)
+
+    def update_stats(self, batch):
+        for k in batch.obs[0].keys():
+            if 'gave' in k:
+                self.num_feedback += np.sum([o[k] for o in batch.obs])
+        buffer_stats = self.counts_train, self.index_train, self.counts_val, self.index_val, self.num_feedback
+        with open(self.buffer_path.joinpath('buffer_stats.pkl'), 'wb') as f:
+            pkl.dump(buffer_stats, f)
 
     def trim_level(self, level, max_trajs=20000):
         if not level in self.counts_train:

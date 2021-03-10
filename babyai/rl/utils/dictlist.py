@@ -43,7 +43,8 @@ def merge_dictlists(list_of_dictlists):
             if vec_type is list:
                 v = [step for dict_list in list_of_dictlists for step in getattr(dict_list, k)]
             elif vec_type is torch.Tensor:
-                v = torch.cat([getattr(dict_list, k).cuda() for dict_list in list_of_dictlists])
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                v = torch.cat([getattr(dict_list, k).to(device) for dict_list in list_of_dictlists])
             elif vec_type is np.ndarray:
                 v = np.concatenate([getattr(dict_list, k) for dict_list in list_of_dictlists])
             elif vec_type is DictList:

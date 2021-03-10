@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-import wandb
+# import wandb
 import os
 import copy
 from gym_minigrid.minigrid import COLOR_NAMES

@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 from babyai.rl.utils.dictlist import DictList
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 
-
 class HumanFeedback:
     def __init__(self):
         self.args = self.make_args()
@@ -66,6 +65,12 @@ class HumanFeedback:
         self.window.show_img(img)
 
     def reset(self):
+        # If we're training concurrently, reload so we get the new model
+        if self.args.train_concurrently:
+            self.policy, self.env, _, self.saved_model = self.load_policy(self.args.model)
+            if self.args.target_policy is not None:
+                target_policy, _, _, _ = self.load_policy(self.args.target_policy)
+                self.policy['none'] = target_policy['none']
         for agent in self.policy.values():
             agent.reset(dones=[True])
         self.env.set_task()
@@ -82,7 +87,7 @@ class HumanFeedback:
         self.redraw(self.obs)
 
     def load_policy(self, path):
-        base_path = "/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/"
+        base_path = "/Users/oliviawatkins/Documents/Research/Teachable/babyai/meta-mb-internal/data/"
         path = os.path.join(base_path, path)
         saved_model = joblib.load(path)
         env = saved_model['env']
@@ -155,6 +160,10 @@ class HumanFeedback:
         )
         parser.add_argument(
             '--target_policy',
+            default=None,
+        )
+        parser.add_argument(
+            '--train_concurrently',
             default=None,
         )
         args = parser.parse_args()
@@ -387,6 +396,7 @@ class HumanFeedback:
             feedback = self.last_feedback
         else:
             self.steps_since_feedback = 0
+            self.obs['gave_' + self.args.feedback_type] = 1.0
         self.last_feedback = feedback
         self.feedback_indicator = 0
         self.current_feedback_type = self.args.feedback_type

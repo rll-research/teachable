@@ -13,7 +13,7 @@ import datetime
 import tempfile
 import joblib
 from collections import defaultdict
-import wandb
+# import wandb
 import pathlib
 
 LOG_OUTPUT_FORMATS     = ['stdout', 'log', 'csv', 'tensorboard', 'wandb']
