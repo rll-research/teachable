@@ -14,7 +14,7 @@ class OSREasy(Teacher):
         """
         Return a tensor corresponding to no feedback.
         """
-        self.generic_feedback(env)
+        return self.generic_feedback(env)
 
     def generic_feedback(self, env, offset=True):
         if env is None:
@@ -43,7 +43,7 @@ class OSREasy(Teacher):
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
         env = oracle.mission
-        self.generic_feedback(env)
+        return self.generic_feedback(env)
 
     # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
     def success_check(self, state, action, oracle):
