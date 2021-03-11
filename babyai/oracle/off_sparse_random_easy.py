@@ -21,7 +21,7 @@ class OSREasy(Teacher):
             pos = np.array([-1, -1, -1])
         else:
             pos = np.concatenate([(env.agent_pos - 12) / 12, [env.agent_dir / 3]])
-        if offset:
+        if offset and env:
             coord_offset = self.next_state_coords.copy()
             coord_offset[1:] = coord_offset[1:] - env.agent_pos
         else:
