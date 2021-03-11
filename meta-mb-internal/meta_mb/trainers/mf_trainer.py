@@ -31,33 +31,33 @@ class Trainer(object):
     """
 
     def __init__(
-        self,
-        args,
-        algo,
-        algo_dagger,
-        policy,
-        env,
-        sampler,
-        sample_processor,
-        start_itr=0,
-        buffer_name="",
-        exp_name="",
-        curriculum_step=0,
-        il_trainer=None,
-        reward_predictor=None,
-        rp_trainer=None,
-        is_debug=False,
-        eval_every=10,
-        save_every=10,
-        log_every=10,
-        save_videos_every=100,
-        log_and_save=True,
-        teacher_schedule=lambda a, b: ({}, {}),
-        obs_preprocessor=None,
-        log_dict={},
-        eval_heldout=True,
-        augmenter=None,
-        log_fn=lambda w, x, y, z: None,
+            self,
+            args,
+            algo,
+            algo_dagger,
+            policy,
+            env,
+            sampler,
+            sample_processor,
+            start_itr=0,
+            buffer_name="",
+            exp_name="",
+            curriculum_step=0,
+            il_trainer=None,
+            reward_predictor=None,
+            rp_trainer=None,
+            is_debug=False,
+            eval_every=10,
+            save_every=10,
+            log_every=10,
+            save_videos_every=100,
+            log_and_save=True,
+            teacher_schedule=lambda a, b: ({}, {}),
+            obs_preprocessor=None,
+            log_dict={},
+            eval_heldout=True,
+            augmenter=None,
+            log_fn=lambda w, x, y, z: None,
     ):
         self.args = args
         self.algo = algo
@@ -103,7 +103,7 @@ class Trainer(object):
         self.success_dict['none'] = 0
 
     def check_advance_curriculum(self, episode_logs, data):
-        if False:#data.obs[0]['gave_PreActionAdvice']:
+        if False:  # data.obs[0]['gave_PreActionAdvice']:
             acc_threshold = .98
         else:
             acc_threshold = self.args.accuracy_threshold_rl
@@ -175,8 +175,8 @@ class Trainer(object):
                 self.log_fn(self.policy_dict, logger, itr, num_feedback)
 
             teacher_train_dict, teacher_distill_dict = self.teacher_schedule(self.curriculum_step,
-                                                                                               last_success,
-                                                                                               last_accuracy)
+                                                                             last_success,
+                                                                             last_accuracy)
             collection_dict = {k: teacher_train_dict[k] or teacher_distill_dict[k] for k in teacher_train_dict.keys()}
             if len(teacher_train_dict) > 0:
                 last_teacher = list(teacher_train_dict.keys())[-1]
@@ -211,7 +211,7 @@ class Trainer(object):
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
             should_collect = (not self.args.no_collect) and (
-                (not skip_training_rl) or self.args.self_distill)
+                    (not skip_training_rl) or self.args.self_distill)
             should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
@@ -229,7 +229,7 @@ class Trainer(object):
                     counts_train = 0
                 logger.logkv("BufferSize", counts_train)
                 if self.args.single_level and self.args.end_on_full_buffer and \
-                    (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
+                        (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
                     print("ALL DONE!")
                     return
             else:
@@ -250,7 +250,8 @@ class Trainer(object):
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum(episode_logs, raw_samples_data)
+            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum(episode_logs,
+                                                                                          raw_samples_data)
             if self.args.no_train_rl or skip_training_rl:
                 advance_curriculum = True
             else:
@@ -318,7 +319,7 @@ class Trainer(object):
                                                is_training=True,
                                                teachers_dict=teacher_distill_dict,
                                                relabel=self.args.relabel,
-                                               relabel_dict=teacher_train_dict, distill_to_none=True)#dist_i < 5)
+                                               relabel_dict=teacher_train_dict, distill_to_none=True)  # dist_i < 5)
                     time_train_distill += (time.time() - sample_start)
 
                     if self.args.use_dagger:
@@ -377,7 +378,7 @@ class Trainer(object):
 
             """ ------------------ Policy rollouts ---------------------"""
             should_policy_rollout = ((itr % self.eval_every == 0) or (
-                itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum))
+                    itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum))
             if self.args.yes_rollouts:
                 should_policy_rollout = True
             if self.args.no_rollouts:
@@ -390,15 +391,18 @@ class Trainer(object):
                     # Take distillation dict, keep the last teacher
                     for teacher in self.introduced_teachers:
                         advance_curriculum_teacher, success, accuracy = self.run_supervised(
-                            self.policy_dict[teacher], {k: k == teacher for k in teacher_train_dict.keys()}, f"Rollout/",
+                            self.policy_dict[teacher], {k: k == teacher for k in teacher_train_dict.keys()},
+                            f"Rollout/",
                             show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
                         past_success = self.success_dict[teacher]
                         self.success_dict[teacher] = success * self.args.swap_factor + past_success * (
                                 1 - self.args.swap_factor)
                         advance_curriculum_teacher = advance_curriculum_teacher and self.success_dict[teacher]
                         if teacher == last_teacher:
-                            last_success = (success * self.args.swap_factor + last_success * (1 - self.args.swap_factor))
-                            last_accuracy = (accuracy * self.args.swap_factor + last_accuracy * (1 - self.args.swap_factor))
+                            last_success = (
+                                        success * self.args.swap_factor + last_success * (1 - self.args.swap_factor))
+                            last_accuracy = (
+                                        accuracy * self.args.swap_factor + last_accuracy * (1 - self.args.swap_factor))
                         advance_curriculum = advance_curriculum and advance_curriculum_teacher
                     advance_curriculum = advance_curriculum and train_advance_curriculum
                     print("Advancing curriculum???", advance_curriculum)
@@ -485,11 +489,10 @@ class Trainer(object):
 
             logger.dumpkvs()
 
-
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (
-                itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum)
+                    itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum)
             # If we're just collecting, don't log
             if self.args.no_train_rl and self.args.self_distill:
                 should_save_video = False
@@ -518,7 +521,7 @@ class Trainer(object):
 
             if self.log_and_save:
                 if (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or \
-                   (not self.args.single_level and advance_curriculum):
+                        (not self.args.single_level and advance_curriculum):
                     saving_time_start = time.time()
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
@@ -668,7 +671,8 @@ class Trainer(object):
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
 
-    def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={}, distill_to_none=True):
+    def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={},
+                distill_to_none=True):
         if source is None:
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
@@ -681,8 +685,8 @@ class Trainer(object):
         key_set = '_'.join([k for k, v in teacher_dict.items() if v])
         paths = self.sampler.obtain_samples(log=False, advance_curriculum=False, policy=policy,
                                             teacher_dict=teacher_dict, max_action=False, show_instrs=show_instrs,
-                                                             temperature=self.args.rollout_temperature)
-        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag+key_set,
+                                            temperature=self.args.rollout_temperature)
+        samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag + key_set,
                                                              log_teacher=self.train_with_teacher)
         use_teacher = not key_set == ''
         advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data, use_teacher)

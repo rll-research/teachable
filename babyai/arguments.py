@@ -128,9 +128,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--success_threshold_rollout_teacher', type=float, default=1)
         self.add_argument('--success_threshold_rollout_no_teacher', type=float, default=1)
         self.add_argument('--accuracy_threshold_rl', type=float, default=.95)
-        self.add_argument('--accuracy_threshold_distill_teacher', type=float, default=.95)
+        self.add_argument('--accuracy_threshold_distill_teacher', type=float, default=.9)
         self.add_argument('--accuracy_threshold_distill_no_teacher', type=float, default=.6)
-        self.add_argument('--accuracy_threshold_rollout_teacher', type=float, default=.9)
+        self.add_argument('--accuracy_threshold_rollout_teacher', type=float, default=.85)
         self.add_argument('--accuracy_threshold_rollout_no_teacher', type=float, default=.5)
         self.add_argument('--curriculum_type', type=int, default=1)
         self.add_argument('--augment', action='store_true')
@@ -197,6 +197,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--reconstruction', action='store_true')
         self.add_argument('--padding', action='store_true')
         self.add_argument('--feedback_from_buffer', action='store_true')
+        self.add_argument('--same_model', action='store_true')
 
     def parse_args(self, arg=None):
         """

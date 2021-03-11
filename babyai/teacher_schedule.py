@@ -108,6 +108,22 @@ def easy_swap_harder(level, easy_teacher, harder_teacher, remove_easy_level=13):
     distillation_dict = {easy_teacher: False, harder_teacher: True}
     return teacher_train_dict, distillation_dict
 
+# Triple swap
+def triple_swap(level, easy_teacher, med_teacher, harder_teacher, remove_easy_level=13, remove_med_level=18):
+    no_teacher_dict = {easy_teacher: False, med_teacher: False, harder_teacher: False}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    elif level < remove_easy_level:
+        teacher_train_dict = {easy_teacher: True, med_teacher: False, harder_teacher: False}
+        distillation_dict = {easy_teacher: False, med_teacher: True, harder_teacher: True}
+    elif level < remove_med_level:
+        teacher_train_dict = {easy_teacher: False, med_teacher: True, harder_teacher: False}
+        distillation_dict = {easy_teacher: False, med_teacher: False, harder_teacher: True}
+    else:
+        teacher_train_dict = {easy_teacher: False, med_teacher: False, harder_teacher: True}
+        distillation_dict = {easy_teacher: False, med_teacher: False, harder_teacher: True}
+    return teacher_train_dict, distillation_dict
+
 
 def easy_swap_harder_help(level, success_rate, accuracy_rate, easy_teacher, harder_teacher,
                           success_intervention_cutoff=.95, accuracy_intervention_cutoff=.95,
@@ -159,6 +175,9 @@ def make_teacher_schedule(feedback_types, teacher_schedule, success_intervention
     elif teacher_schedule == 'easy_swap_harder':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])
+    elif teacher_schedule == 'triple_swap':
+        assert len(feedback_types) == 3
+        return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1], feedback_types[2])
     elif teacher_schedule == 'easy_swap_harder_noselfdistill':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])

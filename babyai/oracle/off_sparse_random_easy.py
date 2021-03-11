@@ -122,6 +122,6 @@ class OSREasy(Teacher):
         try:
             vec = np.zeros(self.feedback_frequency)
             vec[self.steps_since_lastfeedback] = 1
-        except:
-            print("uh oh")
+        except Exception as e:
+            print("uh oh, looks like we can't choose a feedback freq (OSREasy)", e)
         return vec
