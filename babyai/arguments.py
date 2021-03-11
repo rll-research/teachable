@@ -197,6 +197,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--reconstruction', action='store_true')
         self.add_argument('--padding', action='store_true')
         self.add_argument('--feedback_from_buffer', action='store_true')
+        self.add_argument('--same_model', action='store_true')
 
     def parse_args(self, arg=None):
         """

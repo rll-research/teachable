@@ -131,7 +131,8 @@ def run_experiment(**config):
             teacher_null_dict = env.teacher.null_feedback()
         except Exception as e:
             teacher_null_dict = {}
-        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
+        include_zeros = args.include_zeros or args.same_model
+        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level,
@@ -146,28 +147,33 @@ def run_experiment(**config):
             teacher_null_dict = env.teacher.null_feedback()
         except Exception as e:
             teacher_null_dict = {}
-        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
+        include_zeros = args.include_zeros or args.same_model
+        obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
         policy_dict = {}
         full_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys()])
-        for teacher in list(teacher_null_dict.keys()) + ['none']:
-            if not args.include_zeros:
+        teachers_list = list(teacher_null_dict.keys()) + ['none']
+        for teacher in teachers_list:
+            if not args.include_zeros and not args.same_model:
                 advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
-            policy = ACModel(action_space=env.action_space,
-                             env=env,
-                             image_dim=args.image_dim,
-                             memory_dim=args.memory_dim,
-                             instr_dim=args.instr_dim,
-                             lang_model=args.instr_arch,
-                             use_instr=not args.no_instr,
-                             use_memory=not args.no_mem,
-                             arch=args.arch,
-                             advice_dim=args.advice_dim,
-                             advice_size=advice_size,
-                             num_modules=args.num_modules,
-                             reconstruction=args.reconstruction,
-                             reconstruct_advice_size=full_advice_size,
-                             padding=args.padding)
+            if args.same_model and not teacher == teachers_list[0]:
+                policy = policy_dict[teachers_list[0]]
+            else:
+                policy = ACModel(action_space=env.action_space,
+                                 env=env,
+                                 image_dim=args.image_dim,
+                                 memory_dim=args.memory_dim,
+                                 instr_dim=args.instr_dim,
+                                 lang_model=args.instr_arch,
+                                 use_instr=not args.no_instr,
+                                 use_memory=not args.no_mem,
+                                 arch=args.arch,
+                                 advice_dim=args.advice_dim,
+                                 advice_size=advice_size,
+                                 num_modules=args.num_modules,
+                                 reconstruction=args.reconstruction,
+                                 reconstruct_advice_size=full_advice_size,
+                                 padding=args.padding)
             policy_dict[teacher] = policy
 
         start_itr = 0
