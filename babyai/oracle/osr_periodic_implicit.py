@@ -16,7 +16,7 @@ class OSRPeriodicImplicit(OSREasy):
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
         env = oracle.mission
-        self.generic_feedback(env, offset=True)
+        return self.generic_feedback(env, offset=True)
 
     def feedback_condition(self, env, action):
         """
