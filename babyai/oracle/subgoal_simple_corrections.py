@@ -14,6 +14,10 @@ class SubgoalSimpleCorrections(SubgoalCorrections):
         self.last_action = self.next_action
         oracle, replan_output = self.replan(oracle, agent_action)
         self.next_action, next_subgoal = replan_output
+        # If it's explore, mask out the object
+        if np.argmax(next_subgoal[:4]) == 3:
+            next_subgoal[-2:] = 0
+        self.next_subgoal = next_subgoal
         # Don't include open subgoals
         if not np.argmax(next_subgoal[:4]) == 0:
             self.next_subgoal = next_subgoal
