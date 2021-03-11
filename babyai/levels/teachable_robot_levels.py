@@ -22,6 +22,10 @@ from babyai.oracle.offset_corrections import OffsetCorrections
 from babyai.oracle.offset_corrections_repeated_index import OFFIO
 from babyai.oracle.offset_sparse import OFFSparse
 from babyai.oracle.offset_sparse_random import OFFSparseRandom
+from babyai.oracle.off_sparse_random_easy import OSREasy
+from babyai.oracle.osr_mistaken import OSRMistaken
+from babyai.oracle.osr_periodic_explicit import OSRPeriodicExplicit
+from babyai.oracle.osr_periodic_implicit import OSRPeriodicImplicit
 from babyai.oracle.xy_corrections import XYCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.dummy_advice import DummyAdvice
@@ -135,6 +139,20 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif ft == 'OFFSparseRandom':
                     teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
                                                 feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'ORSEasy':
+                    teacher = OSREasy(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
+
+                elif ft == 'OSRMistaken':
+                    teacher = OSRMistaken(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
+
+                elif ft == 'OSRPeriodicExplicit':
+                    teacher = OSRPeriodicExplicit(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'OSRPeriodicImplicit':
+                    teacher = OSRPeriodicImplicit(Bot, self, feedback_always=feedback_always,
+                                              feedback_frequency=ff, cartesian_steps=cs)
                 elif ft == 'XYCorrections':
                     teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
                                             feedback_frequency=ff, cartesian_steps=cs)
