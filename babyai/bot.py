@@ -268,7 +268,7 @@ class PickupSubgoal(Subgoal):
 
     def replan_before_action(self):
         if self.bot.mission.carrying:
-            print("uh oh")
+            print("uh oh, bot is doing something weird. It 's carrying sometthing when we're trying to get it to Pickup",)
             # self.bot.mission.render()
         assert not self.bot.mission.carrying
         return self.actions.pickup
