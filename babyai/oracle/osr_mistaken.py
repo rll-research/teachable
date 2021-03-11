@@ -44,7 +44,7 @@ class OSRMistaken(OSREasy):
         feedback = np.concatenate([[int(self.feedback_active)], feedback])
 
         env = oracle.mission
-        if self.feedback_condition(env):
+        if self.feedback_condition(env, last_action):
             feedback = self.compute_feedback(oracle, last_action)
             gave_feedback = True
             self.past_timestep_feedback = self.last_feedback
