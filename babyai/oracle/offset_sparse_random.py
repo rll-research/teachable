@@ -10,11 +10,16 @@ class OFFSparseRandom(Teacher):
         self.goal_coords = np.array([-1, -1])
         super(OFFSparseRandom, self).__init__(*args, **kwargs)
 
-    def empty_feedback(self):
+    def empty_feedback(self, env=None):
         """
         Return a tensor corresponding to no feedback.
         """
-        return np.concatenate([self.next_state_coords, np.array([-1, -1, -1]), self.get_last_feedback_indicator()])
+        if env is None:
+            pos = np.array([-1, -1, -1])
+        else:
+            pos = np.concatenate([(env.agent_pos - 12) / 12, [env.agent_dir / 3]]) # TODO: remove this in before 43
+        return np.concatenate([self.next_state_coords, pos,
+                               self.get_last_feedback_indicator()])
 
     def random_feedback(self):
         """
@@ -92,7 +97,7 @@ class OFFSparseRandom(Teacher):
             self.past_timestep_feedback = self.last_feedback
             self.last_feedback = feedback
         else:
-            feedback = self.empty_feedback()
+            feedback = self.empty_feedback(env)
             gave_feedback = False
         self.gave_feedback = gave_feedback
         if self.next_state_coords is not None:
