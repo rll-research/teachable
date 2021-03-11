@@ -139,7 +139,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 elif ft == 'OFFSparseRandom':
                     teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
                                                 feedback_frequency=ff, cartesian_steps=cs)
-                elif ft == 'ORSEasy':
+                elif ft == 'OSREasy':
                     teacher = OSREasy(Bot, self, feedback_always=feedback_always,
                                               feedback_frequency=ff, cartesian_steps=cs)
 
