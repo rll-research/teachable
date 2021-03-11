@@ -26,7 +26,7 @@ from babyai.oracle.xy_corrections import XYCorrections
 from babyai.oracle.batch_teacher import BatchTeacher
 from babyai.oracle.dummy_advice import DummyAdvice
 from babyai.bot import Bot
-from babyai.utils.vis_mask_grid import VisMaskGrid
+from vis_mask_grid import VisMaskGrid
 
 
 class Level_TeachableRobot(RoomGridLevel, MetaEnv):
