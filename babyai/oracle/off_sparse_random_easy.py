@@ -97,7 +97,7 @@ class OSREasy(Teacher):
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
         env = oracle.mission
-        if self.feedback_condition(env, last_action):
+        if self.feedback_condition(oracle, last_action):
             feedback = self.compute_feedback(oracle, last_action)
             gave_feedback = True
             self.past_timestep_feedback = self.last_feedback
@@ -108,11 +108,12 @@ class OSREasy(Teacher):
         self.gave_feedback = gave_feedback
         return feedback, gave_feedback
 
-    def feedback_condition(self, env, action=None):
+    def feedback_condition(self, oracle, action=None):
         """
         Returns true when we should give feedback.
         Currently gives feedback at a fixed interval, but we could use other strategies (e.g. whenever the agent messes up)
         """
+        env = oracle.mission
         if (self.steps_since_lastfeedback % self.num_steps == 0) or np.array_equal(env.agent_pos, self.goal_coords):
             self.steps_since_lastfeedback = 0
             return True
