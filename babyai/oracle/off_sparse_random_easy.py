@@ -96,6 +96,7 @@ class OSREasy(Teacher):
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
+        oracle = pkl.loads(pkl.dumps(oracle))
         env = oracle.mission
         if self.feedback_condition(oracle, last_action):
             feedback = self.compute_feedback(oracle, last_action)
