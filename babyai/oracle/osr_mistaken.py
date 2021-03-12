@@ -48,6 +48,5 @@ class OSRMistaken(OSREasy):
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
-        oracle = pkl.loads(pkl.dumps(oracle))
         feedback, gave_feedback = super().give_feedback(state, last_action, oracle)
         return feedback, gave_feedback
