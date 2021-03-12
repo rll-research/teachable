@@ -18,20 +18,17 @@ class OSRPeriodicExplicit(OSREasy):
         env = oracle.mission
         return self.generic_feedback(env, offset=self.feedback_active)
 
-    def feedback_condition(self, env, action):
+    def feedback_condition(self, oracle, action):
         """
         Returns true when we should give feedback, which happens every time the agent messes up
         """
-        # Determines whether the current feedback is still relevantt
+        env = oracle.mission
+        # If we achieved our goal or have spen long enough chasing this one, pick a new one. We may or may not show it.
         if (self.steps_since_lastfeedback % self.num_steps == 0) or np.array_equal(env.agent_pos, self.goal_coords):
             self.steps_since_lastfeedback = 0
-            # half of the time, give
-
-            self.feedback_active = False
-            self.steps_since_lastfeedback = self.feedback_frequency - 1
-        if not self.last_action == action:
-            self.feedback_active = True
-            self.steps_since_lastfeedback = 0
-            return True
-        else:  # took the correct action
-            return False
+            give_feedback = np.random.uniform() < .5
+            self.feedback_active = give_feedback
+            if not give_feedback:  # If we're not giving feedback, set self.goal_coords ourselves
+                self.step_ahead(oracle)
+            return give_feedback
+        return False

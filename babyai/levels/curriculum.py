@@ -117,6 +117,8 @@ class Curriculum(Serializable):
 
         # """
         try:
+            if attr == '__len__':
+                return None
             results = self.__getattribute__(attr)
             return results
         except:
