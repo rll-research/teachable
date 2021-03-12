@@ -55,9 +55,18 @@ class PPOAlgo(BaseAlgo):
 
         assert self.batch_size % self.recurrence == 0
 
-        self.optimizer_dict = {
-            k: torch.optim.Adam(policy.parameters(), self.lr, (beta1, beta2), eps=adam_eps) for k, policy in policy_dict.items()
-        }
+        teachers = list(self.policy_dict.keys())
+        # Dfferent optimizers for different models, same optimizer for same model
+        first_teacher = teachers[0]
+        self.optimizer_dict = {first_teacher: torch.optim.Adam(self.policy_dict[first_teacher].parameters(),
+                                                               self.lr, (beta1, beta2), eps=adam_eps)}
+        for teacher in teachers[1:]:
+            policy = self.policy_dict[teacher]
+            if policy is self.policy_dict[first_teacher]:
+                self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
+            else:
+                self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
+                                                                self.lr, (beta1, beta2), eps=adam_eps)
         self.batch_num = 0
 
     def set_optimizer(self):

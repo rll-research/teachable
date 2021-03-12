@@ -69,7 +69,7 @@ class HumanFeedback:
     def reset(self):
         # If we're training concurrently, reload so we get the new model
         if self.args.train_concurrently:
-            self.policy, self.env, _, self.saved_model = self.load_policy(self.args.model)
+            self.policy, _, _, self.saved_model = self.load_policy(self.args.model)
             if self.args.target_policy is not None:
                 target_policy, _, _, _ = self.load_policy(self.args.target_policy)
                 self.policy['none'] = target_policy['none']

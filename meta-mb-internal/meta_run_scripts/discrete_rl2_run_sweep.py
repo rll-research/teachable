@@ -185,7 +185,7 @@ def run_experiment(**config):
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                    instr_dropout_prob=args.distill_dropout_prob, modify_cc3_steps=modify_cc3_steps,
                                    reconstruct=args.reconstruction)
-    if il_optimizer is not None:
+    if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
 
