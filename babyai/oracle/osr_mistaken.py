@@ -16,7 +16,15 @@ class OSRMistaken(OSREasy):
         oracle_copy = pkl.loads(pkl.dumps(oracle))
         self.step_ahead(oracle_copy, last_action=last_action)
         env = oracle.mission
-        return self.generic_feedback(env, offset=self.feedback_active)
+        feedback = self.generic_feedback(env, offset=self.feedback_active)
+        return np.concatenate([[int(self.feedback_active)], feedback])
+
+    def empty_feedback(self, env=None):
+        """
+        Return a tensor corresponding to no feedback.
+        """
+        feedback = self.generic_feedback(env)
+        return np.concatenate([[int(self.feedback_active)], feedback])
 
     def feedback_condition(self, oracle, action):
         """
@@ -41,6 +49,6 @@ class OSRMistaken(OSREasy):
         :param state: Agent's current observation as a dictionary
         :return: Same dictionary with feedback in the "feedback" key of the dictionary
         """
+        oracle = pkl.loads(pkl.dumps(oracle))
         feedback, gave_feedback = super().give_feedback(state, last_action, oracle)
-        feedback = np.concatenate([[int(self.feedback_active)], feedback])
         return feedback, gave_feedback
