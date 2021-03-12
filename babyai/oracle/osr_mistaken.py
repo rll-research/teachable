@@ -18,11 +18,10 @@ class OSRMistaken(OSREasy):
         env = oracle.mission
         return self.generic_feedback(env, offset=self.feedback_active)
 
-    def feedback_condition(self, oracle, action):
+    def feedback_condition(self, env, action):
         """
         Returns true when we should give feedback, which happens every time the agent messes up
         """
-        env = oracle.mission
         # Determines whether the current feedback is still relevant
         if (self.steps_since_lastfeedback % self.num_steps == 0) or np.array_equal(env.agent_pos, self.goal_coords):
             self.feedback_active = False
