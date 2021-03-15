@@ -177,7 +177,7 @@ def make_teacher_schedule(feedback_types, teacher_schedule, success_intervention
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])
     elif teacher_schedule == 'triple_swap':
         assert len(feedback_types) == 3
-        return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1], feedback_types[2])
+        return lambda level, a, b: triple_swap(level, feedback_types[0], feedback_types[1], feedback_types[2])
     elif teacher_schedule == 'easy_swap_harder_noselfdistill':
         assert len(feedback_types) == 2
         return lambda level, a, b: easy_swap_harder(level, feedback_types[0], feedback_types[1])
