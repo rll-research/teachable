@@ -450,7 +450,7 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = True
                     else:
                         teacher_subset_dict[k] = False
-                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'all_but_none':
@@ -465,7 +465,7 @@ class ImitationLearning(object):
                         teacher_subset_dict[k] = True
                     else:
                         teacher_subset_dict[k] = False
-                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[key_set] = log
         elif distill_target == 'single_teachers':
@@ -473,26 +473,27 @@ class ImitationLearning(object):
                 if not teachers_dict[key]:
                     continue
                 teacher_subset_dict = {k: k == key for k in teachers_dict.keys()}
-                log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                           teacher_dict=teacher_subset_dict)
                 logs[(key,)] = log
         elif distill_target == 'single_teachers_none':  # TODO: modify things to wrk with all distill_targets
-            teacher_dict_list = [((), {k: False for k in teachers_dict.keys()})]
+            teacher_dict_list = [((), {k: False for k in teachers_dict.keys()})] 
             for key in teachers_dict.keys():
                 if not teachers_dict[key]:
                     continue
                 teacher_dict_list.append(((key,), {k: k == key for k in teachers_dict.keys()}))
             full_loss = None
+            mixed_batch = False
             for key_set, teacher_subset_dict in teacher_dict_list:
                 log, loss = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training,
                                                                 source=source, teacher_dict=teacher_subset_dict,
-                                                                backprop=False)
+                                                                backprop=not mixed_batch)
                 if full_loss is None:
                     full_loss = loss
                 else:
                     full_loss += loss
                 logs[key_set] = log
-            if is_training:
+            if is_training and mixed_batch:
                 optimizer = list(self.optimizer_dict.values())[0]  # All the same, so we can use any one
                 optimizer.zero_grad()
                 full_loss.backward()
@@ -502,7 +503,7 @@ class ImitationLearning(object):
             key_set = tuple(set(keys))
             if len(key_set) > 1:
                 raise NotImplementedError
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+            log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teachers_dict)
             logs[key_set] = log
         elif distill_target == 'no_teachers':
@@ -510,7 +511,7 @@ class ImitationLearning(object):
             teacher_subset_dict = {}
             for k in teachers_dict.keys():
                 teacher_subset_dict[k] = False
-            log = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+            log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
             logs[key_set] = log
 
