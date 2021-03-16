@@ -8,13 +8,15 @@ from babyai.rl.utils.dictlist import DictList
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5, modify_cc3_steps=None, reconstruct=False):
+                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3, mem_dropout_prob=.3,
+                 feedback_dropout_prob=.3, modify_cc3_steps=None, reconstruct=False):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
         self.preprocess_obs = preprocess_obs
         self.label_weightings = label_weightings
         self.instr_dropout_prob = instr_dropout_prob
+        self.obs_dropout_prob = obs_dropout_prob
         self.reconstruct = reconstruct
 
         utils.seed(self.args.seed)
