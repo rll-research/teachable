@@ -142,6 +142,7 @@ class Buffer:
         self.index_train[level] = min(self.index_train[level], max_trajs - 1)
 
     def sample(self, total_num_samples=None, total_num_trajs=None, split='train'):
+        self.load_buffer()
         if split == 'train':
             index = self.index_train
             counts = self.counts_train

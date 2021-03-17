@@ -20,8 +20,8 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
             obs_output['full_advice_mask'] = []
 
         instr_mask = int(show_instrs)
-        feedback_mask = int((not show_instrs) or np.random.uniform() > show_feedback)
-        obs_mask = ((not show_instrs) or (not feedback_mask) or np.random.uniform() > show_obs)
+        feedback_mask = int((not show_instrs) or np.random.uniform() < show_feedback)
+        obs_mask = ((not show_instrs) or (not feedback_mask) or np.random.uniform() < show_obs)
         for o in obs:
             advice_list = []
             full_advice_list = []

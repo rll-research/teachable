@@ -419,6 +419,7 @@ def main():
     if args.buffer_name is not None:
         additional_args['no_collect'] = True
         additional_args['source'] = 'agent'
+        additional_args['feedback_from_buffer'] = True
 
     # TODO: eventually remove!
     additional_args['distill_successful_only'] = False
