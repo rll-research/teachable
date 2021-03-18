@@ -126,7 +126,7 @@ def triple_swap(level, easy_teacher, med_teacher, harder_teacher, remove_easy_le
 
 
 def easy_swap_harder_help(level, success_rate, accuracy_rate, easy_teacher, harder_teacher,
-                          success_intervention_cutoff=.95, accuracy_intervention_cutoff=.95,
+                          success_intervention_cutoff=.95, accuracy_intervention_cutoff=.85,
                           remove_easy_level=13):
     no_teacher_dict = {easy_teacher: False, harder_teacher: False}
     if level == -1:  # Generate no_teacher_dict
