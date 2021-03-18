@@ -47,7 +47,7 @@ class Trainer(object):
             reward_predictor=None,
             rp_trainer=None,
             is_debug=False,
-            eval_every=100,
+            eval_every=25,
             save_every=100,
             log_every=10,
             save_videos_every=500,
