@@ -48,7 +48,7 @@ class OFFSparseRandom(Teacher):
         env.teacher = None
         # try:
         original_coords = env.agent_pos.copy()
-        num_steps = np.random.randint(1, self.cartesian_steps + 1)
+        num_steps = np.random.randint(2, self.cartesian_steps + 1)
         self.num_steps = num_steps
 
         self.next_state, next_coords, actions, env = self.step_away_state(oracle, num_steps,

@@ -54,7 +54,19 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 def get_readable_feedback(env_info, obs, teacher_name):
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
-    if teacher_name == 'SubgoalCorrections':
+    if teacher_name == 'OFFSparseRandom':
+        offset = obs['OFFSparseRandom']
+        first = offset[0]
+        coords_offset = offset[1:3]
+        start_str = "Using an obj at " if first else "Going to"
+        agent_pos = offset[3: 5] * 12 + 12
+        agent_dir = offset[5] * 3
+        if agent_dir < 0:
+            agent_dir = offset[5]
+            agent_pos = offset[3: 5]
+        timesteps_ago = np.argmax(offset[6:])
+        return f"{start_str} {coords_offset}, {timesteps_ago} ago, pos {agent_pos}, dir {agent_dir}"
+    elif teacher_name == 'SubgoalCorrections':
         subgoal_names = ['OpenSubgoal',
                          'DropSubgoal',
                          'PickupSubgoal',

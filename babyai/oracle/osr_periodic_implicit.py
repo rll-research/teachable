@@ -27,7 +27,7 @@ class OSRPeriodicImplicit(OSREasy):
         timed_out = self.steps_since_lastfeedback % self.num_steps == 0
         if achieved_goal or timed_out:
             self.steps_since_lastfeedback = 0
-            give_feedback = np.random.uniform() < .5
+            give_feedback = np.random.uniform() < .75
             self.feedback_active = give_feedback
             return give_feedback
         return False
