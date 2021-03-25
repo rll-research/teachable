@@ -666,6 +666,19 @@ class Level_GoToObjDistractors(Level_GoTo):
                 dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
         return obj_list, obj
 
+class Level_GoToObjDistractorsLocal(Level_GoToLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(num_dists=80, room_size=20, seed=seed, **kwargs)
+
+    def add_objs(self, task):
+        obj_list, obj = super().add_objs(task)
+        obj_type = obj.type
+        obj_color = obj.color
+        for dist in obj_list[:-1]:
+            if dist.type == obj_type and dist.color == obj_color:
+                dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
+        return obj_list, obj
+
 class Level_GoToImpUnlock(Level_TeachableRobot):
     """
     Go to an object, which may be in a locked room.

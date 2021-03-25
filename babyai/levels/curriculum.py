@@ -85,6 +85,8 @@ class Curriculum(Serializable):
             Level_GoToImpUnlockLocal(**kwargs),  # 38 test12
             Level_SeekLocal(**kwargs),  # 39 test13
 
+            Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
+
         ]
         self.levels_list = self.train_levels + self.held_out_levels
 
