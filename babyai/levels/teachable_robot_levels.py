@@ -247,7 +247,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
             except RejectSampling as e:
                 if tries > 1000:
-                    print("ISSUE sampling", e)
+                    print("ISSUE sampling", e, type(self))
                     raise RejectSampling
                 continue
             break
