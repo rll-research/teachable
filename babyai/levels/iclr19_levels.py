@@ -907,7 +907,7 @@ class Level_Open(Level_TeachableRobot):
     def add_objs(self, task):
         obj_color = task
         self.connect_all()
-        dists = self.add_distractors(num_distractors=18, all_unique=False)
+        dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False)
         self.check_objs_reachable()
 
         # Make sure at least one door has the required color by randomly setting one door color
