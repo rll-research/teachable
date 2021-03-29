@@ -86,7 +86,13 @@ class Curriculum(Serializable):
             Level_SeekLocal(**kwargs),  # 39 test13
 
             Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
-
+            Level_GoToSmall2by2(**kwargs),  # 41 test15
+            Level_GoToSmall3by3(**kwargs),  # 42 test16
+            Level_SeekSmall2by2(**kwargs),  # 43 test17
+            Level_SeekSmall3by3(**kwargs),  # 44 test18
+            Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
+            Level_OpenSmall2by2(**kwargs),  # 46 test20
+            Level_OpenSmall3by3(**kwargs),  # 47 test21
         ]
         self.levels_list = self.train_levels + self.held_out_levels
 
@@ -100,7 +106,11 @@ class Curriculum(Serializable):
             self.distribution[[16, 22, 23, 24, 25]] = .2
         elif self.advance_curriculum_func == 'goto_levels':
             self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[9, 14, 23]] = 1/3.
+            self.distribution[[9, 14, 23]] = 1 / 3.
+        elif self.advance_curriculum_func == 'easy_goto':
+            self.distribution = np.zeros((len(self.levels_list)))
+            indices = [4, 9, 14, 7, 12, 17, 39, 40, 41, 42, 43, 44, 46, 47]
+            self.distribution[indices] = 1. / len(indices)
         elif advance_curriculum_func == 'uniform':
             prob_mass = 1 / (start_index + 1)
             self.distribution = np.zeros((len(self.levels_list)))
@@ -169,7 +179,11 @@ class Curriculum(Serializable):
             self.distribution[[16, 22, 23, 24, 25]] = .2
         elif self.advance_curriculum_func == 'goto_levels':
             self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[9, 14, 23]] = 1/3.
+            self.distribution[[9, 14, 23]] = 1 / 3.
+        elif self.advance_curriculum_func == 'easy_goto':
+            self.distribution = np.zeros((len(self.levels_list)))
+            indices = [4, 9, 14, 7, 12, 17, 39, 40, 41, 42, 43, 44, 46, 47]
+            self.distribution[indices] = 1. / len(indices)
         elif self.advance_curriculum_func == 'uniform':
             # uniform probability over all envs we've seen so far
             self.distribution = np.zeros((len(self.levels_list)))

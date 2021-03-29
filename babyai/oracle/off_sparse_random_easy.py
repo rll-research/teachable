@@ -54,13 +54,13 @@ class OSREasy(Teacher):
         # Remove teacher so we don't end up with a recursion error
         env.teacher = None
         # try:
-        num_steps = np.random.randint(1, self.cartesian_steps + 1)
+        num_steps = np.random.randint(2, self.cartesian_steps + 1)
         self.num_steps = num_steps
 
         self.next_state, next_coords, actions, env = self.step_away_state(oracle, num_steps,
                                                                           last_action=last_action)
         self.goal_coords = next_coords[:2].copy()
-        if actions[-1] in [env.actions.drop, env.actions.pickup]:
+        if actions[-1] in [env.actions.drop, env.actions.pickup] or env.done:
             first = 1
             # Position where we'll place the item
             self.goal_coords = self.goal_coords + env.dir_vec

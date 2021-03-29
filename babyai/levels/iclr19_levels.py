@@ -497,6 +497,31 @@ class Level_GoTo(Level_TeachableRobot):
         self.check_objs_reachable()
         return dists + self.get_doors() + [obj], obj
 
+class Level_GoToSmall2by2(Level_GoTo):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=2,
+            num_cols=2,
+            room_size=5,
+            num_dists=6,
+            **kwargs
+        )
+
+class Level_GoToSmall3by3(Level_GoTo):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=3,
+            num_cols=3,
+            room_size=4,
+            num_dists=5,
+            **kwargs
+        )
 
 class Level_Seek(Level_GoTo):
     def make_mission(self):
@@ -505,6 +530,32 @@ class Level_Seek(Level_GoTo):
             "task": (obj_type, obj_color),
             "instrs": SeekInstr(ObjDesc(obj_type, obj_color))
         }
+
+class Level_SeekSmall2by2(Level_Seek):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=2,
+            num_cols=2,
+            room_size=5,
+            num_dists=6,
+            **kwargs
+        )
+
+class Level_SeekSmall3by3(Level_Seek):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=3,
+            num_cols=3,
+            room_size=4,
+            num_dists=5,
+            **kwargs
+        )
 
 
 class Level_SeekLocal(Level_GoToLocal):
@@ -664,9 +715,24 @@ class Level_GoToObjDistractors(Level_GoTo):
         for dist in obj_list[:-1]:
             if dist.type == obj_type and dist.color == obj_color:
                 dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
+        self.check_objs_reachable()
         return obj_list, obj
 
 class Level_GoToObjDistractorsLocal(Level_GoToLocal):
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(num_dists=14, room_size=8, seed=seed, **kwargs)
+
+    def add_objs(self, task):
+        obj_list, obj = super().add_objs(task)
+        obj_type = obj.type
+        obj_color = obj.color
+        for dist in obj_list[:-1]:
+            if dist.type == obj_type and dist.color == obj_color:
+                dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
+        self.check_objs_reachable()
+        return obj_list, obj
+
+class Level_GoToObjDistractorsLocalBig(Level_GoToLocal):
     def __init__(self, seed=None, **kwargs):
         super().__init__(num_dists=80, room_size=20, seed=seed, **kwargs)
 
@@ -677,7 +743,9 @@ class Level_GoToObjDistractorsLocal(Level_GoToLocal):
         for dist in obj_list[:-1]:
             if dist.type == obj_type and dist.color == obj_color:
                 dist.color = self._rand_elem([c for c in COLOR_NAMES if not c == obj_color])
+        self.check_objs_reachable()
         return obj_list, obj
+
 
 class Level_GoToImpUnlock(Level_TeachableRobot):
     """
@@ -822,6 +890,11 @@ class Level_Open(Level_TeachableRobot):
     """
     Open a door, which may be in another room
     """
+    def __init__(self, num_dists=8, **kwargs):
+        self.num_dists = num_dists
+        super().__init__(
+            **kwargs
+        )
 
     def make_mission(self):
         # We only need the color
@@ -849,6 +922,32 @@ class Level_Open(Level_TeachableRobot):
         door = self._rand_elem(doors)
         door.color = obj_color
         return dists + self.get_doors(), door
+
+class Level_OpenSmall2by2(Level_Open):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=2,
+            num_cols=2,
+            room_size=6,
+            num_dists=4,
+            **kwargs
+        )
+
+class Level_OpenSmall3by3(Level_Open):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        super().__init__(
+            num_rows=3,
+            num_cols=3,
+            room_size=5,
+            num_dists=5,
+            **kwargs
+        )
 
 
 class Level_OpenDoorsDouble(Level_TeachableRobot):
