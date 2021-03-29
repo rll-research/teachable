@@ -242,7 +242,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
 
             except RecursionError as error:
                 # self.render(mode="human")
-                print('Timeout during mission generation:', error)
+                print('Timeout during mission generation:', error, type(self))
                 continue
 
             except RejectSampling as e:

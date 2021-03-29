@@ -519,7 +519,7 @@ class Level_GoToSmall3by3(Level_GoTo):
             num_rows=3,
             num_cols=3,
             room_size=4,
-            num_dists=5,
+            num_dists=3,
             **kwargs
         )
 
@@ -553,7 +553,7 @@ class Level_SeekSmall3by3(Level_Seek):
             num_rows=3,
             num_cols=3,
             room_size=4,
-            num_dists=5,
+            num_dists=3,
             **kwargs
         )
 
