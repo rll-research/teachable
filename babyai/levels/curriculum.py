@@ -59,40 +59,40 @@ class Curriculum(Serializable):
             Level_PickupObjBigger(**kwargs),  # 26 test0
 
             # More distractors than we've seen before
-            # Level_GoToObjDistractors(**kwargs),  # 27 test1
-            #
-            # # New object
-            # Level_GoToHeldout(**kwargs),  # 28 test2
-            #
-            # # Task we've seen before, but new instructions
-            # Level_GoToGreenBox(**kwargs),  # 29 test3
-            # Level_PutNextSameColor(**kwargs),  # 30 test4
-            #
-            # # New object
-            # Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
-            # Level_GoToImpUnlock(**kwargs),  # 32 test6
-            # Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
-            # Level_Seek(**kwargs),  # 34 test8
-            #
-            # # Chain multiple instructions together
-            # # Level_OpenDoorsDouble(**kwargs),   # TODO: teacher fails
-            # # Level_GoToDouble(**kwargs),  # TODO: teacher fails
-            #
-            # # Easier heldout levels
-            # Level_GoToGreenBoxLocal(**kwargs),  # 35 test9
-            # Level_PutNextSameColorLocal(**kwargs),  # 36 test10
-            # Level_UnlockLocal(**kwargs),  # 37 test11 ("unlock" is a completely new instruction)
-            # Level_GoToImpUnlockLocal(**kwargs),  # 38 test12
-            # Level_SeekLocal(**kwargs),  # 39 test13
-            #
-            # Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
-            # Level_GoToSmall2by2(**kwargs),  # 41 test15
-            # Level_GoToSmall3by3(**kwargs),  # 42 test16
-            # Level_SeekSmall2by2(**kwargs),  # 43 test17
-            # Level_SeekSmall3by3(**kwargs),  # 44 test18
-            # Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
-            # Level_OpenSmall2by2(**kwargs),  # 46 test20
-            # Level_OpenSmall3by3(**kwargs),  # 47 test21
+            Level_GoToObjDistractors(**kwargs),  # 27 test1
+
+            # New object
+            Level_GoToHeldout(**kwargs),  # 28 test2
+
+            # Task we've seen before, but new instructions
+            Level_GoToGreenBox(**kwargs),  # 29 test3
+            Level_PutNextSameColor(**kwargs),  # 30 test4
+
+            # New object
+            Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
+            Level_GoToImpUnlock(**kwargs),  # 32 test6
+            Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
+            Level_Seek(**kwargs),  # 34 test8
+
+            # Chain multiple instructions together
+            # Level_OpenDoorsDouble(**kwargs),   # TODO: teacher fails
+            # Level_GoToDouble(**kwargs),  # TODO: teacher fails
+
+            # Easier heldout levels
+            Level_GoToGreenBoxLocal(**kwargs),  # 35 test9
+            Level_PutNextSameColorLocal(**kwargs),  # 36 test10
+            Level_UnlockLocal(**kwargs),  # 37 test11 ("unlock" is a completely new instruction)
+            Level_GoToImpUnlockLocal(**kwargs),  # 38 test12
+            Level_SeekLocal(**kwargs),  # 39 test13
+
+            Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
+            Level_GoToSmall2by2(**kwargs),  # 41 test15
+            Level_GoToSmall3by3(**kwargs),  # 42 test16
+            Level_SeekSmall2by2(**kwargs),  # 43 test17
+            Level_SeekSmall3by3(**kwargs),  # 44 test18
+            Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
+            Level_OpenSmall2by2(**kwargs),  # 46 test20
+            Level_OpenSmall3by3(**kwargs),  # 47 test21
         ]
         self.levels_list = self.train_levels + self.held_out_levels
 
