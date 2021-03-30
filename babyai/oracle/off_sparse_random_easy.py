@@ -60,9 +60,9 @@ class OSREasy(Teacher):
         self.next_state, next_coords, actions, env = self.step_away_state(oracle, num_steps,
                                                                           last_action=last_action)
         self.goal_coords = next_coords[:2].copy()
-        if actions[-1] in [env.actions.drop, env.actions.pickup] or env.done:
+        if actions[-1] in [env.actions.drop, env.actions.pickup, env.actions.toggle] or env.done:
             first = 1
-            # Position where we'll place the item
+            # Position where we'll place the item (or door we'll open)
             self.goal_coords = self.goal_coords + env.dir_vec
         else:
             first = 0
@@ -83,7 +83,7 @@ class OSREasy(Teacher):
             actions.append(last_action)
             next_state, rew, done, info = env.step(last_action)
             # End early if we're picking something up or putting it down
-            if last_action in [env.actions.drop, env.actions.pickup]:
+            if last_action in [env.actions.drop, env.actions.pickup, env.toggle]:
                 break
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
