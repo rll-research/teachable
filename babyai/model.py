@@ -173,7 +173,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         # Define memory and resize image embedding
         self.embedding_size = self.image_dim
         if self.use_memory:
-            self.memory_rnn = nn.LSTMCell(self.image_dim, self.memory_dim)
+            self.memory_rnn = nn.LSTMCell(self.instr_dim + self.advice_dim, self.memory_dim)
             self.embedding_size = self.semi_memory_size
 
         # Define actor's model
@@ -331,19 +331,20 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_instr and self.advice_size > 0:
             instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
 
-        x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
-
-        if 'pixel' in self.arch:
-            x /= 256.0
-        x = self.image_conv(x)
-        if self.use_instr:
-            for controller in self.controllers:
-                out = controller(x, instr_embedding)
-                if self.res:
-                    out += x
-                x = out
-        x = F.relu(self.film_pool(x))
-        x = x.reshape(x.shape[0], -1)
+        # x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
+        #
+        # if 'pixel' in self.arch:
+        #     x /= 256.0
+        # x = self.image_conv(x)
+        # if self.use_instr:
+        #     for controller in self.controllers:
+        #         out = controller(x, instr_embedding)
+        #         if self.res:
+        #             out += x
+        #         x = out
+        # x = F.relu(self.film_pool(x))
+        # x = x.reshape(x.shape[0], -1)
+        x = instr_embedding
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
