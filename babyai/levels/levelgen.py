@@ -93,7 +93,7 @@ class RoomGridLevel(RoomGrid):
                 self.validate_instrs(self.instrs)
 
             except RecursionError as error:
-                print('Timeout during mission generation:', error, type(self))
+                print('Timeout during mission generation:', error)
                 # self.render('human')
                 continue
 
