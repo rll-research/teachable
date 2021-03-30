@@ -83,7 +83,7 @@ class OSREasy(Teacher):
             actions.append(last_action)
             next_state, rew, done, info = env.step(last_action)
             # End early if we're picking something up or putting it down
-            if last_action in [env.actions.drop, env.actions.pickup, env.toggle]:
+            if last_action in [env.actions.drop, env.actions.pickup, env.actions.toggle]:
                 break
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
