@@ -124,7 +124,7 @@ def run_experiment(**config):
         args.accuracy_threshold_rollout_teacher = 0
         args.accuracy_threshold_rollout_no_teacher = 0
     if original_saved_path is not None:
-        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
+        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=curriculum_step,
                                           curriculum_type=args.curriculum_type, **arguments)
                                ), ceil_reward=args.ceil_reward)
         try:
@@ -135,7 +135,7 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
     else:
         optimizer = None
-        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=args.level,
+        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
                                           curriculum_type=args.curriculum_type, **arguments)),
                      ceil_reward=args.ceil_reward)
         obs = env.reset()

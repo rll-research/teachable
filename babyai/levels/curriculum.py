@@ -1,9 +1,9 @@
 from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
-
+from envs.point_mass_env import PointMassEnv
 
 class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, start_index=0, curriculum_type=0, **kwargs):
+    def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, **kwargs):
         """
 
         :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
@@ -13,88 +13,109 @@ class Curriculum(Serializable):
         """
         Serializable.quick_init(self, locals())
         self.advance_curriculum_func = advance_curriculum_func
-        # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
-        # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
-        # also some harder levels with multiple instructions chained together.
-        # TODO: consider re-introducing the harder levels, especially as held-out levels
-        self.train_levels = [
-            # Easy levels; intro all PreAction tokens and most subgoals
-            Level_GoToRedBallNoDists(**kwargs),
-            # 0 --> intro L, R, Forward PreAction, Explore and GoNextTo subgoals
-            Level_GoToRedBallGrey(**kwargs),  # 1 --> first level with distractors
-            Level_GoToRedBall(**kwargs),  # 2 --> first level with colored distractors
-            Level_GoToObjS5(**kwargs),  # 3 --> first level where the goal is something other than a red ball
-            Level_GoToLocalS5N2(**kwargs),  # 4 --> first level where the task means something
-            Level_PickupLocalS5N2(**kwargs),  # 5 --> intro Pickup subgoal and pickup PreAction
-            Level_PutNextLocalS5N2(**kwargs),  # 6 --> intro Drop subgoal and drop PreAction
-            Level_OpenLocalS5N2(**kwargs),  # 7 --> intro Open subgoal and open PreAction
+        if env == 'point_mass':
+            self.train_levels = [
+                PointMassEnv('maze2d-open-dense-v0'),
+                PointMassEnv('maze2d-umaze-dense-v1'),
+                PointMassEnv('maze2d-medium-dense-v1'),
+            ]
+            self.held_out_levels = [
+                PointMassEnv('maze2d-large-dense-v1'),
+            ]
+            self.levels_list = self.train_levels + self.held_out_levels
+        elif env == 'ant':
+            self.train_levels = [
+                PointMassEnv('antmaze-umaze-v0'),
+                PointMassEnv('antmaze-umaze-diverse-v0'),
+                PointMassEnv('antmaze-medium-diverse-v0'),
+            ]
+            self.held_out_levels = [
+                PointMassEnv('antmaze-large-diverse-v0'),
+            ]
+            self.levels_list = self.train_levels + self.held_out_levels
+        elif env == 'babyai':
+            # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
+            # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
+            # also some harder levels with multiple instructions chained together.
+            # TODO: consider re-introducing the harder levels, especially as held-out levels
+            self.train_levels = [
+                # Easy levels; intro all PreAction tokens and most subgoals
+                Level_GoToRedBallNoDists(**kwargs),
+                # 0 --> intro L, R, Forward PreAction, Explore and GoNextTo subgoals
+                Level_GoToRedBallGrey(**kwargs),  # 1 --> first level with distractors
+                Level_GoToRedBall(**kwargs),  # 2 --> first level with colored distractors
+                Level_GoToObjS5(**kwargs),  # 3 --> first level where the goal is something other than a red ball
+                Level_GoToLocalS5N2(**kwargs),  # 4 --> first level where the task means something
+                Level_PickupLocalS5N2(**kwargs),  # 5 --> intro Pickup subgoal and pickup PreAction
+                Level_PutNextLocalS5N2(**kwargs),  # 6 --> intro Drop subgoal and drop PreAction
+                Level_OpenLocalS5N2(**kwargs),  # 7 --> intro Open subgoal and open PreAction
 
-            # Medium levels (here we introduce the harder teacher; no new tasks, just larger sizes)
-            Level_GoToObjS7(**kwargs),  # 8
-            Level_GoToLocalS7N4(**kwargs),  # 9
-            Level_PickupLocalS7N4(**kwargs),  # 10
-            Level_PutNextLocalS7N4(**kwargs),  # 11
-            Level_OpenLocalS7N4(**kwargs),  # 12
+                # Medium levels (here we introduce the harder teacher; no new tasks, just larger sizes)
+                Level_GoToObjS7(**kwargs),  # 8
+                Level_GoToLocalS7N4(**kwargs),  # 9
+                Level_PickupLocalS7N4(**kwargs),  # 10
+                Level_PutNextLocalS7N4(**kwargs),  # 11
+                Level_OpenLocalS7N4(**kwargs),  # 12
 
-            # Hard levels (bigger sizes, some new tasks)
-            Level_GoToObj(**kwargs),  # 13
-            Level_GoToLocal(**kwargs),  # 14
-            Level_PickupLocal(**kwargs),  # 15
-            Level_PutNextLocal(**kwargs),  # 16
-            Level_OpenLocal(**kwargs),  # 17
+                # Hard levels (bigger sizes, some new tasks)
+                Level_GoToObj(**kwargs),  # 13
+                Level_GoToLocal(**kwargs),  # 14
+                Level_PickupLocal(**kwargs),  # 15
+                Level_PutNextLocal(**kwargs),  # 16
+                Level_OpenLocal(**kwargs),  # 17
 
-            # Biggest levels (larger grid)
-            Level_GoToObjMazeOpen(**kwargs),  # 18
-            Level_GoToOpen(**kwargs),  # 19
-            Level_GoToObjMazeS4R2(**kwargs),  # 20
-            Level_GoToObjMazeS5(**kwargs),  # 21
-            Level_Open(**kwargs),  # 22
-            Level_GoTo(**kwargs),  # 23
-            Level_Pickup(**kwargs),  # 24
-            Level_PutNext(**kwargs),  # 25
-        ]
+                # Biggest levels (larger grid)
+                Level_GoToObjMazeOpen(**kwargs),  # 18
+                Level_GoToOpen(**kwargs),  # 19
+                Level_GoToObjMazeS4R2(**kwargs),  # 20
+                Level_GoToObjMazeS5(**kwargs),  # 21
+                Level_Open(**kwargs),  # 22
+                Level_GoTo(**kwargs),  # 23
+                Level_Pickup(**kwargs),  # 24
+                Level_PutNext(**kwargs),  # 25
+            ]
 
-        self.held_out_levels = [
-            # Larger sizes than we've seen before
-            Level_PickupObjBigger(**kwargs),  # 26 test0
+            self.held_out_levels = [
+                # Larger sizes than we've seen before
+                Level_PickupObjBigger(**kwargs),  # 26 test0
 
-            # More distractors than we've seen before
-            Level_GoToObjDistractors(**kwargs),  # 27 test1
+                # More distractors than we've seen before
+                Level_GoToObjDistractors(**kwargs),  # 27 test1
 
-            # New object
-            Level_GoToHeldout(**kwargs),  # 28 test2
+                # New object
+                Level_GoToHeldout(**kwargs),  # 28 test2
 
-            # Task we've seen before, but new instructions
-            Level_GoToGreenBox(**kwargs),  # 29 test3
-            Level_PutNextSameColor(**kwargs),  # 30 test4
+                # Task we've seen before, but new instructions
+                Level_GoToGreenBox(**kwargs),  # 29 test3
+                Level_PutNextSameColor(**kwargs),  # 30 test4
 
-            # New object
-            Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
-            Level_GoToImpUnlock(**kwargs),  # 32 test6
-            Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
-            Level_Seek(**kwargs),  # 34 test8
+                # New object
+                Level_Unlock(**kwargs),  # 31 test5 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlock(**kwargs),  # 32 test6
+                Level_UnblockPickup(**kwargs),  # 33 test7 (known task, but now there's the extra step of unblocking)
+                Level_Seek(**kwargs),  # 34 test8
 
-            # Chain multiple instructions together
-            # Level_OpenDoorsDouble(**kwargs),   # TODO: teacher fails
-            # Level_GoToDouble(**kwargs),  # TODO: teacher fails
+                # Chain multiple instructions together
+                # Level_OpenDoorsDouble(**kwargs),   # TODO: teacher fails
+                # Level_GoToDouble(**kwargs),  # TODO: teacher fails
 
-            # Easier heldout levels
-            Level_GoToGreenBoxLocal(**kwargs),  # 35 test9
-            Level_PutNextSameColorLocal(**kwargs),  # 36 test10
-            Level_UnlockLocal(**kwargs),  # 37 test11 ("unlock" is a completely new instruction)
-            Level_GoToImpUnlockLocal(**kwargs),  # 38 test12
-            Level_SeekLocal(**kwargs),  # 39 test13
+                # Easier heldout levels
+                Level_GoToGreenBoxLocal(**kwargs),  # 35 test9
+                Level_PutNextSameColorLocal(**kwargs),  # 36 test10
+                Level_UnlockLocal(**kwargs),  # 37 test11 ("unlock" is a completely new instruction)
+                Level_GoToImpUnlockLocal(**kwargs),  # 38 test12
+                Level_SeekLocal(**kwargs),  # 39 test13
 
-            Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
-            Level_GoToSmall2by2(**kwargs),  # 41 test15
-            Level_GoToSmall3by3(**kwargs),  # 42 test16
-            Level_SeekSmall2by2(**kwargs),  # 43 test17
-            Level_SeekSmall3by3(**kwargs),  # 44 test18
-            Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
-            Level_OpenSmall2by2(**kwargs),  # 46 test20
-            Level_OpenSmall3by3(**kwargs),  # 47 test21
-        ]
-        self.levels_list = self.train_levels + self.held_out_levels
+                Level_GoToObjDistractorsLocal(**kwargs),  # 40 test14
+                Level_GoToSmall2by2(**kwargs),  # 41 test15
+                Level_GoToSmall3by3(**kwargs),  # 42 test16
+                Level_SeekSmall2by2(**kwargs),  # 43 test17
+                Level_SeekSmall3by3(**kwargs),  # 44 test18
+                Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
+                Level_OpenSmall2by2(**kwargs),  # 46 test20
+                Level_OpenSmall3by3(**kwargs),  # 47 test21
+            ]
+            self.levels_list = self.train_levels + self.held_out_levels
 
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.

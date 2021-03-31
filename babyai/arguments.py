@@ -13,8 +13,8 @@ class ArgumentParser(argparse.ArgumentParser):
         super().__init__()
 
         # Base arguments
-        # self.add_argument("--env", default=None,
-        #                     help="name of the environment to train on (REQUIRED)")
+        self.add_argument("--env", default='babyai',
+                            help="name of the environment to train on")
         self.add_argument("--model", default=None,
                           help="name of the model (default: ENV_ALGO_TIME)")
         self.add_argument("--pretrained-model", default=None,

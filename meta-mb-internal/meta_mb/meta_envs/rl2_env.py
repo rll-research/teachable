@@ -81,8 +81,9 @@ class RL2Env(Serializable):
             return orig_attr
 
     def reset(self):
-        obs_dict = self._wrapped_env.reset()
-        obs_dict['extra'] = np.concatenate([obs_dict['extra'], self.prev_action, self.prev_reward, self.prev_done])
+        obs_dict = self._wrapped_env.reset()  # TODO: figure out why this is blank!
+        if 'extra' in obs_dict.keys():
+            obs_dict['extra'] = np.concatenate([obs_dict['extra'], self.prev_action, self.prev_reward, self.prev_done])
         return obs_dict
 
     def __getstate__(self):
