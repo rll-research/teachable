@@ -177,6 +177,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--relabel', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
         self.add_argument('--distill_successful_only', action='store_true')
+        self.add_argument('--kl_coef', type=float, default=0.01)
+        self.add_argument('--z_dim', type=int, default=32)
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=200)

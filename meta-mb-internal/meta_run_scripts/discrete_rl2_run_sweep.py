@@ -173,7 +173,8 @@ def run_experiment(**config):
                                  num_modules=args.num_modules,
                                  reconstruction=args.reconstruction,
                                  reconstruct_advice_size=full_advice_size,
-                                 padding=args.padding)
+                                 padding=args.padding,
+                                 z_dim=args.z_dim)
             policy_dict[teacher] = policy
 
         start_itr = 0

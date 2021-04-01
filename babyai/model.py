@@ -65,7 +65,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, action_space, env,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None, advice_dim=128,
+                 arch="bow_endpool_res", aux_info=None, advice_dim=128, z_dim=32,
                  advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1, padding=False):
         super().__init__()
 
@@ -85,6 +85,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.image_dim = image_dim
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
+        self.z_dim = z_dim
 
         self.action_space = action_space
         self.env = env
@@ -177,8 +178,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.embedding_size = self.semi_memory_size
 
         # Define actor's model
-        self.actor = nn.Sequential(
+        self.actor_encoder = nn.Sequential(
             nn.Linear(self.embedding_size + self.advice_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, self.z_dim * 2)
+        )
+        self.actor_decoder = nn.Sequential(
+            nn.Linear(self.z_dim, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )
@@ -298,7 +304,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             })
         return actions, info_list
 
-
     def forward(self, obs, memory, instr_embedding=None):
         instruction_vector = obs.instr.long()
         if self.advice_size > 0:
@@ -360,7 +365,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
 
-        x = self.actor(embedding)
+        z = self.actor_encoder(embedding)
+        z_mu = z[:, :self.z_dim]
+        z_log_sigma = z[:, self.z_dim:]
+        z_sigma = torch.exp(z_log_sigma)
+        z_noise = torch.randn(z_mu.shape).to(z_mu.device)
+
+        z = z_mu + torch.exp(z_log_sigma) * z_noise
+        x = self.actor_decoder(z)
+        kl_loss = torch.mean(torch.sum(-z_log_sigma + 0.5 * (z_mu ** 2 + z_sigma ** 2) - 0.5, dim=1))
         dist = Categorical(logits=F.log_softmax(x, dim=1))
         probs = F.softmax(x, dim=1)
 
@@ -371,6 +384,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "probs": probs,
             "value": value,
             "memory": memory,
+            "kl": kl_loss,
         }
 
         if self.reconstruction:
