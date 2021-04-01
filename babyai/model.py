@@ -8,6 +8,7 @@ from babyai.rl.utils.supervised_losses import required_heads
 import numpy as np
 from babyai.rl.utils.dictlist import DictList
 
+
 # From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def initialize_parameters(m):
     classname = m.__class__.__name__
@@ -48,17 +49,17 @@ class FiLM(nn.Module):
 
 
 class ImageBOWEmbedding(nn.Module):
-   def __init__(self, max_value, embedding_dim):
-       super().__init__()
-       self.max_value = max_value
-       self.embedding_dim = embedding_dim
-       self.embedding = nn.Embedding(3 * max_value, embedding_dim)
-       self.apply(initialize_parameters)
+    def __init__(self, max_value, embedding_dim):
+        super().__init__()
+        self.max_value = max_value
+        self.embedding_dim = embedding_dim
+        self.embedding = nn.Embedding(3 * max_value, embedding_dim)
+        self.apply(initialize_parameters)
 
-   def forward(self, inputs):
-       offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inputs.device)
-       inputs = (inputs + offsets[None, :, None, None]).long()
-       return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
+    def forward(self, inputs):
+        offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inputs.device)
+        inputs = (inputs + offsets[None, :, None, None]).long()
+        return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
@@ -184,7 +185,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Linear(64, self.z_dim * 2)
         )
         self.actor_decoder = nn.Sequential(
-            nn.Linear(self.z_dim, 64),
+            nn.Linear(self.z_dim + self.advice_dim, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )
@@ -352,7 +353,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 x = out
         x = F.relu(self.film_pool(x))
         x = x.reshape(x.shape[0], -1)
-        # x = instr_embedding
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
@@ -370,8 +370,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         z_log_sigma = z[:, self.z_dim:]
         z_sigma = torch.exp(z_log_sigma)
         z_noise = torch.randn(z_mu.shape).to(z_mu.device)
-
         z = z_mu + torch.exp(z_log_sigma) * z_noise
+
+        if self.advice_size > 0:
+            z = torch.cat([z, advice_embedding], dim=1)
+
         x = self.actor_decoder(z)
         kl_loss = torch.mean(torch.sum(-z_log_sigma + 0.5 * (z_mu ** 2 + z_sigma ** 2) - 0.5, dim=1))
         dist = Categorical(logits=F.log_softmax(x, dim=1))
@@ -396,7 +399,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         lengths = (instr != 0).sum(1).long()
         if self.lang_model == 'gru':
             out, _ = self.instr_rnn(self.word_embedding(instr))
-            hidden = out[range(len(lengths)), lengths-1, :]
+            hidden = out[range(len(lengths)), lengths - 1, :]
             return hidden
 
         elif self.lang_model in ['bigru', 'attgru']:
