@@ -102,10 +102,10 @@ class RL2Env(Serializable):
             ac_idx = action
             action = np.zeros((self._wrapped_env.action_space.n,))
             action[ac_idx] = 1.0
-        next_obs_rewardfree = np.concatenate([next_obs_dict['extra'], action, [done]]).copy()
-        next_obs = np.concatenate([next_obs_dict['extra'], action, [reward], [done]]).copy()
-        next_obs_dict['extra'] = next_obs
-        info['next_obs_rewardfree'] = next_obs_rewardfree
+        # next_obs_rewardfree = np.concatenate([next_obs_dict['extra'], action, [done]]).copy()
+        # next_obs = np.concatenate([next_obs_dict['extra'], action, [reward], [done]]).copy()
+        # next_obs_dict['extra'] = next_obs
+        # info['next_obs_rewardfree'] = next_obs_rewardfree
         self.prev_action = action
         self.prev_reward = [reward]
         self.prev_done = [done]

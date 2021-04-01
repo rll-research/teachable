@@ -15,22 +15,22 @@ class Curriculum(Serializable):
         self.advance_curriculum_func = advance_curriculum_func
         if env == 'point_mass':
             self.train_levels = [
-                PointMassEnv('maze2d-open-dense-v0'),
-                PointMassEnv('maze2d-umaze-dense-v1'),
-                PointMassEnv('maze2d-medium-dense-v1'),
+                PointMassEnv('maze2d-open-dense-v0', **kwargs),
+                PointMassEnv('maze2d-umaze-dense-v1', **kwargs),
+                PointMassEnv('maze2d-medium-dense-v1', **kwargs),
             ]
             self.held_out_levels = [
-                PointMassEnv('maze2d-large-dense-v1'),
+                PointMassEnv('maze2d-large-dense-v1', **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
             self.train_levels = [
-                PointMassEnv('antmaze-umaze-v0'),
-                PointMassEnv('antmaze-umaze-diverse-v0'),
-                PointMassEnv('antmaze-medium-diverse-v0'),
+                PointMassEnv('antmaze-umaze-v0', **kwargs),
+                PointMassEnv('antmaze-umaze-diverse-v0', **kwargs),
+                PointMassEnv('antmaze-medium-diverse-v0', **kwargs),
             ]
             self.held_out_levels = [
-                PointMassEnv('antmaze-large-diverse-v0'),
+                PointMassEnv('antmaze-large-diverse-v0', **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':

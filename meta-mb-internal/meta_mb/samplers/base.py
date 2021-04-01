@@ -132,6 +132,7 @@ class SampleProcessor(object):
         return samples_data, paths
 
     def _log_path_stats(self, paths, log=False, log_prefix='', log_teacher=True):
+        return  # TODO: make this work!
 
         average_discounted_return = np.mean([path["returns"][0] for path in paths])
         undiscounted_returns = [sum(path["rewards"]) for path in paths]

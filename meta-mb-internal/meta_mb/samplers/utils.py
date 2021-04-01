@@ -208,30 +208,30 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             if not stochastic:
                 a = np.argmax(agent_info[0]['probs'])
 
-            offset = o_orig['OSREasy']
-            first = offset[0]
-            coords_offset = offset[1:3]
-            agent_pos = env.agent_pos
-            agent_pos_computed = offset[3: 5] * 12 + 12
-            agent_dir_computed = offset[5] * 3
-            assert np.array_equal(agent_pos_computed, agent_pos), (agent_pos_computed, agent_pos)
-            assert env.agent_dir == agent_dir_computed, (agent_dir_computed, env.agent_dir)
-            # Assuming directions are 0=left, 1 = up, 2 = right, 3 = down!
-            # If heading in the current direction gets us closer, do that
-            goal_pos = agent_pos + coords_offset
-            dist_to_goal = np.linalg.norm(goal_pos, agent_pos)
-            dist_to_goal_forward = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
-            if dist_to_goal_forward < dist_to_goal:
-                action = 2
-                assert action == env.teacher_action.item()
-            # # Otherwise, turn in the direction which gets us closer
-            # dist_to_goal_left = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
-            # # If we're already there, turn or consider opening
-
-
-            if agent_dir < 0:
-                agent_dir = offset[5]
-                agent_pos = offset[3: 5]
+            # offset = o_orig['OSREasy']
+            # first = offset[0]
+            # coords_offset = offset[1:3]
+            # agent_pos = env.agent_pos
+            # agent_pos_computed = offset[3: 5] * 12 + 12
+            # agent_dir_computed = offset[5] * 3
+            # assert np.array_equal(agent_pos_computed, agent_pos), (agent_pos_computed, agent_pos)
+            # assert env.agent_dir == agent_dir_computed, (agent_dir_computed, env.agent_dir)
+            # # Assuming directions are 0=left, 1 = up, 2 = right, 3 = down!
+            # # If heading in the current direction gets us closer, do that
+            # goal_pos = agent_pos + coords_offset
+            # dist_to_goal = np.linalg.norm(goal_pos, agent_pos)
+            # dist_to_goal_forward = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
+            # if dist_to_goal_forward < dist_to_goal:
+            #     action = 2
+            #     assert action == env.teacher_action.item()
+            # # # Otherwise, turn in the direction which gets us closer
+            # # dist_to_goal_left = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
+            # # # If we're already there, turn or consider opening
+            #
+            #
+            # if agent_dir < 0:
+            #     agent_dir = offset[5]
+            #     agent_pos = offset[3: 5]
 
 
             correct = int(a == env.teacher_action.item())

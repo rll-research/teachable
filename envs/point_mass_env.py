@@ -15,6 +15,7 @@ class PointMassEnv:
                  cartesian_steps=[1], **kwargs):
         self._wrapped_env = gym.make(env_name)
         self.feedback_type = feedback_type
+        self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         # TODO: create teachers
 
     def step(self, action):
@@ -24,17 +25,26 @@ class PointMassEnv:
         # info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
         # info['gave_reward'] = int(provided_reward)
         self.done = done
-        return obs, rew, done, info
+        info['success'] = False  # TODO: eventually compute this
+        info['gave_reward'] = True
+        return obs_dict, rew, done, info
+
+    def set_task(self, *args, **kwargs):
+        pass  # for compatibility with babyai, which does set tasks
 
     def reset(self):
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
+        return obs_dict
 
     def render(self, mode='human'):
         try:
             self._wrapped_env.render(mode)
         except Exception as e:  # Probably offscreen
             print(f"Error trying to render {e}")
+
+    def vocab(self):  # We don't have vocab
+        return [0]
 
     def __getattr__(self, attr):
         """

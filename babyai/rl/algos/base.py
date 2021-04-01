@@ -99,7 +99,11 @@ class BaseAlgo(ABC):
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
         self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
-        self.action_probs = torch.zeros(*shape, envs[0].action_space.n, device=self.device, dtype=torch.float16)
+        try:
+            action_shape = envs[0].action_space.n
+        except:  # continuous
+            action_shape = envs[0].action_space.shape[0]
+        self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
@@ -198,8 +202,11 @@ class BaseAlgo(ABC):
             self.env_infos[i] = env_info
             self.obss[i] = self.obs
             self.obs = obs
-            self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
-    
+            try:
+                self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
+            except:
+                self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1  # TODO: compute teacher action for new envs
+
             self.memories[i] = self.memory
             self.memory = memory
 

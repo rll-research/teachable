@@ -123,16 +123,21 @@ class PPOAlgo(BaseAlgo):
             log_policy_losses = []
             log_value_losses = []
             log_grad_norms = []
-            num_actions = self.single_env.action_space.n
-            log_actions_taken = {}
-            log_teacher_actions_taken = {}
-            log_teacher_following = {}
-            log_agent_following = {}
-            for i in range(num_actions):
-                log_actions_taken[i] = []
-                log_teacher_actions_taken[i] = []
-                log_teacher_following[i] = []
-                log_agent_following[i] = []
+            try:
+                num_actions = self.single_env.action_space.n
+                discrete = True
+            except:
+                discrete = False
+            if discrete:
+                log_actions_taken = {}
+                log_teacher_actions_taken = {}
+                log_teacher_following = {}
+                log_agent_following = {}
+                for i in range(num_actions):
+                    log_actions_taken[i] = []
+                    log_teacher_actions_taken[i] = []
+                    log_teacher_following[i] = []
+                    log_agent_following[i] = []
             log_losses = []
             model_calls = 0
             model_samples_calls = 0
@@ -241,8 +246,9 @@ class PPOAlgo(BaseAlgo):
                 optimizer.zero_grad()
                 batch_loss.backward()
                 grad_norm = sum(p.grad.data.norm(2) ** 2 for p in acmodel.parameters() if p.grad is not None) ** 0.5
-                desired_action = sb.teacher_action.int()
-                accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
+                if discrete:
+                    desired_action = sb.teacher_action.int()
+                    accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
 
                 torch.nn.utils.clip_grad_norm_(acmodel.parameters(), self.max_grad_norm)
                 optimizer.step()
@@ -267,17 +273,18 @@ class PPOAlgo(BaseAlgo):
 
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
-                for i in range(num_actions):
-                    log_actions_taken[i].append(np.mean(d == i))
-                    teacher_i = teacher_max == i
-                    if np.sum(teacher_i) > 0:
-                        actions_i = orig_actions[teacher_i]
-                        log_teacher_following[i].append(np.mean(actions_i == i))
-                        log_teacher_actions_taken[i].append(np.mean(teacher_max == i))
-                    agent_i = orig_actions == i
-                    if np.sum(agent_i) > 0:
-                        teacher_i = teacher_max[agent_i]
-                        log_agent_following[i].append(np.mean(teacher_i == i))
+                if discrete:
+                    for i in range(num_actions):
+                        log_actions_taken[i].append(np.mean(d == i))
+                        teacher_i = teacher_max == i
+                        if np.sum(teacher_i) > 0:
+                            actions_i = orig_actions[teacher_i]
+                            log_teacher_following[i].append(np.mean(actions_i == i))
+                            log_teacher_actions_taken[i].append(np.mean(teacher_max == i))
+                        agent_i = orig_actions == i
+                        if np.sum(agent_i) > 0:
+                            teacher_i = teacher_max[agent_i]
+                            log_agent_following[i].append(np.mean(teacher_i == i))
 
             # Log some values
             logs = {}
@@ -297,7 +304,6 @@ class PPOAlgo(BaseAlgo):
             logs['LogProb'] = numpy.mean(log_log_prob)
             logs['Returnn'] = numpy.mean(log_sb_value)
 
-            logs['Accuracy'] = accuracy
             logs["Entropy_loss"] = numpy.mean(log_entropies)
             logs["Entropy"] = numpy.mean(log_entropies) / self.entropy_coef
             logs["Value"] = numpy.mean(log_values)
@@ -305,12 +311,14 @@ class PPOAlgo(BaseAlgo):
             logs["Value_loss"] = numpy.mean(log_value_losses)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
-            for i in range(num_actions):
-                # logs[f'Took{i}'] = np.mean(log_actions_taken[i])
-                if len(log_teacher_following[i]) > 0:
-                    logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
-                    logs[f'Precision{i}'] = np.mean(log_agent_following[i])
-                    # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
+            if discrete:
+                logs['Accuracy'] = accuracy
+                for i in range(num_actions):
+                    # logs[f'Took{i}'] = np.mean(log_actions_taken[i])
+                    if len(log_teacher_following[i]) > 0:
+                        logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
+                        logs[f'Precision{i}'] = np.mean(log_agent_following[i])
+                        # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
 
         return logs
 

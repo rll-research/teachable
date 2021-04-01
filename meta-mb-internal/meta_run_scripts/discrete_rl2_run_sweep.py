@@ -96,6 +96,10 @@ def run_experiment(**config):
     else:
         il_optimizer = None
         log_dict = {}
+
+    if args.env in ['ant', 'point_mass']:
+        args.no_instr = True
+
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": not args.leave_out_object,

@@ -80,8 +80,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.arch = arch
         self.lang_model = lang_model
         self.aux_info = aux_info
-        if self.res and image_dim != 128:
-            raise ValueError(f"image_dim is {image_dim}, expected 128")
+        # if self.res and image_dim != 128:
+        #     raise ValueError(f"image_dim is {image_dim}, expected 128")
         self.image_dim = image_dim
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
@@ -177,10 +177,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.embedding_size = self.semi_memory_size
 
         # Define actor's model
+        # discrete
+        try:
+            action_shape = action_space.n
+        except:  # continuous
+            action_shape = action_space.shape[0]
         self.actor = nn.Sequential(
             nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
-            nn.Linear(64, action_space.n)
+            nn.Linear(64, action_shape)
         )
 
         # Define critic's model
@@ -300,16 +305,23 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
 
     def forward(self, obs, memory, instr_embedding=None):
-        instruction_vector = obs.instr.long()
         if self.advice_size > 0:
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = obs.obs
-        o_in_front = img_vector[:, 2:4, 5:]
-        img_vector = img_vector * 0
-        img_vector[:, 2:4, 5:] = o_in_front
-        if self.use_instr and instr_embedding is None:
-            instr_embedding = self._get_instr_embedding(instruction_vector)
+        # o_in_front = img_vector[:, 3, 5]
+        # img_vector = img_vector * 0
+        # img_vector[:, 3, 5] = o_in_front
+
+        # o_in_front = img_vector[:, 2:4, 5:]
+        # img_vector = img_vector * 0
+        # img_vector[:, 2:4, 5:] = o_in_front
+        if self.use_instr:
+            instruction_vector = obs.instr.long()
+            if instr_embedding is None:
+                instr_embedding = self._get_instr_embedding(instruction_vector)
+        else:
+            instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
             # memory: B x M
@@ -334,20 +346,22 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_instr and self.advice_size > 0:
             instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
 
-        x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
+        if len(img_vector.shape) == 4:  # b, h, w, c
+            x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
-        if 'pixel' in self.arch:
-            x /= 256.0
-        x = self.image_conv(x)
-        if self.use_instr:
-            for controller in self.controllers:
-                out = controller(x, instr_embedding)
-                if self.res:
-                    out += x
-                x = out
-        x = F.relu(self.film_pool(x))
-        x = x.reshape(x.shape[0], -1)
-        # x = instr_embedding
+            if 'pixel' in self.arch:
+                x /= 256.0
+            x = self.image_conv(x)
+            if self.use_instr:
+                for controller in self.controllers:
+                    out = controller(x, instr_embedding)
+                    if self.res:
+                        out += x
+                    x = out
+            x = F.relu(self.film_pool(x))
+            x = x.reshape(x.shape[0], -1)
+        else:
+            x = torch.cat([img_vector, instr_embedding], dim=1)
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])

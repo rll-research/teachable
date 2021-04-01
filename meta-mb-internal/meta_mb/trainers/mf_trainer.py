@@ -117,6 +117,7 @@ class Trainer(object):
         return should_advance_curriculum, avg_success, avg_accuracy
 
     def check_advance_curriculum_rollout(self, data, use_teacher):
+        return False, 0, 0  # TODO: make this work!
         num_total_episodes = data['dones'].sum()
         num_successes = data['env_infos']['success'].sum()
         avg_success = num_successes / num_total_episodes
@@ -500,21 +501,23 @@ class Trainer(object):
                 should_save_video = True
             if self.args.no_rollouts:
                 should_save_video = False
-            if should_save_video:
-                time_rollout_start = time.time()
-                for teacher in self.introduced_teachers:
-                    self.save_videos(self.policy_dict[teacher],
-                                     save_name=f'{teacher}_video_stoch',
-                                     num_rollouts=10,
-                                     teacher_dict={k: k == teacher for k in teacher_train_dict.keys()},
-                                     save_video=should_save_video,
-                                     log_prefix=f"VidRollout/{teacher}_Stoch",
-                                     teacher_name=teacher,
-                                     stochastic=True,
-                                     show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
-                rollout_time = time.time() - time_rollout_start
-            else:
-                rollout_time = 0
+            # TODO: save video
+            # if should_save_video:
+            #     time_rollout_start = time.time()
+            #     for teacher in self.introduced_teachers:
+            #         self.save_videos(self.policy_dict[teacher],
+            #                          save_name=f'{teacher}_video_stoch',
+            #                          num_rollouts=10,
+            #                          teacher_dict={k: k == teacher for k in teacher_train_dict.keys()},
+            #                          save_video=should_save_video,
+            #                          log_prefix=f"VidRollout/{teacher}_Stoch",
+            #                          teacher_name=teacher,
+            #                          stochastic=True,
+            #                          show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
+            #     rollout_time = time.time() - time_rollout_start
+            # else:
+            #     rollout_time = 0
+            rollout_time = 0
 
             params = self.get_itr_snapshot(itr)
             step = self.curriculum_step

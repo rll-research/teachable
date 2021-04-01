@@ -10,14 +10,16 @@ from babyai.utils.obs_preprocessor import obss_preprocessor_distill
 
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation
-    return DictList({
+    batch_info = {
         "obs": batch.obs,
         "action": batch.action.int(),
         "action_probs": batch.action_probs,
-        "teacher_action": batch.env_infos.teacher_action,
         "full_done": batch.full_done.int(),
         "success": batch.env_infos.success,
-    })
+    }
+    if 'teacher_action' in batch.env_infos:
+        batch_info['teacher_action'] = batch.env_infos.teacher_action
+    return DictList(batch_info)
 
 
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
