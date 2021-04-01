@@ -310,9 +310,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = obs.obs
-        o_in_front = img_vector[:, 2:4, 5:]
-        img_vector = img_vector * 0
-        img_vector[:, 2:4, 5:] = o_in_front
+        # o_in_front = img_vector[:, 2:4, 5:]
+        # img_vector = img_vector * 0
+        # img_vector[:, 2:4, 5:] = o_in_front
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(instruction_vector)
         if self.use_instr and self.lang_model == "attgru":
