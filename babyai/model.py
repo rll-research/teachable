@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import babyai.rl
 from babyai.rl.utils.supervised_losses import required_heads
@@ -66,7 +67,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
                  arch="bow_endpool_res", aux_info=None, advice_dim=128,
-                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1, padding=False):
+                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1, padding=False,
+                 discrete=True):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -94,6 +96,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.num_modules = num_modules
         self.reconstruction = reconstruction
         self.reconstruct_advice_size = reconstruct_advice_size
+        self.discrete = discrete
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -182,10 +185,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             action_shape = action_space.n
         except:  # continuous
             action_shape = action_space.shape[0]
+        self.action_shape = action_shape
         self.actor = nn.Sequential(
             nn.Linear(self.embedding_size + self.advice_dim, 64),
             nn.Tanh(),
-            nn.Linear(64, action_shape)
+            nn.Linear(64, action_shape if discrete else action_shape * 2) # x2 for mean and std of gaussian
         )
 
         # Define critic's model
@@ -287,20 +291,31 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.memory = info['memory']
         info_list = []
         # Temperature softmax
-        probs = np.exp(dist.logits.detach().cpu().numpy() / temp)
-        probs = probs / np.sum(probs, axis=1, keepdims=True)
-        actions = np.stack([np.random.choice(len(p), p=p) for p in probs])
-        log_probs = dist.log_prob(torch.LongTensor(actions).to(info['probs'].device)).detach().cpu().numpy()
+        if self.discrete:
+            probs = np.exp(dist.logits.detach().cpu().numpy() / temp)
+            probs = probs / np.sum(probs, axis=1, keepdims=True)
+            actions = np.stack([np.random.choice(len(p), p=p) for p in probs])
+            actions_torch = torch.LongTensor(actions).to(self.device)
+        else:
+            actions_torch = dist.rsample()
+            actions = actions_torch.detach().cpu().numpy()
+            argmax_actions = dist.mean.detach().cpu().numpy()
+        log_probs = dist.log_prob(actions_torch).detach().cpu().numpy()
         values = info['value'].detach().cpu().numpy()
         memory = info['memory'].detach().cpu().numpy()
 
-        for i in range(len(probs)):
-            info_list.append({
+        for i in range(len(memory)):
+            info_dict = {
                 "memory": memory[i],
                 "value": values[i],
                 "log_prob": log_probs[i],
-                "probs": probs[i],
-            })
+            }
+            if self.discrete:
+                info_dict['probs'] = probs[i]
+            else:
+                info_dict['argmax_action'] = argmax_actions[i]
+
+            info_list.append(info_dict)
         return actions, info_list
 
 
@@ -375,14 +390,22 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             embedding = torch.cat([embedding, advice_embedding], dim=1)
 
         x = self.actor(embedding)
-        dist = Categorical(logits=F.log_softmax(x, dim=1))
-        probs = F.softmax(x, dim=1)
+        if self.discrete:
+            dist = Categorical(logits=F.log_softmax(x, dim=1))
+            # probs = F.softmax(x, dim=1)
+        else:
+            mean = x[:, :self.action_shape]
+            LOG_STD_MIN = -20
+            LOG_STD_MAX = 2
+            log_std = torch.clamp(x[:, self.action_shape:], LOG_STD_MIN, LOG_STD_MAX)
+            std = torch.exp(log_std)
+            dist = Normal(mean, std)
 
         x = self.critic(embedding)
         value = x.squeeze(1)
 
         info = {
-            "probs": probs,
+            # "probs": probs, # TODO: consider re-adding
             "value": value,
             "memory": memory,
         }

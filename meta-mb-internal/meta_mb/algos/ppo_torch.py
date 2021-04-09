@@ -16,7 +16,8 @@ class PPOAlgo(BaseAlgo):
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
                  rollouts_per_meta_task=1, obs_preprocessor=None, augmenter=None, instr_dropout_prob=.5,
-                 repeated_seed=None):
+                 repeated_seed=None, discrete=True):
+        self.discrete = discrete
 
         super().__init__(envs, policy_dict, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                          value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
@@ -193,7 +194,11 @@ class PPOAlgo(BaseAlgo):
                     memory = agent_info['memory']
                     entropy = dist.entropy().mean()
 
-                    ratio = torch.exp(dist.log_prob(sb.action) - sb.log_prob)
+                    log_prob = dist.log_prob(sb.action)
+                    # take log prob from the univariate normal, sum it to get multivariate normal
+                    if len(log_prob.shape) == 2:
+                        log_prob = log_prob.sum(axis=-1)
+                    ratio = torch.exp(log_prob - sb.log_prob)
                     surrr1 = ratio * sb.advantage
                     surrr2 = torch.clamp(ratio, 1.0 - self.clip_eps, 1.0 + self.clip_eps) * sb.advantage
                     policy_loss = -torch.min(surrr1, surrr2).mean()
@@ -302,7 +307,7 @@ class PPOAlgo(BaseAlgo):
             logs['Returnn'] = numpy.mean(log_returnn)
 
             logs['LogProb'] = numpy.mean(log_log_prob)
-            logs['Returnn'] = numpy.mean(log_sb_value)
+            # logs['Returnn'] = numpy.mean(log_sb_value)
 
             logs["Entropy_loss"] = numpy.mean(log_entropies)
             logs["Entropy"] = numpy.mean(log_entropies) / self.entropy_coef

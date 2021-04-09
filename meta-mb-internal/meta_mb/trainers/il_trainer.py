@@ -86,9 +86,11 @@ class ImitationLearning(object):
         elif source == 'agent':
             action_true = batch.action
         elif source == 'agent_argmax':
-            action_true = torch.argmax(batch.action_probs, dim=1)
+            action_true = batch.argmax_action
         elif source == 'agent_probs':
-            action_true = batch.action_probs
+            if self.args.discrete == False:
+                raise NotImplementedError('Action probs not implemented for continuous envs.')
+            action_true = batch.argmax_action
         if not source == 'agent_probs':
             action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.teacher_action

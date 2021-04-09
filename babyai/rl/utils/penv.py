@@ -7,10 +7,10 @@ def worker(conn, env, rollouts_per_meta_task, seed):
         if cmd == "step":
             obs, reward, done, info = env.step(data)
             if done:
-                if env.itr == rollouts_per_meta_task:
-                    if seed is not None:
-                        env.seed(seed)
-                    env.set_task(None)
+                # if env.itr == rollouts_per_meta_task:  # TODO: make this handle point_mass
+                if seed is not None:
+                    env.seed(seed)
+                env.set_task(None)
                 obs = env.reset()
             conn.send((obs, reward, done, info))
         elif cmd == "reset":

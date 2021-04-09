@@ -13,10 +13,13 @@ def trim_batch(batch):
     batch_info = {
         "obs": batch.obs,
         "action": batch.action.int(),
-        "action_probs": batch.action_probs,
         "full_done": batch.full_done.int(),
         "success": batch.env_infos.success,
     }
+    if 'action_probs' in batch:
+        batch_info['action_probs'] = batch.action_probs
+    if 'argmax_action' in batch:
+        batch_info['argamax_action'] = batch.argmax_action
     if 'teacher_action' in batch.env_infos:
         batch_info['teacher_action'] = batch.env_infos.teacher_action
     return DictList(batch_info)

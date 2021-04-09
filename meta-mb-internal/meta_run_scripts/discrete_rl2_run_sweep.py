@@ -97,8 +97,14 @@ def run_experiment(**config):
         il_optimizer = None
         log_dict = {}
 
-    if args.env in ['ant', 'point_mass']:
+    if args.env in ['point_mass', 'ant']:
         args.no_instr = True
+        discrete = False  # TODO: revert!
+    elif args.env in ['babyai']:
+        discrete = True
+    else:
+        raise NotImplementedError(f'Unknown env {args.env}')
+    args.discrete = discrete
 
     arguments = {
         "start_loc": 'all',
@@ -177,7 +183,8 @@ def run_experiment(**config):
                                  num_modules=args.num_modules,
                                  reconstruction=args.reconstruction,
                                  reconstruct_advice_size=full_advice_size,
-                                 padding=args.padding)
+                                 padding=args.padding,
+                                 discrete=discrete)
             policy_dict[teacher] = policy
 
         start_itr = 0
@@ -223,16 +230,18 @@ def run_experiment(**config):
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.collect_dropout_prob)
+                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.collect_dropout_prob,
+                   discrete=discrete)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
     algo_dagger = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
-                   args.gae_lambda,
-                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
-                   args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
-                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.collect_dropout_prob)
+                          args.gae_lambda,
+                          args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                          args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
+                          parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
+                          obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.collect_dropout_prob,
+                          discrete=discrete)
 
     if optimizer is not None:
         for k, v in optimizer.items():

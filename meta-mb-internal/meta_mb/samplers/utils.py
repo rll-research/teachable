@@ -104,25 +104,26 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     image = env.render(mode='rgb_array')[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
     background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
-    if not agent_action == teacher_action:
+    if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
         background[:, :, 0] = 0
     background[h:, w:] = image
     font = cv2.FONT_HERSHEY_SIMPLEX
-    label_str = ""
-    if hasattr(env, "teacher") and env.teacher is not None:
-        if record_teacher:
-            label_str += f"Teacher advice: {teacher_action}"
-        else:
-            label_str += f"Teacher on: {env.teacher.feedback_type}   "
-    label_str += "Run: " + str(run_index)
-    cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
-    cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
+    # label_str = ""
+    # if hasattr(env, "teacher") and env.teacher is not None:
+    #     if record_teacher:
+    #         label_str += f"Teacher advice: {teacher_action}"
+    #     else:
+    #         label_str += f"Teacher on: {env.teacher.feedback_type}   "
+    # label_str += "Run: " + str(run_index)
+    # if hasattr(env, 'mission'):
+    #     cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
+    # cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
-    cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
-    try:
-        cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
-    except:
-        print("huh?")
+    # cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
+    # try:
+    #     cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
+    # except:
+    #     print("huh?")
     return background
 
 
@@ -146,7 +147,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
             save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False,
-            temperature=1):
+            temperature=1, discrete=True):
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
         num_save = num_rollouts
@@ -171,10 +172,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     num_feedback = 0
     num_steps = 0
     for i in range(num_rollouts):
-        num_correct_no_holding = 1
-        num_no_holding = 1
-        num_holding = 1
-        num_correct_holding = 1
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
 
@@ -198,50 +195,18 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             past_o = o
             full_obs_list.append(copy.deepcopy(o))
             # Choose action
-            o_orig = o
+            print("OBS", o)
             o = obs_preprocessor([o], teacher_dict, show_instrs=instrs)
             a, agent_info = agent.get_actions_t(o, temp=temperature)
-
-            a = a.item()
             stoch_a = a
-            det_a = np.argmax(agent_info[0]['probs'])
-            if not stochastic:
-                a = np.argmax(agent_info[0]['probs'])
-
-            # offset = o_orig['OSREasy']
-            # first = offset[0]
-            # coords_offset = offset[1:3]
-            # agent_pos = env.agent_pos
-            # agent_pos_computed = offset[3: 5] * 12 + 12
-            # agent_dir_computed = offset[5] * 3
-            # assert np.array_equal(agent_pos_computed, agent_pos), (agent_pos_computed, agent_pos)
-            # assert env.agent_dir == agent_dir_computed, (agent_dir_computed, env.agent_dir)
-            # # Assuming directions are 0=left, 1 = up, 2 = right, 3 = down!
-            # # If heading in the current direction gets us closer, do that
-            # goal_pos = agent_pos + coords_offset
-            # dist_to_goal = np.linalg.norm(goal_pos, agent_pos)
-            # dist_to_goal_forward = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
-            # if dist_to_goal_forward < dist_to_goal:
-            #     action = 2
-            #     assert action == env.teacher_action.item()
-            # # # Otherwise, turn in the direction which gets us closer
-            # # dist_to_goal_left = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
-            # # # If we're already there, turn or consider opening
-            #
-            #
-            # if agent_dir < 0:
-            #     agent_dir = offset[5]
-            #     agent_pos = offset[3: 5]
-
-
-            correct = int(a == env.teacher_action.item())
-            if env.carrying:
-                num_correct_holding += correct
-                num_holding += 1
+            if discrete:
+                det_a = np.argmax(agent_info[0]['probs'])
+                correct = int(a.item() == env.teacher_action.item())
             else:
-                num_correct_no_holding += correct
-                num_no_holding += 1
-
+                det_a = agent_info[0]['argmax_action']
+                correct = True
+            if not stochastic:
+                a = det_a
 
             # Step env
             if rollout_oracle:
@@ -249,20 +214,16 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             else:
                 next_o, r, d, env_info = env.step(a)
 
-            # use reward predictor
-            if reward_predictor is not None:  # TODO: we currently don't do anything with this!
-                reward_obs = np.stack([env_info['next_obs_rewardfree']])
-                pred_reward = reward_predictor.get_actions_t(reward_obs)
-
             # Store data for logging
             success = env_info['success']
             teacher_actions.append(env_info['teacher_action'])
-            if env_info['teacher_action'] == a:
-                correct += 1
-            if env_info['teacher_action'] == stoch_a:
-                stoch_correct += 1
-            if env_info['teacher_action'] == det_a:
-                det_correct += 1
+            if discrete:
+                if env_info['teacher_action'] == a:
+                    correct += 1
+                if env_info['teacher_action'] == stoch_a:
+                    stoch_correct += 1
+                if env_info['teacher_action'] == det_a:
+                    det_correct += 1
             count += 1
             agent_actions.append(a)
             observations.append(o)
@@ -303,8 +264,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             agent_infos=agent_infos,
             env_infos=env_infos
         ))
-        # print("accuracy w/o holding", num_correct_no_holding/num_no_holding, "w holding",
-        #       num_correct_holding/num_holding, "succeeded?", success)
 
     # Finish saving videos
     if save_locally:

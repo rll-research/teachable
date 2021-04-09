@@ -98,12 +98,16 @@ class BaseAlgo(ABC):
 
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
-        self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
         try:
             action_shape = envs[0].action_space.n
         except:  # continuous
             action_shape = envs[0].action_space.shape[0]
-        self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
+        if self.discrete:
+            self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
+            self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
+        else:
+            self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.int)
+            self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
@@ -176,7 +180,6 @@ class BaseAlgo(ABC):
 
             action = dist.sample()
             action_to_take = action.cpu().numpy()
-            probs = dist.probs
 
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
@@ -219,7 +222,11 @@ class BaseAlgo(ABC):
             self.dones[i] = done_tensor
             self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action
-            self.action_probs[i] = probs
+            if self.discrete:
+                probs = dist.probs
+                self.action_probs[i] = probs
+            else:
+                self.argmax_action[i] = dist.mean
             self.values[i] = value
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
@@ -228,7 +235,11 @@ class BaseAlgo(ABC):
                 ], device=self.device)
             else:
                 self.rewards[i] = torch.tensor(reward, device=self.device)
-            self.log_probs[i] = dist.log_prob(action)
+            log_prob = dist.log_prob(action)
+            # take log prob from the univariate normal, sum it to get multivariate normal
+            if len(log_prob.shape) == 2:
+                log_prob = log_prob.sum(axis=-1)
+            self.log_probs[i] = log_prob
 
             if self.aux_info:
                 self.aux_info_collector.fill_dictionaries(i, env_info, extra_predictions)
@@ -298,13 +309,20 @@ class BaseAlgo(ABC):
 
         # for all tensors below, T x P -> P x T -> P * T
         exps.action = self.actions.transpose(0, 1).reshape(-1)
-        exps.action_probs = self.action_probs.transpose(0, 1)
-        exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
+        exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
+        if self.discrete:
+            exps.action_probs = self.action_probs.transpose(0, 1)
+            exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
+        else:
+            exps.argmax_action = self.argmax_action.transpose(0, 1)
+            exps.argmax_action = exps.argmax_action.reshape(self.argmax_action.shape[0] * self.argmax_action.shape[1], -1)
+
+            exps.action = exps.action.reshape(self.actions.shape[0] * self.actions.shape[1], -1)
+
         exps.value = self.values.transpose(0, 1).reshape(-1)
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
         exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
         exps.returnn = exps.value + exps.advantage
-        exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
         exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
         exps.done = self.dones.transpose(0, 1).reshape(-1)
         full_done = self.dones.transpose(0, 1)
@@ -353,3 +371,4 @@ class BaseAlgo(ABC):
     @abstractmethod
     def update_parameters(self):
         pass
+2

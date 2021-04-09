@@ -50,7 +50,7 @@ class Trainer(object):
             eval_every=25,
             save_every=100,
             log_every=10,
-            save_videos_every=500,
+            save_videos_every=100,
             log_and_save=True,
             teacher_schedule=lambda a, b: ({}, {}),
             obs_preprocessor=None,
@@ -109,22 +109,30 @@ class Trainer(object):
             acc_threshold = self.args.accuracy_threshold_rl
         if episode_logs is None:
             return True, -1, -1
-        avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
-                                data.teacher_action).float().mean().item()
+        if self.args.discrete:
+            avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
+                                    data.teacher_action).float().mean().item()
+        else:
+            avg_accuracy = 0
         avg_success = np.mean(episode_logs["success_per_episode"])
         should_advance_curriculum = (avg_success >= self.args.success_threshold_rl) \
                                     and (avg_accuracy >= acc_threshold)
         return should_advance_curriculum, avg_success, avg_accuracy
 
     def check_advance_curriculum_rollout(self, data, use_teacher):
-        return False, 0, 0  # TODO: make this work!
         num_total_episodes = data['dones'].sum()
         num_successes = data['env_infos']['success'].sum()
         avg_success = num_successes / num_total_episodes
         # Episode length contains the timestep, starting at 1.  Padding values are 0.
         pad_steps = (data['env_infos']['episode_length'] == 0).sum()
-        correct_actions = (data['actions'] == data['env_infos']['teacher_action'][:, :, 0]).sum() - pad_steps
-        avg_accuracy = correct_actions / (np.prod(data['actions'].shape) - pad_steps)
+        total_steps = (np.prod(data['actions'].shape) - pad_steps)
+        if self.args.discrete:
+            assert data['actions'].shape == data['env_infos']['teacher_action'].shape
+            correct_actions = (data['actions'] == data['env_infos']['teacher_action']).sum() - pad_steps
+            avg_accuracy = correct_actions / total_steps
+        else:
+            avg_accuracy = 0
+        avg_reward = data['rewards'].sum() / total_steps
         # We take the max since runs which end early will be 0-padded
         if use_teacher:
             success_threshold = self.args.success_threshold_rollout_teacher
@@ -133,7 +141,7 @@ class Trainer(object):
             success_threshold = self.args.success_threshold_rollout_no_teacher
             accuracy_threshold = self.args.accuracy_threshold_rollout_no_teacher
         should_advance_curriculum = avg_success >= success_threshold and avg_accuracy >= accuracy_threshold
-        return should_advance_curriculum, avg_success, avg_accuracy
+        return should_advance_curriculum, avg_success, avg_accuracy, avg_reward
 
     def train(self):
         """
@@ -222,8 +230,6 @@ class Trainer(object):
                                                                            train=should_train_rl,
                                                                            collection_dict=collection_dict)
                 raw_samples_data = copy.deepcopy(samples_data)
-                assert len(samples_data.action.shape) == 1, samples_data.action.shape
-
                 try:
                     counts_train = buffer.counts_train[self.curriculum_step]
                 except:
@@ -501,22 +507,21 @@ class Trainer(object):
                 should_save_video = True
             if self.args.no_rollouts:
                 should_save_video = False
-            # TODO: save video
-            # if should_save_video:
-            #     time_rollout_start = time.time()
-            #     for teacher in self.introduced_teachers:
-            #         self.save_videos(self.policy_dict[teacher],
-            #                          save_name=f'{teacher}_video_stoch',
-            #                          num_rollouts=10,
-            #                          teacher_dict={k: k == teacher for k in teacher_train_dict.keys()},
-            #                          save_video=should_save_video,
-            #                          log_prefix=f"VidRollout/{teacher}_Stoch",
-            #                          teacher_name=teacher,
-            #                          stochastic=True,
-            #                          show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
-            #     rollout_time = time.time() - time_rollout_start
-            # else:
-            #     rollout_time = 0
+            if should_save_video:
+                time_rollout_start = time.time()
+                for teacher in self.introduced_teachers:
+                    self.save_videos(self.policy_dict[teacher],
+                                     save_name=f'{teacher}_video_stoch',
+                                     num_rollouts=10,
+                                     teacher_dict={k: k == teacher for k in teacher_train_dict.keys()},
+                                     save_video=should_save_video,
+                                     log_prefix=f"VidRollout/{teacher}_Stoch",
+                                     teacher_name=teacher,
+                                     stochastic=True,
+                                     show_instrs=True if teacher == 'none' else not self.args.rollout_without_instrs)
+                rollout_time = time.time() - time_rollout_start
+            else:
+                rollout_time = 0
             rollout_time = 0
 
             params = self.get_itr_snapshot(itr)
@@ -591,10 +596,14 @@ class Trainer(object):
             avg_return = np.mean(episode_logs['return_per_episode'])
             avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
             avg_success = np.mean(episode_logs['success_per_episode'])
+            avg_reward = np.mean(episode_logs["return_per_episode"])
             logger.logkv(f"{tag}/Success", avg_success)
-            logger.logkv(f"{tag}/Accuracy", torch.eq(data.action, data.teacher_action).float().mean().item())
-            logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1),
-                                                            data.teacher_action).float().mean().item())
+            logger.logkv(f"{tag}/Reward", avg_reward)
+
+            if self.args.discrete:
+                logger.logkv(f"{tag}/Accuracy", torch.eq(data.action, data.teacher_action).float().mean().item())
+                logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1),
+                                                                data.teacher_action).float().mean().item())
             logger.logkv(f"{tag}/Return", avg_return)
             logger.logkv(f"{tag}/PathLength", avg_path_length)
             self.num_feedback_advice += episode_logs['num_feedback_advice']
@@ -692,10 +701,14 @@ class Trainer(object):
         samples_data = self.sample_processor.process_samples(paths, log='all', log_prefix=tag + key_set,
                                                              log_teacher=self.train_with_teacher)
         use_teacher = not key_set == ''
-        advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_rollout(samples_data, use_teacher)
+        advance_curriculum, avg_success, avg_accuracy, avg_reward = \
+            self.check_advance_curriculum_rollout(samples_data, use_teacher)
         logger.logkv(f"{tag}{key_set}Advance", int(advance_curriculum))
         logger.logkv(f"{tag}{key_set}AvgSuccess", avg_success)
         logger.logkv(f"{tag}{key_set}AvgAccuracy", avg_accuracy)
+        logger.logkv(f"{tag}{key_set}AvgReward", avg_reward)
+        logger.logkv(f"{tag}{key_set}FinalReward", np.mean(samples_data['rewards'][:, -1]))
+
         return advance_curriculum, avg_success, avg_accuracy
 
     def save_videos(self, policy, save_name='sample_video', num_rollouts=2, teacher_dict={}, save_video=False,
@@ -723,7 +736,8 @@ class Trainer(object):
                                                                               teacher_name=teacher_name,
                                                                               rollout_oracle=rollout_oracle,
                                                                               instrs=show_instrs,
-                                                                              temperature=self.args.rollout_temperature)
+                                                                              temperature=self.args.rollout_temperature,
+                                                                              discrete=self.args.discrete)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)
@@ -733,7 +747,6 @@ class Trainer(object):
                          np.mean([path['env_infos'][-1]['episode_length'] for path in paths]))
             success = np.mean([path['env_infos'][-1]['success'] for path in paths])
             logger.logkv(log_prefix + "Success", success)
-            logger.logkv(log_prefix + "Followed_CC3", cc3_followed)
         return None
 
     def get_itr_snapshot(self, itr):
