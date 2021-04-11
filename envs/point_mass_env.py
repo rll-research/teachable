@@ -3,6 +3,7 @@ import numpy as np
 from copy import deepcopy
 import gym
 import d4rl
+from gym.spaces import Box, Discrete
 
 class PointMassEnvSimple:
     """
@@ -20,7 +21,6 @@ class PointMassEnvSimple:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
-        from gym.spaces import Box
         self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
         self.action_space = Box(low=np.array([-1, -1]), high=np.array([1, 1]))
         # TODO: create teachers
@@ -87,7 +87,6 @@ class PointMassEnvSimpleDiscrete:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
-        from gym.spaces import Box, Discrete
         self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
         self.action_space = Discrete(5)
         # TODO: create teachers
@@ -157,6 +156,7 @@ class PointMassEnv:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6,))
         # TODO: create teachers
 
     def step(self, action):
@@ -167,15 +167,15 @@ class PointMassEnv:
         rew = rew / 10 - .01  # TODO: currently added the reward scaling in to make the rewards around 0. If this works (current run suggests it's doint better), we should probably do reward normalization instead.
         self.done = done
 
-
         target = self._wrapped_env.get_target()
         agent_pos = obs[:2]
-        success = done and np.linalg.norm(target - agent_pos) < .1
+        success = done and np.linalg.norm(target - agent_pos) < .5
         info = {}
         info['success'] = success
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
+        # return obs, rew, done, info
         return obs_dict, rew, done, info
 
     def set_task(self, *args, **kwargs):
@@ -186,6 +186,7 @@ class PointMassEnv:
         obs = np.concatenate([obs, self._wrapped_env.get_target()])
         obs_dict = {'obs': obs}
         return obs_dict
+        # return obs
 
     def vocab(self):  # We don't have vocab
         return [0]

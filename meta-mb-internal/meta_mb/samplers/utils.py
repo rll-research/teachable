@@ -195,7 +195,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             past_o = o
             full_obs_list.append(copy.deepcopy(o))
             # Choose action
-            print("OBS", o)
             o = obs_preprocessor([o], teacher_dict, show_instrs=instrs)
             a, agent_info = agent.get_actions_t(o, temp=temperature)
             stoch_a = a
@@ -243,6 +242,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
             # End trajectory on 'done'
             if d:
+            # print("OBS", o)
                 break
 
         # At the end of a trajectory, save it
