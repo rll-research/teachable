@@ -97,84 +97,95 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.reconstruction = reconstruction
         self.reconstruct_advice_size = reconstruct_advice_size
         self.discrete = discrete
+        obs = env.reset()
+        self.img_obs = len(obs['obs'].shape) == 4
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
+        if self.img_obs:
+            if padding:
+                self.image_conv = nn.Sequential(*[
+                    *([ImageBOWEmbedding(147, 128)] if use_bow else []),
+                    nn.Conv2d(
+                        in_channels=128 if use_bow or pixel else 3, out_channels=32,
+                        kernel_size=(8, 8), stride=8, padding=1),
+                    nn.BatchNorm2d(32),
+                    nn.ReLU(),
+                    *([nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
+                    nn.Conv2d(in_channels=32, out_channels=128, kernel_size=(3, 3), padding=1, stride=2),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(),
+                    *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
+                ])
+                self.film_pool = nn.MaxPool2d(kernel_size=(2, 2) if endpool else (2, 2), stride=2)
+            else:
+                self.image_conv = nn.Sequential(*[
+                    *([ImageBOWEmbedding(147, 128)] if use_bow else []),
+                    *([nn.Conv2d(
+                        in_channels=3, out_channels=128, kernel_size=(8, 8),
+                        stride=8, padding=0)] if pixel else []),
+                    nn.Conv2d(
+                        in_channels=128 if use_bow or pixel else 3, out_channels=128,
+                        kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(),
+                    *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
+                    nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(),
+                    *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
+                ])
+                self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
-        # if padding:
-        #     self.image_conv = nn.Sequential(*[
-        #         *([ImageBOWEmbedding(147, 128)] if use_bow else []),
-        #         nn.Conv2d(
-        #             in_channels=128 if use_bow or pixel else 3, out_channels=32,
-        #             kernel_size=(8, 8), stride=8, padding=1),
-        #         nn.BatchNorm2d(32),
-        #         nn.ReLU(),
-        #         *([nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
-        #         nn.Conv2d(in_channels=32, out_channels=128, kernel_size=(3, 3), padding=1, stride=2),
-        #         nn.BatchNorm2d(128),
-        #         nn.ReLU(),
-        #         *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
-        #     ])
-        #     self.film_pool = nn.MaxPool2d(kernel_size=(2, 2) if endpool else (2, 2), stride=2)
-        # else:
-        #     self.image_conv = nn.Sequential(*[
-        #         *([ImageBOWEmbedding(147, 128)] if use_bow else []),
-        #         *([nn.Conv2d(
-        #             in_channels=3, out_channels=128, kernel_size=(8, 8),
-        #             stride=8, padding=0)] if pixel else []),
-        #         nn.Conv2d(
-        #             in_channels=128 if use_bow or pixel else 3, out_channels=128,
-        #             kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-        #         nn.BatchNorm2d(128),
-        #         nn.ReLU(),
-        #         *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
-        #         nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-        #         nn.BatchNorm2d(128),
-        #         nn.ReLU(),
-        #         *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
-        #     ])
-        #     self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
+            if self.advice_size > 0:
+                self.advice_embedding = nn.Sequential(
+                    nn.Linear(self.advice_size, self.advice_dim),
+                    nn.Sigmoid(),
+                )
+        else:
+            try:
+                self.image_dim = env.observation_space.n
+            except AttributeError:  # continuous
+                self.image_dim = len(obs['obs'])
 
-        # if self.advice_size > 0:
-        #     self.advice_embedding = nn.Sequential(
-        #         nn.Linear(self.advice_size, self.advice_dim),
-        #         nn.Sigmoid(),
-        #     )
-        #
-        # # Define instruction embedding
-        # if self.use_instr:
-        #     if self.lang_model in ['gru', 'bigru', 'attgru']:
-        #         self.word_embedding = nn.Embedding(len(env.vocab()), self.instr_dim)
-        #         if self.lang_model in ['gru', 'bigru', 'attgru']:
-        #             gru_dim = self.instr_dim
-        #             if self.lang_model in ['bigru', 'attgru']:
-        #                 gru_dim //= 2
-        #             self.instr_rnn = nn.GRU(
-        #                 self.instr_dim, gru_dim, batch_first=True,
-        #                 bidirectional=(self.lang_model in ['bigru', 'attgru']))
-        #             self.final_instr_dim = self.instr_dim + self.advice_dim
-        #         else:
-        #             kernel_dim = 64
-        #             kernel_sizes = [3, 4]
-        #             self.instr_convs = nn.ModuleList([
-        #                 nn.Conv2d(1, kernel_dim, (K, self.instr_dim)) for K in kernel_sizes])
-        #             self.final_instr_dim = kernel_dim * len(kernel_sizes) + self.advice_dim
-        #
-        #     if self.lang_model == 'attgru':
-        #         self.memory2key = nn.Linear(self.memory_size, self.instr_dim)
-        #
-        #     self.controllers = []
-        #     for ni in range(self.num_modules):
-        #         mod = FiLM(
-        #             in_features=self.final_instr_dim,
-        #             out_features=128 if ni < self.num_modules - 1 else self.image_dim,
-        #             in_channels=128, imm_channels=128)
-        #         self.controllers.append(mod)
-        #         self.add_module('FiLM_' + str(ni), mod)
+        # Define instruction embedding
+        if self.use_instr:
+            if self.lang_model in ['gru', 'bigru', 'attgru']:
+                self.word_embedding = nn.Embedding(len(env.vocab()), self.instr_dim)
+                if self.lang_model in ['gru', 'bigru', 'attgru']:
+                    gru_dim = self.instr_dim
+                    if self.lang_model in ['bigru', 'attgru']:
+                        gru_dim //= 2
+                    self.instr_rnn = nn.GRU(
+                        self.instr_dim, gru_dim, batch_first=True,
+                        bidirectional=(self.lang_model in ['bigru', 'attgru']))
+                    self.final_instr_dim = self.instr_dim + self.advice_dim
+                else:
+                    kernel_dim = 64
+                    kernel_sizes = [3, 4]
+                    self.instr_convs = nn.ModuleList([
+                        nn.Conv2d(1, kernel_dim, (K, self.instr_dim)) for K in kernel_sizes])
+                    self.final_instr_dim = kernel_dim * len(kernel_sizes) + self.advice_dim
+
+            if self.lang_model == 'attgru':
+                self.memory2key = nn.Linear(self.memory_size, self.instr_dim)
+
+            self.controllers = []
+            for ni in range(self.num_modules):
+                mod = FiLM(
+                    in_features=self.final_instr_dim,
+                    out_features=128 if ni < self.num_modules - 1 else self.image_dim,
+                    in_channels=128, imm_channels=128)
+                self.controllers.append(mod)
+                self.add_module('FiLM_' + str(ni), mod)
 
         # Define memory and resize image embedding
         self.embedding_size = self.image_dim
+        if self.use_instr:
+            self.embedding_size += self.instr_dim
+        else:
+            self.embedding_size += 1
         if self.use_memory:
             self.memory_rnn = nn.LSTMCell(self.image_dim, self.memory_dim)
             self.embedding_size = self.semi_memory_size
@@ -365,7 +376,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_instr and self.advice_size > 0:
             instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
 
-        if len(img_vector.shape) == 4:  # b, h, w, c
+        if self.img_obs:  # b, h, w, c
             x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
             if 'pixel' in self.arch:

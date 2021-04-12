@@ -1,9 +1,10 @@
-# Allow us to interact wth the PointMassEnv the same way we interact with the TeachableRobotLevels class.
+# Allow us to interact wth the D4RLEnv the same way we interact with the TeachableRobotLevels class.
 import numpy as np
 from copy import deepcopy
 import gym
 import d4rl
 from gym.spaces import Box, Discrete
+
 
 class PointMassEnvSimple:
     """
@@ -63,12 +64,8 @@ class PointMassEnvSimple:
         img[y - 2: y + 2, x - 2: x + 2] = 1
         return img * 255
 
-
-
-
     def vocab(self):  # We don't have vocab
         return [0]
-
 
 
 class PointMassEnvSimpleDiscrete:
@@ -142,7 +139,7 @@ class PointMassEnvSimpleDiscrete:
         return [0]
 
 
-class PointMassEnv:
+class D4RLEnv:
     """
     Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
     Provides functions to use with meta-learning, including sampling a task and resetting the same task
@@ -151,23 +148,23 @@ class PointMassEnv:
 
     def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
                  cartesian_steps=[1], **kwargs):
-        self._wrapped_env = gym.envs.make(env_name)  # TODO: currently set up to give a deterministic target. Replace this line with the next one once we're done debugging.
-        # self._wrapped_env = gym.envs.make(env_name, reset_target=True)
+        self._wrapped_env = gym.envs.make(env_name, reset_target=True)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
-        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6,))
         # TODO: create teachers
+
+    def get_target(self):
+        raise NotImplementedError
 
     def step(self, action):
         obs, rew, done, info = self._wrapped_env.step(action)
-        obs = np.concatenate([obs, self._wrapped_env.get_target()])
         obs_dict = {}
         obs_dict["obs"] = obs
         rew = rew / 10 - .01  # TODO: currently added the reward scaling in to make the rewards around 0. If this works (current run suggests it's doint better), we should probably do reward normalization instead.
         self.done = done
 
-        target = self._wrapped_env.get_target()
+        target = self.get_target()
         agent_pos = obs[:2]
         success = done and np.linalg.norm(target - agent_pos) < .5
         info = {}
@@ -183,7 +180,6 @@ class PointMassEnv:
 
     def reset(self):
         obs = self._wrapped_env.reset()
-        obs = np.concatenate([obs, self._wrapped_env.get_target()])
         obs_dict = {'obs': obs}
         return obs_dict
         # return obs
@@ -217,3 +213,31 @@ class PointMassEnv:
                 return hooked
             else:
                 return orig_attr
+
+
+class PointMassEnv(D4RLEnv):
+    def __init__(self, *args, **kwargs):
+        super(PointMassEnv, self).__init__(*args, **kwargs)
+        # Adding goal
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6,))
+
+    def get_target(self):
+        return self._wrapped_env.get_target()
+
+    def step(self, action):
+        obs_dict, rew, done, info = super().step(action)
+        obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target()])
+        return obs_dict, rew, done, info
+
+    def reset(self):
+        obs_dict = super().reset()
+        obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target()])
+        return obs_dict
+
+
+class AntEnv(D4RLEnv):
+    def get_target(self):
+        return self._wrapped_env.target_goal
+
+    def render(self, *args, **kwargs):
+        return self._wrapped_env.render(*args, **kwargs)

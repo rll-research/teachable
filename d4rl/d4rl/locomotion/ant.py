@@ -134,6 +134,10 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     return self._get_obs()
 
   def viewer_setup(self):
+    # from mujoco_py.generated import const
+    # self.viewer.cam.type = const.CAMERA_FREE
+    # self.viewer.cam.fixedcamid = 0
+    # temp = 3
     self.viewer.cam.distance = self.model.stat.extent * 0.5
 
   def get_xy(self):

@@ -241,5 +241,6 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
         return self._get_obs()
 
     def viewer_setup(self):
+        temp = 3
         pass
 
