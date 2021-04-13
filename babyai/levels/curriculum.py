@@ -3,7 +3,7 @@ from babyai.levels.iclr19_levels import *
 from envs.point_mass_env import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
 
 class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, **kwargs):
+    def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, sparse=False, **kwargs):
         """
 
         :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
@@ -11,26 +11,27 @@ class Curriculum(Serializable):
         :param start_index: what index of the curriculum to start on
         :param kwargs: arguments for the environment
         """
+        reward_type = '' if sparse else '-dense'
         Serializable.quick_init(self, locals())
         self.advance_curriculum_func = advance_curriculum_func
         if env == 'point_mass':
             self.train_levels = [
-                PointMassEnv('maze2d-open-dense-v0', **kwargs),
-                PointMassEnv('maze2d-umaze-dense-v1', **kwargs),
-                PointMassEnv('maze2d-medium-dense-v1', **kwargs),
+                PointMassEnv(f'maze2d-open{reward_type}-v0', **kwargs),
+                PointMassEnv(f'maze2d-umaze{reward_type}-v1', **kwargs),
+                PointMassEnv(f'maze2d-medium{reward_type}-v1', **kwargs),
             ]
             self.held_out_levels = [
-                PointMassEnv('maze2d-large-dense-v1', **kwargs),
+                PointMassEnv(f'maze2d-large{reward_type}-v1', **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
             self.train_levels = [
-                AntEnv('antmaze-umaze-v0', **kwargs),
-                AntEnv('antmaze-umaze-diverse-v0', **kwargs),
-                AntEnv('antmaze-medium-diverse-v0', **kwargs),
+                AntEnv(f'antmaze-umaze-v0', **kwargs),
+                AntEnv(f'antmaze-umaze-diverse-v0', **kwargs),
+                AntEnv(f'antmaze-medium-diverse-v0', **kwargs),
             ]
             self.held_out_levels = [
-                AntEnv('antmaze-large-diverse-v0', **kwargs),
+                AntEnv(f'antmaze-large-diverse-v0', **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':
