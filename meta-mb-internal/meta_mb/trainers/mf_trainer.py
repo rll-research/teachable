@@ -719,6 +719,7 @@ class Trainer(object):
         except:
             print("no curriculum")
         save_wandb = (save_video and not self.is_debug)
+        speedup = 1 if self.args.env == 'babyai' else 10
         paths, accuracy, stoch_accuracy, det_accuracy, cc3_followed = rollout(self.env, policy,
                                                                               max_path_length=200,
                                                                               reset_every=self.args.rollouts_per_meta_task,
@@ -737,7 +738,8 @@ class Trainer(object):
                                                                               rollout_oracle=rollout_oracle,
                                                                               instrs=show_instrs,
                                                                               temperature=self.args.rollout_temperature,
-                                                                              discrete=self.args.discrete)
+                                                                              discrete=self.args.discrete,
+                                                                              speedup=speedup)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)

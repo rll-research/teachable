@@ -161,7 +161,6 @@ class D4RLEnv:
         obs, rew, done, info = self._wrapped_env.step(action)
         obs_dict = {}
         obs_dict["obs"] = obs
-        rew = rew / 10 - .01  # TODO: currently added the reward scaling in to make the rewards around 0. If this works (current run suggests it's doint better), we should probably do reward normalization instead.
         self.done = done
 
         target = self.get_target()
@@ -172,7 +171,6 @@ class D4RLEnv:
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
-        # return obs, rew, done, info
         return obs_dict, rew, done, info
 
     def set_task(self, *args, **kwargs):
@@ -227,6 +225,7 @@ class PointMassEnv(D4RLEnv):
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target()])
+        rew = rew / 10 - .01
         return obs_dict, rew, done, info
 
     def reset(self):
@@ -236,8 +235,20 @@ class PointMassEnv(D4RLEnv):
 
 
 class AntEnv(D4RLEnv):
+    def __init__(self, env_name, sparse=True, **kwargs):
+        super().__init__(env_name, **kwargs)
+        reward_type = 'sparse' if sparse else 'dense'
+        self.reward_type = reward_type
+        self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
+
     def get_target(self):
         return self._wrapped_env.target_goal
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)
+
+    def step(self, action):
+        obs_dict, rew, done, info = super().step(action)
+        if self.reward_type == 'dense':
+            rew = rew / 100 + .1
+        return obs_dict, rew, done, info

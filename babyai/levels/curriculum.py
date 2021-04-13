@@ -1,6 +1,6 @@
 from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
-from envs.point_mass_env import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
+from envs.d4rl import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
 
 class Curriculum(Serializable):
     def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, sparse=False, **kwargs):
@@ -26,12 +26,12 @@ class Curriculum(Serializable):
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
             self.train_levels = [
-                AntEnv(f'antmaze-umaze-v0', **kwargs),
-                AntEnv(f'antmaze-umaze-diverse-v0', **kwargs),
-                AntEnv(f'antmaze-medium-diverse-v0', **kwargs),
+                AntEnv(f'antmaze-umaze-v0', sparse, **kwargs),
+                AntEnv(f'antmaze-umaze-diverse-v0', sparse, **kwargs),
+                AntEnv(f'antmaze-medium-diverse-v0', sparse, **kwargs),
             ]
             self.held_out_levels = [
-                AntEnv(f'antmaze-large-diverse-v0', **kwargs),
+                AntEnv(f'antmaze-large-diverse-v0', sparse, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':
