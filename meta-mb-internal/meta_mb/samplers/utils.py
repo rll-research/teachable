@@ -121,8 +121,8 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     try:
         cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
-    except:
-        print("huh?")
+    except Exception as e:
+        print("huh1?", e)
     return background
 
 
