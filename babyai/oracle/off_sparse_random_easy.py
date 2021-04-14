@@ -89,8 +89,6 @@ class OSREasy(Teacher):
                 break
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
-        if np.sum(np.abs(env.agent_pos - og_pos)) > 3:
-            print("huh3?", "positions changed", env.agent_pos, og_pos)
         return next_state, coords, actions, env
 
     def give_feedback(self, state, last_action, oracle):
