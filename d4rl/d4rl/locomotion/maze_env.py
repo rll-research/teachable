@@ -26,6 +26,19 @@ from copy import deepcopy
 RESET = R = 'r'  # Reset position.
 GOAL = G = 'g'
 
+OPEN = [[1, 1, 1, 1, 1, 1, 1],
+        [1, R, 0, 0, 0, 0, 1],
+        [1, 0, 0, G, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1]]
+
+# Maze specifications for dataset generation
+U_MAZE_CLOSEGOAL = [[1, 1, 1, 1, 1],
+                    [1, R, 0, G, 1],
+                    [1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1]]
+
 # Maze specifications for dataset generation
 U_MAZE = [[1, 1, 1, 1, 1],
           [1, R, 0, 0, 1],
