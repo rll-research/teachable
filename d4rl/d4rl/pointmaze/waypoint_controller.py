@@ -21,8 +21,12 @@ class WaypointController(object):
         self._waypoint_idx = 0
         self._waypoints = []
         self._waypoint_prev_loc = ZEROS
-
-        self.env = grid_env.GridEnv(grid_spec.spec_from_string(maze_str))
+        if type(maze_str) is str:
+            self.env = grid_env.GridEnv(grid_spec.spec_from_string(maze_str))
+        elif type(maze_str) is list:
+            self.env = grid_env.GridEnv(grid_spec.spec_from_array(maze_str))
+        else:
+            raise NotImplementedError(f'Unexpected maze str type {type(maze_str)}')
 
     def current_waypoint(self):
         return self._waypoints[self._waypoint_idx]
@@ -101,9 +105,8 @@ if __name__ == "__main__":
     controller = WaypointController(TEST_MAZE)
     start = np.array((1,1), dtype=np.float32)
     target = np.array((4,3), dtype=np.float32)
-    act, done = controller.get_action(start, target)
+    act, done = controller.get_action(start, np.array([0,0]), target)
     print('wpt:', controller._waypoints)
     print(act, done)
     import pdb; pdb.set_trace()
     pass
-

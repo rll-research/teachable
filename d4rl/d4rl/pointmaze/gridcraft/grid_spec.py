@@ -26,6 +26,13 @@ STR_MAP = {
     'L': LAVA
 }
 
+ARR_MAP = {
+    0: EMPTY,
+    1: WALL,
+    'r': START,
+    'g': GOAL,
+}
+
 RENDER_DICT = {v:k for k, v in STR_MAP.items()}
 RENDER_DICT[EMPTY] = ' '
 RENDER_DICT[START] = ' '
@@ -45,6 +52,19 @@ def spec_from_string(s, valmap=STR_MAP):
         for j in range(h):
             gs[i,j] = valmap[rows[i][j]]
     return gs
+
+
+def spec_from_array(rows, valmap=ARR_MAP):
+    rowlens = np.array([len(row) for row in rows])
+    assert np.all(rowlens == rowlens[0])
+    w, h = len(rows), len(rows[0])#len(rows[0]), len(rows)
+    gs = GridSpec(w, h)
+    for i in range(w):
+        for j in range(h):
+            gs[i,j] = valmap[rows[i][j]]
+    return gs
+
+
 
 
 def spec_from_sparse_locations(w, h, tile_to_locs):

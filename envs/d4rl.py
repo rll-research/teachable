@@ -146,9 +146,10 @@ class D4RLEnv:
     multiple times for multiple runs within the same meta-task.
     """
 
-    def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
+    def __init__(self, env_name, reward_type='dense', feedback_type=None, feedback_freq=False, intermediate_reward=False,
                  cartesian_steps=[1], **kwargs):
-        self._wrapped_env = gym.envs.make(env_name, reset_target=True)
+        self.reward_type = reward_type
+        self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
@@ -235,12 +236,6 @@ class PointMassEnv(D4RLEnv):
 
 
 class AntEnv(D4RLEnv):
-    def __init__(self, env_name, sparse=True, **kwargs):
-        super().__init__(env_name, **kwargs)
-        reward_type = 'sparse' if sparse else 'dense'
-        self.reward_type = reward_type
-        self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
-
     def get_target(self):
         return self._wrapped_env.target_goal
 

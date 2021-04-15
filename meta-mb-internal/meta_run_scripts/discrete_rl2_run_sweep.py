@@ -116,7 +116,8 @@ def run_experiment(**config):
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": not args.sparse_reward,
+        "intermediate_reward": args.reward_type == 'dense',
+        "reward_type": args.reward_type,
         "fully_observed": args.fully_observed,
         "padding": args.padding,
     }
@@ -135,7 +136,7 @@ def run_experiment(**config):
         args.accuracy_threshold_rollout_no_teacher = 0
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=curriculum_step,
-                                          curriculum_type=args.curriculum_type, sparse=args.sparse_reward, **arguments)
+                                          curriculum_type=args.curriculum_type, **arguments)
                                ), ceil_reward=args.ceil_reward)
         try:
             teacher_null_dict = env.teacher.null_feedback()
@@ -146,7 +147,7 @@ def run_experiment(**config):
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
-                                          curriculum_type=args.curriculum_type, sparse=args.sparse_reward,
+                                          curriculum_type=args.curriculum_type,
                                           **arguments)), ceil_reward=args.ceil_reward)
         obs = env.reset()
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
