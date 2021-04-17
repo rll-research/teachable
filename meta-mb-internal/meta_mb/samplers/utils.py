@@ -54,8 +54,8 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 def get_readable_feedback(env_info, obs, teacher_name):
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
-    if teacher_name == 'OFFSparseRandom':
-        offset = obs['OFFSparseRandom']
+    if teacher_name in ['OFFSparseRandom', 'OSREasy', 'OSRPeriodicImplicit']:
+        offset = obs[teacher_name]
         first = offset[0]
         coords_offset = offset[1:3]
         start_str = "Using an obj at " if first else "Going to"
@@ -121,8 +121,8 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     try:
         cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
-    except:
-        print("huh?")
+    except Exception as e:
+        print("huh1?", e)
     return background
 
 
@@ -208,30 +208,30 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             if not stochastic:
                 a = np.argmax(agent_info[0]['probs'])
 
-            offset = o_orig['OSREasy']
-            first = offset[0]
-            coords_offset = offset[1:3]
-            agent_pos = env.agent_pos
-            agent_pos_computed = offset[3: 5] * 12 + 12
-            agent_dir_computed = offset[5] * 3
-            assert np.array_equal(agent_pos_computed, agent_pos), (agent_pos_computed, agent_pos)
-            assert env.agent_dir == agent_dir_computed, (agent_dir_computed, env.agent_dir)
+            #offset = o_orig['OSREasy']
+            #first = offset[0]
+            #coords_offset = offset[1:3]
+            #agent_pos = env.agent_pos
+            #agent_pos_computed = offset[3: 5] * 12 + 12
+            #agent_dir_computed = offset[5] * 3
+            #assert np.array_equal(agent_pos_computed, agent_pos), (agent_pos_computed, agent_pos)
+            #assert env.agent_dir == agent_dir_computed, (agent_dir_computed, env.agent_dir)
             # Assuming directions are 0=left, 1 = up, 2 = right, 3 = down!
             # If heading in the current direction gets us closer, do that
-            goal_pos = agent_pos + coords_offset
-            dist_to_goal = np.linalg.norm(goal_pos, agent_pos)
-            dist_to_goal_forward = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
-            if dist_to_goal_forward < dist_to_goal:
-                action = 2
-                assert action == env.teacher_action.item()
+            #goal_pos = agent_pos + coords_offset
+            #dist_to_goal = np.linalg.norm(goal_pos, agent_pos)
+            #dist_to_goal_forward = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
+            #if dist_to_goal_forward < dist_to_goal:
+            #    action = 2
+            #    assert action == env.teacher_action.item()
             # # Otherwise, turn in the direction which gets us closer
             # dist_to_goal_left = np.linalg.norm(goal_pos, agent_pos + env.dir_vec)
             # # If we're already there, turn or consider opening
 
 
-            if agent_dir < 0:
-                agent_dir = offset[5]
-                agent_pos = offset[3: 5]
+            #if agent_dir < 0:
+            #    agent_dir = offset[5]
+            #    agent_pos = offset[3: 5]
 
 
             correct = int(a == env.teacher_action.item())
