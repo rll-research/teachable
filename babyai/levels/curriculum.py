@@ -101,6 +101,9 @@ class Curriculum(Serializable):
         if self.advance_curriculum_func == 'four_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24]] = .25
+        elif self.advance_curriculum_func == 'four_big_levels':
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[[22, 23, 24, 25]] = .25
         elif self.advance_curriculum_func == 'five_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24, 25]] = .2
@@ -174,6 +177,9 @@ class Curriculum(Serializable):
         elif self.advance_curriculum_func == 'four_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24]] = .25
+        elif self.advance_curriculum_func == 'four_big_levels':
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[[22, 23, 24, 25]] = .25
         elif self.advance_curriculum_func == 'five_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24, 25]] = .2
