@@ -111,17 +111,17 @@ class MazeEnv(gym.Env):
     tree = ET.parse(xml_path)
     worldbody = tree.find(".//worldbody")
 
-    self._maze_map = maze_map
+    self.maze_map = maze_map
 
     self._maze_height = maze_height
     self._maze_size_scaling = maze_size_scaling
     self._manual_collision = manual_collision
 
-    self._maze_map = maze_map
+    self.maze_map = maze_map
 
     # Obtain a numpy array form for a maze map in case we want to reset
     # to multiple starting states
-    temp_maze_map = deepcopy(self._maze_map)
+    temp_maze_map = deepcopy(self.maze_map)
     for i in range(len(maze_map)):
       for j in range(len(maze_map[0])):
         if temp_maze_map[i][j] in [RESET,]:
@@ -135,9 +135,9 @@ class MazeEnv(gym.Env):
     self._init_torso_x = torso_x
     self._init_torso_y = torso_y
 
-    for i in range(len(self._maze_map)):
-      for j in range(len(self._maze_map[0])):
-        struct = self._maze_map[i][j]
+    for i in range(len(self.maze_map)):
+      for j in range(len(self.maze_map[0])):
+        struct = self.maze_map[i][j]
         if struct == 1:  # Unmovable block.
           # Offset all coordinates so that robot starts at the origin.
           ET.SubElement(
@@ -165,6 +165,12 @@ class MazeEnv(gym.Env):
     self.LOCOMOTION_ENV.__init__(self, *args, file_path=file_path, non_zero_reset=non_zero_reset, reward_type=reward_type, **kwargs)
 
     self.target_goal = None
+
+  def get_maze(self):
+      return self.maze_map
+
+  def get_target(self):
+      return self.target_goal
 
   def _xy_to_rowcol(self, xy):
     size_scaling = self._maze_size_scaling
@@ -198,11 +204,11 @@ class MazeEnv(gym.Env):
     valid_cells = []
     goal_cells = []
 
-    for i in range(len(self._maze_map)):
-      for j in range(len(self._maze_map[0])):
-        if self._maze_map[i][j] in [0, RESET, GOAL] or not only_free_cells:
+    for i in range(len(self.maze_map)):
+      for j in range(len(self.maze_map[0])):
+        if self.maze_map[i][j] in [0, RESET, GOAL] or not only_free_cells:
           valid_cells.append((i, j))
-        if self._maze_map[i][j] == GOAL:
+        if self.maze_map[i][j] == GOAL:
           goal_cells.append((i, j))
 
     # If there is a 'goal' designated, use that. Otherwise, any valid cell can
@@ -224,12 +230,12 @@ class MazeEnv(gym.Env):
     else:
       self.target_goal = goal_input
     
-    print ('Target Goal: ', self.target_goal)
+    # print ('Target Goal: ', self.target_goal)
     ## Make sure that the goal used in self._goal is also reset:
     self._goal = self.target_goal
 
   def _find_robot(self):
-    structure = self._maze_map
+    structure = self.maze_map
     size_scaling = self._maze_size_scaling
     for i in range(len(structure)):
       for j in range(len(structure[0])):
@@ -239,7 +245,7 @@ class MazeEnv(gym.Env):
 
   def _is_in_collision(self, pos):
     x, y = pos
-    structure = self._maze_map
+    structure = self.maze_map
     size_scaling = self._maze_size_scaling
     for i in range(len(structure)):
       for j in range(len(structure[0])):
@@ -287,11 +293,11 @@ class MazeEnv(gym.Env):
           if next_rowcol == current_rowcol:  # Found a shortest path.
             return rowcol
           next_row, next_col = next_rowcol
-          if next_row < 0 or next_row >= len(self._maze_map):
+          if next_row < 0 or next_row >= len(self.maze_map):
             continue
-          if next_col < 0 or next_col >= len(self._maze_map[0]):
+          if next_col < 0 or next_col >= len(self.maze_map[0]):
             continue
-          if self._maze_map[next_row][next_col] not in [0, RESET, GOAL]:
+          if self.maze_map[next_row][next_col] not in [0, RESET, GOAL]:
             continue
           if next_rowcol in visited:
             continue

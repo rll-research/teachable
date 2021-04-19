@@ -32,9 +32,7 @@ class WaypointController(object):
         return self._waypoints[self._waypoint_idx]
 
     def get_action(self, location, velocity, target):
-        if np.linalg.norm(self._target - np.array(self.gridify_state(target))) > 1e-3: 
-            #print('New target!', target, 'old:', self._target)
-            self._new_target(location, target)
+        self._new_target(location, target)
 
         dist = np.linalg.norm(location - self._target)
         vel = self._waypoint_prev_loc - location
@@ -63,7 +61,7 @@ class WaypointController(object):
     def gridify_state(self, state):
         return (int(round(state[0])), int(round(state[1])))
 
-    def _new_target(self, start, target):
+    def _new_target(self, start, target, num_itrs=25):
         #print('Computing waypoints from %s to %s' % (start, target))
         start = self.gridify_state(start)
         start_idx = self.env.gs.xy_to_idx(start)
@@ -72,7 +70,7 @@ class WaypointController(object):
         self._waypoint_idx = 0
 
         self.env.gs[target] = grid_spec.REWARD
-        q_values = q_iteration.q_iteration(env=self.env, num_itrs=50, discount=0.99)
+        q_values = q_iteration.q_iteration(env=self.env, num_itrs=num_itrs, discount=0.99)
         # compute waypoints by performing a rollout in the grid
         max_ts = 100
         s = start_idx
@@ -103,10 +101,22 @@ if __name__ == "__main__":
             "#OOOO#\\"+\
             "######"
     controller = WaypointController(TEST_MAZE)
-    start = np.array((1,1), dtype=np.float32)
+    start = np.array((0, 3), dtype=np.float32)
     target = np.array((4,3), dtype=np.float32)
     act, done = controller.get_action(start, np.array([0,0]), target)
-    print('wpt:', controller._waypoints)
-    print(act, done)
+    for i in range(40):
+        start = np.array((1 + i / 10, 1), dtype=np.float32)
+        target = np.array((4, 3), dtype=np.float32)
+        act, done = controller.get_action(start, np.array([0, 0]), target)
+        print("WAYPOINT", start, controller.current_waypoint())
+
+
+    # print('wpt:', controller._waypoints)
+    # controller = WaypointController(TEST_MAZE)
+    # start = np.array((2, 1), dtype=np.float32)
+    # target = np.array((4, 3), dtype=np.float32)
+    # act, done = controller.get_action(start, np.array([0, 0]), target)
+    # print('wpt:', controller._waypoints)
+    # print(act, done)
     import pdb; pdb.set_trace()
     pass

@@ -138,16 +138,17 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 ])
                 self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
-            if self.advice_size > 0:
-                self.advice_embedding = nn.Sequential(
-                    nn.Linear(self.advice_size, self.advice_dim),
-                    nn.Sigmoid(),
-                )
         else:
             try:
                 self.image_dim = env.observation_space.n
             except AttributeError:  # continuous
                 self.image_dim = len(obs['obs'])
+
+        if self.advice_size > 0:
+            self.advice_embedding = nn.Sequential(
+                nn.Linear(self.advice_size, self.advice_dim),
+                nn.Sigmoid(),
+            )
 
         # Define instruction embedding
         if self.use_instr:

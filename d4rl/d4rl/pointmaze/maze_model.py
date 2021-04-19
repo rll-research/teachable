@@ -3,7 +3,6 @@ from gym.envs.mujoco import mujoco_env
 from gym import utils
 from d4rl import offline_env
 from d4rl.pointmaze.dynamic_mjc import MJCModel
-from d4rl.pointmaze.waypoint_controller import WaypointController
 import numpy as np
 import random
 
@@ -166,8 +165,6 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
         self.str_maze_spec = maze_spec
         self.maze_arr = parse_maze(maze_spec)
         self.reward_type = reward_type
-        if self.reward_type in ['oracle_action', 'oracle_dist']:
-            self.waypoint_controller = WaypointController(maze_spec)
         self.reset_locations = list(zip(*np.where(self.maze_arr == EMPTY)))
         self.reset_locations.sort()
 
@@ -200,23 +197,19 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
             reward = 1.0 if np.linalg.norm(ob[0:2] - self._target) <= 0.5 else 0.0
         elif self.reward_type == 'dense':
             reward = np.exp(-np.linalg.norm(ob[0:2] - self._target))
-        elif self.reward_type == 'oracle_action':
-            act, done = self.waypoint_controller.get_action(self.sim.data.qpos, self.sim.data.qvel, self._target)
-            reward = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
-        elif self.reward_type == 'oracle_dist':
-            self.waypoint_controller._new_target(self.sim.data.qpos, self._target)
-            # Distance between each 2 points
-            start_points = [self.sim.data.qpos] + self.waypoint_controller._waypoints[:-1]
-            end_points = self.waypoint_controller._waypoints
-            distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
-            reward = - distance / 1000 + .1  # scale so it's not too big and is positive
         else:
-            raise ValueError('Unknown reward type %s' % self.reward_type)
+            reward = 0
         done = False
         return ob, reward, done, {}
 
     def _get_obs(self):
         return np.concatenate([self.sim.data.qpos, self.sim.data.qvel]).ravel()
+
+    def get_sim(self):
+        return self.sim
+
+    def get_maze(self):
+        return self.str_maze_spec
 
     def get_target(self):
         return self._target

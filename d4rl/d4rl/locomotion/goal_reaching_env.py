@@ -1,5 +1,4 @@
 import numpy as np
-from d4rl.pointmaze.waypoint_controller import WaypointController
 
 
 def disk_goal_sampler(np_random, goal_region_radius=10.):
@@ -25,8 +24,6 @@ class GoalReachingEnv(object):
 
     # This is the reward type fed as input to the goal confitioned policy
     self.reward_type = reward_type
-    if self.reward_type in ['oracle_action', 'oracle_dist']:
-      self.waypoint_controller = WaypointController(self._maze_map)
 
   def _get_obs(self):
     base_obs = self.BASE_ENV._get_obs(self)
@@ -37,7 +34,7 @@ class GoalReachingEnv(object):
     else:
       return base_obs
 
-  def _xy_to_rowcolcontinuous(self, xy):
+  def xy_to_rowcolcontinuous(self, xy):
     size_scaling = self._maze_size_scaling
     return xy[1] / size_scaling, xy[0] / size_scaling
 
@@ -47,16 +44,8 @@ class GoalReachingEnv(object):
       reward = -np.linalg.norm(self.target_goal - self.get_xy())
     elif self.reward_type == 'sparse':
       reward = 1.0 if np.linalg.norm(self.get_xy() - self.target_goal) <= 0.5 else 0.0
-    elif self.reward_type == 'oracle_dist':
-      self.waypoint_controller._new_target(self._xy_to_rowcolcontinuous(self.get_xy()),
-                                           self._xy_to_rowcolcontinuous(self.target_goal))
-      # Distance between each 2 points
-      start_points = [self.get_xy()] + self.waypoint_controller._waypoints[:-1]
-      end_points = self.waypoint_controller._waypoints
-      distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
-      reward = - distance / 1000 + .1  # scale so it's not too big and is positive
     else:
-      raise NotImplementedError(f'Reward type {self.reward_type} is not implemented for the Ant env')
+      reward = 0
     done = False
     # Terminate episode when we reach a goal
     if self.eval and np.linalg.norm(self.get_xy() - self.target_goal) <= 0.5:

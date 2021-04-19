@@ -613,9 +613,10 @@ class Trainer(object):
                 self.gave_feedback[k] += episode_logs[k_gave]
                 logger.logkv(f"Feedback/Total_{k_gave}", self.gave_feedback[k])
                 k_followed = f'followed_{k}'
-                self.followed_feedback[k] += episode_logs[k_followed]
-                logger.logkv(f"Feedback/Total_{k_followed}", self.followed_feedback[k])
-                logger.logkv(f"Feedback/Ratio_{k_followed}", episode_logs[k_followed] / episode_logs[k_gave])
+                if k_followed in episode_logs:
+                    self.followed_feedback[k] += episode_logs[k_followed]
+                    logger.logkv(f"Feedback/Total_{k_followed}", self.followed_feedback[k])
+                    logger.logkv(f"Feedback/Ratio_{k_followed}", episode_logs[k_followed] / episode_logs[k_gave])
 
             logger.logkv(f"{tag}/NumFeedbackAdvice", self.num_feedback_advice)
             logger.logkv(f"{tag}/NumFeedbackReward", self.num_feedback_reward)

@@ -1,9 +1,15 @@
 # Allow us to interact wth the D4RLEnv the same way we interact with the TeachableRobotLevels class.
 import numpy as np
-from copy import deepcopy
 import gym
 import d4rl
 from gym.spaces import Box, Discrete
+from d4rl.pointmaze.waypoint_controller import WaypointController
+from oracle.batch_teacher import BatchTeacher
+from oracle.cardinal_teacher import CardinalCorrections
+from oracle.direction_teacher import DirectionCorrections
+from oracle.waypoint_teacher import WaypointCorrections
+
+from babyai.oracle.dummy_advice import DummyAdvice
 
 
 class PointMassEnvSimple:
@@ -152,16 +158,69 @@ class D4RLEnv:
         self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
-        self.teacher_action = np.array(-1)
+        self.teacher_action = self.action_space.sample() * 0 - 1
+        if self.reward_type in ['oracle_action', 'oracle_dist']:
+            self.waypoint_controller = WaypointController(self.get_maze())
+        if feedback_type is not None:
+            teachers = {}
+            if type(cartesian_steps) is int:
+                cartesian_steps = [cartesian_steps]
+            assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
+                "you must provide either one cartesian_steps value for all teachers or one per teacher"
+            assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
+                "you must provide either one feedback_freq value for all teachers or one per teacher"
+            if len(cartesian_steps) == 1:
+                cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
+            if len(feedback_freq) == 1:
+                feedback_freq = [feedback_freq[0]] * len(feedback_type)
+            for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
+                if ft == 'None':
+                    teachers[ft] = DummyAdvice(self)
+                elif ft == 'Cardinal':
+                    teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'Waypoint':
+                    teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+                elif ft == 'Direction':
+                    teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+            teacher = BatchTeacher(teachers)
+        else:
+            teacher = None
+        self.teacher = teacher
         # TODO: create teachers
 
     def get_target(self):
         raise NotImplementedError
 
+    def get_pos(self):
+        raise NotImplementedError
+
+    def get_vel(self):
+        raise NotImplementedError
+
+    def get_maze(self):
+        raise NotImplementedError
+
+    def add_feedback(self, obs_dict):
+        if self.teacher is not None and not 'None' in self.teacher.teachers:
+            advice = self.teacher.give_feedback(self)
+            obs_dict.update(advice)
+            return obs_dict
+
     def step(self, action):
         obs, rew, done, info = self._wrapped_env.step(action)
+        if self.reward_type == 'oracle_action':
+            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
+            rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
+        elif self.reward_type == 'oracle_dist':
+            self.waypoint_controller._new_target(self.get_pos(), self.get_target())
+            # Distance between each 2 points
+            start_points = [self.get_pos()] + self.waypoint_controller._waypoints[:-1]
+            end_points = self.waypoint_controller._waypoints
+            distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
+            rew = - distance / 1000 + .1  # scale so it's not too big and is positive
         obs_dict = {}
         obs_dict["obs"] = obs
+        obs_dict = self.add_feedback(obs_dict)
         self.done = done
 
         target = self.get_target()
@@ -172,7 +231,36 @@ class D4RLEnv:
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
+
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            # Even if we use multiple teachers, presumably they all relate to one underlying path.
+            # We can log what action is the next one on this path (currently in teacher.next_action).
+            info['teacher_action'] = self.get_teacher_action()
+            self.teacher.step(self)
+            # TODO: consider adding `followed`
+            # for k, v in self.teacher.success_check(obs, action, self.oracle).items():
+            #     info[f'followed_{k}'] = v
+            info['teacher_error'] = float(self.teacher.get_last_step_error())
+            # Update the observation with the teacher's new feedback
+            self.teacher_action = self.get_teacher_action()
+        else:
+            raise NotImplementedError
         return obs_dict, rew, done, info
+
+    def get_teacher_action(self):
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            # Even if we use multiple teachers, presumably they all relate to one underlying path.
+            # We can log what action is the next one on this path (currently in teacher.next_action).
+            if isinstance(self.teacher, BatchTeacher):
+                # Sanity check that all teachers have the same underlying path
+                first_action = list(self.teacher.teachers.values())[0].next_action
+                for teacher_name, teacher in self.teacher.teachers.items():
+                    if not np.array_equal(first_action, teacher.next_action):
+                        print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
+                return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.float32)
+            else:
+                return np.array([self.teacher.next_action], dtype=np.float32)
+        return None
 
     def set_task(self, *args, **kwargs):
         pass  # for compatibility with babyai, which does set tasks
@@ -180,8 +268,11 @@ class D4RLEnv:
     def reset(self):
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
+        if hasattr(self, 'teacher') and self.teacher is not None:
+            self.teacher.reset(self)
+        self.teacher_action = self.get_teacher_action()
+        obs_dict = self.add_feedback(obs_dict)
         return obs_dict
-        # return obs
 
     def vocab(self):  # We don't have vocab
         return [0]
@@ -223,10 +314,20 @@ class PointMassEnv(D4RLEnv):
     def get_target(self):
         return self._wrapped_env.get_target()
 
+    def get_maze(self):
+        return self._wrapped_env.get_maze()
+
+    def get_pos(self):
+        return self._wrapped_env.get_sim().data.qpos
+
+    def get_vel(self):
+        return self._wrapped_env.get_sim().data.qvel
+
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target()])
-        rew = rew / 10 - .01
+        if self.reward_type == 'dense':
+            rew = rew / 10 - .01
         return obs_dict, rew, done, info
 
     def reset(self):
@@ -237,7 +338,16 @@ class PointMassEnv(D4RLEnv):
 
 class AntEnv(D4RLEnv):
     def get_target(self):
-        return self._wrapped_env.target_goal
+        return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_target()))
+
+    def get_maze(self):
+        return self._wrapped_env.get_maze()  # TODO: I think TimeLimit will kill this
+
+    def get_pos(self):
+        return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_xy()))
+
+    def get_vel(self):
+        return np.array([0, 0])  # TODO: is there a better option?
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)

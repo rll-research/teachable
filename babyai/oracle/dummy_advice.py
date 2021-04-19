@@ -18,13 +18,13 @@ class DummyAdvice(Teacher):
         """
         return np.array([])
 
-    def compute_feedback(self):
+    def compute_feedback(self, *args, **kwargs):
         """
         Return the expert action from the previous timestep.
         """
         return np.array([])
 
-    def success_check(self, action, _, another):
+    def success_check(self, action, *args, **kwargs):
         opt_action = int(self.next_action)
         followed_opt_action = (opt_action == action)
         return followed_opt_action
