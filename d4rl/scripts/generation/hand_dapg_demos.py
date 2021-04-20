@@ -1,4 +1,4 @@
-import d4rl
+import d4rl_content
 import click 
 import os
 import gym

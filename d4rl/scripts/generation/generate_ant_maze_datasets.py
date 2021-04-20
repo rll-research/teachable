@@ -3,8 +3,8 @@ import pickle
 import gzip
 import h5py
 import argparse
-from d4rl.locomotion import maze_env, ant, swimmer
-from d4rl.locomotion.wrappers import NormalizedBoxEnv
+from d4rl_content.locomotion import maze_env, ant, swimmer
+from d4rl_content.locomotion.wrappers import NormalizedBoxEnv
 import torch
 from PIL import Image
 import os

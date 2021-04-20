@@ -1,4 +1,4 @@
-import d4rl.locomotion 
+import d4rl_content.locomotion
 from offline_rl.offline_env import get_keys
 import os
 import argparse

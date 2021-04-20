@@ -2,7 +2,7 @@
 A quick script to run a sanity check on all environments.
 """
 import gym
-import d4rl
+import d4rl_content
 import numpy as np
 
 ENVS = []
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         env.step(env.action_space.sample())
         score = env.get_normalized_score(0.0)
 
-        dset = d4rl.qlearning_dataset(env, dataset=dset)
+        dset = d4rl_content.qlearning_dataset(env, dataset=dset)
         assert 'observations' in dset, 'Observations not in dataset'
         assert 'next_observations' in dset, 'Observations not in dataset'
         assert 'actions' in dset, 'Actions not in dataset'

@@ -4,7 +4,7 @@ import re
 import h5py
 import torch
 import gym
-import d4rl
+import d4rl_content
 import numpy as np
 
 from rlkit.torch import pytorch_util as ptu

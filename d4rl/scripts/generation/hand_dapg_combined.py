@@ -1,5 +1,5 @@
 import gym
-import d4rl
+import d4rl_content
 import argparse
 import os
 import numpy as np

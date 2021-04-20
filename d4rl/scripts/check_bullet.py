@@ -2,7 +2,7 @@
 A quick script to run a sanity check on all environments.
 """
 import gym
-import d4rl
+import d4rl_content
 import numpy as np
 
 ENVS = [

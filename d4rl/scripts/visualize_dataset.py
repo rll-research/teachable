@@ -1,5 +1,5 @@
 import argparse
-import d4rl
+import d4rl_content
 import gym
 
 

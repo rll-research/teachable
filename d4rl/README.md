@@ -41,12 +41,12 @@ You can also load data using `d4rl.qlearning_dataset(env)`, which formats the da
 
 ```python
 import gym
-import d4rl # Import required to register environments
+import d4rl_content # Import required to register environments
 
 # Create the environment
 env = gym.make('maze2d-umaze-v1')
 
-# d4rl abides by the OpenAI gym interface
+# d4rl_content abides by the OpenAI gym interface
 env.reset()
 env.step(env.action_space.sample())
 
@@ -55,9 +55,9 @@ env.step(env.action_space.sample())
 dataset = env.get_dataset()
 print(dataset['observations']) # An N x dim_observation Numpy array of observations
 
-# Alternatively, use d4rl.qlearning_dataset which
+# Alternatively, use d4rl_content.qlearning_dataset which
 # also adds next_observations.
-dataset = d4rl.qlearning_dataset(env)
+dataset = d4rl_content.qlearning_dataset(env)
 ```
 
 Datasets are automatically downloaded to the `~/.d4rl/datasets` directory when `get_dataset()` is called. If you would like to change the location of this directory, you can set the `$D4RL_DATASET_DIR` environment variable to the directory of your choosing, or pass in the dataset filepath directly into the `get_dataset` method.

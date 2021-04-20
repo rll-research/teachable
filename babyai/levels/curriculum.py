@@ -1,6 +1,6 @@
 from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
-from envs.d4rl import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
+from envs.d4rl_envs import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
 
 class Curriculum(Serializable):
     def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, reward_type='dense', **kwargs):
