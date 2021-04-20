@@ -120,6 +120,7 @@ def run_experiment(**config):
         "reward_type": args.reward_type,
         "fully_observed": args.fully_observed,
         "padding": args.padding,
+        "recompute_waypoints_every": args.recompute_waypoints,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule,
                                              args.success_intervention_cutoff,

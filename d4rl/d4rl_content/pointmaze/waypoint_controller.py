@@ -31,8 +31,9 @@ class WaypointController(object):
     def current_waypoint(self):
         return self._waypoints[self._waypoint_idx]
 
-    def get_action(self, location, velocity, target):
-        self._new_target(location, target)
+    def get_action(self, location, velocity, target, recompute_target=True):
+        if recompute_target:
+            self._new_target(location, target)
 
         dist = np.linalg.norm(location - self._target)
         vel = self._waypoint_prev_loc - location

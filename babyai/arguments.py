@@ -200,6 +200,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--padding', action='store_true')
         self.add_argument('--feedback_from_buffer', action='store_true')
         self.add_argument('--same_model', action='store_true')
+        self.add_argument('--recompute_waypoints', type=int, default=20)
 
     def parse_args(self, arg=None):
         """

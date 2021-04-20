@@ -30,7 +30,6 @@ class PointMassEnvSimple:
         self.teacher_action = np.array(-1)
         self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
         self.action_space = Box(low=np.array([-1, -1]), high=np.array([1, 1]))
-        # TODO: create teachers
 
     def seed(self, *args, **kwargs):
         pass
@@ -152,9 +151,11 @@ class D4RLEnv:
     multiple times for multiple runs within the same meta-task.
     """
 
-    def __init__(self, env_name, reward_type='dense', feedback_type=None, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], **kwargs):
+    def __init__(self, env_name, reward_type='dense', feedback_type=None, feedback_freq=False,
+                 cartesian_steps=[1], recompute_waypoints_every=20, **kwargs):
         self.reward_type = reward_type
+        self.recompute_waypoints_every = recompute_waypoints_every
+        self.steps_since_recompute = 0
         self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
@@ -177,11 +178,14 @@ class D4RLEnv:
                 if ft == 'None':
                     teachers[ft] = DummyAdvice(self)
                 elif ft == 'Cardinal':
-                    teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+                    teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                       controller=self.waypoint_controller)
                 elif ft == 'Waypoint':
-                    teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+                    teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                       controller=self.waypoint_controller)
                 elif ft == 'Direction':
-                    teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs)
+                    teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                        controller=self.waypoint_controller)
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
@@ -207,12 +211,19 @@ class D4RLEnv:
             return obs_dict
 
     def step(self, action):
+        recompute = self.steps_since_recompute >= self.recompute_waypoints_every
+        if recompute:
+            self.steps_since_recompute = 0
+        else:
+            self.steps_since_recompute += 1
         obs, rew, done, info = self._wrapped_env.step(action)
         if self.reward_type == 'oracle_action':
-            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
+            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target(),
+                                                            recompute_target=recompute)
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
-            self.waypoint_controller._new_target(self.get_pos(), self.get_target())
+            if recompute:
+                self.waypoint_controller._new_target(self.get_pos(), self.get_target())
             # Distance between each 2 points
             start_points = [self.get_pos()] + self.waypoint_controller._waypoints[:-1]
             end_points = self.waypoint_controller._waypoints
@@ -268,6 +279,8 @@ class D4RLEnv:
     def reset(self):
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
+        self.steps_since_recompute = 0
+        self.waypoint_controller._new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()
