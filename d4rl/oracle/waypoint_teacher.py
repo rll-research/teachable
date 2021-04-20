@@ -30,7 +30,7 @@ class WaypointCorrections(Teacher):
             gave_feedback = False
         else:
             dist_to_curr_waypoint = np.linalg.norm(agent_pos - self.static_waypoints[0])
-            if len(self.waypoints) > 1:
+            if len(self.static_waypoints) > 1:
                 dist_to_future_waypoint = np.linalg.norm(agent_pos - self.static_waypoints[1])
             else:
                 dist_to_future_waypoint = float('inf')
