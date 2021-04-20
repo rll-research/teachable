@@ -98,14 +98,14 @@ def get_readable_feedback(env_info, obs, teacher_name):
 
 
 def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teacher_name):
-    teacher_action = env_info['teacher_action'].item()
+    # teacher_action = env_info['teacher_action'].item()
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     # TODO: if we reintroduce the reward predictor, plot it here too
     image = env.render(mode='rgb_array')[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
     background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
-    if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
-        background[:, :, 0] = 0
+    # if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
+    #     background[:, :, 0] = 0
     background[h:, w:] = image
     font = cv2.FONT_HERSHEY_SIMPLEX
     # label_str = ""
