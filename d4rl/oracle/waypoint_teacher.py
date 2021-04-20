@@ -36,7 +36,7 @@ class WaypointCorrections(Teacher):
                 dist_to_future_waypoint = float('inf')
             close_to_curr_waypoint = dist_to_curr_waypoint < .25
             closer_to_next_waypoint = dist_to_future_waypoint < dist_to_curr_waypoint
-            if close_to_curr_waypoint or closer_to_next_waypoint:
+            if (close_to_curr_waypoint and len(self.static_waypoints) > 1) or closer_to_next_waypoint:
                 self.static_waypoints = self.static_waypoints[1:]
                 gave_feedback = True
             else:
