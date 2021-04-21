@@ -52,6 +52,13 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
 
 
 def get_readable_feedback(env_info, obs, teacher_name):
+    if teacher_name == 'Direction':
+        return obs['Direction']
+    if teacher_name == 'Waypoint':
+        return obs['Waypoint']
+    if teacher_name == 'Cardinal':
+        feedback = np.argmax(obs['Cardinal'])
+        return ['Left', 'Up', 'Right', 'Down'][feedback]
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
     if teacher_name == 'OFFSparseRandom':
@@ -119,11 +126,18 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     #     cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
     # cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
-    # cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
-    # try:
-    #     cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
-    # except:
-    #     print("huh?")
+    cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
+    try:
+        cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Agent pos: " + str(obs['obs'][:2]), (30, 180), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Waypoint: " + str(env.waypoint_controller.waypoints[0]), (30, 210), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Target: " + str(env.get_target()), (30, 240), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "All Waypoints: " + str(env.waypoint_controller.waypoints), (30, 270), font, 0.5, (0, 0, 0), 1, 0)
+        t = list(env.teacher.teachers.values())[0]
+        cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5,
+                    (0, 0, 0), 1, 0)
+    except Exception as e:
+        print("Error adding text", e)
     return background
 
 

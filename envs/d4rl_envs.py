@@ -152,9 +152,8 @@ class D4RLEnv:
     """
 
     def __init__(self, env_name, reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], recompute_waypoints_every=20, **kwargs):
+                 cartesian_steps=[1], **kwargs):
         self.reward_type = reward_type
-        self.recompute_waypoints_every = recompute_waypoints_every
         self.steps_since_recompute = 0
         self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
         self.feedback_type = feedback_type
@@ -211,22 +210,15 @@ class D4RLEnv:
             return obs_dict
 
     def step(self, action):
-        recompute = self.steps_since_recompute >= self.recompute_waypoints_every
-        if recompute:
-            self.steps_since_recompute = 0
-        else:
-            self.steps_since_recompute += 1
         obs, rew, done, info = self._wrapped_env.step(action)
         if self.reward_type == 'oracle_action':
-            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target(),
-                                                            recompute_target=recompute)
+            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
-            if recompute:
-                self.waypoint_controller._new_target(self.get_pos(), self.get_target())
+            self.waypoint_controller.new_target(self.get_pos(), self.get_target())
             # Distance between each 2 points
-            start_points = [self.get_pos()] + self.waypoint_controller._waypoints[:-1]
-            end_points = self.waypoint_controller._waypoints
+            start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
+            end_points = self.waypoint_controller.waypoints
             distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
             rew = - distance / 1000 + .1  # scale so it's not too big and is positive
         obs_dict = {}
@@ -256,6 +248,7 @@ class D4RLEnv:
             self.teacher_action = self.get_teacher_action()
         else:
             raise NotImplementedError
+        # print("Waypoint", obs_dict['Waypoint'], obs_dict['gave_Waypoint'])  # TODO: potentially something odd here?
         return obs_dict, rew, done, info
 
     def get_teacher_action(self):
@@ -280,7 +273,9 @@ class D4RLEnv:
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
-        self.waypoint_controller._new_target(self.get_pos(), self.get_target())
+        if self.reward_type in ['oracle_action', 'oracle_dist']:
+            self.waypoint_controller = WaypointController(self.get_maze())
+        self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()

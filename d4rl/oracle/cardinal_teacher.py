@@ -20,11 +20,11 @@ class CardinalCorrections(Teacher):
 
     def give_feedback(self, env):
         # Always re-compute feedback, but only count it as new feedback if it changes
-        down_dist = self.next_action[0]
-        up_dist = -down_dist
-        right_dist = self.next_action[1]
+        up_dist = self.next_action[1]
+        down_dist = -up_dist
+        right_dist = self.next_action[0]
         left_dist = -right_dist
-        cardinal_dir_scalar = np.argmax([up_dist, right_dist, down_dist, left_dist])
+        cardinal_dir_scalar = np.argmax([left_dist, up_dist, right_dist, down_dist])
         cardinal_dir_one_hot = np.zeros(4)
         cardinal_dir_one_hot[cardinal_dir_scalar] = 1
         if not np.array_equal(cardinal_dir_one_hot, self.last_feedback):

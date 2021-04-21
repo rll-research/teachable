@@ -13,7 +13,7 @@ class Teacher:
         self.action_space = env.action_space
         self.waypoint_controller = controller
         self.last_action = -1
-        self.next_action, self.waypoints = self.replan(env)
+        self.next_action, self.waypoints = None, None
         self.steps_since_lastfeedback = 0
         self.cartesian_steps = cartesian_steps
         self.feedback_frequency = feedback_frequency
@@ -44,9 +44,8 @@ class Teacher:
         self.past_timestep_feedback = self.last_feedback
 
     def replan(self, env):
-        action, _ = self.waypoint_controller.get_action(env.get_pos(), env.get_vel(), env.get_target(),
-                                                        recompute_target=False)
-        return action, self.waypoint_controller._waypoints.copy()
+        action, _ = self.waypoint_controller.get_action(env.get_pos(), env.get_vel(), env.get_target())
+        return action, self.waypoint_controller.waypoints.copy()
 
     def give_feedback(self, env):
         if self.feedback_condition():

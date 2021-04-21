@@ -6,7 +6,6 @@ class WaypointCorrections(Teacher):
     def __init__(self, *args, **kwargs):
         super(WaypointCorrections, self).__init__(*args, **kwargs)
         self.next_state_coords = self.empty_feedback()
-        self.static_waypoints = None
 
     def empty_feedback(self):
         """
@@ -24,24 +23,15 @@ class WaypointCorrections(Teacher):
         """
         Return the expert action from the previous timestep.
         """
-        agent_pos = env.get_pos()
-        if len(self.static_waypoints) == 0:  # already succeeded
+        waypoints = env.waypoint_controller.waypoints
+        if len(waypoints) == 0:  # already succeeded
             waypoint = np.array(env.get_target())
-            gave_feedback = False
         else:
-            dist_to_curr_waypoint = np.linalg.norm(agent_pos - self.static_waypoints[0])
-            if len(self.static_waypoints) > 1:
-                dist_to_future_waypoint = np.linalg.norm(agent_pos - self.static_waypoints[1])
-            else:
-                dist_to_future_waypoint = float('inf')
-            close_to_curr_waypoint = dist_to_curr_waypoint < .25
-            closer_to_next_waypoint = dist_to_future_waypoint < dist_to_curr_waypoint
-            if (close_to_curr_waypoint and len(self.static_waypoints) > 1) or closer_to_next_waypoint:
-                self.static_waypoints = self.static_waypoints[1:]
-                gave_feedback = True
-            else:
-                gave_feedback = False
-            waypoint = self.static_waypoints[0].copy()
+            waypoint = waypoints[0].copy()
+        gave_feedback = self.past_timestep_feedback is None or not np.array_equal(waypoint, self.past_timestep_feedback)
+        self.past_given_feedback = self.last_feedback
+        self.last_feedback = waypoint.copy()
+        self.gave_feedback = gave_feedback
         return waypoint, gave_feedback
 
     # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
@@ -50,4 +40,3 @@ class WaypointCorrections(Teacher):
 
     def reset(self, env):
         super().reset(env)
-        self.static_waypoints = self.waypoints

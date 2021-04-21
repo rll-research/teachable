@@ -21,7 +21,8 @@ def load_policy(path):
     args = saved_model['args']
     if type(policy) is dict:
         for p_dict in policy.values():
-            p_dict.instr_rnn.flatten_parameters()
+            if hasattr(p_dict, 'instr_rnn'):  # Runs faster (for versions of the model with rnns)
+                p_dict.instr_rnn.flatten_parameters()
     else:
         raise NotImplementedError("Change the code back to not using separate dicts. Change was made on 1/31/21")
         if 'supervised_model' in saved_model:
@@ -70,6 +71,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           save_locally=num_save > 0,
                                                                           num_save=num_save,
                                                                           obs_preprocessor=obs_preprocessor,
+                                                                          discrete=False,
                                                                           rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in paths]
@@ -438,7 +440,7 @@ def main():
             for seed in args.seeds:
                 test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
-                             policy_name=policy_path.stem, env_name=inner_env.__class__.__name__,
+                             policy_name=policy_path.stem, env_name=str(env_index),#inner_env.__class__.__name__,
                              hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
                              additional_args=additional_args, seed=seed)
 
