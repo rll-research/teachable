@@ -70,7 +70,7 @@ class WaypointController(object):
 
         # Get states
         grid = self.env.gs
-        waypoints = self._breadth_first_search(np.array(start), np.array(target) + 1, grid)
+        waypoints = self._breadth_first_search(np.array(start), np.array(target), grid)
         # Replace end waypoint with the true goal
         waypoints = waypoints[:-1] + [raw_target]
         self.waypoints = waypoints
