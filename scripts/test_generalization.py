@@ -351,7 +351,10 @@ def main():
 
     _, default_env, config, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_env.reset()
-    teacher_null_dict = default_env.teacher.null_feedback()
+    try:
+        teacher_null_dict = default_env.teacher.null_feedback()
+    except:
+        teacher_null_dict = {}
 
     # Get the levels of the policies to load
     policy_levels = args.levels
