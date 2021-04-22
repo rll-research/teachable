@@ -1,10 +1,11 @@
 import numpy as np
-from babyai.oracle.teacher import Teacher
+from oracle.teacher import Teacher
 
 
 class DummyAdvice(Teacher):
-    def __init__(self, *args, **kwargs):
-        super(DummyAdvice, self).__init__(*args, **kwargs)
+    def __init__(self, env, *args, **kwargs):
+        super(DummyAdvice, self).__init__(env, *args, **kwargs)
+        self.next_action = env.action_space.sample() * 0 - 1
 
     def empty_feedback(self):
         """
@@ -24,7 +25,11 @@ class DummyAdvice(Teacher):
         """
         return np.array([])
 
-    def success_check(self, action, *args, **kwargs):
-        opt_action = int(self.next_action)
-        followed_opt_action = (opt_action == action)
-        return followed_opt_action
+    def success_check(self, *args, **kwargs):
+        return False
+
+    def reset(self, *args, **kwargs):
+        pass
+
+    def step(self, *args, **kwargs):
+        pass

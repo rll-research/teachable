@@ -150,7 +150,7 @@ def run_experiment(**config):
                                           curriculum_type=args.curriculum_type,
                                           **arguments)), ceil_reward=args.ceil_reward)
         obs = env.reset()
-        advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys()])
+        advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys() if k in obs])
         if args.no_teacher:
             advice_size = 0
 
@@ -162,7 +162,7 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
         policy_dict = {}
-        full_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys()])
+        full_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
         teachers_list = list(teacher_null_dict.keys()) + ['none']
         for teacher in teachers_list:
             if not args.include_zeros and not args.same_model:

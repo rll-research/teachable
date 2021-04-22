@@ -161,7 +161,7 @@ class D4RLEnv:
         self.teacher_action = self.action_space.sample() * 0 - 1
         if self.reward_type in ['oracle_action', 'oracle_dist']:
             self.waypoint_controller = WaypointController(self.get_maze())
-        if feedback_type is not None:
+        if feedback_type is not None and not 'none' in feedback_type:
             teachers = {}
             if type(cartesian_steps) is int:
                 cartesian_steps = [cartesian_steps]
@@ -207,7 +207,7 @@ class D4RLEnv:
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
-            return obs_dict
+        return obs_dict
 
     def step(self, action):
         obs, rew, done, info = self._wrapped_env.step(action)
@@ -246,8 +246,6 @@ class D4RLEnv:
             info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
-        else:
-            raise NotImplementedError
         # print("Waypoint", obs_dict['Waypoint'], obs_dict['gave_Waypoint'])  # TODO: potentially something odd here?
         return obs_dict, rew, done, info
 
@@ -261,7 +259,7 @@ class D4RLEnv:
                 for teacher_name, teacher in self.teacher.teachers.items():
                     if not np.array_equal(first_action, teacher.next_action):
                         print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
-                return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.float32)
+                return list(self.teacher.teachers.values())[0].next_action
             else:
                 return np.array([self.teacher.next_action], dtype=np.float32)
         return None

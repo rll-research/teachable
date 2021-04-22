@@ -133,8 +133,9 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
         cv2.putText(background, "Waypoint: " + str(env.waypoint_controller.waypoints[0]), (30, 210), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Target: " + str(env.get_target()), (30, 240), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "All Waypoints: " + str(env.waypoint_controller.waypoints), (30, 270), font, 0.5, (0, 0, 0), 1, 0)
-        t = list(env.teacher.teachers.values())[0]
-        cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5, (0, 0, 0), 1, 0)
+        if hasattr(env, 'teacher') and hasattr(env.teacher, 'teachers'):
+            t = list(env.teacher.teachers.values())[0]
+            cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Reward: " + str(reward), (30, 330), font, 0.5, (0, 0, 0), 1, 0)
     except Exception as e:
         print("Error adding text", e)
