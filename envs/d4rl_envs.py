@@ -220,7 +220,7 @@ class D4RLEnv:
             start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
             end_points = self.waypoint_controller.waypoints
             distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
-            rew = - distance / 1000 + .1  # scale so it's not too big and is positive
+            rew = - distance / 100
         obs_dict = {}
         obs_dict["obs"] = obs
         obs_dict = self.add_feedback(obs_dict)

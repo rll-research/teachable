@@ -104,7 +104,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
 
 
 
-def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teacher_name):
+def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teacher_name, reward):
     # teacher_action = env_info['teacher_action'].item()
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     # TODO: if we reintroduce the reward predictor, plot it here too
@@ -128,14 +128,14 @@ def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teache
     cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     try:
-        cv2.putText(background, "Feedback: " + feedback, (30, 150), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Feedback: " + str(feedback), (30, 150), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Agent pos: " + str(obs['obs'][:2]), (30, 180), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Waypoint: " + str(env.waypoint_controller.waypoints[0]), (30, 210), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Target: " + str(env.get_target()), (30, 240), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "All Waypoints: " + str(env.waypoint_controller.waypoints), (30, 270), font, 0.5, (0, 0, 0), 1, 0)
         t = list(env.teacher.teachers.values())[0]
-        cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5,
-                    (0, 0, 0), 1, 0)
+        cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Reward: " + str(reward), (30, 330), font, 0.5, (0, 0, 0), 1, 0)
     except Exception as e:
         print("Error adding text", e)
     return background
@@ -251,7 +251,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
                 img = plot_img(env, obs=past_o, agent_action=a, env_info=env_info,
-                               record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name)
+                               record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name,
+                               reward=r)
                 curr_images.append(img)
 
             # End trajectory on 'done'
