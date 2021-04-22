@@ -72,7 +72,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           num_save=num_save,
                                                                           obs_preprocessor=obs_preprocessor,
                                                                           discrete=False,
-                                                                          rollout_oracle=False)
+                                                                          rollout_oracle=True)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in paths]
     agent_actions = [np.array(path['actions']) for path in paths]
@@ -351,7 +351,10 @@ def main():
 
     _, default_env, config, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_env.reset()
-    teacher_null_dict = default_env.teacher.null_feedback()
+    try:
+        teacher_null_dict = default_env.teacher.null_feedback()
+    except:
+        teacher_null_dict = {}
 
     # Get the levels of the policies to load
     policy_levels = args.levels
