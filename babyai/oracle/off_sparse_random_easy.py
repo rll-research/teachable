@@ -53,13 +53,11 @@ class OSREasy(Teacher):
         env = oracle.mission
         # Remove teacher so we don't end up with a recursion error
         env.teacher = None
-        # try:
-        # num_steps = 2
         num_steps = np.random.randint(2, self.cartesian_steps + 1)
-        self.num_steps = num_steps
 
-        self.next_state, next_coords, actions, env = self.step_away_state(oracle, num_steps,
+        self.next_state, next_coords, actions, env, num_steps = self.step_away_state(oracle, num_steps,
                                                                           last_action=last_action)
+        self.num_steps = num_steps
         self.goal_coords = next_coords[:2].copy()
         if actions[-1] in [env.actions.drop, env.actions.pickup, env.actions.toggle] or env.done:
             first = 1
@@ -89,7 +87,7 @@ class OSREasy(Teacher):
                 break
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
-        return next_state, coords, actions, env
+        return next_state, coords, actions, env, step + 1
 
     def give_feedback(self, state, last_action, oracle):
         """

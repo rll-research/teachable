@@ -542,16 +542,20 @@ class Bot:
 
     """
 
-    def __init__(self, mission, rng=None):
+    def __init__(self, mission, rng=None, fully_observed=False):
         # Mission to be solved
         self.mission = mission
         self.rng = rng if rng is not None else np.random.RandomState()
+        self.fully_observed = fully_observed
 
         # Grid containing what has been mapped out
         self.grid = Grid(mission.width, mission.height)
 
         # Visibility mask. True for explored/seen, false for unexplored.
-        self.vis_mask = np.zeros(shape=(mission.width, mission.height), dtype=np.bool)
+        if fully_observed:
+            self.vis_mask = np.ones(shape=(mission.width, mission.height), dtype=np.bool)
+        else:
+            self.vis_mask = np.zeros(shape=(mission.width, mission.height), dtype=np.bool)
 
         # Stack of tasks/subtasks to complete (tuples)
         self.stack = []
@@ -758,7 +762,8 @@ class Bot:
                 if self.vis_mask[obj_pos]:
                     shortest_path_to_obj, _, with_blockers = self._shortest_path(
                         lambda pos, cell: pos == obj_pos,
-                        try_with_blockers=True
+                        try_with_blockers=True,
+                        plan_through_doors=self.fully_observed,
                     )
                     if shortest_path_to_obj is None:
                         print("=" * 100)
@@ -928,7 +933,7 @@ class Bot:
         return None, None, previous_pos
 
         
-    def _breadth_first_search(self, initial_states, accept_fn, ignore_blockers):
+    def _breadth_first_search(self, initial_states, accept_fn, ignore_blockers, plan_through_doors=False):
         """Performs breadth first search.
 
         This is pretty much your textbook BFS. The state space is agent's locations,
@@ -973,9 +978,10 @@ class Bot:
                     continue
                 # If this is a door
                 elif cell.type == 'door':
-                    # If the door is closed, don't visit neighbors
-                    if not cell.is_open:
-                        continue
+                    if not plan_through_doors:
+                        # If the door is closed, don't visit neighbors
+                        if not cell.is_open:
+                            continue
                 elif not ignore_blockers:
                     continue
 
@@ -1009,7 +1015,7 @@ class Bot:
         return path, finish, with_blockers
 
 
-    def _shortest_path(self, accept_fn, try_with_blockers=False):
+    def _shortest_path(self, accept_fn, try_with_blockers=False, plan_through_doors=False):
         """
         Finds the path to any of the locations that satisfy `accept_fn`.
         Prefers the paths that avoid blockers for as long as possible.
@@ -1021,12 +1027,12 @@ class Bot:
         path = finish = None
         with_blockers = False
         path, finish, previous_pos = self._breadth_first_search(
-            initial_states, accept_fn, ignore_blockers=False)
+            initial_states, accept_fn, ignore_blockers=False, plan_through_doors=plan_through_doors)
         if not path and try_with_blockers:
             with_blockers = True
             path, finish, _ = self._breadth_first_search(
                 [(i, j, 1, 0) for i, j in previous_pos],
-                accept_fn, ignore_blockers=True)
+                accept_fn, ignore_blockers=True, plan_through_doors=plan_through_doors)
             if path:
                 # `path` now contains the path to a cell that is reachable without
                 # blockers. Now let's add the path to this cell

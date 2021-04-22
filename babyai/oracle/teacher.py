@@ -10,7 +10,7 @@ class Teacher:
     """
 
     def __init__(self, botclass, env, device=None, feedback_type='oracle', feedback_always=False, cartesian_steps=5,
-                 feedback_frequency=1):
+                 feedback_frequency=1, fully_observed=False):
         """
         :param botclass: Oracle class
         :param env: babyai env
@@ -22,7 +22,7 @@ class Teacher:
         #  figure out what situations it fails and not generate those.
 
         self.cartesian_steps = cartesian_steps
-        oracle = botclass(env)
+        oracle = botclass(env, fully_observed=fully_observed)
         self.action_space = env.action_space
         self.botclass = botclass
         self.last_action = -1
@@ -38,6 +38,7 @@ class Teacher:
         self.device = device
         self.last_step_error = False
         self.gave_feedback = False
+        self.fully_observed = fully_observed
         if device is None:
             if torch.cuda.is_available():
                 self.device = 'cuda'
@@ -78,7 +79,7 @@ class Teacher:
         if drop_off or self.next_action == last_action:
             replan_output = oracle.replan(last_action)
         else:
-            new_oracle = self.botclass(env, rng=copy.deepcopy(oracle.rng))
+            new_oracle = self.botclass(env, rng=copy.deepcopy(oracle.rng), fully_observed=self.fully_observed)
             new_oracle.vis_mask = oracle.vis_mask.copy()
             new_oracle.step = oracle.step
             replan_output = new_oracle.replan(-1)
@@ -158,7 +159,7 @@ class Teacher:
             return False
 
     def reset(self, oracle):
-        oracle = self.botclass(oracle.mission, rng=copy.deepcopy(oracle.rng))
+        oracle = self.botclass(oracle.mission, rng=copy.deepcopy(oracle.rng), fully_observed=self.fully_observed)
         self.next_action, self.next_subgoal = oracle.replan()
         self.last_action = -1
         self.steps_since_lastfeedback = 0

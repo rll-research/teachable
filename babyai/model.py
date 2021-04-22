@@ -96,6 +96,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.num_modules = num_modules
         self.reconstruction = reconstruction
         self.reconstruct_advice_size = reconstruct_advice_size
+        obs = env.reset()
+        obs_shape = obs['obs'].shape
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -117,6 +119,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             ])
             self.film_pool = nn.MaxPool2d(kernel_size=(2, 2) if endpool else (2, 2), stride=2)
         else:
+            h, w, c = obs_shape
+            if h == 7:  # Partially observed
+                stride = 1
+            elif h == 8:  # Fully observed, small
+                stride = 1
+            elif h == 22:  # Fully observed, big
+                stride = 3
+
             self.image_conv = nn.Sequential(*[
                 *([ImageBOWEmbedding(147, 128)] if use_bow else []),
                 *([nn.Conv2d(
@@ -124,7 +134,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     stride=8, padding=0)] if pixel else []),
                 nn.Conv2d(
                     in_channels=128 if use_bow or pixel else 3, out_channels=128,
-                    kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
+                    kernel_size=(3, 3) if endpool else (2, 2), stride=stride, padding=1),
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),

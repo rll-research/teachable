@@ -88,83 +88,99 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                     teacher = DummyAdvice(Bot, self)
                 elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
-                                               feedback_frequency=ff, cartesian_steps=cs)
+                                               feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceBad1':
                     teacher = PreActionAdviceBad1(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'PreActionAdvice2':
                     teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceMultiple1':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs)
+                                                      feedback_frequency=ff, cartesian_steps=cs,
+                                                      fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceMultipleCopy':
                     teacher = PreActionAdviceMultipleCopy(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs)
+                                                      feedback_frequency=ff, cartesian_steps=cs,
+                                                          fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceMultipleRepeated':
                     teacher = PreActionAdviceMultipleRepeated(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs)
+                                                      feedback_frequency=ff, cartesian_steps=cs,
+                                                              fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceMultipleRepeatedIndex':
                     teacher = PreActionAdviceMultipleRepeatedIndex(Bot, self, feedback_always=feedback_always,
-                                                              feedback_frequency=ff, cartesian_steps=cs)
+                                                              feedback_frequency=ff, cartesian_steps=cs,
+                                                                   fully_observed=fully_observed)
                 elif ft == 'PreActionAdviceMultiple':
                     teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs)
+                                                      feedback_frequency=ff, cartesian_steps=cs,
+                                                      fully_observed=fully_observed)
                 elif ft == 'CartesianCorrections':
                     obs_size = self.reset()['obs'].flatten().size
                     teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cs)
+                                                   feedback_frequency=ff, cartesian_steps=cs,
+                                                   fully_observed=fully_observed)
                 elif ft == 'CCIO':
                     obs_size = self.reset()['obs'].flatten().size
-                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cs)
+                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size,
+                                                                feedback_always=feedback_always,
+                                                   feedback_frequency=ff, cartesian_steps=cs,
+                                                                fully_observed=fully_observed)
                 elif ft == 'SubgoalCorrections':
                     teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cs)
+                                                 feedback_frequency=ff, cartesian_steps=cs,
+                                                 fully_observed=fully_observed)
                 elif ft == 'SubgoalSimple':
                     teacher = SubgoalSimpleCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cs)
+                                                 feedback_frequency=ff, cartesian_steps=cs,
+                                                       fully_observed=fully_observed)
                 elif ft == 'OffsetCorrections':
                     teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs)
+                                                feedback_frequency=ff, cartesian_steps=cs,
+                                                fully_observed=fully_observed)
                 elif ft == 'OFFIO':
                     teacher = OFFIO(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs)
+                                                feedback_frequency=ff, cartesian_steps=cs,
+                                    fully_observed=fully_observed)
                 elif ft == 'OFFSparse':
                     teacher = OFFSparse(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs)
+                                                feedback_frequency=ff, cartesian_steps=cs,
+                                        fully_observed=fully_observed)
                 elif ft == 'OFFSparseRandom':
                     teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs)
+                                                feedback_frequency=ff, cartesian_steps=cs,
+                                              fully_observed=fully_observed)
                 elif ft == 'OFFSparseRandom2':
                     teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs,
+                                              fully_observed=fully_observed)
                 elif ft == 'OSREasy':
                     teacher = OSREasy(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs,
+                                      fully_observed=fully_observed)
                 elif ft == 'OSREasy2':
                     teacher = OSREasy(Bot, self, feedback_always=feedback_always,
-                                      feedback_frequency=ff, cartesian_steps=cs)
+                                      feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'OSRMistaken':
                     teacher = OSRMistaken(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
 
                 elif ft == 'OSRPeriodicExplicit':
                     teacher = OSRPeriodicExplicit(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'OSRPeriodicImplicit':
                     teacher = OSRPeriodicImplicit(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs)
+                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 elif ft == 'XYCorrections':
                     teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
-                                            feedback_frequency=ff, cartesian_steps=cs)
+                                            feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
-                self.oracle[ft] = Bot(self, rng=copy.deepcopy(rng))
+                self.oracle[ft] = Bot(self, rng=copy.deepcopy(rng), fully_observed=fully_observed)
             teacher = BatchTeacher(teachers)
         else:
             teacher = None
@@ -540,6 +556,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
+            info['num_steps'] = list(self.teacher.teachers.values())[0].num_steps
             original_oracle = pkl.loads(pkl.dumps(self.oracle))
             self.oracle = self.teacher.step(action, self.oracle)
             for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():

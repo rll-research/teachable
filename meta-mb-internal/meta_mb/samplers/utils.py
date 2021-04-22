@@ -51,7 +51,7 @@ def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos
         wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
 
 
-def get_readable_feedback(env_info, obs, teacher_name):
+def get_readable_feedback(env_info, obs, teacher_name, env):
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
     if teacher_name in ['OFFSparseRandom', 'OSREasy', 'OSRPeriodicImplicit']:
@@ -65,7 +65,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
             agent_dir = offset[5]
             agent_pos = offset[3: 5]
         timesteps_ago = np.argmax(offset[6:])
-        return f"{start_str} {coords_offset}, {timesteps_ago} ago, pos {agent_pos}, dir {agent_dir}"
+        return f"{start_str} {coords_offset}, {timesteps_ago + 1}/{env_info['num_steps']}, pos {agent_pos}, dir {agent_dir}"
     elif teacher_name == 'SubgoalCorrections':
         subgoal_names = ['OpenSubgoal',
                          'DropSubgoal',
@@ -97,11 +97,11 @@ def get_readable_feedback(env_info, obs, teacher_name):
 
 
 
-def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teacher_name):
+def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index, teacher_name):
     teacher_action = env_info['teacher_action'].item()
-    feedback = get_readable_feedback(env_info, obs, teacher_name)
+    feedback = get_readable_feedback(env_info, obs, teacher_name, env)
     # TODO: if we reintroduce the reward predictor, plot it here too
-    image = env.render(mode='rgb_array')[:, :, ::-1]  # RGB --> BGR
+    image = image[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
     background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
     if not agent_action == teacher_action:
@@ -242,6 +242,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 num_correct_no_holding += correct
                 num_no_holding += 1
 
+            if (save_locally or save_wandb) and i < num_save:
+                image = env.render(mode='rgb_array')
 
             # Step env
             if rollout_oracle:
@@ -276,7 +278,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
-                img = plot_img(env, obs=past_o, agent_action=a, env_info=env_info,
+                img = plot_img(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
                                record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name)
                 curr_images.append(img)
 
