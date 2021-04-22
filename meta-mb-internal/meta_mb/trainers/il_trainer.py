@@ -94,7 +94,7 @@ class ImitationLearning(object):
         if not source == 'agent_probs':
             action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
         action_teacher = batch.teacher_action
-        if len(action_teacher.shape) == 2:
+        if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
             action_teacher = action_teacher[:, 0]
         done = batch.full_done
 
