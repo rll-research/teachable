@@ -151,16 +151,17 @@ class D4RLEnv:
     multiple times for multiple runs within the same meta-task.
     """
 
-    def __init__(self, env_name, reward_type='dense', feedback_type=None, feedback_freq=False,
+    def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
                  cartesian_steps=[1], **kwargs):
         self.reward_type = reward_type
+        self.offset_mapping = offset_mapping
         self.steps_since_recompute = 0
         self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
         if self.reward_type in ['oracle_action', 'oracle_dist']:
-            self.waypoint_controller = WaypointController(self.get_maze())
+            self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
         if feedback_type is not None and not 'none' in feedback_type:
             teachers = {}
             if type(cartesian_steps) is int:
@@ -272,7 +273,7 @@ class D4RLEnv:
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
         if self.reward_type in ['oracle_action', 'oracle_dist']:
-            self.waypoint_controller = WaypointController(self.get_maze())
+            self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=self.offset_mapping)
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
@@ -313,7 +314,7 @@ class D4RLEnv:
 
 class PointMassEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
-        super(PointMassEnv, self).__init__(*args, **kwargs)
+        super(PointMassEnv, self).__init__(*args, offset_mapping=np.array([0, 0]), **kwargs)
         # Adding goal
         self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6,))
 
@@ -343,6 +344,9 @@ class PointMassEnv(D4RLEnv):
 
 
 class AntEnv(D4RLEnv):
+    def __init__(self, *args, **kwargs):
+        super(AntEnv, self).__init__(*args, offset_mapping=np.array([1, 1]), **kwargs)
+
     def get_target(self):
         return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_target()))
 

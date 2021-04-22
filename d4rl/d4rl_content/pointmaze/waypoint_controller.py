@@ -9,12 +9,13 @@ ONES = np.zeros((2,), dtype=np.float32)
 
 
 class WaypointController(object):
-    def __init__(self, maze_str, solve_thresh=0.1, p_gain=10.0, d_gain=-1.0):
+    def __init__(self, maze_str, solve_thresh=0.1, p_gain=10.0, d_gain=-1.0, offset_mapping=np.array([0, 0])):
         self.maze_str = maze_str
         self._target = -1000 * ONES
 
         self.p_gain = p_gain
         self.d_gain = d_gain
+        self.offset_mapping = offset_mapping
         self.solve_thresh = solve_thresh
         self.vel_thresh = 0.1
 
@@ -69,7 +70,7 @@ class WaypointController(object):
 
         # Get states
         grid = self.env.gs
-        waypoints = self._breadth_first_search(np.array(start), np.array(target), grid)
+        waypoints = self._breadth_first_search(np.array(start), np.array(target) + 1, grid)
         # Replace end waypoint with the true goal
         waypoints = waypoints[:-1] + [raw_target]
         self.waypoints = waypoints
@@ -78,6 +79,10 @@ class WaypointController(object):
 
 
     def _breadth_first_search(self, initial_state, goal, grid):
+
+        # Add the offset mapping, which changes from world coordinates to grid coordinates
+        initial_state = initial_state + self.offset_mapping
+        goal = goal + self.offset_mapping
 
         queue = [(initial_state, None)]
         previous_pos = dict()
@@ -96,8 +101,9 @@ class WaypointController(object):
             if np.array_equal(np.array([i, j]), goal):
                 path = []
                 pos = (i, j)
+                # Subtract the offset mapping to change back into world coordinates
                 while pos:
-                    path.append(np.array(pos))
+                    path.append(np.array(pos) - self.offset_mapping)
                     pos = previous_pos[pos]
                 return path[::-1]
 
