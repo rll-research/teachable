@@ -5,6 +5,7 @@ from itertools import chain, combinations
 import time
 import copy
 from babyai.rl.utils.dictlist import DictList
+from gym.spaces import Discrete
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
@@ -81,7 +82,7 @@ class ImitationLearning(object):
         obss = batch.obs
         if source == 'teacher':
             action_true = batch.teacher_action
-            if len(action_true.shape) == 2:
+            if len(action_true.shape) == 2 and action_true.shape[1] == 1:
                 action_true = action_true[:, 0]
         elif source == 'agent':
             action_true = batch.action
@@ -247,7 +248,10 @@ class ImitationLearning(object):
                 reconstruction_loss = 0
 
             loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss
-            action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
+            if self.args.discrete:
+                action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
+            else:  # Continuous env
+                action_pred = dist.mean
             final_loss += loss
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss)
             # Increment indexes to hold the next step for each chunk
@@ -298,41 +302,35 @@ class ImitationLearning(object):
         action_pred = action_pred.detach().cpu().numpy()  # action we took
         agent_running_count = 0
         teacher_running_count = 0
-        for j in range(len(self.per_token_count)):
-            # Sort by agent action
-            action_taken_indices = np.where(action_pred == j)[0]
-            self.precision_correct[j] += np.sum(action_step[action_taken_indices] == action_pred[action_taken_indices])
-            self.precision_count[j] += len(action_taken_indices)
+        if self.args.discrete:
+            for j in range(len(self.per_token_count)):
+                # Sort by agent action
+                action_taken_indices = np.where(action_pred == j)[0]
+                self.precision_correct[j] += np.sum(action_step[action_taken_indices] == action_pred[action_taken_indices])
+                self.precision_count[j] += len(action_taken_indices)
 
-            # Sort by label action
-            token_indices = np.where(action_step == j)[0]
-            count = len(token_indices)
-            correct = np.sum(action_step[token_indices] == action_pred[token_indices])
-            self.per_token_correct[j] += correct
-            self.per_token_count[j] += count
+                # Sort by label action
+                token_indices = np.where(action_step == j)[0]
+                count = len(token_indices)
+                correct = np.sum(action_step[token_indices] == action_pred[token_indices])
+                self.per_token_correct[j] += correct
+                self.per_token_count[j] += count
 
-            action_teacher_index = action_teacher[indexes]
-            assert action_teacher_index.shape == action_pred.shape == action_step.shape, (
-                action_teacher_index.shape, action_pred.shape, action_step.shape)
-            teacher_token_indices = np.where(action_teacher_index == j)[0]
-            teacher_count = len(teacher_token_indices)
-            teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
-            self.per_token_teacher_correct[j] += teacher_correct
-            self.per_token_teacher_count[j] += teacher_count
-            teacher_running_count += teacher_count
-            agent_running_count += count
-            self.agent_running_count_long += teacher_count
-            self.teacher_running_count_long += teacher_count
-        assert np.min(action_step) < len(self.per_token_count), (np.min(action_step), action_step)
-        assert np.max(action_step) >= 0, (np.max(action_step), action_step)
-        assert np.min(action_pred) < len(self.per_token_count), (np.min(action_pred), action_pred)
-        assert np.max(action_pred) >= 0, (np.max(action_pred), action_pred)
-        assert np.min(action_teacher_index) < len(self.per_token_count), (
-        np.min(action_teacher_index), action_teacher_index)
-        assert np.max(action_teacher_index) >= 0, (np.max(action_teacher_index), action_teacher_index)
-        assert agent_running_count == teacher_running_count, (agent_running_count, teacher_running_count)
-        assert agent_running_count == len(action_step) == len(action_pred), \
-            (agent_running_count, len(action_step), len(action_pred))
+                action_teacher_index = action_teacher[indexes]
+                assert action_teacher_index.shape == action_pred.shape == action_step.shape, (
+                    action_teacher_index.shape, action_pred.shape, action_step.shape)
+                teacher_token_indices = np.where(action_teacher_index == j)[0]
+                teacher_count = len(teacher_token_indices)
+                teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
+                self.per_token_teacher_correct[j] += teacher_correct
+                self.per_token_teacher_count[j] += teacher_count
+                teacher_running_count += teacher_count
+                agent_running_count += count
+                self.agent_running_count_long += teacher_count
+                self.teacher_running_count_long += teacher_count
+            assert agent_running_count == teacher_running_count, (agent_running_count, teacher_running_count)
+            assert agent_running_count == len(action_step) == len(action_pred), \
+                (agent_running_count, len(action_step), len(action_pred))
 
     def log_final(self):
         log = {}
@@ -340,37 +338,39 @@ class ImitationLearning(object):
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
         log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
-        log["Label_A"] = float(self.label_accuracy)
-        assert float(self.accuracy) <= 1.0001, "somehow accuracy is greater than 1"
-        assert float(self.accuracy) <= 1.0001, float(self.accuracy)
-        teacher_numerator = 0
-        teacher_denominator = 0
-        agent_numerator = 0
-        agent_denominator = 0
-        for i, (correct, count) in enumerate(zip(self.precision_correct, self.precision_count)):
-            if count > 0:
-                log[f'Precision{i}'] = correct / count
 
-        for i, (correct, count, teacher_correct, teacher_count) in enumerate(
-            zip(self.per_token_correct, self.per_token_count, self.per_token_teacher_correct,
-                self.per_token_teacher_count)):
-            assert correct <= count, (correct, count)
-            assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
-            if count > 0:
-                log[f'Accuracy_{i}'] = correct / count
-                agent_numerator += correct
-                agent_denominator += count
-            if teacher_count > 0:
-                log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
-                teacher_numerator += teacher_correct
-                teacher_denominator += teacher_count
-        assert agent_denominator == teacher_denominator, (agent_denominator, teacher_count)
+        if self.args.discrete:
+            log["Label_A"] = float(self.label_accuracy)
+            assert float(self.accuracy) <= 1.0001, "somehow accuracy is greater than 1"
+            assert float(self.accuracy) <= 1.0001, float(self.accuracy)
+            teacher_numerator = 0
+            teacher_denominator = 0
+            agent_numerator = 0
+            agent_denominator = 0
+            for i, (correct, count) in enumerate(zip(self.precision_correct, self.precision_count)):
+                if count > 0:
+                    log[f'Precision{i}'] = correct / count
 
-        assert agent_denominator == teacher_denominator, (
-            agent_denominator, teacher_denominator, self.per_token_count, self.per_token_teacher_count)
-        assert abs(float(self.accuracy) - agent_numerator / agent_denominator) < .001, (
-            self.accuracy, agent_numerator / agent_denominator)
-        log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
+            for i, (correct, count, teacher_correct, teacher_count) in enumerate(
+                zip(self.per_token_correct, self.per_token_count, self.per_token_teacher_correct,
+                    self.per_token_teacher_count)):
+                assert correct <= count, (correct, count)
+                assert teacher_correct <= teacher_count, (teacher_correct, teacher_count)
+                if count > 0:
+                    log[f'Accuracy_{i}'] = correct / count
+                    agent_numerator += correct
+                    agent_denominator += count
+                if teacher_count > 0:
+                    log[f'TeacherAccuracy_{i}'] = teacher_correct / teacher_count
+                    teacher_numerator += teacher_correct
+                    teacher_denominator += teacher_count
+            assert agent_denominator == teacher_denominator, (agent_denominator, teacher_count)
+
+            assert agent_denominator == teacher_denominator, (
+                agent_denominator, teacher_denominator, self.per_token_count, self.per_token_teacher_count)
+            assert abs(float(self.accuracy) - agent_numerator / agent_denominator) < .001, (
+                self.accuracy, agent_numerator / agent_denominator)
+            log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
         return log
 
     def starting_indexes(self, num_frames):
