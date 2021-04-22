@@ -40,7 +40,7 @@ def load_policy(path):
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic, args, seed=0,
-                video_name='generalization_vids', num_save=10):
+                video_name='generalization_vids', num_save=20):
     if not save_dir.exists():
         save_dir.mkdir()
     env.seed(seed)

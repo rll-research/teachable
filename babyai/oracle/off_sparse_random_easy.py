@@ -24,8 +24,6 @@ class OSREasy(Teacher):
         if offset and env:
             coord_offset = self.next_state_coords.copy()
             coord_offset[1:] = coord_offset[1:] - env.agent_pos
-            if np.sum(np.abs(coord_offset[1:])) > 3:
-                print("huh?")
         else:
             coord_offset = -np.ones(3)
         return np.concatenate([coord_offset, pos,
@@ -56,8 +54,8 @@ class OSREasy(Teacher):
         # Remove teacher so we don't end up with a recursion error
         env.teacher = None
         # try:
-        num_steps = 2
-        # num_steps = np.random.randint(2, self.cartesian_steps + 1)
+        # num_steps = 2
+        num_steps = np.random.randint(2, self.cartesian_steps + 1)
         self.num_steps = num_steps
 
         self.next_state, next_coords, actions, env = self.step_away_state(oracle, num_steps,
@@ -91,8 +89,6 @@ class OSREasy(Teacher):
                 break
         next_state = next_state['obs']
         coords = np.concatenate([env.agent_pos, [env.agent_dir, int(env.carrying is not None)]])
-        if np.sum(np.abs(env.agent_pos - og_pos)) > 3:
-            print("huh?")
         return next_state, coords, actions, env
 
     def give_feedback(self, state, last_action, oracle):

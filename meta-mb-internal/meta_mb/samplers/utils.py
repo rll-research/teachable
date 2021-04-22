@@ -61,8 +61,8 @@ def get_readable_feedback(env_info, obs, teacher_name):
         return ['Left', 'Up', 'Right', 'Down'][feedback]
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
-    if teacher_name == 'OFFSparseRandom':
-        offset = obs['OFFSparseRandom']
+    if teacher_name in ['OFFSparseRandom', 'OSREasy', 'OSRPeriodicImplicit']:
+        offset = obs[teacher_name]
         first = offset[0]
         coords_offset = offset[1:3]
         start_str = "Using an obj at " if first else "Going to"

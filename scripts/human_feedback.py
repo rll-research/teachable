@@ -63,6 +63,7 @@ class HumanFeedback:
     def redraw(self, img):
         if not self.args.agent_view:
             vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
+            # img = self.env.render('rgb_array')
             img = self.env.render('rgb_array', tile_size=self.args.tile_size, full_vis_mask=vis_mask)
         self.window.show_img(img)
 
@@ -78,7 +79,7 @@ class HumanFeedback:
         self.env.set_task()
         print("=" * 100)
         self.obs = self.env.reset()
-        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True)
+        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
         self.clear_feedback()
         plt.title(f"Trajectory {self.num_trajs}, frame {self.num_frames}, acc {self.num_correct / self.num_frames}")
         if hasattr(self.env, 'mission'):
@@ -171,14 +172,16 @@ class HumanFeedback:
         args = parser.parse_args()
         return args
 
-    def step(self, action=None):
+    def step(self, action=None, demo=False):
         self.num_frames += 1
-        self.preprocess_obs()
-        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human")
+        if not demo:
+            self.preprocess_obs()
+            self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human")
         self.feedback_indicator += 1  # TODO: redundant with the other indicator
+        # print("H obs", self.obs[self.args.feedback_type])
         if action is None:
             teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
-            o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=True)  # TODO: show instrs flag
+            o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=False)  # TODO: show instrs flag
             agent = self.policy[self.current_feedback_type]
             agent.eval()
             action, agent_info = agent.get_actions_t(o, temp=1)
@@ -189,6 +192,7 @@ class HumanFeedback:
             self.num_correct += 1
         print(f"Taking action {action}")
         new_obs, reward, done, info = self.env.step(action)
+        # print("OG OBS", new_obs[self.args.feedback_type])
         self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag=' orig')
         self.obs_list.append(self.obs)
         self.action_list.append(action)
@@ -200,9 +204,10 @@ class HumanFeedback:
             self.end_trajectory()
         else:
             self.redraw(self.obs)
-        print("TEACHER ACTION:", self.env.teacher_action)
 
     def preprocess_obs(self):
+        if not self.args.feedback_type == 'PreActionAdvice':
+            self.set_feedback()
         feedback_obs = self.obs[self.args.feedback_type]
         if self.args.feedback_type in ['SubgoalCorrections', 'SubgoalSimple']:
             # Add agent pos and dir
@@ -210,13 +215,16 @@ class HumanFeedback:
             feedback_obs[-3: -1] = (self.env.agent_pos - 12) / 12
             # Change target to offset
             feedback_obs[-5: -3] = (feedback_obs[-5: -3] - self.env.agent_pos) / 10
-        elif self.args.feedback_type in ['OFFIO', 'OFFSparse', 'OFFSparseRandom', 'OSRPeriodicImplicit']:
+        elif self.args.feedback_type in ['OFFIO', 'OFFSparse', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OSREasy']:
             # Add feedback indicator
             feedback_freq = self.env.teacher.teachers[self.args.feedback_type].feedback_frequency  # TODO: add SSF
             feedback_indicator = np.zeros(feedback_freq)
             steps_since_feedback = min(self.steps_since_feedback, feedback_freq - 1)
             feedback_indicator[steps_since_feedback] = 1
             feedback_obs[-feedback_freq:] = feedback_indicator
+            # Turn the absolute coordinate into an offset
+            if steps_since_feedback == 0 or self.args.feedback_type in ['OSREasy', 'OSRPeriodicImplicit']:
+                feedback_obs[1:3] = feedback_obs[1:3] - self.env.agent_pos
             # Add agent pos and dir
             if steps_since_feedback == 0 or self.args.feedback_type in ['OSREasy', 'OSRPeriodicImplicit', 'OFFSparseRandom']:
                 feedback_obs[-feedback_freq - 1] = self.env.agent_dir / 3
@@ -261,11 +269,16 @@ class HumanFeedback:
                 coords[2] = agent_diff
                 coords[3] = self.env.agent_dir
                 self.set_feedback(coords)
-            elif self.args.feedback_type in ['OFFSparse', 'OFFSparseRandom', 'OSRPeriodicImplicit']:
-                is_obj = 1 if type(self.env.grid.get(x, y)) in [Key, Ball, Box] else 0
+            elif self.args.feedback_type in ['OSRPeriodicImplicit', 'OSREasy']:
+                is_obj = 1 if type(self.env.grid.get(x, y)) in [Key, Ball, Box, Door] else 0
                 coords = np.zeros(3 + 3 + self.env.teacher.teachers[self.args.feedback_type].feedback_frequency)
-                # print("human partial offset")
-                # print("", self.env.agent_pos, "Offset x", offset_x, "Offset y", offset_y, "object?", is_obj)
+                coords[0] = is_obj
+                coords[1] = x
+                coords[2] = y
+                self.set_feedback(coords)
+            elif self.args.feedback_type in ['OFFSparse', 'OFFSparseRandom']:
+                is_obj = 1 if type(self.env.grid.get(x, y)) in [Key, Ball, Box, Door] else 0
+                coords = np.zeros(3 + 3 + self.env.teacher.teachers[self.args.feedback_type].feedback_frequency)
                 coords[0] = is_obj
                 coords[1] = offset_x
                 coords[2] = offset_y
@@ -300,7 +313,7 @@ class HumanFeedback:
                     elif event.button == 3:  # right click, PickUp
                         subgoal_name = 'DropSubgoal'
                     else:
-                        print("huh?", event.button)
+                        print("huh2?", event.button)
                 else:
                     print(x, y)
                     print(f"OBJ is {type(obj)}; invalid subgoal")
@@ -344,10 +357,10 @@ class HumanFeedback:
             self.obs[self.args.feedback_type] = np.concatenate([self.obs[self.args.feedback_type], indicator])
 
     def decode_feedback(self, feedback, preprocessed=True, tag=''):
-        if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit']:
-            self.decode_offset(feedback, preprocessed, tag)
+        if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OFFSR', 'OSREasy']:
+            self.decode_offset(feedback.copy(), preprocessed, tag)
         elif self.args.feedback_type in ['SubgoalCorrections', 'SubgoalSimple']:
-            self.decode_feedback(feedback, preprocessed, tag)
+            self.decode_subgoal(feedback.copy(), preprocessed, tag)
 
     def decode_offset(self, offset, preprocessed=True, tag=""):  # TODO: currently only handles sparse
         first = offset[0]
@@ -362,6 +375,10 @@ class HumanFeedback:
             timesteps_ago = np.argmax(offset[6:])
         else:
             agent_pos = agent_dir = timesteps_ago = -1
+
+            # TODO: okay??
+            coords_offset -= self.env.agent_pos
+
         print(f"{tag} {start_str} {coords_offset}, {timesteps_ago} timesteps ago"
               f" pos {agent_pos}, dir {agent_dir}")
 
@@ -389,7 +406,7 @@ class HumanFeedback:
         agent_dir = subgoal[curr_idx] * 3
         if preprocessed:
             coordinate = (coordinate * 10) + agent_pos
-        print(f"Name: {subgoal_name}, Coord: {coordinate}, "
+        print(f"{tag} Name: {subgoal_name}, Coord: {coordinate}, "
                f"obj {obj_color} {obj_type}, pos {agent_pos}, dir {agent_dir}")
 
     def on_scroll(self, event):
@@ -397,19 +414,20 @@ class HumanFeedback:
             self.step()
 
     def set_feedback(self, feedback=None, demo=False):
+        if self.args.demos and demo:
+            action = int(feedback)
+            self.step(action, demo)
+            return
         if feedback is None:
             feedback = self.last_feedback
         else:
             self.steps_since_feedback = 0
             self.obs['gave_' + self.args.feedback_type] = 1.0
-        self.last_feedback = feedback
+        self.last_feedback = feedback.copy()
         self.feedback_indicator = 0
         self.current_feedback_type = self.args.feedback_type
-        if self.args.demos and demo:
-            action = int(feedback)
-            self.step(action)
-            return
-        elif self.args.feedback_type == 'PreActionAdvice':
+
+        if self.args.feedback_type == 'PreActionAdvice':
             feedback = int(feedback)
             assert feedback >= 0
             assert feedback <= 7
@@ -419,11 +437,12 @@ class HumanFeedback:
             self.obs[self.args.feedback_type] = curr_feedback
             self.last_feedback = curr_feedback
         elif self.args.feedback_type in ['OFFSparse', 'OFFSparseRandom', 'OFFIO', 'SubgoalCorrections',
-                                         'SubgoalSimple', 'OSRPeriodicImplicit']:
+                                         'SubgoalSimple', 'OSRPeriodicImplicit', 'OSREasy']:
             self.obs[self.args.feedback_type] = feedback
         for _ in range(self.advance_count):
             self.step()
-        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=False)
+        print("LAST FEEDBACK", self.last_feedback)
+        self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False)
         # self.clear_feedback() # TODO: consider re-adding
 
     def end_trajectory(self):
@@ -446,9 +465,9 @@ class HumanFeedback:
 
     def key_handler(self, event):
         demo = self.args.demos
-        if event.key == ' ':
-            self.step()
-            return
+        # if event.key == ' ':
+        #     self.step()
+        #     return
         if event.key == 'r':
             self.end_trajectory()
             return
