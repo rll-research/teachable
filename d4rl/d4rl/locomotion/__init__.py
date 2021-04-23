@@ -54,6 +54,21 @@ register(
 
 
 register(
+    id='antmaze-randommaze-v0',
+    entry_point='d4rl.locomotion.ant:make_ant_maze_env',
+    max_episode_steps=700,
+    kwargs={
+        'reward_type':'sparse',
+        'dataset_url':'http://rail.eecs.berkeley.edu/datasets/offline_rl/ant_maze_new/Ant_maze_u-maze_noisy_multistart_False_multigoal_False_sparse.hdf5',
+        'non_zero_reset':False,
+        'eval':True,
+        'ref_min_score': 0.0,
+        'ref_max_score': 1.0,
+    }
+)
+
+
+register(
     id='antmaze-umaze-v0',
     entry_point='d4rl.locomotion.ant:make_ant_maze_env',
     max_episode_steps=700,
