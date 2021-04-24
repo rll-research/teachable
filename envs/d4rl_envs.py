@@ -152,7 +152,8 @@ class D4RLEnv:
     """
 
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], **kwargs):
+                 cartesian_steps=[1], max_grid_size=15, **kwargs):
+        self.max_grid_size = max_grid_size
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
         self.steps_since_recompute = 0
@@ -204,7 +205,12 @@ class D4RLEnv:
     def get_maze(self):
         raise NotImplementedError
 
-    def add_feedback(self, obs_dict):
+    def update_obs(self, obs_dict):
+        state = self.waypoint_controller.env.gs.spec
+        max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
+        h, w = state.shape
+        max_grid[:h, :w] = state
+        obs_dict['obs'] = np.concatenate([obs_dict['obs'], max_grid.flatten()])
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
@@ -224,7 +230,7 @@ class D4RLEnv:
             rew = - distance / 100
         obs_dict = {}
         obs_dict["obs"] = obs
-        obs_dict = self.add_feedback(obs_dict)
+        obs_dict = self.update_obs(obs_dict)
         self.done = done
 
         target = self.get_target()
@@ -278,7 +284,7 @@ class D4RLEnv:
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()
-        obs_dict = self.add_feedback(obs_dict)
+        obs_dict = self.update_obs(obs_dict)
         return obs_dict
 
     def vocab(self):  # We don't have vocab
@@ -316,7 +322,7 @@ class PointMassEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
         super(PointMassEnv, self).__init__(*args, offset_mapping=np.array([0, 0]), **kwargs)
         # Adding goal
-        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6,))
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6 + self.max_grid_size ** 2,))
 
     def get_target(self):
         return self._wrapped_env.get_target()
@@ -346,12 +352,13 @@ class PointMassEnv(D4RLEnv):
 class AntEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
         super(AntEnv, self).__init__(*args, offset_mapping=np.array([1, 1]), **kwargs)
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(4 + self.max_grid_size ** 2,))
 
     def get_target(self):
         return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_target()))
 
     def get_maze(self):
-        return self._wrapped_env.get_maze()  # TODO: I think TimeLimit will kill this
+        return self._wrapped_env.get_maze()
 
     def get_pos(self):
         return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_xy()))
