@@ -6,6 +6,7 @@ from d4rl_content.pointmaze.dynamic_mjc import MJCModel
 import numpy as np
 import random
 
+from .generate_new_maze import generate_maze
 
 WALL = 10
 EMPTY = 11
@@ -155,11 +156,14 @@ OPEN = \
 
 class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
     def __init__(self,
-                 maze_spec=U_MAZE,
+                 maze_spec=None,
                  reward_type='dense',
                  reset_target=False,
                  **kwargs):
         offline_env.OfflineEnv.__init__(self, **kwargs)
+
+        if maze_spec is None:
+            maze_spec = generate_maze()
 
         self.reset_target = reset_target
         self.str_maze_spec = maze_spec

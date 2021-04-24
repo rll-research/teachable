@@ -22,6 +22,7 @@ import math
 import numpy as np
 import gym
 from copy import deepcopy
+from .generate_new_maze import generate_maze
 
 RESET = R = 'r'  # Reset position.
 GOAL = G = 'g'
@@ -96,8 +97,8 @@ class MazeEnv(gym.Env):
 
   def __init__(
       self,
-      maze_map,
-      maze_size_scaling,
+      maze_map=None,
+      maze_size_scaling=None,
       maze_height=0.5,
       manual_collision=False,
       non_zero_reset=False,
@@ -110,6 +111,12 @@ class MazeEnv(gym.Env):
     xml_path = self.LOCOMOTION_ENV.FILE
     tree = ET.parse(xml_path)
     worldbody = tree.find(".//worldbody")
+
+    if maze_map is None:
+        maze_map = generate_maze()
+
+    if maze_size_scaling is None:
+        maze_size_scaling = 4.0
 
     self.maze_map = maze_map
 
