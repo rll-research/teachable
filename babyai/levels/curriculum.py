@@ -22,6 +22,7 @@ class Curriculum(Serializable):
             ]
             self.held_out_levels = [
                 PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),
+                PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
@@ -34,6 +35,7 @@ class Curriculum(Serializable):
                 AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),
                 AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),
                 AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),
+                AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':

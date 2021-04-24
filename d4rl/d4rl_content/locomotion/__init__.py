@@ -55,7 +55,7 @@ register(
 
 register(
     id='antmaze-randommaze-v0',
-    entry_point='d4rl.locomotion.ant:make_ant_maze_env',
+    entry_point='d4rl_content.locomotion.ant:make_ant_maze_env',
     max_episode_steps=700,
     kwargs={
         'reward_type':'sparse',

@@ -10,18 +10,20 @@ ONES = np.zeros((2,), dtype=np.float32)
 
 class WaypointController(object):
     def __init__(self, maze_str, solve_thresh=0.1, p_gain=10.0, d_gain=-1.0, offset_mapping=np.array([0, 0])):
-        self.maze_str = maze_str
         self._target = -1000 * ONES
-
         self.p_gain = p_gain
         self.d_gain = d_gain
         self.offset_mapping = offset_mapping
         self.solve_thresh = solve_thresh
         self.vel_thresh = 0.1
-
-        self._waypoint_idx = 0
         self.waypoints = []
-        self._waypoint_prev_loc = ZEROS
+        self.set_maze(maze_str)
+
+    def current_waypoint(self):
+        return self.waypoints[0]
+
+    def set_maze(self, maze_str):
+        self.maze_str = maze_str
         if type(maze_str) is str:
             self.env = grid_env.GridEnv(grid_spec.spec_from_string(maze_str))
         elif type(maze_str) is list:
@@ -29,54 +31,40 @@ class WaypointController(object):
         else:
             raise NotImplementedError(f'Unexpected maze str type {type(maze_str)}')
 
-    def current_waypoint(self):
-        return self.waypoints[self._waypoint_idx]
-
-    def get_action(self, location, velocity, target):
-        self.new_target(location, target)
-
-        dist = np.linalg.norm(location - self._target)
-        vel = self._waypoint_prev_loc - location
-        vel_norm = np.linalg.norm(vel)
-        task_not_solved = (dist >= self.solve_thresh) or (vel_norm >= self.vel_thresh)
-
-        if task_not_solved and self._waypoint_idx < len(self.waypoints):
-            next_wpnt = self.waypoints[self._waypoint_idx]
-        else:
-            next_wpnt = self._target
-
-        # Compute control
+    def get_action(self, location, velocity, target_pos):
+        self.new_target(location, target_pos)
+        next_wpnt = self.waypoints[0]
         prop = next_wpnt - location
         action = self.p_gain * prop + self.d_gain * velocity
-
-        dist_next_wpnt = np.linalg.norm(location - next_wpnt)
-        if task_not_solved and (dist_next_wpnt < self.solve_thresh) and (vel_norm < self.vel_thresh):
-            self._waypoint_idx += 1
-            if self._waypoint_idx == len(self.waypoints)-1:
-                assert np.linalg.norm(self.waypoints[self._waypoint_idx] - self._target) <= self.solve_thresh
-
-        self._waypoint_prev_loc = location
         action = np.clip(action, -1.0, 1.0)
-        return action, (not task_not_solved)
+        task_not_solved = np.linalg.norm(location - self._target) >= self.solve_thresh
+        return action, task_not_solved
 
     def gridify_state(self, state):
-        return (int(round(state[0])), int(round(state[1])))
+        return int(round(state[0])), int(round(state[1]))
 
-    def new_target(self, start, target):
-        raw_start = start
-        start = self.gridify_state(start)
-        raw_target = target
-        target = self.gridify_state(target)
+    def new_target(self, start_pos, target_pos):
+        start_pos = self.gridify_state(start_pos)
+        raw_target = target_pos
+        target_pos = self.gridify_state(target_pos)
 
         # Get states
         grid = self.env.gs
-        waypoints = self._breadth_first_search(np.array(start), np.array(target), grid)
+        waypoints = self._breadth_first_search(np.array(start_pos), np.array(target_pos), grid)
         # Replace end waypoint with the true goal
         waypoints = waypoints[:-1] + [raw_target]
+        if len(waypoints) >= 2:
+            # If the first point is close, drop it
+            if np.linalg.norm(start_pos - waypoints[0]) < self.solve_thresh:
+                waypoints = waypoints[1:]
+            # If it would be faster to head to the 2nd waypoint than the first
+            elif np.linalg.norm(start_pos - waypoints[1]) < np.linalg.dist(start_pos - waypoints[0]):
+                waypoints = waypoints[1:]
+            # If it would be faster to head to the 2nd waypoint than head from the first to the second
+            elif np.linalg.norm(start_pos - waypoints[1]) < np.linalg.dist(waypoints[1] - waypoints[0]):
+                waypoints = waypoints[1:]
         self.waypoints = waypoints
-        self._waypoint_prev_loc = start
         self._target = raw_target
-
 
     def _breadth_first_search(self, initial_state, goal, grid):
 

@@ -153,6 +153,7 @@ class D4RLEnv:
 
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
                  cartesian_steps=[1], max_grid_size=15, **kwargs):
+        self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
@@ -161,8 +162,7 @@ class D4RLEnv:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
-        if self.reward_type in ['oracle_action', 'oracle_dist']:
-            self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
+        self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
         if feedback_type is not None and not 'none' in feedback_type:
             teachers = {}
             if type(cartesian_steps) is int:
@@ -219,7 +219,7 @@ class D4RLEnv:
     def step(self, action):
         obs, rew, done, info = self._wrapped_env.step(action)
         if self.reward_type == 'oracle_action':
-            act, done = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
+            act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
             self.waypoint_controller.new_target(self.get_pos(), self.get_target())
@@ -275,11 +275,11 @@ class D4RLEnv:
         pass  # for compatibility with babyai, which does set tasks
 
     def reset(self):
+        self._wrapped_env = gym.envs.make(self.env_name, reset_target=True, reward_type=self.reward_type)
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
-        if self.reward_type in ['oracle_action', 'oracle_dist']:
-            self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=self.offset_mapping)
+        self.waypoint_controller.set_maze(self.get_maze())
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)

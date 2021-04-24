@@ -6,7 +6,7 @@ from d4rl_content.pointmaze.dynamic_mjc import MJCModel
 import numpy as np
 import random
 
-from .generate_new_maze import generate_maze
+from d4rl_content.pointmaze.generate_new_maze import generate_maze
 
 WALL = 10
 EMPTY = 11

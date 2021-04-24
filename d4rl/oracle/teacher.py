@@ -1,8 +1,5 @@
 import numpy as np
-import copy
 import torch
-from d4rl_content.pointmaze.waypoint_controller import WaypointController
-
 
 class Teacher:
     """

@@ -17,7 +17,7 @@ register(
 
 register(
     id='maze2d-randommaze-v0',
-    entry_point='d4rl.pointmaze:MazeEnv',
+    entry_point='d4rl_content.pointmaze:MazeEnv',
     max_episode_steps=150,
     kwargs={
         'reward_type':'sparse',

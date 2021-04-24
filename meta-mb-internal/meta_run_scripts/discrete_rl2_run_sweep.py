@@ -150,6 +150,12 @@ def run_experiment(**config):
                                           curriculum_type=args.curriculum_type,
                                           **arguments)), ceil_reward=args.ceil_reward)
         obs = env.reset()
+        for i in range(10):
+            import matplotlib.pyplot as plt
+            env.reset()
+            plt.imshow(env.render('rgb_array'))
+            plt.show()
+            temp = 3
         advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys() if k in obs])
         if args.no_teacher:
             advice_size = 0
