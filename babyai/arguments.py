@@ -123,8 +123,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Curriculum
         self.add_argument('--advance_curriculum_func', type=str, default='one_hot',
-                          choices=["one_hot", "smooth", "uniform", 'four_levels', 'five_levels', 'goto_levels',
-                                   'easy_goto'])
+                          choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
+                                   'goto_levels', 'easy_goto'])
         self.add_argument('--success_threshold_rl', type=float, default=1)
         self.add_argument('--success_threshold_rollout_teacher', type=float, default=1)
         self.add_argument('--success_threshold_rollout_no_teacher', type=float, default=1)
@@ -178,6 +178,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--relabel', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
         self.add_argument('--distill_successful_only', action='store_true')
+        self.add_argument('--kl_coef', type=float, default=0.01)
+        self.add_argument('--z_dim', type=int, default=32)
 
         # Arguments we rarely change
         self.add_argument('--meta_batch_size', type=int, default=200)
