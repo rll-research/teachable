@@ -61,8 +61,8 @@ def get_readable_feedback(env_info, obs, teacher_name):
         return ['Left', 'Up', 'Right', 'Down'][feedback]
     if teacher_name == 'PreActionAdvice':
         return str(env_info['teacher_action'].item())
-    if teacher_name == 'OFFSparseRandom':
-        offset = obs['OFFSparseRandom']
+    if teacher_name in ['OFFSparseRandom', 'OSREasy', 'OSRPeriodicImplicit']:
+        offset = obs[teacher_name]
         first = offset[0]
         coords_offset = offset[1:3]
         start_str = "Using an obj at " if first else "Going to"
@@ -72,7 +72,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
             agent_dir = offset[5]
             agent_pos = offset[3: 5]
         timesteps_ago = np.argmax(offset[6:])
-        return f"{start_str} {coords_offset}, {timesteps_ago} ago, pos {agent_pos}, dir {agent_dir}"
+        return f"{start_str} {coords_offset}, {timesteps_ago + 1}/{env_info['num_steps']}, pos {agent_pos}, dir {agent_dir}"
     elif teacher_name == 'SubgoalCorrections':
         subgoal_names = ['OpenSubgoal',
                          'DropSubgoal',
@@ -102,29 +102,27 @@ def get_readable_feedback(env_info, obs, teacher_name):
     return 'no feedback string available'
 
 
-
-
-def plot_img(env, obs, agent_action, env_info, record_teacher, run_index, teacher_name, reward):
-    # teacher_action = env_info['teacher_action'].item()
+def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
+    teacher_action = env_info['teacher_action'].item()
     # TODO: if we reintroduce the reward predictor, plot it here too
-    image = env.render(mode='rgb_array')[:, :, ::-1]  # RGB --> BGR
+    image = image[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
     background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
-    # if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
-    #     background[:, :, 0] = 0
+    if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
+        background[:, :, 0] = 0
     background[h:, w:] = image
     font = cv2.FONT_HERSHEY_SIMPLEX
-    # label_str = ""
-    # if hasattr(env, "teacher") and env.teacher is not None:
-    #     if record_teacher:
-    #         label_str += f"Teacher advice: {teacher_action}"
-    #     else:
-    #         label_str += f"Teacher on: {env.teacher.feedback_type}   "
+    label_str = ""
+    if hasattr(env, "teacher") and env.teacher is not None:
+        if record_teacher:
+            label_str += f"Teacher advice: {teacher_action}"
+        else:
+            label_str += f"Teacher on: {env.teacher.feedback_type}   "
     # label_str += "Run: " + str(run_index)
-    # if hasattr(env, 'mission'):
-    #     cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
-    # cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
+    if hasattr(env, 'mission'):
+        cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
+    cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Action " + str(agent_action), (30, 60), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     try:
@@ -221,6 +219,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 correct = True
             if not stochastic:
                 a = det_a
+            if (save_locally or save_wandb) and i < num_save:
+                image = env.render(mode='rgb_array')
 
             # Step env
             if rollout_oracle:
@@ -251,14 +251,13 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
-                img = plot_img(env, obs=past_o, agent_action=a, env_info=env_info,
+                img = plot_img(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
                                record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name,
                                reward=r)
                 curr_images.append(img)
 
             # End trajectory on 'done'
             if d:
-            # print("OBS", o)
                 break
 
         # At the end of a trajectory, save it

@@ -207,6 +207,7 @@ class ImitationLearning(object):
         self.initialize_logs(indexes)
         memory = memories[indexes]
         final_loss = 0
+        kl_loss = torch.zeros(1).to(self.device)
         for i in range(self.args.recurrence):
             # Get the current obs for each chunk, and compute the agent's output
             obs = obss[indexes]
@@ -214,6 +215,7 @@ class ImitationLearning(object):
             mask_step = mask[indexes]
             dist, info = acmodel(obs, memory * mask_step)
             memory = info["memory"]
+            kl_loss += info['kl']
 
             if source == 'agent_probs':
                 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -247,13 +249,14 @@ class ImitationLearning(object):
             else:
                 reconstruction_loss = 0
 
-            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss
+            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss + self.args.kl_coef * kl_loss
             if self.args.discrete:
                 action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             else:  # Continuous env
                 action_pred = dist.mean
             final_loss += loss
-            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss)
+            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
+                       kl_loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
         # Update the model
@@ -278,6 +281,7 @@ class ImitationLearning(object):
         self.final_entropy = 0
         self.final_policy_loss = 0
         self.final_reconstruction_loss = 0
+        self.final_kl_loss = 0
         self.final_value_loss = 0
         self.accuracy = 0
         self.label_accuracy = 0
@@ -287,7 +291,8 @@ class ImitationLearning(object):
         self.agent_running_count_long = 0
         self.teacher_running_count_long = 0
 
-    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss):
+    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
+              kl_loss):
         self.accuracy_list.append(float((action_pred == action_step).sum()))
         self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
         self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
@@ -297,6 +302,7 @@ class ImitationLearning(object):
         self.final_entropy += entropy
         self.final_policy_loss += policy_loss
         self.final_reconstruction_loss += reconstruction_loss
+        self.final_kl_loss += kl_loss
 
         action_step = action_step.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
@@ -337,6 +343,7 @@ class ImitationLearning(object):
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
         log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence)
+        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
 
         if self.args.discrete:

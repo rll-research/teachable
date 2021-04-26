@@ -185,7 +185,9 @@ def run_experiment(**config):
                                  reconstruction=args.reconstruction,
                                  reconstruct_advice_size=full_advice_size,
                                  padding=args.padding,
-                                 discrete=discrete)
+                                 discrete=discrete,
+                                 info_bot=args.info_bot,
+                                 z_dim=args.z_dim)
             policy_dict[teacher] = policy
 
         start_itr = 0
