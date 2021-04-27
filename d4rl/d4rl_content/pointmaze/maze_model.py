@@ -77,8 +77,8 @@ def point_maze(maze_str):
                                size=[0.5,0.5,0.2])
 
     actuator = mjcmodel.root.actuator()
-    actuator.motor(joint="ball_x", ctrlrange=[-1.0, 1.0], ctrllimited=True, gear=100)
-    actuator.motor(joint="ball_y", ctrlrange=[-1.0, 1.0], ctrllimited=True, gear=100)
+    actuator.motor(joint="ball_x", ctrlrange=[-1.0, 1.0], ctrllimited=True, gear=1000)
+    actuator.motor(joint="ball_y", ctrlrange=[-1.0, 1.0], ctrllimited=True, gear=1000)
 
     return mjcmodel
 
