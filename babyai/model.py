@@ -101,7 +101,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.reconstruct_advice_size = reconstruct_advice_size
         self.discrete = discrete
         obs = env.reset()
-        obs_shape = obs['obs'].shape
+        # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
+        obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
         self.img_obs = len(obs_shape) >= 3
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:

@@ -429,10 +429,6 @@ def main():
         additional_args['source'] = 'agent'
         additional_args['feedback_from_buffer'] = True
 
-    # TODO: eventually remove!
-    additional_args['distill_successful_only'] = False
-    additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
-
     # Test every policy with every level
     if not save_dir.exists():
         save_dir.mkdir()

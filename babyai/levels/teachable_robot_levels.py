@@ -484,13 +484,22 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         :return: np array of the agent's observation
         """
         if self.padding:
-            image = np.zeros((51, 51, 3))
-            image_segment = self.get_full_observation()
-            y = 25 - self.agent_pos[0]
-            x = 25 - self.agent_pos[1]
-            image[y:y + len(image_segment), x:x + len(image_segment[0])] = image_segment
-            # Rotate image
+            image = self.get_full_observation()
+            h, w, c = image.shape
             image = np.rot90(image, k=self.agent_dir)
+            if self.agent_dir == 0:
+                x = self.agent_pos[0]
+                y = self.agent_pos[1]
+            elif self.agent_dir == 1:
+                x = w - self.agent_pos[1] - 1
+                y = self.agent_pos[0]
+            elif self.agent_dir == 2:
+                x = w - self.agent_pos[0] - 1
+                y = h - self.agent_pos[1] - 1
+            elif self.agent_dir == 3:
+                x = self.agent_pos[1]
+                y = h - self.agent_pos[0] - 1
+            image = (image, x, y)
         elif self.fully_observed:
             image = self.get_full_observation()
         else:
@@ -511,7 +520,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 oracle = self.oracle
             if past_action is None:
                 past_action = self.get_teacher_action()
-            correction = self.compute_teacher_advice(image.flatten(), past_action, oracle)
+            correction = self.compute_teacher_advice(image, past_action, oracle)
             obs_dict.update(correction)
         return obs_dict
 
@@ -519,7 +528,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if self.reset_yet is False:
             correction = self.teacher.empty_feedback()
         else:
-            correction = self.teacher.give_feedback([obs], next_action, oracle)
+            correction = self.teacher.give_feedback(obs, next_action, oracle)
         return correction
 
     def step(self, action):
