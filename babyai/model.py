@@ -214,7 +214,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.actor_encoder = nn.Sequential(
                 nn.Linear(self.embedding_size + self.advice_dim, 64),
                 nn.ReLU(),
-                nn.Linear(64, 128),
+                nn.Linear(64, 64),
                 nn.Tanh(),
                 nn.Linear(64, self.z_dim * 2)
             )
