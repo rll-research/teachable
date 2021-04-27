@@ -269,7 +269,7 @@ class D4RLEnv:
                         print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
                 return list(self.teacher.teachers.values())[0].next_action
             else:
-                return np.array([self.teacher.next_action], dtype=np.float32)
+                return np.array(self.teacher.next_action, dtype=np.float32)
         return None
 
     def set_task(self, *args, **kwargs):

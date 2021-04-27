@@ -555,8 +555,10 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         if hasattr(self, 'teacher') and self.teacher is not None:
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
-            info['teacher_action'] = np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
-            info['num_steps'] = list(self.teacher.teachers.values())[0].num_steps
+            first_teacher = list(self.teacher.teachers.values())[0]
+            info['teacher_action'] = np.array(first_teacher.next_action, dtype=np.int32)
+            if hasattr(first_teacher, 'num_steps'):
+                info['num_steps'] = first_teacher.num_steps
             original_oracle = pkl.loads(pkl.dumps(self.oracle))
             self.oracle = self.teacher.step(action, self.oracle)
             for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():
@@ -566,7 +568,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.teacher_action = self.get_teacher_action()
         else:
             original_oracle = None
-            info['teacher_action'] = np.array([self.action_space.n], dtype=np.int32)
+            info['teacher_action'] = np.array(self.action_space.n, dtype=np.int32)
         obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action)
         # Reward at the end scaled by 1000
         reward_total = rew * 1000
@@ -595,9 +597,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 for teacher_name, teacher in self.teacher.teachers.items():
                     if not first_action == teacher.next_action:
                         print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
-                return np.array([list(self.teacher.teachers.values())[0].next_action], dtype=np.int32)
+                return np.array(list(self.teacher.teachers.values())[0].next_action, dtype=np.int32)
             else:
-                return np.array([self.teacher.next_action], dtype=np.int32)
+                return np.array(self.teacher.next_action, dtype=np.int32)
         return None
 
     def reset(self):

@@ -102,7 +102,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.discrete = discrete
         obs = env.reset()
         obs_shape = obs['obs'].shape
-        self.img_obs = len(obs_shape) == 4
+        self.img_obs = len(obs_shape) >= 3
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
@@ -193,10 +193,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define memory and resize image embedding
         self.embedding_size = self.image_dim
-        if self.use_instr:
-            self.embedding_size += self.instr_dim
-        else:
-            self.embedding_size += 1
+        if not self.img_obs:
+            if self.use_instr:
+                self.embedding_size += self.instr_dim
+            else:
+                self.embedding_size += 1
         if self.use_memory:
             self.memory_rnn = nn.LSTMCell(self.image_dim, self.memory_dim)
             self.embedding_size = self.semi_memory_size

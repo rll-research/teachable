@@ -104,12 +104,12 @@ def get_readable_feedback(env_info, obs, teacher_name):
 
 def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
-    teacher_action = env_info['teacher_action'].item()
+    teacher_action = env_info['teacher_action']
     # TODO: if we reintroduce the reward predictor, plot it here too
     image = image[:, :, ::-1]  # RGB --> BGR
     h, w, c = image.shape
     background = np.zeros((h * 2, w * 2, c), dtype=np.uint8) + 255
-    if type(agent_action) is int and not agent_action == teacher_action:  # TODO: handle continuous case better
+    if type(agent_action) is int and not agent_action == teacher_action.item():  # TODO: handle continuous case better
         background[:, :, 0] = 0
     background[h:, w:] = image
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -136,7 +136,8 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
             cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Reward: " + str(reward), (30, 330), font, 0.5, (0, 0, 0), 1, 0)
     except Exception as e:
-        print("Error adding text", e)
+        x = 3
+        # print("Error adding text", e)
     return background
 
 
