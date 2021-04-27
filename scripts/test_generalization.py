@@ -71,7 +71,6 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           save_locally=num_save > 0,
                                                                           num_save=num_save,
                                                                           obs_preprocessor=obs_preprocessor,
-                                                                          discrete=False,
                                                                           rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     try:

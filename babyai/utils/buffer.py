@@ -19,7 +19,7 @@ def trim_batch(batch):
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
     if 'argmax_action' in batch:
-        batch_info['argamax_action'] = batch.argmax_action
+        batch_info['argmax_action'] = batch.argmax_action
     if 'teacher_action' in batch.env_infos:
         batch_info['teacher_action'] = batch.env_infos.teacher_action
     return DictList(batch_info)

@@ -381,6 +381,7 @@ class GoNextToSubgoal(Subgoal):
         # -> try to find a non-blocker path
         path, _, _ = self.bot._shortest_path(
             lambda pos, cell: pos == target_pos,
+            plan_through_doors=self.bot.fully_observed,
         )
 
         # No non-blocker path found and
@@ -389,7 +390,8 @@ class GoNextToSubgoal(Subgoal):
         if not path:
             path, _, _ = self.bot._shortest_path(
                 lambda pos, cell: pos == target_pos,
-                try_with_blockers=True
+                try_with_blockers=True,
+                plan_through_doors=self.bot.fully_observed,
             )
 
         # No path found
@@ -475,7 +477,8 @@ class ExploreSubgoal(Subgoal):
         # Find the closest unseen position
         _, unseen_pos, with_blockers = self.bot._shortest_path(
             lambda pos, cell: not self.bot.vis_mask[pos],
-            try_with_blockers=True
+            try_with_blockers=True,
+            plan_through_doors=self.bot.fully_observed,
         )
 
         if unseen_pos:
@@ -495,11 +498,11 @@ class ExploreSubgoal(Subgoal):
         # a subgoal may try to open the same door for exploration,
         # resulting in an infinite loop.
         _, door_pos, _ = self.bot._shortest_path(
-            unopened_unlocked_door, try_with_blockers=True)
+            unopened_unlocked_door, try_with_blockers=True, plan_through_doors=self.bot.fully_observed,)
         if not door_pos:
             # Try to find a locker door if an unlocked one is not available.
             _, door_pos, _ = self.bot._shortest_path(
-            unopened_door, try_with_blockers=True)
+            unopened_door, try_with_blockers=True, plan_through_doors=self.bot.fully_observed,)
 
         # Open the door
         if door_pos:
@@ -778,7 +781,8 @@ class Bot:
                         print("???")
                         shortest_path_to_obj, _, with_blockers = self._shortest_path(
                             lambda pos, cell: pos == obj_pos,
-                            try_with_blockers=True
+                            try_with_blockers=True,
+                            plan_through_doors=self.fully_observed,
                         )
                         return
 
