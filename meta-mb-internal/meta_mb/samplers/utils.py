@@ -169,7 +169,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
         num_save = num_rollouts
 
     # Get setup to log
-    timestep = getattr(env, "dt", 0.5)
+    timestep = env.get_timestep()
     fps = int(speedup / timestep)
     img = env.render(mode='rgb_array')
     height, width, channels = img.shape
@@ -260,7 +260,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 curr_images.append(img)
 
             # End trajectory on 'done'
-            if d:
+            if d or ('timestep_success' in env_info and env_info['timestep_success']):
                 break
 
         # At the end of a trajectory, save it

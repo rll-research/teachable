@@ -1,10 +1,10 @@
 import numpy as np
-from oracle.teacher import Teacher
+from babyai.oracle.teacher import Teacher
 
 
 class DummyAdvice(Teacher):
-    def __init__(self, env, *args, **kwargs):
-        super(DummyAdvice, self).__init__(env, *args, **kwargs)
+    def __init__(self, botclass, env, *args, **kwargs):
+        super(DummyAdvice, self).__init__(botclass, env, *args, **kwargs)
         self.next_action = env.action_space.sample() * 0 - 1
 
     def empty_feedback(self):

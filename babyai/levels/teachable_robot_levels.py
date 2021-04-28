@@ -84,7 +84,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             if len(feedback_freq) == 1:
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
             for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
-                if ft == 'None':
+                if ft == 'none':
                     teacher = DummyAdvice(Bot, self)
                 elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
@@ -208,6 +208,9 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             color = self.np_random.choice(['red', 'green', 'blue', 'purple', 'grey'])
             obj_type = self.np_random.choice(['key', 'box', 'ball'])
         return obj_type, color
+
+    def get_timestep(self):
+        return .25
 
     def make_mission(self):
         """

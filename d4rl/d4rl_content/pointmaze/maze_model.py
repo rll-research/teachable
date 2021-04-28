@@ -176,7 +176,7 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
 
         model = point_maze(maze_spec)
         with model.asfile() as f:
-            mujoco_env.MujocoEnv.__init__(self, model_path=f.name, frame_skip=1)
+            mujoco_env.MujocoEnv.__init__(self, model_path=f.name, frame_skip=2)
         utils.EzPickle.__init__(self)
 
         # Set the default goal (overriden by a call to set_target)

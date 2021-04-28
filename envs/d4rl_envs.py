@@ -44,7 +44,8 @@ class PointMassEnvSimple:
         done = self.timesteps >= self.time_limit
         obs = self.pos
         obs_dict = {'obs': obs}
-        success = done and np.linalg.norm(self.target - self.pos) < .49
+        reached_goal = np.linalg.norm(self.target - self.pos) < .49
+        success = done and reached_goal
         info = {}
         info['success'] = success
         info['gave_reward'] = True
@@ -191,6 +192,9 @@ class D4RLEnv:
         self.teacher = teacher
         # TODO: create teachers
 
+    def get_timestep(self):
+        return .05
+
     def get_target(self):
         raise NotImplementedError
 
@@ -233,9 +237,11 @@ class D4RLEnv:
 
         target = self.get_target()
         agent_pos = obs[:2]
-        success = done and np.linalg.norm(target - agent_pos) < .5
+        reached_goal = np.linalg.norm(target - agent_pos) < .5
+        success = done and reached_goal
         info = {}
         info['success'] = success
+        info['timestep_success'] = reached_goal
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
