@@ -164,33 +164,30 @@ class D4RLEnv:
         self.teacher_action = self.action_space.sample() * 0 - 1
         self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
         self.scale_factor = 15
-        if feedback_type is not None and not 'none' in feedback_type:
-            teachers = {}
-            if type(cartesian_steps) is int:
-                cartesian_steps = [cartesian_steps]
-            assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
-                "you must provide either one cartesian_steps value for all teachers or one per teacher"
-            assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
-                "you must provide either one feedback_freq value for all teachers or one per teacher"
-            if len(cartesian_steps) == 1:
-                cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
-            if len(feedback_freq) == 1:
-                feedback_freq = [feedback_freq[0]] * len(feedback_type)
-            for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
-                if ft == 'None':
-                    teachers[ft] = DummyAdvice(self)
-                elif ft == 'Cardinal':
-                    teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                       controller=self.waypoint_controller)
-                elif ft == 'Waypoint':
-                    teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                       controller=self.waypoint_controller)
-                elif ft == 'Direction':
-                    teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                        controller=self.waypoint_controller)
-            teacher = BatchTeacher(teachers)
-        else:
-            teacher = None
+        teachers = {}
+        if type(cartesian_steps) is int:
+            cartesian_steps = [cartesian_steps]
+        assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
+            "you must provide either one cartesian_steps value for all teachers or one per teacher"
+        assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
+            "you must provide either one feedback_freq value for all teachers or one per teacher"
+        if len(cartesian_steps) == 1:
+            cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
+        if len(feedback_freq) == 1:
+            feedback_freq = [feedback_freq[0]] * len(feedback_type)
+        for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
+            if ft == 'none':
+                teachers[ft] = DummyAdvice(self)
+            elif ft == 'Cardinal':
+                teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                   controller=self.waypoint_controller)
+            elif ft == 'Waypoint':
+                teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                   controller=self.waypoint_controller)
+            elif ft == 'Direction':
+                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                    controller=self.waypoint_controller)
+        teacher = BatchTeacher(teachers)
         self.teacher = teacher
         # TODO: create teachers
 
@@ -261,15 +258,12 @@ class D4RLEnv:
         if hasattr(self, 'teacher') and self.teacher is not None:
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
-            if isinstance(self.teacher, BatchTeacher):
-                # Sanity check that all teachers have the same underlying path
-                first_action = list(self.teacher.teachers.values())[0].next_action
-                for teacher_name, teacher in self.teacher.teachers.items():
-                    if not np.array_equal(first_action, teacher.next_action):
-                        print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
-                return list(self.teacher.teachers.values())[0].next_action
-            else:
-                return np.array(self.teacher.next_action, dtype=np.float32)
+            # Sanity check that all teachers have the same underlying path
+            first_action = list(self.teacher.teachers.values())[0].next_action
+            for teacher_name, teacher in self.teacher.teachers.items():
+                if not np.array_equal(first_action, teacher.next_action):
+                    print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
+            return list(self.teacher.teachers.values())[0].next_action
         return None
 
     def set_task(self, *args, **kwargs):
