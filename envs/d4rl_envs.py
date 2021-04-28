@@ -9,7 +9,7 @@ from oracle.cardinal_teacher import CardinalCorrections
 from oracle.direction_teacher import DirectionCorrections
 from oracle.waypoint_teacher import WaypointCorrections
 
-from babyai.oracle.dummy_advice import DummyAdvice
+from oracle.dummy_advice import DummyAdvice
 
 
 class PointMassEnvSimple:
