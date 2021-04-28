@@ -494,8 +494,7 @@ class Trainer(object):
                 else:
                     logger.logkv(f'Feedback/Rollout_{k}', -1)
 
-            if itr % 10 == 0:
-                logger.dumpkvs()
+            logger.dumpkvs()
 
             """ ------------------ Video Saving ---------------------"""
 
