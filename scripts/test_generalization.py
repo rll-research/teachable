@@ -171,6 +171,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     else:
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = discrete
+    args.frames_per_proc = 400  # TODO: remove!
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
@@ -358,6 +359,7 @@ def main():
     parser.add_argument('--seeds', nargs='+', default=[0], type=int)
     parser.add_argument('--distill_successful_only', action='store_true')
     parser.add_argument('--buffer_name', default=None)
+    parser.add_argument('--collect_with_oracle', action='store_true')
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -435,6 +437,10 @@ def main():
     additional_args['target_policy_key'] = args.target_policy_key
     additional_args['distill_successful_only'] = args.distill_successful_only
     additional_args['buffer_name'] = args.buffer_name
+    additional_args['collect_with_oracle'] = args.collect_with_oracle
+    additional_args['source'] = 'agent'  # TODO: remove
+    if args.collect_with_oracle:
+        additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
         additional_args['no_collect'] = True
         additional_args['source'] = 'agent'
