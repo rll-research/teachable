@@ -74,6 +74,10 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                           rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     try:
+        success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
+    except:
+        print("doesn't have timestep_success")
+    try:
         teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in paths]
         agent_actions = [np.array(path['actions']) for path in paths]
         errors = [np.sum(1 - (teacher_a == agent_a))/len(teacher_a) for teacher_a, agent_a in zip(teacher_actions, agent_actions)]
