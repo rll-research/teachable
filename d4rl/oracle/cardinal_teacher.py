@@ -20,9 +20,16 @@ class CardinalCorrections(Teacher):
 
     def give_feedback(self, env):
         # Always re-compute feedback, but only count it as new feedback if it changes
-        up_dist = self.next_action[1]
+        action = self.next_action
+        # We're on a corner. In that case, the "action" is replaced with the vector to the next waypoint,
+        # or 2 waypoints ahead if we're already close
+        if np.abs(self.next_action[0]) == np.abs(self.next_action[1]) == 1:
+            action = self.waypoints[0] - env.get_pos()
+            if len(self.waypoints) >= 2 and np.linalg.norm(action - env.get_pos()) < .5:
+                action = self.waypoints[1] - env.get_pos()
+        up_dist = action[1]
         down_dist = -up_dist
-        right_dist = self.next_action[0]
+        right_dist = action[0]
         left_dist = -right_dist
         cardinal_dir_scalar = np.argmax([left_dist, up_dist, right_dist, down_dist])
         cardinal_dir_one_hot = np.zeros(4)

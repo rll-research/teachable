@@ -85,7 +85,7 @@ class Teacher:
             return False
 
     def reset(self, env):
-        self.next_action, self.next_subgoal = self.replan(env)
+        self.next_action, self.waypoints = self.replan(env)
         self.last_action = -1
         self.steps_since_lastfeedback = 0
         self.last_feedback = self.empty_feedback()
