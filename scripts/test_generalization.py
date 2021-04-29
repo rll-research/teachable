@@ -172,6 +172,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = discrete
     args.frames_per_proc = 400  # TODO: remove!
+    args.batch_size = 1024  # TODO: remove!
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
