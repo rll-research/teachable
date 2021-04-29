@@ -164,7 +164,8 @@ class D4RLEnv:
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
         self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
-        self.scale_factor = 15
+        self.scale_factor = 5
+        self.repeat_input = 5
         teachers = {}
         if type(cartesian_steps) is int:
             cartesian_steps = [cartesian_steps]
@@ -212,7 +213,8 @@ class D4RLEnv:
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
         max_grid[:h, :w] = state
-        obs_dict['obs'] = np.concatenate([obs_dict['obs'] / self.scale_factor, max_grid.flatten()])
+        state_obs = obs_dict['obs'] / self.scale_factor
+        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten() / 5])  # TODO: /5 is a hacky way of trying to make the max grid less useful
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
@@ -339,14 +341,16 @@ class PointMassEnv(D4RLEnv):
 
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
-        obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target() / 15])
+        target = self.get_target() / self.scale_factor
+        obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
         return obs_dict, rew, done, info
 
     def reset(self):
         obs_dict = super().reset()
-        obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.get_target() / 15])
+        target = self.get_target() / self.scale_factor
+        obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         return obs_dict
 
 

@@ -38,6 +38,7 @@ class NormalizedEnv(Serializable):
                  scale_reward=1.,
                  normalize_obs=False,
                  normalize_reward=False,
+                 normalize_actions=False,
                  obs_alpha=0.001,
                  reward_alpha=0.001,
                  normalization_scale=1.,
@@ -49,6 +50,7 @@ class NormalizedEnv(Serializable):
 
         self._normalize_obs = normalize_obs
         self._normalize_reward = normalize_reward
+        self._normalize_actions = normalize_actions
         self._obs_alpha = obs_alpha
         self._obs_mean = np.zeros(self.observation_space.shape)
         self._obs_var = np.ones(self.observation_space.shape)
@@ -126,7 +128,7 @@ class NormalizedEnv(Serializable):
         self._obs_var = d["_obs_var"]
 
     def step(self, action):
-        if isinstance(self._wrapped_env.action_space, Box): # or isinstance(self._wrapped_env.action_space, OldBox):
+        if self._normalize_actions and isinstance(self._wrapped_env.action_space, Box):
             # rescale the action
             lb, ub = self._wrapped_env.action_space.low, self._wrapped_env.action_space.high
             scaled_action = lb + (action + self._normalization_scale) * (ub - lb) / (2 * self._normalization_scale)
