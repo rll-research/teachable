@@ -99,7 +99,7 @@ def run_experiment(**config):
 
     if args.env in ['point_mass', 'ant']:
         args.no_instr = True
-        discrete = False  # TODO: revert!
+        discrete = False
     elif args.env in ['babyai']:
         discrete = True
     else:
