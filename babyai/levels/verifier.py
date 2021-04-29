@@ -349,7 +349,7 @@ class SeekInstr(GoToInstr):
 
     def surface(self, env):
         words = self.desc.surface(env).split()
-        return 'object ' + 'object ' + 'object ' + ' '.join(words[::-1]) + ' object ' + 'object ' + 'object'
+        return 'object' #+ 'object ' + 'object ' + ' '.join(words[::-1]) + ' object ' + 'object ' + 'object'
 
 
 class GoToUnknownInstr(GoToInstr):

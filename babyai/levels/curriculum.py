@@ -119,6 +119,7 @@ class Curriculum(Serializable):
                 Level_GoToObjDistractorsLocalBig(**kwargs),  # 45 test19
                 Level_OpenSmall2by2(**kwargs),  # 46 test20
                 Level_OpenSmall3by3(**kwargs),  # 47 test21
+                Level_SeekL0(**kwargs),  # 48 test22
             ]
             self.levels_list = self.train_levels + self.held_out_levels
 

@@ -531,6 +531,13 @@ class Level_Seek(Level_GoTo):
             "instrs": SeekInstr(ObjDesc(obj_type, obj_color))
         }
 
+class Level_SeekL0(Level_GoToRedBallNoDists):
+    def make_mission(self):
+        return {
+            "task": ('ball', 'red'),
+            "instrs": SeekInstr(ObjDesc('ball', 'red'))
+        }
+
 class Level_SeekSmall2by2(Level_Seek):
     def __init__(
         self,
