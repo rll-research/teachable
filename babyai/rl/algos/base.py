@@ -104,15 +104,16 @@ class BaseAlgo(ABC):
             action_shape = envs[0].action_space.shape[0]
         if self.discrete:
             self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
+            self.teacher_actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
             self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         else:
-            self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.int)
+            self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
+            self.teacher_actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
             self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
         self.log_probs = torch.zeros(*shape, device=self.device)
-        self.teacher_actions = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
         self.done_index = torch.zeros(self.num_procs, device=self.device)
         self.env_infos = [None] * len(self.dones)
@@ -206,7 +207,7 @@ class BaseAlgo(ABC):
             self.obss[i] = self.obs
             self.obs = obs
             try:
-                self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'][0] for ei in env_info]).to(self.device)
+                self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'] for ei in env_info]).to(self.device)
             except:
                 self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1  # TODO: compute teacher action for new envs
 
@@ -313,17 +314,20 @@ class BaseAlgo(ABC):
         if self.discrete:
             exps.action_probs = self.action_probs.transpose(0, 1)
             exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
+            exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
         else:
             exps.argmax_action = self.argmax_action.transpose(0, 1)
             exps.argmax_action = exps.argmax_action.reshape(self.argmax_action.shape[0] * self.argmax_action.shape[1], -1)
 
             exps.action = exps.action.reshape(self.actions.shape[0] * self.actions.shape[1], -1)
 
+            exps.teacher_action = self.teacher_actions.transpose(0, 1)
+            exps.teacher_action = exps.teacher_action.reshape(self.teacher_actions.shape[0] * self.actions.shape[1], -1)
+
         exps.value = self.values.transpose(0, 1).reshape(-1)
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
         exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
         exps.returnn = exps.value + exps.advantage
-        exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
         exps.done = self.dones.transpose(0, 1).reshape(-1)
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1

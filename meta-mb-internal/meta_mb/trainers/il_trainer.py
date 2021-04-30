@@ -294,16 +294,7 @@ class ImitationLearning(object):
 
     def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
               kl_loss):
-        try:
-            self.accuracy_list.append(float((action_pred == action_step).sum()))
-        except:
-            print("Error trying to add to accuracy list")
-            print("action pred shape", action_pred.shape)
-            print("action step shape", action_step.shape)
-            print("devices", action_pred.device, action_step.device)
-            print("Types", action_pred.dtype, action_step.dtype, type(action_pred), type(action_step))
-            print("Totals", float((action_pred == action_step).sum()))
-            assert False
+        self.accuracy_list.append(float((action_pred == action_step).sum()))
         self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
         self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
         if action_step.shape == action_teacher[indexes].shape:
