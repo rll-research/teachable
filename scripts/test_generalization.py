@@ -171,8 +171,6 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     else:
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = discrete
-    args.frames_per_proc = 400  # TODO: remove!
-    args.batch_size = 1024  # TODO: remove!
     algo = PPOAlgo(policy, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                    args.gae_lambda,
                    args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
@@ -361,6 +359,8 @@ def main():
     parser.add_argument('--distill_successful_only', action='store_true')
     parser.add_argument('--buffer_name', default=None)
     parser.add_argument('--collect_with_oracle', action='store_true')
+    parser.add_argument('--frames_per_proc', type=int, default=40)
+    parser.add_argument('--batch_size', type=int, default=1024)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -440,6 +440,8 @@ def main():
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
     additional_args['source'] = 'agent'  # TODO: remove
+    additional_args['frames_per_proc'] = args.frames_per_proc
+    additional_args['batch_size'] = args.batch_size
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
