@@ -93,7 +93,8 @@ class ImitationLearning(object):
                 raise NotImplementedError('Action probs not implemented for continuous envs.')
             action_true = batch.argmax_action
         if not source == 'agent_probs':
-            action_true = torch.tensor(action_true, device=self.device, dtype=torch.long)
+            dtype = torch.long if self.args.discrete else torch.float32
+            action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
         action_teacher = batch.teacher_action
         if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
             action_teacher = action_teacher[:, 0]
@@ -162,14 +163,14 @@ class ImitationLearning(object):
         obss = DictList(obss)
         num_frames = len(obss)
 
-        if self.label_weightings:
-            weightings = torch.zeros(7, dtype=torch.float32).to(self.device)
-            actions, counts = torch.unique(action_true, return_counts=True)
-            counts = counts.float()
-            weightings[actions] = 1 / counts
-            weightings = weightings / torch.sum(weightings)
-        else:
-            weightings = torch.ones(7, dtype=torch.float32).to(self.device)
+        # if self.label_weightings:
+        #     weightings = torch.zeros(7, dtype=torch.float32).to(self.device)
+        #     actions, counts = torch.unique(action_true, return_counts=True)
+        #     counts = counts.float()
+        #     weightings[actions] = 1 / counts
+        #     weightings = weightings / torch.sum(weightings)
+        # else:
+        #     weightings = torch.ones(7, dtype=torch.float32).to(self.device)
 
         # Memory to be stored
         memories = torch.zeros([num_frames, acmodel.memory_size], device=self.device)
@@ -222,8 +223,8 @@ class ImitationLearning(object):
                 policy_loss = loss_fn(dist.logits, action_step)
                 action_step = torch.argmax(action_step, dim=1)
             else:
-                action_weightings = weightings[action_step]
-                policy_loss = -dist.log_prob(action_step) * action_weightings
+                # action_weightings = weightings[action_step]
+                policy_loss = -dist.log_prob(action_step) #* action_weightings
             policy_loss = policy_loss.mean()
             # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()
@@ -410,8 +411,9 @@ class ImitationLearning(object):
         for k in keys:
             obss[k] = torch.cat([getattr(o, k) for o in obss_list])
         obss = DictList(obss)
+        dtype = torch.long if self.args.discrete and not (source == 'agent_probs') else torch.float32
         actions = torch.zeros_like(action_true, device=self.device,
-                                   dtype=torch.float32 if source == 'agent_probs' else torch.long)
+                                   dtype=dtype)
         memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
 
         # We're going to loop through each trajectory together.
@@ -426,9 +428,9 @@ class ImitationLearning(object):
                 # Taking memory up until num_demos, as demos after that have finished
                 dist, info = self.acmodel(obs, memory[:num_demos])
                 if source == 'agent':
-                    action = dist.sample().long()
+                    action = dist.sample().to(dtype)
                 elif source == 'agent_argmax':
-                    action = dist.probs.max(1, keepdim=False)[1].long()
+                    action = dist.probs.max(1, keepdim=False)[1].to(dtype)
                 elif source == 'agent_probs':
                     action = dist.probs.float()
                 new_memory = info['memory']
