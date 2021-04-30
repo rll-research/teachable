@@ -325,7 +325,7 @@ class PointMassEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
         super(PointMassEnv, self).__init__(*args, offset_mapping=np.array([0, 0]), **kwargs)
         # Adding goal
-        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6 + self.max_grid_size ** 2,))
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(6 * self.repeat_input + self.max_grid_size ** 2,))
 
     def get_target(self):
         return self._wrapped_env.get_target()
@@ -357,7 +357,8 @@ class PointMassEnv(D4RLEnv):
 class AntEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
         super(AntEnv, self).__init__(*args, offset_mapping=np.array([1, 1]), **kwargs)
-        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(4 + self.max_grid_size ** 2,))
+        self.observation_space = Box(low=-float('inf'), high=float('inf'), shape=(4 * self.repeat_input
+                                                                                  + self.max_grid_size ** 2,))
 
     def get_target(self):
         return np.array(self._wrapped_env.xy_to_rowcolcontinuous(self._wrapped_env.get_target()))
