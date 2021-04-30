@@ -194,7 +194,7 @@ class D4RLEnv:
         # TODO: create teachers
 
     def get_timestep(self):
-        return .05
+        return .1
 
     def get_target(self):
         raise NotImplementedError

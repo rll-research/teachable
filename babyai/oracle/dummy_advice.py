@@ -27,9 +27,3 @@ class DummyAdvice(Teacher):
 
     def success_check(self, *args, **kwargs):
         return False
-
-    def reset(self, *args, **kwargs):
-        pass
-
-    def step(self, *args, **kwargs):
-        pass
