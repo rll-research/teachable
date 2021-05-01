@@ -16,7 +16,7 @@ class PPOAlgo(BaseAlgo):
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
                  rollouts_per_meta_task=1, obs_preprocessor=None, augmenter=None, instr_dropout_prob=.5,
-                 repeated_seed=None, discrete=True):
+                 repeated_seed=None, discrete=True, kl_coef=.005):
         self.discrete = discrete
 
         super().__init__(envs, policy_dict, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
@@ -39,6 +39,7 @@ class PPOAlgo(BaseAlgo):
         self.recurrence = recurrence
         self.aux_info = aux_info
         self.single_env = envs[0]
+        self.kl_coef = kl_coef
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_frames = self.num_frames_per_proc * self.num_procs
@@ -123,6 +124,7 @@ class PPOAlgo(BaseAlgo):
             log_values = []
             log_policy_losses = []
             log_value_losses = []
+            log_kl_losses = []
             log_grad_norms = []
             try:
                 num_actions = self.single_env.action_space.n
@@ -163,6 +165,7 @@ class PPOAlgo(BaseAlgo):
                 batch_value = 0
                 batch_policy_loss = 0
                 batch_value_loss = 0
+                batch_kl_loss = 0
                 batch_loss = 0
 
                 batch_returnn = 0
@@ -192,6 +195,7 @@ class PPOAlgo(BaseAlgo):
 
                     value = agent_info['value']
                     memory = agent_info['memory']
+                    kl_loss = agent_info['kl']
                     entropy = dist.entropy().mean()
 
                     log_prob = dist.log_prob(sb.action)
@@ -207,12 +211,13 @@ class PPOAlgo(BaseAlgo):
                     surr1 = (value - sb.returnn).pow(2)
                     surr2 = (value_clipped - sb.returnn).pow(2)
                     value_loss = torch.max(surr1, surr2).mean()
-                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss
+                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + self.kl_coef * kl_loss
 
                     batch_entropy -= entropy.item() * self.entropy_coef
                     batch_value += value.mean().item()
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item() * self.value_loss_coef
+                    batch_policy_loss += kl_loss.item() * self.kl_coef
                     batch_loss += loss
 
                     batch_returnn += sb.returnn.mean().item()
@@ -266,6 +271,7 @@ class PPOAlgo(BaseAlgo):
                 log_values.append(batch_value)
                 log_policy_losses.append(batch_policy_loss)
                 log_value_losses.append(batch_value_loss)
+                log_kl_losses.append(batch_kl_loss)
                 log_grad_norms.append(grad_norm.item())
 
                 log_returnn.append(batch_returnn)
@@ -314,6 +320,7 @@ class PPOAlgo(BaseAlgo):
             logs["Value"] = numpy.mean(log_values)
             logs["Policy_loss"] = numpy.mean(log_policy_losses)
             logs["Value_loss"] = numpy.mean(log_value_losses)
+            logs["KL_loss"] = numpy.mean(log_kl_losses)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
             if discrete:

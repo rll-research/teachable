@@ -236,7 +236,7 @@ def run_experiment(**config):
                    args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                    parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
                    obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.collect_dropout_prob,
-                   discrete=discrete)
+                   discrete=discrete, kl_coef=args.kl_coef)
 
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -246,7 +246,7 @@ def run_experiment(**config):
                           args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
                           parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
                           obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.collect_dropout_prob,
-                          discrete=discrete)
+                          discrete=discrete, kl_coef=args.kl_coef)
 
     if optimizer is not None:
         for k, v in optimizer.items():
