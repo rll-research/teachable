@@ -217,7 +217,7 @@ class PPOAlgo(BaseAlgo):
                     batch_value += value.mean().item()
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item() * self.value_loss_coef
-                    batch_policy_loss += kl_loss.item() * self.kl_coef
+                    batch_kl_loss += kl_loss.item() * self.kl_coef
                     batch_loss += loss
 
                     batch_returnn += sb.returnn.mean().item()

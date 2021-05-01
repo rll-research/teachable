@@ -128,7 +128,7 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
     cv2.putText(background, "Receiving Teacher " + teacher_name, (30, 120), font, 0.5, (0, 0, 0), 1, 0)
     try:
         cv2.putText(background, "Feedback: " + str(feedback), (30, 150), font, 0.5, (0, 0, 0), 1, 0)
-        cv2.putText(background, "Agent pos: " + str(obs['obs'][:2]), (30, 180), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Agent pos: " + str(env.get_pos()), (30, 180), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Waypoint: " + str(env.waypoint_controller.waypoints[0]), (30, 210), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Target: " + str(env.get_target()), (30, 240), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "All Waypoints: " + str(env.waypoint_controller.waypoints), (30, 270), font, 0.5, (0, 0, 0), 1, 0)
