@@ -444,6 +444,7 @@ def main():
     additional_args['frames_per_proc'] = args.frames_per_proc
     additional_args['batch_size'] = args.batch_size
     additional_args['lr'] = args.lr
+    additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
