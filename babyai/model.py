@@ -439,7 +439,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             kl_loss = torch.mean(torch.sum(-z_log_sigma + 0.5 * (z_mu ** 2 + z_sigma ** 2) - 0.5, dim=1))
         else:
             x = self.actor(embedding)
-            kl_loss = 0
+            kl_loss = torch.zeros(1).to(self.device)
         if self.discrete:
             dist = Categorical(logits=F.log_softmax(x, dim=1))
         else:
