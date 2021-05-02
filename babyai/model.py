@@ -227,19 +227,19 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             self.actor = nn.Sequential(
                 nn.Linear(self.embedding_size + self.advice_dim, 64),
-                nn.ReLU(),
-                nn.Linear(64, 128),
                 nn.Tanh(),
-                nn.Linear(128, action_shape if discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(64, 64),
+                nn.Tanh(),
+                nn.Linear(64, action_shape if discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
 
         # Define critic's model
         self.critic = nn.Sequential(
             nn.Linear(self.embedding_size + self.advice_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 128),
             nn.Tanh(),
-            nn.Linear(128, 1)
+            nn.Linear(64, 64),
+            nn.Tanh(),
+            nn.Linear(64, 1)
         )
 
         # Define reconstruction model
