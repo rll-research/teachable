@@ -163,6 +163,23 @@ class MazeEnv(gym.Env):
               rgba="0.7 0.5 0.3 1.0",
           )
 
+    # Display goal
+    self.target_goal = self.goal_sampler(np_random=np.random)
+    g = self._xy_to_rowcol(self.target_goal)
+    ET.SubElement(
+        worldbody, "geom",
+        name="goal",
+        pos="%f %f %f" % (g[1] * self._maze_size_scaling - torso_x,
+                          g[0] * self._maze_size_scaling - torso_y,
+                          self._maze_height / 2 * self._maze_size_scaling),
+        size=f"%f" % (0.2 * self._maze_size_scaling),
+        type="sphere",
+        material="",
+        contype="0",
+        conaffinity="1",
+        rgba="1 0.5 1 1.0",
+    )
+
     torso = tree.find(".//body[@name='torso']")
     geoms = torso.findall(".//geom")
 
@@ -171,7 +188,6 @@ class MazeEnv(gym.Env):
 
     self.LOCOMOTION_ENV.__init__(self, *args, file_path=file_path, non_zero_reset=non_zero_reset, reward_type=reward_type, **kwargs)
 
-    self.target_goal = None
 
   def get_maze(self):
       return self.maze_map

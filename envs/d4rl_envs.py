@@ -159,7 +159,8 @@ class D4RLEnv:
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
         self.steps_since_recompute = 0
-        self._wrapped_env = gym.envs.make(env_name, reset_target=True, reward_type=reward_type)
+        reset_target = True
+        self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
@@ -237,13 +238,10 @@ class D4RLEnv:
         obs_dict = self.update_obs(obs_dict)
         self.done = done
 
-        target = self.get_target()
-        agent_pos = obs[:2]
-        reached_goal = np.linalg.norm(target - agent_pos) < .5
-        success = done and reached_goal
+        success = self.get_success()
         info = {}
-        info['success'] = success
-        info['timestep_success'] = reached_goal
+        info['success'] = done and success
+        info['timestep_success'] = success
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
@@ -339,6 +337,11 @@ class PointMassEnv(D4RLEnv):
     def get_vel(self):
         return self._wrapped_env.get_sim().data.qvel
 
+    def get_success(self):
+        target = self.get_target()
+        agent_pos = self.get_pos()
+        return np.linalg.norm(target - agent_pos) < .5
+
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         target = self.get_target() / self.scale_factor
@@ -371,6 +374,9 @@ class AntEnv(D4RLEnv):
 
     def get_vel(self):
         return np.array([0, 0])  # TODO: is there a better option?
+
+    def get_success(self):
+        return np.linalg.norm(self._wrapped_env.get_xy() - self._wrapped_env.target_goal) <= 0.5
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)
