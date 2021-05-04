@@ -33,8 +33,7 @@ class WaypointCorrections(Teacher):
         self.last_feedback = waypoint.copy()
         self.gave_feedback = gave_feedback
         # # Divide by 15 so the numbers aren't too big.
-        # return waypoint / 15, gave_feedback
-        return waypoint - env.get_pos(), gave_feedback
+        return waypoint / 15, gave_feedback
 
     # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
     def success_check(self, state, action, oracle):
