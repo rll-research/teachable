@@ -250,7 +250,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
     if policy is None:
         policy, _, args, model_data = load_policy(policy_path)
         for k, v in additional_args.items():
-            setattr(args, k, v)
+            if not hasattr(args, k) or (not v is None):
+                setattr(args, k, v)
         if args.target_policy is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         n_itr = args.n_itr
@@ -353,9 +354,9 @@ def main():
     parser.add_argument('--distill_successful_only', action='store_true')
     parser.add_argument('--buffer_name', default=None)
     parser.add_argument('--collect_with_oracle', action='store_true')
-    parser.add_argument('--frames_per_proc', type=int, default=40)
+    parser.add_argument('--frames_per_proc', type=int, default=None)
     parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=None)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
