@@ -43,7 +43,7 @@ class PPOAlgo(BaseAlgo):
 
         self.clip_eps = args.clip_eps
         self.epochs = args.epochs
-        self.batch_size = args.batch_size
+        self.batch_size = args.meta_batch_size
 
         self.beta1 = args.beta1
         self.beta2 = args.beta2
