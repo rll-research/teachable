@@ -9,6 +9,7 @@ from d4rl.oracle.batch_teacher import BatchTeacher
 from oracle.cardinal_teacher import CardinalCorrections
 from oracle.direction_teacher import DirectionCorrections
 from oracle.waypoint_teacher import WaypointCorrections
+from oracle.offset_waypoint_teacher import OffsetWaypointCorrections
 
 from oracle.dummy_advice import DummyAdvice
 
@@ -188,6 +189,9 @@ class D4RLEnv:
                                                    controller=self.waypoint_controller)
             elif ft == 'Waypoint':
                 teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                   controller=self.waypoint_controller)
+            elif ft == 'OffsetWaypoint':
+                teachers[ft] = OffsetWaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
                                                    controller=self.waypoint_controller)
             elif ft == 'Direction':
                 teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
