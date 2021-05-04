@@ -171,7 +171,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     else:
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = discrete
-    algo = PPOAlgo(policy, envs, args, obs_preprocessor)
+    algo = PPOAlgo(policy, envs, args, obs_preprocessor, None)
 
     if 'optimizer' in model_data:
         for k, optimizer in model_data['optimizer'].items():
