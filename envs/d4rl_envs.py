@@ -2,6 +2,7 @@
 import numpy as np
 import gym
 import d4rl_content
+import torch
 from gym.spaces import Box, Discrete
 from d4rl_content.pointmaze.waypoint_controller import WaypointController
 from d4rl.oracle.batch_teacher import BatchTeacher
@@ -153,11 +154,12 @@ class D4RLEnv:
     """
 
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], max_grid_size=15, **kwargs):
+                 cartesian_steps=[1], max_grid_size=15, args=None, **kwargs):
         self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
+        self.args = args
         self.steps_since_recompute = 0
         reset_target = True
         self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
@@ -222,6 +224,7 @@ class D4RLEnv:
         return obs_dict
 
     def step(self, action):
+        action = np.tanh(action)
         obs, rew, done, info = self._wrapped_env.step(action)
         if self.reward_type == 'oracle_action':
             act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())

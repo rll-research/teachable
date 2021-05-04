@@ -9,7 +9,6 @@ from babyai.rl.utils.supervised_losses import required_heads
 import numpy as np
 from babyai.rl.utils.dictlist import DictList
 
-
 # From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def initialize_parameters(m):
     classname = m.__class__.__name__
