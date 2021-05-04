@@ -9,8 +9,8 @@ from gym.spaces import Discrete
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3, mem_dropout_prob=.3,
-                 feedback_dropout_prob=.3, modify_cc3_steps=None, reconstruct=False):
+                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3,
+                 reconstruct=False):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
@@ -47,38 +47,8 @@ class ImitationLearning(object):
         }
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.modify_cc3_steps = modify_cc3_steps
-
-    def modify_cc3(self, batch):
-        # Modify PAIO
-        obs = batch.obs
-        for i in range(len(obs) - 3):
-            if obs[i]['gave_PreActionAdviceMultipleRepeatedIndex']:
-                new_pa = np.zeros_like(obs[i]['PreActionAdviceMultipleRepeatedIndex'])
-                for j in range(3):  # next 3 actions
-                    timestep = i + 3
-                    next_action = batch.action[timestep].item()
-                    new_pa[j * 8 + next_action] = 1
-                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = new_pa
-                temp = 3
-            else:
-                if i == 0:
-                    continue
-                prev_pa = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][:-1]
-                prev_pa_index = obs[i - 1]['PreActionAdviceMultipleRepeatedIndex'][-1]
-                obs[i]['PreActionAdviceMultipleRepeatedIndex'] = np.concatenate([prev_pa, [prev_pa_index + 1]])
-                temp = 3
-        batch.obs = obs
-        # obs = batch.obs
-        # for i in range(len(obs) - self.modify_cc3_steps):
-        #     future_obs = obs[i + self.modify_cc3_steps]['obs']
-        #     obs[i]['CartesianCorrections'] = future_obs
-        # batch.obs = obs
-        return batch
 
     def preprocess_batch(self, batch, source):
-        if self.modify_cc3_steps is not None:
-            batch = self.modify_cc3(batch)
         obss = batch.obs
         if source == 'teacher':
             action_true = batch.teacher_action
@@ -163,15 +133,6 @@ class ImitationLearning(object):
         obss = DictList(obss)
         num_frames = len(obss)
 
-        # if self.label_weightings:
-        #     weightings = torch.zeros(7, dtype=torch.float32).to(self.device)
-        #     actions, counts = torch.unique(action_true, return_counts=True)
-        #     counts = counts.float()
-        #     weightings[actions] = 1 / counts
-        #     weightings = weightings / torch.sum(weightings)
-        # else:
-        #     weightings = torch.ones(7, dtype=torch.float32).to(self.device)
-
         # Memory to be stored
         memories = torch.zeros([num_frames, acmodel.memory_size], device=self.device)
         memory = torch.zeros([len(inds), acmodel.memory_size], device=self.device)
@@ -223,8 +184,7 @@ class ImitationLearning(object):
                 policy_loss = loss_fn(dist.logits, action_step)
                 action_step = torch.argmax(action_step, dim=1)
             else:
-                # action_weightings = weightings[action_step]
-                policy_loss = -dist.log_prob(action_step) #* action_weightings
+                policy_loss = -dist.log_prob(action_step)
             policy_loss = policy_loss.mean()
             # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()

@@ -11,48 +11,43 @@ class PPOAlgo(BaseAlgo):
     """The class for the Proximal Policy Optimization algorithm
     ([Schulman et al., 2015](https://arxiv.org/abs/1707.06347))."""
 
-    def __init__(self, policy_dict, envs, num_frames_per_proc=None, discount=0.99, lr=7e-4, beta1=0.9, beta2=0.999,
-                 gae_lambda=0.95,
-                 entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
-                 adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, aux_info=None, parallel=True,
-                 rollouts_per_meta_task=1, obs_preprocessor=None, augmenter=None, instr_dropout_prob=.5,
-                 repeated_seed=None, discrete=True, kl_coef=.005):
-        self.discrete = discrete
+    def __init__(self, policy_dict, envs, args, obs_preprocessor, augmenter, repeated_seed=None):
+        self.discrete = args.discrete
 
-        super().__init__(envs, policy_dict, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                         value_loss_coef, max_grad_norm, recurrence, obs_preprocessor, None,
-                         aux_info, parallel, rollouts_per_meta_task, instr_dropout_prob=instr_dropout_prob,
+        super().__init__(envs, policy_dict, args.frames_per_proc, args.discount, args.lr, args.gae_lambda, args.entropy_coef,
+                         args.value_loss_coef, args.max_grad_norm, args.recurrence, obs_preprocessor, None,
+                         None, not args.sequential, args.rollouts_per_meta_task, instr_dropout_prob=args.collect_dropout_prob,
                          repeated_seed=repeated_seed)
 
-        num_frames_per_proc = num_frames_per_proc or 128
+        num_frames_per_proc = args.frames_per_proc or 128
         self.policy_dict = policy_dict
         for policy in policy_dict.values():
             policy.train()
             policy.to(self.device)
         self.num_frames_per_proc = num_frames_per_proc
-        self.discount = discount
-        self.lr = lr
-        self.gae_lambda = gae_lambda
-        self.entropy_coef = entropy_coef
-        self.value_loss_coef = value_loss_coef
-        self.max_grad_norm = max_grad_norm
-        self.recurrence = recurrence
-        self.aux_info = aux_info
+        self.discount = args.discount
+        self.lr = args.lr
+        self.gae_lambda = args.gae_lambda
+        self.entropy_coef = args.entropy_coef
+        self.value_loss_coef = args.value_loss_coef
+        self.max_grad_norm = args.max_grad_norm
+        self.recurrence = args.recurrence
+        self.aux_info = None
         self.single_env = envs[0]
-        self.kl_coef = kl_coef
+        self.kl_coef = args.kl_coef
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
         assert self.num_frames_per_proc % self.recurrence == 0
 
-        self.clip_eps = clip_eps
-        self.epochs = epochs
-        self.batch_size = batch_size
+        self.clip_eps = args.clip_eps
+        self.epochs = args.epochs
+        self.batch_size = args.batch_size
 
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.adam_eps = adam_eps
+        self.beta1 = args.beta1
+        self.beta2 = args.beta2
+        self.adam_eps = args.optim_eps
         self.augmenter = augmenter
 
         assert self.batch_size % self.recurrence == 0
@@ -61,14 +56,14 @@ class PPOAlgo(BaseAlgo):
         # Dfferent optimizers for different models, same optimizer for same model
         first_teacher = teachers[0]
         self.optimizer_dict = {first_teacher: torch.optim.Adam(self.policy_dict[first_teacher].parameters(),
-                                                               self.lr, (beta1, beta2), eps=adam_eps)}
+                                                               self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
         for teacher in teachers[1:]:
             policy = self.policy_dict[teacher]
             if policy is self.policy_dict[first_teacher]:
                 self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
             else:
                 self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                self.lr, (beta1, beta2), eps=adam_eps)
+                                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
         self.batch_num = 0
 
     def set_optimizer(self):
