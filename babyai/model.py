@@ -63,42 +63,38 @@ class ImageBOWEmbedding(nn.Module):
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
-    def __init__(self, action_space, env,
-                 image_dim=128, memory_dim=128, instr_dim=128,
-                 use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None, advice_dim=128, info_bot=False, z_dim=32,
-                 advice_size=-1, num_modules=1, reconstruction=False, reconstruct_advice_size=-1, padding=False,
-                 discrete=True):
+    def __init__(self, action_space, env, args):
         super().__init__()
 
-        endpool = 'endpool' in arch
-        use_bow = 'bow' in arch
-        pixel = 'pixel' in arch
-        self.res = 'res' in arch
+        self.args = args
+        endpool = 'endpool' in args.arch
+        use_bow = 'bow' in args.arch
+        pixel = 'pixel' in args.arch
+        self.res = 'res' in args.arch
 
         # Decide which components are enabled
-        self.use_instr = use_instr
-        self.use_memory = use_memory
-        self.arch = arch
-        self.lang_model = lang_model
-        self.aux_info = aux_info
-        # if self.res and image_dim != 128:
-        #     raise ValueError(f"image_dim is {image_dim}, expected 128")
-        self.image_dim = image_dim
-        self.memory_dim = memory_dim
-        self.instr_dim = instr_dim
-        self.z_dim = z_dim
+        self.use_instr = not args.no_instr
+        self.use_memory = not args.no_mem
+        self.arch = args.arch
+        self.lang_model = args.instr_arch
+        self.aux_info = None
+        if self.res and args.image_dim != 128:
+            raise ValueError(f"image_dim is {args.image_dim}, expected 128")
+        self.image_dim = args.image_dim
+        self.memory_dim = args.memory_dim
+        self.instr_dim = args.instr_dim
+        self.z_dim = args.z_dim
 
         self.action_space = action_space
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.advice_dim = advice_dim if advice_size > 0 else 0
-        self.advice_size = advice_size
-        self.info_bot = info_bot
-        self.num_modules = num_modules
-        self.reconstruction = reconstruction
-        self.reconstruct_advice_size = reconstruct_advice_size
-        self.discrete = discrete
+        self.advice_dim = args.advice_dim if args.advice_size > 0 else 0
+        self.advice_size = args.advice_size
+        self.info_bot = args.info_bot
+        self.num_modules = args.num_modules
+        self.reconstruction = args.reconstruction
+        self.reconstruct_advice_size = args.reconstruct_advice_size
+        self.discrete = args.discrete
         obs = env.reset()
         # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
         obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
@@ -107,7 +103,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
         if self.img_obs:
-            if padding:
+            if args.padding:
                 self.image_conv = nn.Sequential(*[
                     *([ImageBOWEmbedding(147, 128)] if use_bow else []),
                     nn.Conv2d(
@@ -221,7 +217,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.actor_decoder = nn.Sequential(
                 nn.Linear(self.z_dim + self.advice_dim, 64),
                 nn.Tanh(),
-                nn.Linear(64, action_shape if discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
         else:
             self.actor = nn.Sequential(
@@ -229,7 +225,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 nn.Tanh(),
                 nn.Linear(64, 64),
                 nn.Tanh(),
-                nn.Linear(64, action_shape if discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
 
         # Define critic's model

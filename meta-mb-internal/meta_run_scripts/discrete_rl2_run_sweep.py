@@ -99,12 +99,12 @@ def run_experiment(**config):
 
     if args.env in ['point_mass', 'ant']:
         args.no_instr = True
-        discrete = False
+        args.discrete = False
     elif args.env in ['babyai']:
-        discrete = True
+        args.discrete = True
     else:
         raise NotImplementedError(f'Unknown env {args.env}')
-    args.discrete = discrete
+    args.discrete = args.discrete
 
     arguments = {
         "start_loc": 'all',
@@ -153,9 +153,9 @@ def run_experiment(**config):
                                           **arguments), normalize_actions=args.act_norm, normalize_reward=args.rew_norm)
                      , ceil_reward=args.ceil_reward)
         obs = env.reset()
-        advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys() if k in obs])
+        args.advice_size = sum([np.prod(obs[k].shape) for k in teacher_train_dict.keys() if k in obs])
         if args.no_teacher:
-            advice_size = 0
+            args.advice_size = 0
 
         try:
             teacher_null_dict = env.teacher.null_feedback()
@@ -165,42 +165,26 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
         policy_dict = {}
-        full_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
+        args.reconstruct_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
         teachers_list = list(teacher_null_dict.keys()) + ['none']
         for teacher in teachers_list:
             if not args.include_zeros and not args.same_model:
-                advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
+                args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
             if args.same_model and not teacher == teachers_list[0]:
                 policy = policy_dict[teachers_list[0]]
             else:
                 policy = ACModel(action_space=env.action_space,
                                  env=env,
-                                 image_dim=args.image_dim,
-                                 memory_dim=args.memory_dim,
-                                 instr_dim=args.instr_dim,
-                                 lang_model=args.instr_arch,
-                                 use_instr=not args.no_instr,
-                                 use_memory=not args.no_mem,
-                                 arch=args.arch,
-                                 advice_dim=args.advice_dim,
-                                 advice_size=advice_size,
-                                 num_modules=args.num_modules,
-                                 reconstruction=args.reconstruction,
-                                 reconstruct_advice_size=full_advice_size,
-                                 padding=args.padding,
-                                 discrete=discrete,
-                                 info_bot=args.info_bot,
-                                 z_dim=args.z_dim)
+                                 args=args)
             policy_dict[teacher] = policy
 
         start_itr = 0
         curriculum_step = env.index
 
     args.model = 'default_il'
-    modify_cc3_steps = args.cartesian_steps if args.modify_cc3 else None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
-                                   preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
-                                   instr_dropout_prob=args.distill_dropout_prob, modify_cc3_steps=modify_cc3_steps,
+                                   preprocess_obs=obs_preprocessor,
+                                   instr_dropout_prob=args.distill_dropout_prob,
                                    reconstruct=args.reconstruction)
     if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
@@ -231,23 +215,10 @@ def run_experiment(**config):
         new_env.set_task()
         new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
-                   args.gae_lambda,
-                   args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
-                   args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
-                   parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                   obs_preprocessor=obs_preprocessor, augmenter=augmenter, instr_dropout_prob=args.collect_dropout_prob,
-                   discrete=discrete, kl_coef=args.kl_coef)
-
+    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
 
     envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-    algo_dagger = PPOAlgo(policy_dict, envs, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
-                          args.gae_lambda,
-                          args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
-                          args.optim_eps, args.clip_eps, args.epochs, args.meta_batch_size,
-                          parallel=not args.sequential, rollouts_per_meta_task=args.rollouts_per_meta_task,
-                          obs_preprocessor=obs_preprocessor, instr_dropout_prob=args.collect_dropout_prob,
-                          discrete=discrete, kl_coef=args.kl_coef)
+    algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
 
     if optimizer is not None:
         for k, v in optimizer.items():
