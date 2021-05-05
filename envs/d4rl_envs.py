@@ -167,8 +167,11 @@ class D4RLEnv:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
-        om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+        if 'ant' in env_name:
+            om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
                                                                        self._wrapped_env.env.wrapped_env._init_torso_y]))
+        else:
+            om = np.array([0, 0])
         self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=om)
         self.scale_factor = 5
         self.repeat_input = 5
@@ -287,8 +290,11 @@ class D4RLEnv:
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
         self.waypoint_controller.set_maze(self.get_maze())
-        om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+        if 'ant' in self.env_name:
+            om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
                                                                        self._wrapped_env.env.wrapped_env._init_torso_y]))
+        else:
+            om = np.array([0, 0])
         self.waypoint_controller.offset_mapping = om
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
