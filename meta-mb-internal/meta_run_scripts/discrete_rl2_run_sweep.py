@@ -4,7 +4,7 @@ from meta_mb.algos.ppo_torch import PPOAlgo
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-from babyai.model import ACModel
+from babyai.model import ACModel, Reconstructor
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor, make_obs_preprocessor_choose_teachers
@@ -182,10 +182,12 @@ def run_experiment(**config):
         curriculum_step = env.index
 
     args.model = 'default_il'
+    if args.reconstruction:
+        reconstructor_dict = {k: Reconstructor(env, args) for k in teachers_list}
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor,
                                    instr_dropout_prob=args.distill_dropout_prob,
-                                   reconstruct=args.reconstruction)
+                                   reconstructor_dict=reconstructor_dict)
     if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())

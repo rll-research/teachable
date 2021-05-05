@@ -62,28 +62,38 @@ class ImageBOWEmbedding(nn.Module):
         return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
 
 class Reconstructor(nn.Module):
-    def __init__(self, action_space, env, args):
+    def __init__(self, env, args):
         super().__init__()
-        self.args = args
-        self.action_shape = None  # TODO: action in here too. Possibly repeated
+        args = args
+        use_instr = not args.no_instr
+        use_memory = not args.no_mem
+        obs = env.reset()
+        # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
+        obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
+        img_obs = len(obs_shape) >= 3
+        embedding_size = args.image_dim
+        if not img_obs:
+            if use_instr:
+                embedding_size += args.instr_dim
+            else:
+                embedding_size = len(obs['obs']) + 1
+        if use_memory:
+            raise NotImplementedError("Need to pass in semi_memory_size")
+        try:
+            action_shape = env.action_space.n
+        except:  # continuous
+            action_shape = env.action_space.shape[0] * 2  # 2 for mean and std
         if args.reconstruction:
             self.reconstructor = nn.Sequential(
-                nn.Linear(self.args.embedding_size + self.args.advice_dim + self.action_shape, 64),
+                nn.Linear(embedding_size + action_shape, 64),
                 nn.Tanh(),
-                nn.Linear(64, self.reconstruct_advice_size * 2)
+                nn.Linear(64, args.reconstruct_advice_size * 2)
             )
 
-    def forward(self, embedding, action):
-        input = torch.cat([embedding, action], dim=1)
-        output = self.reconstructor(input)
+    def forward(self, embedding):
+        output = self.reconstructor(embedding)
         # TODO: may need to consider something different for non-gaussian forms of input
-        mean = output[:, :self.action_shape]
-        LOG_STD_MIN = -20
-        LOG_STD_MAX = 2
-        log_std = torch.clamp(output[:, self.action_shape:], LOG_STD_MIN, LOG_STD_MAX)
-        std = torch.exp(log_std)
-        dist = Normal(mean, std)
-        return dist
+        return output
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
@@ -466,6 +476,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             std = torch.exp(log_std)
             dist = Normal(mean, std)
 
+        reconstruction_embedding = torch.cat([reconstruction_embedding, x], dim=1)
         x = self.critic(embedding)
         value = x.squeeze(1)
 
@@ -473,6 +484,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "value": value,
             "memory": memory,
             "kl": kl_loss,
+            "reconstruction_embedding": reconstruction_embedding,
         }
 
         if self.reconstruction:
