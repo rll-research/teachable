@@ -200,7 +200,9 @@ class PPOAlgo(BaseAlgo):
 
                     value = agent_info['value']
                     memory = agent_info['memory']
-                    kl_loss = agent_info['kl']
+                    # kl_loss = agent_info['kl']
+                    # control penalty
+                    kl_loss = torch.clamp(dist.rsample() ** 2 - 10, 0, torch.inf)
                     entropy = dist.entropy().mean()
 
                     log_prob = dist.log_prob(sb.action)
