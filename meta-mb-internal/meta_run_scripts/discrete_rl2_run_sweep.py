@@ -184,6 +184,8 @@ def run_experiment(**config):
     args.model = 'default_il'
     if args.reconstruction:
         reconstructor_dict = {k: Reconstructor(env, args) for k in teachers_list}
+    else:
+        reconstructor_dict = None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor,
                                    instr_dropout_prob=args.distill_dropout_prob,
