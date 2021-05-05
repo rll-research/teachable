@@ -166,7 +166,9 @@ class D4RLEnv:
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
-        self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=offset_mapping)
+        om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+                                                                       self._wrapped_env.env.wrapped_env._init_torso_y]))
+        self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=om)
         self.scale_factor = 5
         self.repeat_input = 5
         teachers = {}
@@ -284,6 +286,9 @@ class D4RLEnv:
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
         self.waypoint_controller.set_maze(self.get_maze())
+        om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+                                                                       self._wrapped_env.env.wrapped_env._init_torso_y]))
+        self.waypoint_controller.offset_mapping = om
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
@@ -360,6 +365,17 @@ class PointMassEnv(D4RLEnv):
         return obs_dict
 
 
+class PointMassSACEnv(PointMassEnv):
+    def step(self, action):
+        obs_dict, rew, done, info = super().step(action)
+        return obs_dict['obs'], rew, done, info
+
+    def reset(self):
+        obs_dict = super().reset()
+        return obs_dict['obs']
+
+
+
 class AntEnv(D4RLEnv):
     def __init__(self, *args, **kwargs):
         super(AntEnv, self).__init__(*args, offset_mapping=np.array([1, 1]), **kwargs)
@@ -390,3 +406,12 @@ class AntEnv(D4RLEnv):
         if self.reward_type == 'dense':
             rew = rew / 100 + .1
         return obs_dict, rew, done, info
+
+class AntSACEnv(AntEnv):
+    def step(self, action):
+        obs_dict, rew, done, info = super().step(action)
+        return obs_dict['obs'], rew, done, info
+
+    def reset(self):
+        obs_dict = super().reset()
+        return obs_dict['obs']
