@@ -11,7 +11,7 @@ class PPOAlgo(BaseAlgo):
     """The class for the Proximal Policy Optimization algorithm
     ([Schulman et al., 2015](https://arxiv.org/abs/1707.06347))."""
 
-    def __init__(self, policy_dict, envs, args, obs_preprocessor, augmenter, repeated_seed=None):
+    def __init__(self, policy_dict, envs, args, obs_preprocessor, augmenter, repeated_seed=None, reconstructor_dict=None):
         self.discrete = args.discrete
 
         super().__init__(envs, policy_dict, args.frames_per_proc, args.discount, args.lr, args.gae_lambda, args.entropy_coef,
@@ -35,6 +35,7 @@ class PPOAlgo(BaseAlgo):
         self.aux_info = None
         self.single_env = envs[0]
         self.kl_coef = args.kl_coef
+        self.reconstructor_dict = reconstructor_dict
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_frames = self.num_frames_per_proc * self.num_procs
@@ -55,14 +56,20 @@ class PPOAlgo(BaseAlgo):
         teachers = list(self.policy_dict.keys())
         # Dfferent optimizers for different models, same optimizer for same model
         first_teacher = teachers[0]
-        self.optimizer_dict = {first_teacher: torch.optim.Adam(self.policy_dict[first_teacher].parameters(),
+        params = list(self.policy_dict[first_teacher].parameters())
+        if self.reconstructor_dict is not None:
+            params += list(self.reconstructor_dict[first_teacher].parameters())
+        self.optimizer_dict = {first_teacher: torch.optim.Adam(params,
                                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
         for teacher in teachers[1:]:
             policy = self.policy_dict[teacher]
             if policy is self.policy_dict[first_teacher]:
                 self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
             else:
-                self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
+                params = list(self.policy_dict[teacher].parameters())
+                if self.reconstructor_dict is not None:
+                    params += list(self.reconstructor_dict[teacher].parameters())
+                self.optimizer_dict[teacher] = torch.optim.Adam(params,
                                                                 self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
         self.batch_num = 0
 
@@ -91,6 +98,7 @@ class PPOAlgo(BaseAlgo):
         assert len(active_teachers) <= 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
+        reconstructor = None if self.reconstructor_dict is None else self.reconstructor_dict[teacher]
         optimizer = self.optimizer_dict[teacher]
 
         acmodel.train()
@@ -120,6 +128,7 @@ class PPOAlgo(BaseAlgo):
             log_policy_losses = []
             log_value_losses = []
             log_kl_losses = []
+            log_reconstruction_losses = []
             log_grad_norms = []
             try:
                 num_actions = self.single_env.action_space.n
@@ -161,6 +170,7 @@ class PPOAlgo(BaseAlgo):
                 batch_policy_loss = 0
                 batch_value_loss = 0
                 batch_kl_loss = 0
+                batch_reconstruction_loss = 0
                 batch_loss = 0
 
                 batch_returnn = 0
@@ -206,13 +216,31 @@ class PPOAlgo(BaseAlgo):
                     surr1 = (value - sb.returnn).pow(2)
                     surr2 = (value_clipped - sb.returnn).pow(2)
                     value_loss = torch.max(surr1, surr2).mean()
-                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + self.kl_coef * kl_loss
+
+                    # Optional loss for reconstructing the feedback (currently, all models all teachers)
+                    if self.reconstructor_dict is not None:
+                        # Loss for training the reconstructor
+                        reconstruction_embedding = agent_info['reconstruction_embedding']
+                        advice = reconstructor(reconstruction_embedding)
+                        full_advice_size = int(len(advice[0]) / 2)
+                        mean = advice[:, :full_advice_size]
+                        var = torch.exp(advice[:, full_advice_size:])
+                        loss_fn = torch.nn.GaussianNLLLoss()
+                        true_advice = sb.obs.advice
+                        reconstruction_loss = loss_fn(true_advice, mean, var)
+                    else:
+                        reconstruction_loss = 0
+
+                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + self.kl_coef * kl_loss + reconstruction_loss
+
+
 
                     batch_entropy -= entropy.item() * self.entropy_coef
                     batch_value += value.mean().item()
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item() * self.value_loss_coef
                     batch_kl_loss += kl_loss.item() * self.kl_coef
+                    batch_reconstruction_loss += reconstruction_loss.item()
                     batch_loss += loss
 
                     batch_returnn += sb.returnn.mean().item()
@@ -235,6 +263,8 @@ class PPOAlgo(BaseAlgo):
                 batch_value /= self.recurrence
                 batch_policy_loss /= self.recurrence
                 batch_value_loss /= self.recurrence
+                batch_kl_loss /= self.recurrence
+                batch_reconstruction_loss /= self.recurrence
                 batch_loss /= self.recurrence
 
                 batch_returnn /= self.recurrence
@@ -267,6 +297,7 @@ class PPOAlgo(BaseAlgo):
                 log_policy_losses.append(batch_policy_loss)
                 log_value_losses.append(batch_value_loss)
                 log_kl_losses.append(batch_kl_loss)
+                log_reconstruction_losses.append(batch_reconstruction_loss)
                 log_grad_norms.append(grad_norm.item())
 
                 log_returnn.append(batch_returnn)
@@ -316,6 +347,7 @@ class PPOAlgo(BaseAlgo):
             logs["Policy_loss"] = numpy.mean(log_policy_losses)
             logs["Value_loss"] = numpy.mean(log_value_losses)
             logs["KL_loss"] = numpy.mean(log_kl_losses)
+            logs["MI_loss"] = numpy.mean(log_reconstruction_losses)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
             if discrete:
