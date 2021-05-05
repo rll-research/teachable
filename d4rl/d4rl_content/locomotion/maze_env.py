@@ -166,11 +166,12 @@ class MazeEnv(gym.Env):
     # Display goal
     self.target_goal = self.goal_sampler(np_random=np.random)
     g = self._xy_to_rowcol(self.target_goal)
+
     ET.SubElement(
         worldbody, "geom",
         name="goal",
-        pos="%f %f %f" % (g[1] * self._maze_size_scaling - torso_x,
-                          g[0] * self._maze_size_scaling - torso_y,
+        pos="%f %f %f" % (g[1] * self._maze_size_scaling,
+                          g[0] * self._maze_size_scaling,
                           self._maze_height / 2 * self._maze_size_scaling),
         size=f"%f" % (0.2 * self._maze_size_scaling),
         type="sphere",
@@ -185,7 +186,6 @@ class MazeEnv(gym.Env):
 
     _, file_path = tempfile.mkstemp(text=True, suffix='.xml')
     tree.write(file_path)
-
     self.LOCOMOTION_ENV.__init__(self, *args, file_path=file_path, non_zero_reset=non_zero_reset, reward_type=reward_type, **kwargs)
 
 
@@ -197,9 +197,9 @@ class MazeEnv(gym.Env):
 
   def _xy_to_rowcol(self, xy):
     size_scaling = self._maze_size_scaling
-    xy = (max(xy[0], 1e-4), max(xy[1], 1e-4))
-    return (int(1 + (xy[1]) / size_scaling),
-            int(1 + (xy[0]) / size_scaling))
+    # xy = (max(xy[0], 1e-4), max(xy[1], 1e-4))
+    return (int((xy[1]) / size_scaling),
+            int((xy[0]) / size_scaling))
   
   def _get_reset_location(self,):
     prob = (1.0 - self._np_maze_map) / np.sum(1.0 - self._np_maze_map) 
@@ -240,11 +240,14 @@ class MazeEnv(gym.Env):
     cell = sample_choices[np_random.choice(len(sample_choices))]
     xy = self._rowcol_to_xy(cell, add_random_noise=True)
 
-    random_x = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
-    random_y = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
+    # random_x = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
+    # random_y = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
 
-    xy = (max(xy[0] + random_x, 0), max(xy[1] + random_y, 0))
-
+    # random_x = 0
+    # random_y = 0
+    # xy = (max(xy[0] + random_x, 0), max(xy[1] + random_y, 0))
+    # import IPython
+    # IPython.embed()
     return xy
   
   def set_target_goal(self, goal_input=None):
@@ -253,7 +256,7 @@ class MazeEnv(gym.Env):
     else:
       self.target_goal = goal_input
     
-    # print ('Target Goal: ', self.target_goal)
+    print ('Target Goal: ', self.target_goal)
     ## Make sure that the goal used in self._goal is also reset:
     self._goal = self.target_goal
 
