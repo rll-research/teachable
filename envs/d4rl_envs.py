@@ -9,6 +9,7 @@ from d4rl.oracle.batch_teacher import BatchTeacher
 from oracle.cardinal_teacher import CardinalCorrections
 from oracle.direction_teacher import DirectionCorrections
 from oracle.waypoint_teacher import WaypointCorrections
+from oracle.offset_waypoint_teacher import OffsetWaypointCorrections
 
 from oracle.dummy_advice import DummyAdvice
 
@@ -184,12 +185,16 @@ class D4RLEnv:
             feedback_freq = [feedback_freq[0]] * len(feedback_type)
         for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
             if ft == 'none':
-                teachers[ft] = DummyAdvice(self)
+                teachers[ft] = DummyAdvice(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                   controller=self.waypoint_controller)
             elif ft == 'Cardinal':
                 teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
                                                    controller=self.waypoint_controller)
             elif ft == 'Waypoint':
                 teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                   controller=self.waypoint_controller)
+            elif ft == 'OffsetWaypoint':
+                teachers[ft] = OffsetWaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
                                                    controller=self.waypoint_controller)
             elif ft == 'Direction':
                 teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
@@ -255,14 +260,10 @@ class D4RLEnv:
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = self.get_teacher_action()
-            self.teacher.step(self)
-            # TODO: consider adding `followed`
-            # for k, v in self.teacher.success_check(obs, action, self.oracle).items():
-            #     info[f'followed_{k}'] = v
+            self.teacher.step(self)  # TODO: OBOE? should this be before update_obs?
             info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
-        # print("Waypoint", obs_dict['Waypoint'], obs_dict['gave_Waypoint'])  # TODO: potentially something odd here?
         return obs_dict, rew, done, info
 
     def get_teacher_action(self):

@@ -48,6 +48,7 @@ class WaypointController(object):
         return int(round(state[0])), int(round(state[1]))
 
     def new_target(self, start_pos, target_pos):
+        raw_start = start_pos
         start_pos = self.gridify_state(start_pos)
         raw_target = target_pos
         target_pos = self.gridify_state(target_pos)

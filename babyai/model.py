@@ -61,6 +61,40 @@ class ImageBOWEmbedding(nn.Module):
         inputs = (inputs + offsets[None, :, None, None]).long()
         return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
 
+class Reconstructor(nn.Module):
+    def __init__(self, env, args):
+        super().__init__()
+        args = args
+        use_instr = not args.no_instr
+        use_memory = not args.no_mem
+        obs = env.reset()
+        # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
+        obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
+        img_obs = len(obs_shape) >= 3
+        embedding_size = args.image_dim
+        if not img_obs:
+            if use_instr:
+                embedding_size += args.instr_dim
+            else:
+                embedding_size = len(obs['obs']) + 1
+        if use_memory:
+            raise NotImplementedError("Need to pass in semi_memory_size")
+        try:
+            action_shape = env.action_space.n
+        except:  # continuous
+            action_shape = env.action_space.shape[0] * 2  # 2 for mean and std
+        if args.reconstruction:
+            self.reconstructor = nn.Sequential(
+                nn.Linear(embedding_size + action_shape, 64),
+                nn.Tanh(),
+                nn.Linear(64, args.reconstruct_advice_size * 2)
+            )
+
+    def forward(self, embedding):
+        output = self.reconstructor(embedding)
+        # TODO: may need to consider something different for non-gaussian forms of input
+        return output
+
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, action_space, env, args):
@@ -167,7 +201,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.instr_rnn = nn.GRU(
                         self.instr_dim, gru_dim, batch_first=True,
                         bidirectional=(self.lang_model in ['bigru', 'attgru']))
-                    self.final_instr_dim = self.instr_dim + self.advice_dim
+                    self.final_instr_dim = self.instr_dim
                 else:
                     kernel_dim = 64
                     kernel_sizes = [3, 4]
@@ -387,10 +421,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-        # Add the teacher's advice into the instruction
-        if self.use_instr and self.advice_size > 0:
-            instr_embedding = torch.cat([instr_embedding, advice_embedding], dim=1)
-
         if self.img_obs:  # b, h, w, c
             x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
@@ -415,6 +445,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             memory = torch.cat(hidden, dim=1)
         else:
             embedding = x
+        reconstruction_embedding = embedding
 
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
@@ -445,6 +476,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             std = torch.exp(log_std)
             dist = Normal(mean, std)
 
+        reconstruction_embedding = torch.cat([reconstruction_embedding, x], dim=1)
         x = self.critic(embedding)
         value = x.squeeze(1)
 
@@ -452,6 +484,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "value": value,
             "memory": memory,
             "kl": kl_loss,
+            "reconstruction_embedding": reconstruction_embedding,
         }
 
         if self.reconstruction:

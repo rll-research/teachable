@@ -179,6 +179,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--collect_before_threshold', action='store_true')
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0.01)
+        self.add_argument('--mi_coef', type=float, default=0.01)
         self.add_argument('--z_dim', type=int, default=32)
         self.add_argument('--info_bot', action='store_true')
 
