@@ -232,7 +232,7 @@ class PPOAlgo(BaseAlgo):
                         true_advice = sb.obs.advice
                         reconstruction_loss = loss_fn(true_advice, mean, var)
                     else:
-                        reconstruction_loss = 0
+                        reconstruction_loss = torch.tensor(0).to(self.device)
 
                     loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
                            self.kl_coef * kl_loss + \
