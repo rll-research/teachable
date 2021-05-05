@@ -36,6 +36,7 @@ class PPOAlgo(BaseAlgo):
         self.single_env = envs[0]
         self.kl_coef = args.kl_coef
         self.mi_coef = args.mi_coef
+        self.control_penalty = args.control_penalty
         self.reconstructor_dict = reconstructor_dict
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -130,6 +131,7 @@ class PPOAlgo(BaseAlgo):
             log_value_losses = []
             log_kl_losses = []
             log_reconstruction_losses = []
+            log_feedback_reconstruction = []
             log_grad_norms = []
             try:
                 num_actions = self.single_env.action_space.n
@@ -172,6 +174,7 @@ class PPOAlgo(BaseAlgo):
                 batch_value_loss = 0
                 batch_kl_loss = 0
                 batch_reconstruction_loss = 0
+                batch_feedback_reconstruction = 0
                 batch_loss = 0
 
                 batch_returnn = 0
@@ -201,9 +204,9 @@ class PPOAlgo(BaseAlgo):
 
                     value = agent_info['value']
                     memory = agent_info['memory']
-                    # kl_loss = agent_info['kl']
+                    kl_loss = agent_info['kl']
                     # control penalty
-                    kl_loss = torch.clamp(dist.rsample() ** 2 - 10, 0, float('inf')).mean()
+                    control_penalty = torch.clamp(dist.rsample() ** 2 - 10, 0, float('inf')).mean()
                     entropy = dist.entropy().mean()
 
                     log_prob = dist.log_prob(sb.action)
@@ -231,12 +234,15 @@ class PPOAlgo(BaseAlgo):
                         loss_fn = torch.nn.GaussianNLLLoss()
                         true_advice = sb.obs.advice
                         reconstruction_loss = loss_fn(true_advice, mean, var)
+                        feedback_reconstruction = torch.abs(true_advice - mean).sum()
                     else:
                         reconstruction_loss = torch.tensor(0).to(self.device)
+                        feedback_reconstruction = torch.tensor(0).to(self.device)
 
                     loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
                            self.kl_coef * kl_loss + \
-                           self.mi_coef * reconstruction_loss
+                           self.mi_coef * reconstruction_loss + \
+                           self.control_penalty * control_penalty
 
 
 
@@ -246,6 +252,7 @@ class PPOAlgo(BaseAlgo):
                     batch_value_loss += value_loss.item() * self.value_loss_coef
                     batch_kl_loss += kl_loss.item() * self.kl_coef
                     batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
+                    batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
 
                     batch_returnn += sb.returnn.mean().item()
@@ -270,6 +277,7 @@ class PPOAlgo(BaseAlgo):
                 batch_value_loss /= self.recurrence
                 batch_kl_loss /= self.recurrence
                 batch_reconstruction_loss /= self.recurrence
+                batch_feedback_reconstruction /= self.recurrence
                 batch_loss /= self.recurrence
 
                 batch_returnn /= self.recurrence
@@ -303,6 +311,7 @@ class PPOAlgo(BaseAlgo):
                 log_value_losses.append(batch_value_loss)
                 log_kl_losses.append(batch_kl_loss)
                 log_reconstruction_losses.append(batch_reconstruction_loss)
+                log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
 
                 log_returnn.append(batch_returnn)
@@ -353,6 +362,7 @@ class PPOAlgo(BaseAlgo):
             logs["Value_loss"] = numpy.mean(log_value_losses)
             logs["KL_loss"] = numpy.mean(log_kl_losses)
             logs["MI_loss"] = numpy.mean(log_reconstruction_losses)
+            logs["Feedback_Reconstruction"] = numpy.mean(log_feedback_reconstruction)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
             if discrete:
