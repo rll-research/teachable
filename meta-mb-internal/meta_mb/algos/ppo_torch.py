@@ -35,6 +35,7 @@ class PPOAlgo(BaseAlgo):
         self.aux_info = None
         self.single_env = envs[0]
         self.kl_coef = args.kl_coef
+        self.mi_coef = args.mi_coef
         self.reconstructor_dict = reconstructor_dict
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -233,7 +234,9 @@ class PPOAlgo(BaseAlgo):
                     else:
                         reconstruction_loss = 0
 
-                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + self.kl_coef * kl_loss + reconstruction_loss
+                    loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
+                           self.kl_coef * kl_loss + \
+                           self.mi_coef * reconstruction_loss
 
 
 
@@ -242,7 +245,7 @@ class PPOAlgo(BaseAlgo):
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item() * self.value_loss_coef
                     batch_kl_loss += kl_loss.item() * self.kl_coef
-                    batch_reconstruction_loss += reconstruction_loss.item()
+                    batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
                     batch_loss += loss
 
                     batch_returnn += sb.returnn.mean().item()
