@@ -79,13 +79,24 @@
 <!--    <motor joint="ankle_3" ctrlrange="-30.0 30.0" ctrllimited="true" />-->
 
     <!-- Lower gear ratio helps for some reason. Yet another example of sad RL black magic. :( -->
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="30"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="30"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="hip_4" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="ankle_4" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="hip_1" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="ankle_1" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="hip_2" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="ankle_2" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="hip_3" gear="125"/>
+    <motor ctrllimited="true" ctrlrange="-30.0 30.0" joint="ankle_3" gear="125"/>
+
+
+<!--    &lt;!&ndash; Lower gear ratio helps for some reason. Yet another example of sad RL black magic. :( &ndash;&gt;-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="30"/>-->
+<!--    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="30"/>-->
   </actuator>
 </mujoco>
