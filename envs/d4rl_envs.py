@@ -235,6 +235,7 @@ class D4RLEnv:
 
     def step(self, action):
         action = np.tanh(action)
+        prev_pos = self.get_pos()
         obs, rew, done, info = self._wrapped_env.step(action)
         if self.reward_type == 'oracle_action':
             act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
@@ -246,6 +247,12 @@ class D4RLEnv:
             end_points = self.waypoint_controller.waypoints
             distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
             rew = - distance / 100
+        elif self.reward_type == 'vector_dir':
+            new_pos = self.get_pos()
+            dir_taken = new_pos - prev_pos
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)
+            dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
         obs_dict = {}
         obs_dict["obs"] = obs
         obs_dict = self.update_obs(obs_dict)
