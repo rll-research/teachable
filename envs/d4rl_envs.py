@@ -162,6 +162,7 @@ class D4RLEnv:
         self.offset_mapping = offset_mapping
         self.args = args
         self.steps_since_recompute = 0
+        self.past_positions = []
         reset_target = True
         self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
         self.feedback_type = feedback_type
@@ -234,6 +235,7 @@ class D4RLEnv:
         return obs_dict
 
     def step(self, action):
+        self.past_positions.append(self.get_pos())
         action = np.tanh(action)
         prev_pos = self.get_pos()
         obs, rew, done, info = self._wrapped_env.step(action)
@@ -241,7 +243,16 @@ class D4RLEnv:
             act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
-            self.waypoint_controller.new_target(self.get_pos(), self.get_target())
+            try:
+                self.waypoint_controller.new_target(self.get_pos(), self.get_target())
+            except:
+                print("POS", self.get_pos())
+                print("TARGET", self.get_target())
+                print("MAZE")
+                print(self.get_maze())
+                print("Past positions", self.past_positions)
+                import IPython
+                IPython.embed()
             # Distance between each 2 points
             start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
             end_points = self.waypoint_controller.waypoints
@@ -308,6 +319,7 @@ class D4RLEnv:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()
         obs_dict = self.update_obs(obs_dict)
+        self.past_positions = []
         return obs_dict
 
     def vocab(self):  # We don't have vocab
