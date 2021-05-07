@@ -69,14 +69,24 @@
             </body>
         </body>
     </worldbody>
+<!--    <actuator>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="30"/>-->
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="30"/>-->
+<!--    </actuator>-->
     <actuator>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="30"/>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="30"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="125"/>
+        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="125"/>
     </actuator>
 </mujoco>
