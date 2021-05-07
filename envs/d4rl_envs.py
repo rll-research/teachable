@@ -251,6 +251,9 @@ class D4RLEnv:
                 print("MAZE")
                 print(self.get_maze())
                 print("Past positions", self.past_positions)
+                import matplotlib.pyplot as plt
+                plt.imshow(self.render('rgb_array'))
+                plt.savefig("env_died.png")
                 import IPython
                 IPython.embed()
             # Distance between each 2 points
