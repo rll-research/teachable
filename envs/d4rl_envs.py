@@ -251,11 +251,13 @@ class D4RLEnv:
                 print("MAZE")
                 print(self.get_maze())
                 print("Past positions", self.past_positions)
+                import matplotlib
+                matplotlib.use('Agg')
                 import matplotlib.pyplot as plt
                 plt.imshow(self.render('rgb_array'))
                 plt.savefig("env_died.png")
-                import IPython
-                IPython.embed()
+                print("JUST SAVED IT")
+                assert False
             # Distance between each 2 points
             start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
             end_points = self.waypoint_controller.waypoints
