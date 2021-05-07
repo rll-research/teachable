@@ -159,11 +159,12 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
                  maze_spec=None,
                  reward_type='dense',
                  reset_target=False,
+                 maze_size=6,
                  **kwargs):
         offline_env.OfflineEnv.__init__(self, **kwargs)
 
         if maze_spec is None:
-            maze_spec = generate_maze()
+            maze_spec = generate_maze(maze_size=maze_size)
 
         self.reset_target = reset_target
         self.str_maze_spec = maze_spec

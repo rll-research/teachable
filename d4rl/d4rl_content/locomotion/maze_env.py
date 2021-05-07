@@ -103,6 +103,7 @@ class MazeEnv(gym.Env):
       manual_collision=False,
       non_zero_reset=False,
       reward_type='dense',
+      maze_size=6,
       *args,
       **kwargs):
     if self.LOCOMOTION_ENV is None:
@@ -113,7 +114,7 @@ class MazeEnv(gym.Env):
     worldbody = tree.find(".//worldbody")
 
     if maze_map is None:
-        maze_map = generate_maze()
+        maze_map = generate_maze(maze_size=maze_size)
 
     if maze_size_scaling is None:
         maze_size_scaling = 4.0
@@ -165,13 +166,11 @@ class MazeEnv(gym.Env):
 
     # Display goal
     self.target_goal = self.goal_sampler(np_random=np.random)
-    g = self._xy_to_rowcol(self.target_goal)
-
     ET.SubElement(
         worldbody, "geom",
         name="goal",
-        pos="%f %f %f" % (g[1] * self._maze_size_scaling,
-                          g[0] * self._maze_size_scaling,
+        pos="%f %f %f" % (self.target_goal[0],
+                          self.target_goal[1],
                           self._maze_height / 2 * self._maze_size_scaling),
         size=f"%f" % (0.2 * self._maze_size_scaling),
         type="sphere",
@@ -197,9 +196,8 @@ class MazeEnv(gym.Env):
 
   def _xy_to_rowcol(self, xy):
     size_scaling = self._maze_size_scaling
-    # xy = (max(xy[0], 1e-4), max(xy[1], 1e-4))
-    return (int((xy[1]) / size_scaling),
-            int((xy[0]) / size_scaling))
+    return (round((xy[1]) / size_scaling),
+            round((xy[0]) / size_scaling))
   
   def _get_reset_location(self,):
     prob = (1.0 - self._np_maze_map) / np.sum(1.0 - self._np_maze_map) 

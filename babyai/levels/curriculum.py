@@ -36,6 +36,7 @@ class Curriculum(Serializable):
                 AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),
                 AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),
                 AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),
+                AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':

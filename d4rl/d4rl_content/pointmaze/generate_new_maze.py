@@ -36,14 +36,14 @@ def surroundingCells(rand_wall, maze):
 
     return s_cells
 
-def generate_maze():
+def generate_maze(maze_size=6):
     ## Main code
     # Init variables
     wall = 'w'
     cell = 'c'
     unvisited = 'u'
-    height = 6
-    width = 6
+    height = maze_size
+    width = maze_size
     maze = []
 
     # Initialize colorama
