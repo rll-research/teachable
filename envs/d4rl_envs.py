@@ -163,6 +163,7 @@ class D4RLEnv:
         self.args = args
         self.steps_since_recompute = 0
         self.past_positions = []
+        self.past_imgs = []
         reset_target = True
         self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
         self.feedback_type = feedback_type
@@ -244,6 +245,12 @@ class D4RLEnv:
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
             try:
+                # import matplotlib
+                # matplotlib.use('Agg')
+                # import matplotlib.pyplot as plt
+                # img = self.render('rgb_array')
+                # self.past_imgs.append(img)
+                # self.past_imgs = self.past_imgs[-200:]
                 self.waypoint_controller.new_target(self.get_pos(), self.get_target())
             except:
                 print("POS", self.get_pos())
@@ -251,12 +258,15 @@ class D4RLEnv:
                 print("MAZE")
                 print(self.get_maze())
                 print("Past positions", self.past_positions)
-                import matplotlib
-                matplotlib.use('Agg')
-                import matplotlib.pyplot as plt
-                plt.imshow(self.render('rgb_array'))
-                plt.savefig("env_died.png")
-                print("JUST SAVED IT")
+                # import cv2
+                # fps = 5
+                # height, width, channels = self.past_imgs[0].shape
+                # size = (width, height)
+                # writer = cv2.VideoWriter('env_died.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+                # for i, frame in enumerate(self.past_imgs):
+                #     writer.write(frame[:, :, ::-1])
+                #     plt.imshow(frame)
+                #     plt.savefig(f'env_died_{i}.png')
                 assert False
             # Distance between each 2 points
             start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
@@ -325,6 +335,7 @@ class D4RLEnv:
         self.teacher_action = self.get_teacher_action()
         obs_dict = self.update_obs(obs_dict)
         self.past_positions = []
+        self.past_imgs = []
         return obs_dict
 
     def vocab(self):  # We don't have vocab
