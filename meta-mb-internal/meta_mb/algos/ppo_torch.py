@@ -256,7 +256,7 @@ class PPOAlgo(BaseAlgo):
                     batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
                     batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
-                    batch_action_magnitude += sb.action.norm(2).item()
+                    batch_action_magnitude += torch.linalg.norm(sb.action.norm, ord=2, dim=1).mean().item()
 
                     batch_returnn += sb.returnn.mean().item()
                     batch_advantage += sb.advantage.mean().item()
