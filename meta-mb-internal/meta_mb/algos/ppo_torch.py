@@ -124,6 +124,7 @@ class PPOAlgo(BaseAlgo):
             log_ratio = []
             log_log_prob = []
             log_sb_value = []
+            log_action_magnitude = []
 
             log_entropies = []
             log_values = []
@@ -176,6 +177,7 @@ class PPOAlgo(BaseAlgo):
                 batch_reconstruction_loss = 0
                 batch_feedback_reconstruction = 0
                 batch_loss = 0
+                batch_action_magnitude = 0
 
                 batch_returnn = 0
                 batch_advantage = 0
@@ -254,6 +256,7 @@ class PPOAlgo(BaseAlgo):
                     batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
                     batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
+                    batch_action_magnitude += sb.action.norm(2).item()
 
                     batch_returnn += sb.returnn.mean().item()
                     batch_advantage += sb.advantage.mean().item()
@@ -279,6 +282,7 @@ class PPOAlgo(BaseAlgo):
                 batch_reconstruction_loss /= self.recurrence
                 batch_feedback_reconstruction /= self.recurrence
                 batch_loss /= self.recurrence
+                batch_action_magnitude /= self.recurrence
 
                 batch_returnn /= self.recurrence
                 batch_advantage /= self.recurrence
@@ -313,6 +317,7 @@ class PPOAlgo(BaseAlgo):
                 log_reconstruction_losses.append(batch_reconstruction_loss)
                 log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
+                log_action_magnitude.append(batch_action_magnitude)
 
                 log_returnn.append(batch_returnn)
                 log_advantage.append(batch_advantage)
@@ -365,6 +370,7 @@ class PPOAlgo(BaseAlgo):
             logs["Feedback_Reconstruction"] = numpy.mean(log_feedback_reconstruction)
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
+            logs["Action_magnitude"] = numpy.mean(log_action_magnitude)
             if discrete:
                 logs['Accuracy'] = accuracy
                 for i in range(num_actions):
