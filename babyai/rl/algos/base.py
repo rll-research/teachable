@@ -133,6 +133,7 @@ class BaseAlgo(ABC):
         self.log_reshaped_return = [0] * self.num_procs
         self.log_num_frames = [0] * self.num_procs
         self.log_success = [0] * self.num_procs
+        self.log_dist_to_goal = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
                             collect_reward=True, train=True, collection_dict={}):
@@ -257,6 +258,7 @@ class BaseAlgo(ABC):
                     self.log_done_counter += 1
                     self.log_return.append(self.log_episode_return[i].item())
                     self.log_success.append(self.log_episode_success[i].item())
+                    self.log_dist_to_goal.append(env_info[i]['dist_to_goal'].item())
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())
                     self.log_num_frames.append(self.log_episode_num_frames[i].item())
 
@@ -343,6 +345,7 @@ class BaseAlgo(ABC):
         log = {
             "return_per_episode": self.log_return[-keep:],
             "success_per_episode": self.log_success[-keep:],
+            "dist_to_goal_per_episode": self.log_dist_to_goal[-keep:],
             "reshaped_return_per_episode": self.log_reshaped_return[-keep:],
             "num_frames_per_episode": self.log_num_frames[-keep:],
             "num_frames": self.num_frames,
@@ -352,6 +355,7 @@ class BaseAlgo(ABC):
         self.log_done_counter = 0
         self.log_return = self.log_return[-self.num_procs:]
         self.log_success = self.log_success[-self.num_procs:]
+        self.log_dist_to_goal = self.log_dist_to_goal[-self.num_procs:]
         self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
         self.log_num_frames = self.log_num_frames[-self.num_procs:]
 

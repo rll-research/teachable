@@ -596,16 +596,19 @@ class Trainer(object):
             avg_return = np.mean(episode_logs['return_per_episode'])
             avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
             avg_success = np.mean(episode_logs['success_per_episode'])
+            avg_dist_to_goal = np.mean(episode_logs['dist_to_goal_per_episode'])
             avg_reward = np.mean(episode_logs["return_per_episode"])
             logger.logkv(f"{tag}/Success", avg_success)
+            logger.logkv(f"{tag}/DistToGoal", avg_dist_to_goal)
             logger.logkv(f"{tag}/Reward", avg_reward)
+            logger.logkv(f"{tag}/Return", avg_return)
+            logger.logkv(f"{tag}/PathLength", avg_path_length)
 
             if self.args.discrete:
                 logger.logkv(f"{tag}/Accuracy", torch.eq(data.action, data.teacher_action).float().mean().item())
                 logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1),
                                                                 data.teacher_action).float().mean().item())
-            logger.logkv(f"{tag}/Return", avg_return)
-            logger.logkv(f"{tag}/PathLength", avg_path_length)
+
             self.num_feedback_advice += episode_logs['num_feedback_advice']
             self.num_feedback_reward += episode_logs['num_feedback_reward']
             for k in self.no_teacher_dict.keys():
@@ -723,7 +726,6 @@ class Trainer(object):
         save_wandb = (save_video and not self.is_debug)
         speedup = 1 if self.args.env == 'babyai' else 10
         paths, accuracy, stoch_accuracy, det_accuracy, cc3_followed = rollout(self.env, policy,
-                                                                              max_path_length=200,
                                                                               reset_every=self.args.rollouts_per_meta_task,
                                                                               stochastic=stochastic,
                                                                               record_teacher=True,

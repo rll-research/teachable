@@ -125,6 +125,7 @@ class PPOAlgo(BaseAlgo):
             log_log_prob = []
             log_sb_value = []
             log_action_magnitude = []
+            log_action_max = []
 
             log_entropies = []
             log_values = []
@@ -178,6 +179,7 @@ class PPOAlgo(BaseAlgo):
                 batch_feedback_reconstruction = 0
                 batch_loss = 0
                 batch_action_magnitude = 0
+                batch_action_max = 0
 
                 batch_returnn = 0
                 batch_advantage = 0
@@ -256,7 +258,8 @@ class PPOAlgo(BaseAlgo):
                     batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
                     batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
-                    batch_action_magnitude += torch.linalg.norm(sb.action, ord=2, dim=1).mean().item()
+                    batch_action_magnitude += torch.linalg.norm(sb.action, ord=1, dim=1).mean().item()
+                    batch_action_max += torch.max(torch.abs(sb.action), dim=1)[0].mean().item()
 
                     batch_returnn += sb.returnn.mean().item()
                     batch_advantage += sb.advantage.mean().item()
@@ -283,6 +286,7 @@ class PPOAlgo(BaseAlgo):
                 batch_feedback_reconstruction /= self.recurrence
                 batch_loss /= self.recurrence
                 batch_action_magnitude /= self.recurrence
+                batch_action_max /= self.recurrence
 
                 batch_returnn /= self.recurrence
                 batch_advantage /= self.recurrence
@@ -318,6 +322,7 @@ class PPOAlgo(BaseAlgo):
                 log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
                 log_action_magnitude.append(batch_action_magnitude)
+                log_action_max.append(batch_action_max)
 
                 log_returnn.append(batch_returnn)
                 log_advantage.append(batch_advantage)
@@ -371,6 +376,7 @@ class PPOAlgo(BaseAlgo):
             logs["Grad_norm"] = numpy.mean(log_grad_norms)
             logs["Loss"] = numpy.mean(log_losses)
             logs["Action_magnitude"] = numpy.mean(log_action_magnitude)
+            logs["Action_max"] = numpy.mean(log_action_max)
             if discrete:
                 logs['Accuracy'] = accuracy
                 for i in range(num_actions):
