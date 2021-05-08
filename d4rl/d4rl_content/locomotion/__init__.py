@@ -56,7 +56,7 @@ register(
 register(
     id='antmaze-randommaze-v0',
     entry_point='d4rl_content.locomotion.ant:make_ant_maze_env',
-    max_episode_steps=700,
+    max_episode_steps=800,
     kwargs={
         'reward_type':'sparse',
         'dataset_url':'http://rail.eecs.berkeley.edu/datasets/offline_rl/ant_maze_new/Ant_maze_u-maze_noisy_multistart_False_multigoal_False_sparse.hdf5',
@@ -72,7 +72,7 @@ register(
 register(
     id='antmaze-randommaze-small-v0',
     entry_point='d4rl_content.locomotion.ant:make_ant_maze_env',
-    max_episode_steps=200,
+    max_episode_steps=300,
     kwargs={
         'reward_type':'sparse',
         'dataset_url':'http://rail.eecs.berkeley.edu/datasets/offline_rl/ant_maze_new/Ant_maze_u-maze_noisy_multistart_False_multigoal_False_sparse.hdf5',
