@@ -58,7 +58,7 @@ def point_maze(maze_str):
     worldbody.geom(name='ground',size="40 40 0.25",pos="0 0 -0.1",type="plane",contype=1,conaffinity=0,material="groundplane")
 
     particle = worldbody.body(name='particle', pos=[1,1,0])
-    particle.geom(name='particle_geom', type='sphere', size=0.1, rgba='0.0 0.0 1.0 0.0', contype=1)
+    particle.geom(name='particle_geom', type='sphere', size=0.1, rgba='0.0 0.0 1.0 0.0', contype=1, conaffinity=0)
     particle.site(name='particle_site', pos=[0.0,0.0,0], size=0.2, rgba='0.3 0.6 0.3 1')
     particle.joint(name='ball_x', type='slide', pos=[0,0,0], axis=[1,0,0])
     particle.joint(name='ball_y', type='slide', pos=[0,0,0], axis=[0,1,0])
