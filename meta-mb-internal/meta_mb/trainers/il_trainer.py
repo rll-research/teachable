@@ -291,7 +291,7 @@ class ImitationLearning(object):
         self.agent_running_count_long = 0
         self.teacher_running_count_long = 0
         self.final_mean_dist = 0
-        self.final_stds = 0
+        self.final_std = 0
         self.final_loss = 0
 
     def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
@@ -307,7 +307,7 @@ class ImitationLearning(object):
         self.final_reconstruction_loss += reconstruction_loss
         self.final_kl_loss += kl_loss
         self.final_mean_dist += avg_mean_dist
-        self.final_stds += avg_std
+        self.final_std += avg_std
         self.final_loss += loss
 
         action_step = action_step.detach().cpu().numpy()  # ground truth action
