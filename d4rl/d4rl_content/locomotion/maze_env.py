@@ -175,8 +175,8 @@ class MazeEnv(gym.Env):
         size=f"%f" % (0.2 * self._maze_size_scaling),
         type="sphere",
         material="",
-        contype="0",
-        conaffinity="1",
+        contype="1",
+        conaffinity="0",
         rgba="1 0.5 1 1.0",
     )
 

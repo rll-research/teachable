@@ -209,7 +209,7 @@ class D4RLEnv:
         # TODO: create teachers
 
     def get_timestep(self):
-        return .1
+        return .02
 
     def get_target(self):
         raise NotImplementedError
@@ -240,38 +240,16 @@ class D4RLEnv:
         action = np.tanh(action)
         prev_pos = self.get_pos()
         obs, rew, done, info = self._wrapped_env.step(action)
+        self.waypoint_controller.new_target(self.get_pos(), self.get_target())
+        # Distance to goal
+        start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
+        end_points = self.waypoint_controller.waypoints
+        distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
+
         if self.reward_type == 'oracle_action':
             act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
-            try:
-                # import matplotlib
-                # matplotlib.use('Agg')
-                # import matplotlib.pyplot as plt
-                # img = self.render('rgb_array')
-                # self.past_imgs.append(img)
-                # self.past_imgs = self.past_imgs[-200:]
-                self.waypoint_controller.new_target(self.get_pos(), self.get_target())
-            except:
-                print("POS", self.get_pos())
-                print("TARGET", self.get_target())
-                print("MAZE")
-                print(self.get_maze())
-                print("Past positions", self.past_positions)
-                # import cv2
-                # fps = 5
-                # height, width, channels = self.past_imgs[0].shape
-                # size = (width, height)
-                # writer = cv2.VideoWriter('env_died.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
-                # for i, frame in enumerate(self.past_imgs):
-                #     writer.write(frame[:, :, ::-1])
-                #     plt.imshow(frame)
-                #     plt.savefig(f'env_died_{i}.png')
-                assert False
-            # Distance between each 2 points
-            start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
-            end_points = self.waypoint_controller.waypoints
-            distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
             rew = - distance / 100
         elif self.reward_type == 'vector_dir':
             new_pos = self.get_pos()
@@ -286,6 +264,7 @@ class D4RLEnv:
 
         success = self.get_success()
         info = {}
+        info['dist_to_goal'] = distance
         info['success'] = done and success
         info['timestep_success'] = success
         info['gave_reward'] = True

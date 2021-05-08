@@ -262,7 +262,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             # End trajectory on 'done'
             if d or ('timestep_success' in env_info and env_info['timestep_success']):
                 # print("timestep success", env_info['timestep_success'])
-                # print("Done on timestep", path_length, d, env_info['timestep_success'])
+                print("Done on timestep", path_length, d, env_info['timestep_success'])
                 break
 
         # At the end of a trajectory, save it
