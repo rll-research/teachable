@@ -216,6 +216,9 @@ class ImitationLearning(object):
                 policy_loss = loss_fn(dist.logits, action_step)
                 action_step = torch.argmax(action_step, dim=1)
             else:
+                t1 = action_step.detach().cpu().numpy()
+                t2 = dist.mean.detach().cpu().numpy()
+                temp = np.concatenate([t1, t2, t1 - t2], axis=1)
                 policy_loss = -dist.log_prob(action_step)
             policy_loss = policy_loss.mean()
             # Compute the cross-entropy loss with an entropy bonus
@@ -238,12 +241,16 @@ class ImitationLearning(object):
             loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss + self.args.kl_coef * kl_loss
             if self.args.discrete:
                 action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
+                avg_mean_dist = -1
+                avg_std = -1
             else:  # Continuous env
                 action_pred = dist.mean
+                avg_std = dist.scale.mean()
+                avg_mean_dist = torch.abs(avg_std - action_step).mean()
             final_loss += loss
             final_reconstruction_loss += reconstruction_loss
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
-                       kl_loss)
+                       kl_loss, avg_mean_dist, avg_std, loss)
             # Increment indexes to hold the next step for each chunk
             indexes += 1
         # Update the model
@@ -256,8 +263,8 @@ class ImitationLearning(object):
             if self.reconstructor_dict is not None:
                 reconstructor_optimizer.zero_grad()
                 final_reconstruction_loss.backward()
-                reconstructor_optimizer.step()
-            optimizer.step()
+                # reconstructor_optimizer.step()
+            # optimizer.step()
 
         # Store log info
         log = self.log_final()
@@ -283,9 +290,12 @@ class ImitationLearning(object):
         self.lengths_list = []
         self.agent_running_count_long = 0
         self.teacher_running_count_long = 0
+        self.final_mean_dist = 0
+        self.final_stds = 0
+        self.final_loss = 0
 
     def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
-              kl_loss):
+              kl_loss, avg_mean_dist, avg_std, loss):
         self.accuracy_list.append(float((action_pred == action_step).sum()))
         self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
         self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
@@ -296,6 +306,9 @@ class ImitationLearning(object):
         self.final_policy_loss += policy_loss
         self.final_reconstruction_loss += reconstruction_loss
         self.final_kl_loss += kl_loss
+        self.final_mean_dist += avg_mean_dist
+        self.final_stds += avg_std
+        self.final_loss += loss
 
         action_step = action_step.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
@@ -335,9 +348,13 @@ class ImitationLearning(object):
         log = {}
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
+        log["TotalLoss"] = float(self.final_loss / self.args.recurrence)
         log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence)
         log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence)
         log["Accuracy"] = float(self.accuracy)
+        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence)
+        log["Mean_Dist"] = float(self.final_mean_dist / self.args.recurrence)
+        log["Std"] = float(self.final_std / self.args.recurrence)
 
         if self.args.discrete:
             log["Label_A"] = float(self.label_accuracy)

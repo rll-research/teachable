@@ -146,6 +146,7 @@ def run_experiment(**config):
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
+        teachers_list = list(teacher_null_dict.keys()) + ['none']
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
