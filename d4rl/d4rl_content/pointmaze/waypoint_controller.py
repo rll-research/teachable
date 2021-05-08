@@ -39,9 +39,8 @@ class WaypointController(object):
         task_not_solved = np.linalg.norm(location - self._target) >= self.solve_thresh
 
         # Inverse tanh. First clip the action so we don't get NaNs
-        eps = .001
+        eps = 0
         action = np.clip(action, -1.0 + eps, 1.0 - eps)
-        action = np.arctanh(action)
         return action, task_not_solved
 
     def gridify_state(self, state):
