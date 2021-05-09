@@ -236,8 +236,7 @@ class D4RLEnv:
         return obs_dict
 
     def step(self, action):
-        action = np.tanh(action)
-        # action = np.clip(action, -1, 1)
+        action = np.clip(action, -1, 1)
         self.past_positions.append(self.get_pos())
         prev_pos = self.get_pos().copy()
         obs, rew, done, info = self._wrapped_env.step(action)
