@@ -260,8 +260,6 @@ class D4RLEnv:
         elif self.reward_type == 'vector_dir2':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
-            if np.sum(np.abs(dir_taken)) > 0:
-                print("ok")
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)  # normalize
             dir_desired = self.waypoint_controller.waypoints[0] - prev_pos
             dir_desired = dir_desired / np.linalg.norm(dir_desired)  # normalize
