@@ -263,8 +263,8 @@ class ImitationLearning(object):
             if self.reconstructor_dict is not None:
                 reconstructor_optimizer.zero_grad()
                 final_reconstruction_loss.backward()
-                # reconstructor_optimizer.step()
-            # optimizer.step()
+                reconstructor_optimizer.step()
+            optimizer.step()
 
         # Store log info
         log = self.log_final()
