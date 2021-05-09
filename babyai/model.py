@@ -473,7 +473,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             LOG_STD_MIN = -20
             LOG_STD_MAX = 2
             log_std = torch.clamp(x[:, self.action_shape:], LOG_STD_MIN, LOG_STD_MAX)
-            std = torch.exp(log_std)
+            if self.args.loss_type == 'mean':
+                std = .5
+            else:
+                std = torch.exp(log_std)
             dist = Normal(mean, std)
 
         reconstruction_embedding = torch.cat([reconstruction_embedding, x], dim=1)
