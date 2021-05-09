@@ -153,7 +153,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Reward
         self.add_argument('--reward_type', type=str, choices=['dense', 'sparse', 'oracle_action', 'oracle_dist',
-                                                              'vector_dir'],
+                                                              'vector_dir', 'vector_dir2'],
                           default='oracle_dist')
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--use_rp_inner', action='store_true')

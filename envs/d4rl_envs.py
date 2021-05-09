@@ -236,9 +236,9 @@ class D4RLEnv:
         return obs_dict
 
     def step(self, action):
+        action = np.clip(action, -1, 1)
         self.past_positions.append(self.get_pos())
-        action = np.tanh(action)
-        prev_pos = self.get_pos()
+        prev_pos = self.get_pos().copy()
         obs, rew, done, info = self._wrapped_env.step(action)
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         # Distance to goal
@@ -252,10 +252,19 @@ class D4RLEnv:
         elif self.reward_type == 'oracle_dist':
             rew = - distance / 100
         elif self.reward_type == 'vector_dir':
-            new_pos = self.get_pos()
+            new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
+        elif self.reward_type == 'vector_dir2':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            if np.sum(np.abs(dir_taken)) > 0:
+                print("ok")
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)  # normalize
+            dir_desired = self.waypoint_controller.waypoints[0] - prev_pos
+            dir_desired = dir_desired / np.linalg.norm(dir_desired)  # normalize
             rew = np.dot(dir_taken, dir_desired)
         obs_dict = {}
         obs_dict["obs"] = obs
