@@ -242,33 +242,33 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         if self.info_bot:
             self.actor_encoder = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
+                nn.Linear(self.embedding_size + self.advice_dim, ),
                 nn.ReLU(),
-                nn.Linear(64, 64),
+                nn.Linear(400, 300),
                 nn.Tanh(),
-                nn.Linear(64, self.z_dim * 2)
+                nn.Linear(300, self.z_dim * 2)
             )
             self.actor_decoder = nn.Sequential(
-                nn.Linear(self.z_dim + self.advice_dim, 64),
+                nn.Linear(self.z_dim + self.advice_dim, 400),
                 nn.Tanh(),
-                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(400, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
         else:
             self.actor = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
+                nn.Linear(self.embedding_size + self.advice_dim, 400),
                 nn.Tanh(),
-                nn.Linear(64, 64),
+                nn.Linear(400, 300),
                 nn.Tanh(),
-                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(300, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
 
         # Define critic's model
         self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size + self.advice_dim, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, 400),
             nn.Tanh(),
-            nn.Linear(64, 64),
+            nn.Linear(400, 300),
             nn.Tanh(),
-            nn.Linear(64, 1)
+            nn.Linear(300, 1)
         )
 
         # Define reconstruction model
