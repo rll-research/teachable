@@ -208,6 +208,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--same_model', action='store_true')
         self.add_argument('--rew_norm', action='store_true')
         self.add_argument('--act_norm', action='store_true')
+        self.add_argument('--loss_type', type=str, default='log_prob')
 
     def parse_args(self, arg=None):
         """

@@ -219,7 +219,14 @@ class ImitationLearning(object):
                 t1 = action_step.detach().cpu().numpy()
                 t2 = dist.mean.detach().cpu().numpy()
                 temp = np.concatenate([t1, t2, t1 - t2], axis=1)
-                policy_loss = -dist.log_prob(action_step)
+                if self.args.loss_type == 'log_prob':
+                    policy_loss = -dist.log_prob(action_step)
+                elif self.args.loss_type == 'rsample':
+                    loss_fn = torch.nn.MSELoss()
+                    policy_loss = loss_fn(action_step, dist.rsample())
+                elif self.args.loss_type == 'mean':
+                    loss_fn = torch.nn.MSELoss()
+                    policy_loss = loss_fn(action_step, dist.mean)
             policy_loss = policy_loss.mean()
             # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()
@@ -238,7 +245,7 @@ class ImitationLearning(object):
             else:
                 reconstruction_loss = 0
 
-            loss = policy_loss - self.args.entropy_coef * entropy + reconstruction_loss + self.args.kl_coef * kl_loss
+            loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
             if self.args.discrete:
                 action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
                 avg_mean_dist = -1
@@ -346,13 +353,13 @@ class ImitationLearning(object):
 
     def log_final(self):
         log = {}
+        log["Entropy_Loss"] = float(self.final_entropy / self.args.recurrence * self.args.entropy_coef)
         log["Entropy"] = float(self.final_entropy / self.args.recurrence)
         log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
         log["TotalLoss"] = float(self.final_loss / self.args.recurrence)
-        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence)
-        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence)
+        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence * self.args.mi_coef)
+        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence * self.args.kl_coef)
         log["Accuracy"] = float(self.accuracy)
-        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence)
         log["Mean_Dist"] = float(self.final_mean_dist / self.args.recurrence)
         log["Std"] = float(self.final_std / self.args.recurrence)
 
