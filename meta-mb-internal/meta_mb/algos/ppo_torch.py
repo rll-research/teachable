@@ -75,6 +75,20 @@ class PPOAlgo(BaseAlgo):
                                                                 self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
         self.batch_num = 0
 
+        if self.reconstructor_dict is not None:
+            self.reconstructor_optimizer_dict = {
+                first_teacher: torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
+                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
+            for teacher in teachers[1:]:
+                policy = self.reconstructor_dict[teacher]
+                if policy is self.reconstructor_dict[first_teacher]:
+                    self.reconstructor_optimizer_dict[teacher] = self.reconstructor_optimizer_dict[first_teacher]
+                else:
+                    self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
+                                                                    self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
+
+
+
     def set_optimizer(self):
         self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
                                           eps=self.adam_eps)
@@ -101,6 +115,8 @@ class PPOAlgo(BaseAlgo):
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
         reconstructor = None if self.reconstructor_dict is None else self.reconstructor_dict[teacher]
+        if self.reconstructor_dict is not None:
+            reconstructor_optimizer = self.reconstructor_optimizer_dict[teacher]
         optimizer = self.optimizer_dict[teacher]
 
         acmodel.train()
@@ -245,9 +261,9 @@ class PPOAlgo(BaseAlgo):
 
                     loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
                            self.kl_coef * kl_loss + \
-                           self.mi_coef * reconstruction_loss + \
                            self.control_penalty * control_penalty
 
+                    # self.mi_coef * reconstruction_loss + \
 
 
                     batch_entropy -= entropy.item() * self.entropy_coef
@@ -255,7 +271,7 @@ class PPOAlgo(BaseAlgo):
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item() * self.value_loss_coef
                     batch_kl_loss += kl_loss.item() * self.kl_coef
-                    batch_reconstruction_loss += reconstruction_loss.item() * self.mi_coef
+                    batch_reconstruction_loss += reconstruction_loss * self.mi_coef
                     batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
                     batch_action_magnitude += torch.linalg.norm(sb.action, ord=1, dim=1).mean().item()
@@ -300,13 +316,19 @@ class PPOAlgo(BaseAlgo):
 
                 backward_start = time.time()
                 optimizer.zero_grad()
-                batch_loss.backward()
+                batch_loss.backward(retain_graph=self.reconstructor_dict is not None)
                 grad_norm = sum(p.grad.data.norm(2) ** 2 for p in acmodel.parameters() if p.grad is not None) ** 0.5
                 if discrete:
                     desired_action = sb.teacher_action.int()
                     accuracy = np.mean((dist.sample() == desired_action).detach().cpu().numpy())
 
                 torch.nn.utils.clip_grad_norm_(acmodel.parameters(), self.max_grad_norm)
+
+                if self.reconstructor_dict is not None:
+                    reconstructor_optimizer.zero_grad()
+                    batch_reconstruction_loss.backward()
+                    reconstructor_optimizer.step()
+
                 optimizer.step()
 
                 backward_end = time.time() - backward_start
@@ -318,7 +340,7 @@ class PPOAlgo(BaseAlgo):
                 log_policy_losses.append(batch_policy_loss)
                 log_value_losses.append(batch_value_loss)
                 log_kl_losses.append(batch_kl_loss)
-                log_reconstruction_losses.append(batch_reconstruction_loss)
+                log_reconstruction_losses.append(batch_reconstruction_loss.item())
                 log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
                 log_action_magnitude.append(batch_action_magnitude)
