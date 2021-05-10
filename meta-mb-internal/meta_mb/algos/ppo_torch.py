@@ -58,7 +58,7 @@ class PPOAlgo(BaseAlgo):
         teachers = list(self.policy_dict.keys())
         # Dfferent optimizers for different models, same optimizer for same model
         first_teacher = teachers[0]
-        params = list(self.policy_dict[first_teacher].parameters()) + list(self.reconstructor_dict[first_teacher].parameters())
+        params = list(self.policy_dict[first_teacher].parameters())# + list(self.reconstructor_dict[first_teacher].parameters())
         if self.reconstructor_dict is not None:
             params += list(self.reconstructor_dict[first_teacher].parameters())
         self.optimizer_dict = {first_teacher: torch.optim.Adam(params,
@@ -68,7 +68,7 @@ class PPOAlgo(BaseAlgo):
             if policy is self.policy_dict[first_teacher]:
                 self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
             else:
-                params = list(self.policy_dict[teacher].parameters()) + list(self.reconstructor_dict[teacher].parameters())
+                params = list(self.policy_dict[teacher].parameters())# + list(self.reconstructor_dict[teacher].parameters())
                 if self.reconstructor_dict is not None:
                     params += list(self.reconstructor_dict[teacher].parameters())
                 self.optimizer_dict[teacher] = torch.optim.Adam(params,
