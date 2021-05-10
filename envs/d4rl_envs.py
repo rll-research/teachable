@@ -258,6 +258,35 @@ class D4RLEnv:
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
             rew = np.dot(dir_taken, dir_desired)
+        elif self.reward_type == 'vector_dir_final':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)
+            dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
+            print("rew", rew)
+            success = self.get_success()
+            if success:
+                rew += 5  # TODO: is this a reasonable scale?
+        elif self.reward_type == 'vector_dir_waypoint':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)
+            dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew += 1
+        elif self.reward_type == 'vector_dir_both':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)
+            dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew += 1
+            success = self.get_success()
+            if success:
+                rew += 5  # TODO: is this a reasonable scale?
         elif self.reward_type == 'vector_dir2':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
@@ -265,6 +294,7 @@ class D4RLEnv:
             dir_desired = self.waypoint_controller.waypoints[0] - prev_pos
             dir_desired = dir_desired / np.linalg.norm(dir_desired)  # normalize
             rew = np.dot(dir_taken, dir_desired)
+        self.min_waypoints = min(self.min_waypoints, len(self.waypoint_controller.waypoints))
         obs_dict = {}
         obs_dict["obs"] = obs
         obs_dict = self.update_obs(obs_dict)
@@ -317,6 +347,7 @@ class D4RLEnv:
             om = np.array([0, 0])
         self.waypoint_controller.offset_mapping = om
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
+        self.min_waypoints = len(self.waypoint_controller.waypoints)
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()
