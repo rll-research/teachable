@@ -547,4 +547,6 @@ class ImitationLearning(object):
         if is_training:
             for scheduler in self.scheduler_dict.values():
                 scheduler.step()
+            for scheduler in self.reconstructor_scheduler_dict.values():
+                scheduler.step()
         return logs
