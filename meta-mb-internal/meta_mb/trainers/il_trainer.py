@@ -267,7 +267,7 @@ class ImitationLearning(object):
             optimizer.zero_grad()
             final_loss.backward(retain_graph=self.reconstructor_dict is not None)
 
-            if self.reconstructor_dict is not None:
+            if self.reconstructor_dict is not None and 'advice' in obs:
                 reconstructor_optimizer.zero_grad()
                 final_reconstruction_loss.backward()
                 reconstructor_optimizer.step()
