@@ -27,3 +27,6 @@ class DummyAdvice(Teacher):
 
     def success_check(self, *args, **kwargs):
         return False
+
+    def feedback_condition(self):
+        return False
