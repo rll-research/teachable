@@ -231,8 +231,8 @@ class ImitationLearning(object):
             # Compute the cross-entropy loss with an entropy bonus
             entropy = dist.entropy().mean()
 
-            # Optional loss for reconstructing the feedback (currently, all models all teachers)
-            if self.reconstructor_dict is not None:
+            # Optional loss for reconstructing the feedback (currently, all models all teachers)34
+            if self.reconstructor_dict is not None and 'advice' in obs:
                 # Loss for training the reconstructor
                 reconstruction_embedding = info['reconstruction_embedding']
                 advice = reconstructor(reconstruction_embedding)
