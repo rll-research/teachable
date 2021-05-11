@@ -256,8 +256,8 @@ class PPOAlgo(BaseAlgo):
                         reconstruction_loss = loss_fn(true_advice, mean, var)
                         feedback_reconstruction = torch.abs(true_advice - mean).sum()
                     else:
-                        reconstruction_loss = torch.tensor(0).to(self.device)
-                        feedback_reconstruction = torch.tensor(0).to(self.device)
+                        reconstruction_loss = torch.FloatTensor([0]).to(self.device)
+                        feedback_reconstruction = torch.FloatTensor([0]).to(self.device)
 
                     loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
                            self.kl_coef * kl_loss + \
