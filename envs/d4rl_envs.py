@@ -416,6 +416,7 @@ class PointMassEnv(D4RLEnv):
         obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
+        done = info['success']
         return obs_dict, rew, done, info
 
     def reset(self):
