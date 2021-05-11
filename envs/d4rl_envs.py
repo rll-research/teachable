@@ -417,6 +417,8 @@ class PointMassEnv(D4RLEnv):
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
         done = info['success']
+        if done:
+            rew += 1
         return obs_dict, rew, done, info
 
     def reset(self):
