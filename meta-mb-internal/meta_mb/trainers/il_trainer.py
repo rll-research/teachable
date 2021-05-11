@@ -243,7 +243,7 @@ class ImitationLearning(object):
                 true_advice = obs.advice
                 reconstruction_loss = loss_fn(true_advice, mean, var)
             else:
-                reconstruction_loss = 0
+                reconstruction_loss = torch.tensor(0).to(self.device)
 
             loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
             if self.args.discrete:

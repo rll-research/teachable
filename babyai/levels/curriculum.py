@@ -27,17 +27,17 @@ class Curriculum(Serializable):
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
             self.train_levels = [
-                AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs),
-                AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs),
-                AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs),
+                AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs),  # 0
+                AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs),  # 1
+                AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs),  # 2
             ]
             self.held_out_levels = [
-                AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),
-                AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),
-                AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),
-                AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),
-                AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs),
-                AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs),
+                AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),  # 3
+                AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),  # 4
+                AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),  # 5
+                AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),  # 6
+                AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs),  # 7
+                AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs),  # 8
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':
