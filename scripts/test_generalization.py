@@ -169,7 +169,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         if 'il_optimizer' in model_data:
             for k, optimizer in model_data['il_optimizer'].items():
                 il_trainer.optimizer_dict[k].load_state_dict(optimizer.state_dict())
-    except Except as e:
+    except Exception as e:
         print("couldn't load il optimizer", e)
     rp_trainer = None
     sampler = MetaSampler(
