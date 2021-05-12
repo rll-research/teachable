@@ -170,9 +170,12 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     il_trainer = ImitationLearning(policy, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                    instr_dropout_prob=args.distill_dropout_prob)
-    if 'il_optimizer' in model_data:
-        for k, optimizer in model_data['il_optimizer'].items():
-            il_trainer.optimizer_dict[k].load_state_dict(optimizer.state_dict())
+    try:
+        if 'il_optimizer' in model_data:
+            for k, optimizer in model_data['il_optimizer'].items():
+                il_trainer.optimizer_dict[k].load_state_dict(optimizer.state_dict())
+    except Except as e:
+        print("couldn't load il optimizer", e)
     rp_trainer = None
     sampler = MetaSampler(
         env=env,
@@ -211,10 +214,13 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     args.discrete = discrete
     algo = PPOAlgo(policy, envs, args, obs_preprocessor, None)
 
-    if 'optimizer' in model_data:
-        for k, optimizer in model_data['optimizer'].items():
-            algo.optimizer_dict[k].load_state_dict(optimizer.state_dict())
+    try:
+        if 'optimizer' in model_data:
+            for k, optimizer in model_data['optimizer'].items():
+                algo.optimizer_dict[k].load_state_dict(optimizer.state_dict())
 
+    except Exception as e:
+        print("Couldn't load normal optimizer", e)
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
     # Standardize args
     args.single_level = True
