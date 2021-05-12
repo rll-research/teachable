@@ -136,6 +136,7 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
             t = list(env.teacher.teachers.values())[0]
             cv2.putText(background, "Next Action: " + str(t.next_action), (30, 300), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Reward: " + str(reward), (30, 330), font, 0.5, (0, 0, 0), 1, 0)
+        cv2.putText(background, "Dist to goal: " + str(np.linalg.norm(env.get_target() - env.get_pos())), (30, 360), font, 0.5, (0, 0, 0), 1, 0)
     except Exception as e:
         x = 3
         # print("Error adding text", e)
@@ -183,7 +184,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
-    correct, stoch_correct, det_correct, count = 0, 0, 0, 0
+    correct, stoch_correct, det_correct, count, total_reward = 0, 0, 0, 0, 0
     full_obs_list = []
     num_feedback = 0
     num_steps = 0
@@ -242,6 +243,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 if env_info['teacher_action'] == det_a:
                     det_correct += 1
             count += 1
+            total_reward += r
             agent_actions.append(a)
             observations.append(o)
             rewards.append(r)
@@ -260,9 +262,9 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 curr_images.append(img)
 
             # End trajectory on 'done'
-            if d or ('timestep_success' in env_info and env_info['timestep_success']):
+            if d:
                 # print("timestep success", env_info['timestep_success'])
-                print("Done on timestep", path_length, d, env_info['timestep_success'])
+                print("Done on timestep", path_length, env_info['success'])
                 break
 
         # At the end of a trajectory, save it
@@ -291,6 +293,5 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
-    followed_cc3_proportion = check_followed_cc3(full_obs_list)
     print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
-    return paths, correct / count, stoch_correct / count, det_correct / count, followed_cc3_proportion
+    return paths, correct / count, stoch_correct / count, det_correct / count, total_reward / count
