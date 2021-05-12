@@ -153,11 +153,6 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         "num_meta_tasks": args.rollouts_per_meta_task,
         # "intermediate_reward": not args.sparse_reward,
     }
-    # curriculum_step = 26  # TODO: don't hardcode this!
-    # env = rl2env(normalize(Curriculum(args.advance_curriculum_func, start_index=curriculum_step,
-    #                                   curriculum_type=args.curriculum_type, **arguments)
-    #                        ), ceil_reward=args.ceil_reward)
-
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
 
     if args.repeated_seed:
@@ -457,7 +452,7 @@ def main():
     additional_args['distill_successful_only'] = args.distill_successful_only
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
-    additional_args['source'] = 'agent'  # TODO: remove
+    additional_args['source'] = 'agent'
     additional_args['frames_per_proc'] = args.frames_per_proc
     additional_args['batch_size'] = args.batch_size
     additional_args['lr'] = args.lr
@@ -472,8 +467,6 @@ def main():
     # Test every policy with every level
     if not save_dir.exists():
         save_dir.mkdir()
-    with open(save_dir.joinpath('results.csv'), 'w') as f:
-        f.write('policy_env,policy, env,success_rate, stoch_accuracy, det_accuracy, followed_cc3 \n')
     for policy_name in policy_level_names:
         for env, env_index in envs:
             inner_env = env

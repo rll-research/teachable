@@ -257,7 +257,7 @@ def run_experiment(**config):
         log_teacher = teachers_list[-2]  # Second to last (last is none)
     log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
                          stochastic=True, num_rollouts=10, policy_name=EXP_NAME,
-                         env_name=f'{args.env}-{teacher}-{args.level}',
+                         env_name=str(args.level),  # TODO: fix this for babyai!
                          log_every=10)
 
 
