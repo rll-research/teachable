@@ -16,13 +16,19 @@ class Curriculum(Serializable):
         self.advance_curriculum_func = advance_curriculum_func
         if env == 'point_mass':
             self.train_levels = [
-                PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs),
-                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs),
-                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs),
+                PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs),  # 0
+                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 1
+                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 2
             ]
             self.held_out_levels = [
-                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),
-                PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs),
+                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 3
+                PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs),  # 4
+                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,   # 5
+                             **kwargs),
+                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
+                             **kwargs),
+                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
+                             **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':

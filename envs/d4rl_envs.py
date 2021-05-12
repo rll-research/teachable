@@ -155,7 +155,7 @@ class D4RLEnv:
     """
 
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], max_grid_size=15, args=None, **kwargs):
+                 cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, **kwargs):
         self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
@@ -164,7 +164,7 @@ class D4RLEnv:
         self.steps_since_recompute = 0
         self.past_positions = []
         self.past_imgs = []
-        reset_target = True
+        self.reset_target = reset_target
         self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
@@ -340,7 +340,7 @@ class D4RLEnv:
         pass  # for compatibility with babyai, which does set tasks
 
     def reset(self):
-        self._wrapped_env = gym.envs.make(self.env_name, reset_target=True, reward_type=self.reward_type)
+        self._wrapped_env = gym.envs.make(self.env_name, reset_target=self.reset_target, reward_type=self.reward_type)
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
