@@ -11,8 +11,10 @@ from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 def load_policy(path):
     saved_model = joblib.load(path)
@@ -57,36 +59,72 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
     policy.eval()
-    paths, accuracy, stoch_accuracy, det_accuracy, followed_cc3 = rollout(env, policy,
-                                                                          instrs=not hide_instrs,
-                                                                          reset_every=1,
-                                                                          stochastic=stochastic,
-                                                                          record_teacher=True,
-                                                                          teacher_dict=teacher_dict,
-                                                                          teacher_name=teachers[0],
-                                                                          video_directory=save_dir,
-                                                                          video_name=video_name,
-                                                                          num_rollouts=num_rollouts,
-                                                                          save_wandb=False,
-                                                                          save_locally=num_save > 0,
-                                                                          num_save=num_save,
-                                                                          obs_preprocessor=obs_preprocessor,
-                                                                          rollout_oracle=False)
+    paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
+                                                                    instrs=not hide_instrs,
+                                                                    reset_every=1,
+                                                                    stochastic=stochastic,
+                                                                    record_teacher=True,
+                                                                    teacher_dict=teacher_dict,
+                                                                    teacher_name=teachers[0],
+                                                                    video_directory=save_dir,
+                                                                    video_name=video_name,
+                                                                    num_rollouts=num_rollouts,
+                                                                    save_wandb=False,
+                                                                    save_locally=num_save > 0,
+                                                                    num_save=num_save,
+                                                                    obs_preprocessor=obs_preprocessor,
+                                                                    rollout_oracle=False)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     try:
         success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
     except:
         print("doesn't have timestep_success")
     try:
-        teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in paths]
+        teacher_actions = [np.array([timestep['teacher_action'][0] for timestep in path['env_infos']]) for path in
+                           paths]
         agent_actions = [np.array(path['actions']) for path in paths]
-        errors = [np.sum(1 - (teacher_a == agent_a))/len(teacher_a) for teacher_a, agent_a in zip(teacher_actions, agent_actions)]
+        errors = [np.sum(1 - (teacher_a == agent_a)) / len(teacher_a) for teacher_a, agent_a in
+                  zip(teacher_actions, agent_actions)]
         plt.hist(errors)
         plt.title(f"Distribution of errors {str(teachers)}")
         plt.savefig(save_dir.joinpath('errors.png'))
     except:
         print("No teacher, so can't plot errors")
-    return success_rate, stoch_accuracy, det_accuracy, followed_cc3
+    return success_rate, stoch_accuracy, det_accuracy, reward
+
+
+def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, seed=1, stochastic=True,
+                num_rollouts=10, policy_name='policy', env_name='env', log_every=10):
+    start = time.time()
+    save_dir = pathlib.Path(save_dir)
+
+    def log_fn_vidrollout(policy, itr, num_save):
+        return test_success_checkpoint(env, save_dir, num_rollouts, [teacher], policy=policy, policy_name=policy_name,
+                                       env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic,
+                                       args=args,
+                                       seed=seed, num_save=num_save)
+
+    def log_fn(policy, logger, itr, num_feedback):
+        policy_env_name = f'Policy{policy_name}-{env_name}'
+        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
+        if itr == 0:
+            if not full_save_dir.exists():
+                full_save_dir.mkdir()
+            with open(full_save_dir.joinpath('results.csv'), 'w') as f:
+                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward\n')
+        if not itr % log_every == 0:
+            return
+        policy = policy[teacher]
+        num_save = 0
+        avg_success, avg_accuracy, det_accuracy, reward = log_fn_vidrollout(policy, itr, num_save)
+        print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
+        with open(full_save_dir.joinpath('results.csv'), 'a') as f:
+            f.write(
+                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},'
+                f'{num_feedback + start_num_feedback},{time.time() - start},{reward} \n')
+        return avg_success, avg_accuracy
+
+    return log_fn
 
 
 def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
@@ -181,35 +219,10 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     # Standardize args
     args.single_level = True
     args.reward_when_necessary = False  # TODO: make this a flag
-    def log_fn_vidrollout(policy, itr, num_save):
-        return test_success_checkpoint(heldout_env, save_dir, 10, teachers, policy=policy, policy_name=policy_name,
-                                env_name=env_name, hide_instrs=hide_instrs, itr=itr, stochastic=stochastic, args=args,
-                                seed=seed, num_save=num_save)
 
-    start = time.time()
-    def log_fn(policy, logger, itr, num_feedback):
-        policy_env_name = f'Policy{policy_name}-{env_name}'
-        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
-        if itr == 0:
-            if not full_save_dir.exists():
-                full_save_dir.mkdir()
-            with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time\n')
-        if not itr % args.log_every == 0:
-            return
-        assert len(teachers) == 1
-        policy = policy[teachers[0]]
-        # if itr % 10 == 0:
-        #     num_save = 10
-        # else:
-        num_save = 0
-        avg_success, avg_accuracy, det_accuracy = log_fn_vidrollout(policy, itr, num_save)
-        print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
-        with open(full_save_dir.joinpath('results.csv'), 'a') as f:
-            f.write(
-                f'{policy_env_name},{policy_name},{env_name},{avg_success},{avg_accuracy},{itr},'
-                f'{num_feedback + start_num_feedback},{time.time() - start} \n')
-        return avg_success, avg_accuracy
+    log_fn = make_log_fn(env, args, start_num_feedback, save_dir, teachers[0], hide_instrs, seed=seed,
+                         stochastic=stochastic, num_rollouts=num_rollouts, policy_name=policy_name, env_name=env_name,
+                         log_every=args.log_every)
 
     log_formats = ['stdout', 'log', 'csv', 'tensorboard']
     logger.configure(dir=save_name, format_strs=log_formats,
@@ -233,7 +246,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,
         log_dict={},
-        log_and_save=True,#False,
+        log_and_save=True,  # False,
         eval_heldout=False,
         log_fn=log_fn,
         log_every=1,
@@ -244,6 +257,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     print("All done!")
     return trainer
 
+
 def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
                  seed=0):
@@ -252,7 +266,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         for k, v in additional_args.items():
             if not hasattr(args, k) or (not v is None):
                 setattr(args, k, v)
-        if args.target_policy is not None:
+        if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         n_itr = args.n_itr
     else:
@@ -285,10 +299,10 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                         f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
                 finetune_teacher_args.seed = seed
             trainer = finetune_policy(env, env_index, policy,
-                            finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
-                            save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
-                            hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                            num_rollouts=num_rollouts, model_data=model_data, seed=seed)
+                                      finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
+                                      save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                                      hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
+                                      num_rollouts=num_rollouts, model_data=model_data, seed=seed)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
             # policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))  # TODO: this might be important!
             if args.target_policy is not None:
@@ -300,8 +314,10 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                         num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback)
     assert len(teachers) == 1
     teacher_policy = policy[teachers[0]]
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir, num_rollouts,
-                                                                           teachers, hide_instrs, stochastic, args, seed)
+    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir,
+                                                                           num_rollouts,
+                                                                           teachers, hide_instrs, stochastic, args,
+                                                                           seed)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(
@@ -316,11 +332,11 @@ def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
     full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
     if not full_save_dir.exists():
         full_save_dir.mkdir()
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, policy, full_save_dir, num_rollouts,
-                                                                           teachers, hide_instrs, stochastic, args,
-                                                                           seed, f'vid_{itr}', num_save=num_save)
+    success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, policy, full_save_dir, num_rollouts,
+                                                                     teachers, hide_instrs, stochastic, args,
+                                                                     seed, f'vid_{itr}', num_save=num_save)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
-    return success_rate, stoch_accuracy, det_accuracy
+    return success_rate, stoch_accuracy, det_accuracy, reward
 
 
 def main():
@@ -340,8 +356,8 @@ def main():
     parser.add_argument("--deterministic", action='store_true')
     parser.add_argument('--teacher_schedule', type=str, default='last_teacher')
     parser.add_argument('--distillation_strategy', type=str, choices=[
-            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
-        ], default='single_teachers_none')
+        'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
+    ], default='single_teachers_none')
     parser.add_argument('--no_distill', action='store_true')
     parser.add_argument('--yes_distill', action='store_true')
     parser.add_argument('--rollout_temperature', type=float, default=1)
@@ -460,7 +476,7 @@ def main():
             for seed in args.seeds:
                 test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
-                             policy_name=policy_path.stem, env_name=str(env_index),#inner_env.__class__.__name__,
+                             policy_name=policy_path.stem, env_name=str(env_index),  # inner_env.__class__.__name__,
                              hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
                              additional_args=additional_args, seed=seed)
 

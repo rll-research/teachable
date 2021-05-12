@@ -235,6 +235,11 @@ class D4RLEnv:
             obs_dict.update(advice)
         return obs_dict
 
+    def get_success(self):
+        target = self.get_target()
+        agent_pos = self.get_pos()
+        return np.linalg.norm(target - agent_pos) < .25
+
     def step(self, action):
         action = np.tanh(action)
         # action = np.clip(action, -1, 1)
@@ -298,13 +303,13 @@ class D4RLEnv:
         obs_dict = {}
         obs_dict["obs"] = obs
         obs_dict = self.update_obs(obs_dict)
+        success = self.get_success()
+        done = done or success
         self.done = done
 
-        success = self.get_success()
         info = {}
         info['dist_to_goal'] = distance
-        info['success'] = done and success
-        info['timestep_success'] = success
+        info['success'] = success
         info['gave_reward'] = True
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
@@ -405,19 +410,14 @@ class PointMassEnv(D4RLEnv):
     def get_vel(self):
         return self._wrapped_env.get_sim().data.qvel
 
-    def get_success(self):
-        target = self.get_target()
-        agent_pos = self.get_pos()
-        return np.linalg.norm(target - agent_pos) < .5
-
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         target = self.get_target() / self.scale_factor
         obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
-        done = done or info['success']
-        if done:
+        # done = done or info['success']
+        if info['success']:
             rew += 1
         return obs_dict, rew, done, info
 
@@ -457,9 +457,6 @@ class AntEnv(D4RLEnv):
 
     def get_vel(self):
         return np.array([0, 0])  # TODO: is there a better option?
-
-    def get_success(self):
-        return np.linalg.norm(self._wrapped_env.get_xy() - self._wrapped_env.target_goal) <= 0.5
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)

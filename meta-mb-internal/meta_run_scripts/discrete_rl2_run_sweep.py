@@ -10,6 +10,7 @@ from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor, make_obs_preprocessor_choose_teachers
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
+from scripts.test_generalization import make_log_fn
 
 import torch
 import copy
@@ -245,6 +246,20 @@ def run_experiment(**config):
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
 
     buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
+
+    # Log with the last teacher
+    # Use the first teacher if we have one and aren't distilling to None
+    # If we are distilling to none, keep that
+    if args.self_distill and args.distillation_strategy in  ['all_teachers', 'no_teachers', 'powerset',
+                                                             'single_teachers_none']:
+        log_teacher = 'none'
+    else:
+        log_teacher = teachers_list[-2]  # Second to last (last is none)
+    log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
+                         stochastic=True, num_rollouts=10, policy_name=EXP_NAME, env_name=f'{args.env}-{args.level}',
+                         log_every=10)
+
+
     trainer = Trainer(
         args,
         algo=algo,
@@ -263,6 +278,7 @@ def run_experiment(**config):
         obs_preprocessor=obs_preprocessor,
         log_dict=log_dict,
         augmenter=augmenter,
+        log_fn=log_fn,
     )
     trainer.train()
 
