@@ -37,28 +37,6 @@ def args_type(default):
     return type(default)
 
 
-def get_exp_name(args):
-    EXP_NAME = args.prefix
-    return EXP_NAME
-    feedback_type = str(args.feedback_type)
-    feedback_type = ''.join([char for char in feedback_type[1:-1] if not char in ["'", "[", "]", ",", " "]])
-    EXP_NAME += '_teacher' + feedback_type
-    # if args.distill_same_model:
-    #     EXP_NAME += '_SAME'
-    if args.self_distill:
-        EXP_NAME += '_SD'
-    # if args.intermediate_reward:
-    #     EXP_NAME += '_dense'
-    EXP_NAME += '_threshS' + str(args.success_threshold_rl)
-    EXP_NAME += '_threshAR' + str(args.accuracy_threshold_rl)
-    EXP_NAME += '_threshAD' + str(args.accuracy_threshold_distill_teacher)
-    EXP_NAME += '_lr' + str(args.lr)
-    EXP_NAME += '_ent' + str(args.entropy_coef)
-    # EXP_NAME += '_currfn' + args.advance_curriculum_func
-    print("EXPERIMENT NAME:", EXP_NAME)
-    return EXP_NAME
-
-
 def load_model(args):
     original_config = args
     saved_model = joblib.load(args.saved_path)
@@ -86,6 +64,7 @@ def load_model(args):
 def run_experiment(**config):
     parser = ArgumentParser()
     args = parser.parse_args()
+    exp_name = args.prefix
     for k, v in config.items():
         setattr(args, k, v)
 
@@ -230,8 +209,7 @@ def run_experiment(**config):
         for k, v in optimizer.items():
             algo.optimizer_dict[k].load_state_dict(v.state_dict())
 
-    EXP_NAME = get_exp_name(args)
-    exp_dir = os.getcwd() + '/data/' + EXP_NAME + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/data/' + exp_name + "_" + str(args.seed)
     if original_saved_path is None and not args.continue_train:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
@@ -256,7 +234,7 @@ def run_experiment(**config):
     else:
         log_teacher = teachers_list[-2]  # Second to last (last is none)
     log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
-                         stochastic=True, num_rollouts=10, policy_name=EXP_NAME,
+                         stochastic=True, num_rollouts=10, policy_name=exp_name,
                          env_name=str(args.level),  # TODO: fix this for babyai!
                          log_every=10)
 
