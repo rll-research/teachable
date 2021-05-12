@@ -374,6 +374,7 @@ def main():
     parser.add_argument('--frames_per_proc', type=int, default=None)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=None)
+    parser.add_argument('--buffer_capacity', type=int, default=10000)
     args = parser.parse_args()
 
     save_dir = pathlib.Path(args.save_dir)
@@ -457,6 +458,7 @@ def main():
     additional_args['batch_size'] = args.batch_size
     additional_args['lr'] = args.lr
     additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
+    additional_args['buffer_capacity'] = args.buffer_capacity
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
