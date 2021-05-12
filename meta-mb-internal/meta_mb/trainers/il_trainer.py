@@ -253,7 +253,7 @@ class ImitationLearning(object):
             else:  # Continuous env
                 action_pred = dist.mean
                 avg_std = dist.scale.mean()
-                avg_mean_dist = torch.abs(avg_std - action_step).mean()
+                avg_mean_dist = torch.abs(action_pred - action_step).mean()
             final_loss += loss
             final_reconstruction_loss += reconstruction_loss
             self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
