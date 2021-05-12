@@ -356,7 +356,7 @@ class Trainer(object):
                                                   split='val')
                 distill_log_val = self.distill(sampled_val_batch,
                                                is_training=False,
-                                               source='teacher',
+                                               #source='teacher',
                                                teachers_dict=teacher_distill_dict,
                                                relabel=self.args.relabel,
                                                relabel_dict=teacher_train_dict)
