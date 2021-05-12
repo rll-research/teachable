@@ -29,6 +29,12 @@ class Curriculum(Serializable):
                              **kwargs),
                 PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
                              **kwargs),
+                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
+                             reset_start=False, **kwargs),
+                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
+                             reset_start=False, **kwargs),
+                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
+                             reset_start=False, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':

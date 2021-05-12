@@ -155,7 +155,7 @@ class D4RLEnv:
     """
 
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, **kwargs):
+                 cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
@@ -165,7 +165,9 @@ class D4RLEnv:
         self.past_positions = []
         self.past_imgs = []
         self.reset_target = reset_target
-        self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reward_type=reward_type)
+        self.reset_start = reset_start
+        self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reset_start=reset_start,
+                                          reward_type=reward_type)
         self.feedback_type = feedback_type
         self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = self.action_space.sample() * 0 - 1
@@ -224,7 +226,7 @@ class D4RLEnv:
         raise NotImplementedError
 
     def update_obs(self, obs_dict):
-        state = self.waypoint_controller.env.gs.spec
+        state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
         max_grid[:h, :w] = state
@@ -340,7 +342,8 @@ class D4RLEnv:
         pass  # for compatibility with babyai, which does set tasks
 
     def reset(self):
-        self._wrapped_env = gym.envs.make(self.env_name, reset_target=self.reset_target, reward_type=self.reward_type)
+        self._wrapped_env = gym.envs.make(self.env_name, reset_target=self.reset_target, reset_start=self.reset_start,
+                                          reward_type=self.reward_type)
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0

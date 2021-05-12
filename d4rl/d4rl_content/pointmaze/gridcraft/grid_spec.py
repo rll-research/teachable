@@ -3,7 +3,7 @@ import numpy as np
 
 EMPTY = 1
 WALL = 0
-START = 112
+START = 2
 REWARD = 113
 OUT_OF_BOUNDS = 114
 REWARD2 = 115
@@ -144,6 +144,15 @@ class GridSpec(object):
 
     def find(self, value):
         return np.array(np.where(self.spec == value)).T
+
+    @property
+    def spec_no_start(self):
+        data = self.__data.copy()
+        for i in range(self.width):
+            for j in range(self.height):
+                if data[i, j] == START:
+                    data[i, j] = EMPTY
+        return data
 
     @property
     def spec(self):
