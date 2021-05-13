@@ -234,8 +234,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define actor's model
         # discrete
-        layer_1_size = 64
-        layer_2_size = 64
+        layer_1_size = args.hidden_size
+        layer_2_size = args.hidden_size
         try:
             action_shape = action_space.n
         except:  # continuous

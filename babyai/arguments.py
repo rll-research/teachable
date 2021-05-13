@@ -211,6 +211,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rew_norm', action='store_true')
         self.add_argument('--act_norm', action='store_true')
         self.add_argument('--loss_type', type=str, default='log_prob')
+        self.add_argument('--hidden_size', type=int, default=64)
 
     def parse_args(self, arg=None):
         """
