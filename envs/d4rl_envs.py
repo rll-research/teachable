@@ -283,6 +283,16 @@ class D4RLEnv:
             rew = np.dot(dir_taken, dir_desired)
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
+        elif self.reward_type == 'vector_dir_waypoint_negative':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            # dir_taken = dir_taken / np.linalg.norm(dir_taken)
+            dir_desired = self.get_teacher_action()
+            rew = np.dot(dir_taken, dir_desired)
+            print("timestep rew", rew)
+            rew -= .5
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew += 1
         elif self.reward_type == 'vector_dir_both':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
