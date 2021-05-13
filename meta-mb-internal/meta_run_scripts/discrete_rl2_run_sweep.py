@@ -126,7 +126,10 @@ def run_experiment(**config):
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
-        teachers_list = list(teacher_null_dict.keys()) + ['none']
+        teachers_list = list(teacher_null_dict.keys())
+        if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
+                                                                'single_teachers_none']:
+            teachers_list += ['none']
         obs = env.reset()
         args.reconstruct_advice_size = sum(
             [np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
@@ -150,7 +153,10 @@ def run_experiment(**config):
 
         policy_dict = {}
         args.reconstruct_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
-        teachers_list = list(teacher_null_dict.keys()) + ['none']
+        teachers_list = list(teacher_null_dict.keys())
+        if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
+                                                                'single_teachers_none']:
+            teachers_list += ['none']
         for teacher in teachers_list:
             if not args.include_zeros and not args.same_model:
                 args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
