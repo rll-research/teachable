@@ -315,14 +315,14 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                         num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback)
     assert len(teachers) == 1
     teacher_policy = policy[teachers[0]]
-    success_rate, stoch_accuracy, det_accuracy, followed_cc3 = eval_policy(env, teacher_policy, full_save_dir,
+    success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, teacher_policy, full_save_dir,
                                                                            num_rollouts,
                                                                            teachers, hide_instrs, stochastic, args,
                                                                            seed)
-    print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
+    print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}, reward: {reward}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
         f.write(
-            f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{followed_cc3} \n')
+            f'{policy_env_name},{policy_name},{env_name},{success_rate},{stoch_accuracy},{det_accuracy},{reward} \n')
     return success_rate, stoch_accuracy, det_accuracy
 
 
@@ -469,6 +469,8 @@ def main():
     # Test every policy with every level
     if not save_dir.exists():
         save_dir.mkdir()
+    with open(save_dir.joinpath('results.csv'), 'w') as f:
+        f.write('policy_env,policy,env,success_rate,stoch_accuracy,det_accuracy,reward \n')
     for policy_name in policy_level_names:
         for env, env_index in envs:
             inner_env = env
