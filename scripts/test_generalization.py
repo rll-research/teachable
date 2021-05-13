@@ -479,7 +479,7 @@ def main():
             for seed in args.seeds:
                 test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
-                             policy_name=policy_path.stem, env_name=str(env_index),  # inner_env.__class__.__name__,
+                             policy_name=policy_path.stem, env_name=str(env_index),  # inner_env.__class__.__name__, 
                              hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
                              additional_args=additional_args, seed=seed)
 
