@@ -130,6 +130,9 @@ def run_experiment(**config):
         if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
                                                                 'single_teachers_none']:
             teachers_list += ['none']
+            last_teacher_index = -2
+        else:
+            last_teacher_index = -1
         obs = env.reset()
         args.reconstruct_advice_size = sum(
             [np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
@@ -157,6 +160,9 @@ def run_experiment(**config):
         if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
                                                                 'single_teachers_none']:
             teachers_list += ['none']
+            last_teacher_index = -2
+        else:
+            last_teacher_index = -1
         for teacher in teachers_list:
             if not args.include_zeros and not args.same_model:
                 args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
@@ -241,7 +247,7 @@ def run_experiment(**config):
                                                              'single_teachers_none']:
         log_teacher = 'none'
     else:
-        log_teacher = teachers_list[-2]  # Second to last (last is none)
+        log_teacher = teachers_list[last_teacher_index]  # Second to last (last is none)
     num_rollouts = 1 if is_debug else 10
     log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
