@@ -234,6 +234,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Define actor's model
         # discrete
+        layer_1_size = 64
+        layer_2_size = 64
         try:
             action_shape = action_space.n
         except:  # continuous
@@ -255,20 +257,20 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             )
         else:
             self.actor = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
+                nn.Linear(self.embedding_size + self.advice_dim, layer_1_size),
                 nn.Tanh(),
-                nn.Linear(64, 64),
+                nn.Linear(layer_1_size, layer_2_size),
                 nn.Tanh(),
-                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
+                nn.Linear(layer_2_size, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
             )
 
         # Define critic's model
         self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size + self.advice_dim, 64),
+            nn.Linear(self.embedding_size + self.advice_dim, layer_1_size),
             nn.Tanh(),
-            nn.Linear(64, 64),
+            nn.Linear(layer_1_size, layer_2_size),
             nn.Tanh(),
-            nn.Linear(64, 1)
+            nn.Linear(layer_2_size, 1)
         )
 
         # Define reconstruction model
