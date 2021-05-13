@@ -289,7 +289,6 @@ class D4RLEnv:
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
             rew = np.dot(dir_taken, dir_desired)
-            print("timestep rew", rew)
             rew -= .5
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
