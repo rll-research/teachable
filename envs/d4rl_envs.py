@@ -231,7 +231,7 @@ class D4RLEnv:
         h, w = state.shape
         max_grid[:h, :w] = state
         state_obs = obs_dict['obs'] / self.scale_factor
-        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten() / 5])  # TODO: /5 is a hacky way of trying to make the max grid less useful
+        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])  # TODO: /5 is a hacky way of trying to make the max grid less useful
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
