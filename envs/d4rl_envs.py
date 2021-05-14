@@ -253,12 +253,21 @@ class D4RLEnv:
         start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
         end_points = self.waypoint_controller.waypoints
         distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
+        gave_reward = True
 
+        if self.reward_type == 'dense':
+            gave_reward = done
         if self.reward_type == 'oracle_action':
             act, _ = self.waypoint_controller.get_action(self.get_pos(), self.get_vel(), self.get_target())
             rew = -np.linalg.norm(action - act) / 100 + .03  # scale so it's not too big and is always positive
         elif self.reward_type == 'oracle_dist':
             rew = - distance / 100
+        elif self.reward_type == 'waypoint':
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew = 1
+            else:
+                rew = 0
+            gave_reward = done or rew == 1
         elif self.reward_type == 'vector_dir':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
@@ -321,7 +330,7 @@ class D4RLEnv:
         info = {}
         info['dist_to_goal'] = distance
         info['success'] = success
-        info['gave_reward'] = True
+        info['gave_reward'] = gave_reward
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
 
