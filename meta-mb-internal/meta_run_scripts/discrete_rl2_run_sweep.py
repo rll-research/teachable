@@ -217,8 +217,11 @@ def run_experiment(**config):
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
     algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
 
-    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-    algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+    if args.use_dagger:
+        envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+    else:
+        algo_dagger = None
 
     if optimizer is not None:
         for k, v in optimizer.items():

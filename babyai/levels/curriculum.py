@@ -15,44 +15,47 @@ class Curriculum(Serializable):
         reward_env_name = 'sparse' if reward_type == 'sparse' else 'dense'
         self.advance_curriculum_func = advance_curriculum_func
         if env == 'point_mass':
+            # self.train_levels = [
+            #     (PointMassEnv, {'env_name': f'maze2d-open-{reward_env_name}-v0', 'reward_type': reward_type, ** kwargs}),
+            # ]
             self.train_levels = [
-                PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs),  # 0
-                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 1
-                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 2
+                # PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs),  # 0
+                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 1
+                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 2
             ]
             self.held_out_levels = [
-                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 3
+                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 3
                 PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs),  # 4
-                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,   # 5
-                             **kwargs),
-                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
-                             **kwargs),
-                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
-                             **kwargs),
-                PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
-                             reset_start=False, **kwargs),
-                PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
-                             reset_start=False, **kwargs),
-                PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
-                             reset_start=False, **kwargs),
+                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,   # 5
+                #              **kwargs),
+                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
+                #              **kwargs),
+                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
+                #              **kwargs),
+                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
+                #              reset_start=False, **kwargs),
+                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
+                #              reset_start=False, **kwargs),
+                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
+                #              reset_start=False, **kwargs),
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'ant':
             self.train_levels = [
-                AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs),  # 0
-                AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs),  # 1
-                AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs),  # 2
+                # AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs),  # 0
+                # AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs),  # 1
+                # AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs),  # 2
             ]
             self.held_out_levels = [
-                AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),  # 3
-                AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),  # 4
-                AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),  # 5
-                AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),  # 6
+                # AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),  # 3
+                # AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),  # 4
+                # AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),  # 5
+                # AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),  # 6
                 AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs),  # 7
-                AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs),  # 8
-                AntEnv('antmaze-randommaze-large-v0', reward_type=reward_type, **kwargs),  # 9
-                AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs),  # 10
-                AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs),  # 11
+                # AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs),  # 8
+                # AntEnv('antmaze-randommaze-large-v0', reward_type=reward_type, **kwargs),  # 9
+                # AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs),  # 10
+                # AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs),  # 11
             ]
             self.levels_list = self.train_levels + self.held_out_levels
         elif env == 'babyai':
@@ -165,6 +168,8 @@ class Curriculum(Serializable):
         else:
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[start_index] = 1
+        # class_name, class_args = self.levels_list[start_index]  # TODO: double check this doesn't do horrible things with the babyai levels
+        # self._wrapped_env = class_name(class_args)
         self._wrapped_env = self.levels_list[start_index]
         self.index = start_index
 
