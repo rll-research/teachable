@@ -14,50 +14,14 @@ class Curriculum(Serializable):
         Serializable.quick_init(self, locals())
         reward_env_name = 'sparse' if reward_type == 'sparse' else 'dense'
         self.advance_curriculum_func = advance_curriculum_func
+        self.env = env
+        self.kwargs = kwargs
+        self.reward_type = reward_type
+        self.reward_env_name = reward_env_name
         if env == 'point_mass':
-            # self.train_levels = [
-            #     (PointMassEnv, {'env_name': f'maze2d-open-{reward_env_name}-v0', 'reward_type': reward_type, ** kwargs}),
-            # ]
-            self.train_levels = [
-                # PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs),  # 0
-                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 1
-                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 2
-            ]
-            self.held_out_levels = [
-                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs),  # 3
-                PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs),  # 4
-                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,   # 5
-                #              **kwargs),
-                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
-                #              **kwargs),
-                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
-                #              **kwargs),
-                # PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
-                #              reset_start=False, **kwargs),
-                # PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
-                #              reset_start=False, **kwargs),
-                # PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
-                #              reset_start=False, **kwargs),
-            ]
-            self.levels_list = self.train_levels + self.held_out_levels
+            self.levels_list = {k: -1 for k in range(11)}
         elif env == 'ant':
-            self.train_levels = [
-                # AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs),  # 0
-                # AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs),  # 1
-                # AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs),  # 2
-            ]
-            self.held_out_levels = [
-                # AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs),  # 3
-                # AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs),  # 4
-                # AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs),  # 5
-                # AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs),  # 6
-                AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs),  # 7
-                # AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs),  # 8
-                # AntEnv('antmaze-randommaze-large-v0', reward_type=reward_type, **kwargs),  # 9
-                # AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs),  # 10
-                # AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs),  # 11
-            ]
-            self.levels_list = self.train_levels + self.held_out_levels
+            self.levels_list = {k: -1 for k in range(12)}
         elif env == 'babyai':
             # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
             # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
@@ -169,9 +133,80 @@ class Curriculum(Serializable):
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[start_index] = 1
         # class_name, class_args = self.levels_list[start_index]  # TODO: double check this doesn't do horrible things with the babyai levels
-        # self._wrapped_env = class_name(class_args)
-        self._wrapped_env = self.levels_list[start_index]
+        self.set_wrapped_env(start_index)
         self.index = start_index
+
+    def set_wrapped_env(self, index):
+        if not self.levels_list[index] == -1:
+            return self.levels_list[index]
+        kwargs = self.kwargs
+        reward_env_name = self.reward_env_name
+        reward_type = self.reward_type
+        seed = self.levels_list[index]
+        if self.env == 'point_mass':
+            if index == 0:
+                level = PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs)  # 0
+            elif index == 1:
+                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 1
+            elif index == 2:
+                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 2
+            elif index == 3:
+                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 3
+            elif index == 4:
+                level = PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs)  # 4
+            elif index == 5:
+                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 5
+                             **kwargs),
+            elif index == 6:
+                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
+                             **kwargs),
+            elif index == 7:
+                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
+                             **kwargs),
+            elif index == 8:
+                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
+                             reset_start=False, **kwargs)
+            elif index == 9:
+                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
+                             reset_start=False, **kwargs)
+            elif index == 10:
+                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
+                             reset_start=False, **kwargs)
+            else:
+                raise NotImplementedError(index)
+            self.levels_list[index] = level
+        elif self.env == 'ant':
+            if index == 0:
+                level = AntEnv(f'antmaze-umaze-v0', reward_type=reward_type, **kwargs)  # 0
+            elif index == 1:
+                level = AntEnv(f'antmaze-umaze-diverse-v0', reward_type=reward_type, **kwargs)  # 1
+            elif index == 2:
+                level = AntEnv(f'antmaze-medium-diverse-v0', reward_type=reward_type, **kwargs)  # 2
+            elif index == 3:
+                level = AntEnv(f'antmaze-large-diverse-v0', reward_type=reward_type, **kwargs)  # 3
+            elif index == 4:
+                level = AntEnv(f'antmaze-open-v0', reward_type=reward_type, **kwargs)  # 4
+            elif index == 5:
+                level = AntEnv(f'antmaze-umaze-easy-v0', reward_type=reward_type, **kwargs)  # 5
+            elif index == 6:
+                level = AntEnv('antmaze-randommaze-v0', reward_type=reward_type, **kwargs)  # 6
+            elif index == 7:
+                level = AntEnv('antmaze-randommaze-small-v0', reward_type=reward_type, **kwargs)  # 7
+            elif index == 8:
+                level = AntEnv('antmaze-randommaze-medium-v0', reward_type=reward_type, **kwargs)  # 8
+            elif index == 9:
+                level = AntEnv('antmaze-randommaze-large-v0', reward_type=reward_type, **kwargs)  # 9
+            elif index == 10:
+                level = AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs)  # 10
+            elif index == 11:
+                level = AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs),  # 11
+            else:
+                raise NotImplementedError(index)
+            level.seed(seed)
+            self.levels_list[index] = level
+        else:
+            raise NotImplementedError(self.env)
+        self._wrapped_env = level
 
     def __getattr__(self, attr):
         """
@@ -254,21 +289,29 @@ class Curriculum(Serializable):
         Set the curriculum at a certain level
         :param index: Index of the level to use
         """
-        self._wrapped_env = self.levels_list[index]
+        self._wrapped_env = self.set_wrapped_env(index)
 
     def set_level_distribution(self, index):
         """
         Set the curriculum at a certain level, and set the distribution to only sample that level.
         :param index: Index of the level to use
         """
-        self._wrapped_env = self.levels_list[index]
+        self._wrapped_env = self.set_wrapped_env(index)
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[index] = 1
         self.index = index
 
     def seed(self, i):
-        for level in self.levels_list:
-            level.seed(int(i))
+        levels_list = self.levels_list if type(self.levels_list) is list else self.levels_list.values()
+        if type(self.levels_list) is list:
+            for level in self.levels_list:
+                level.seed(int(i))
+        elif type(self.levels_list) is dict:
+            for k, level in self.levels_list.items():
+                if type(level) is int:
+                    self.levels_list[k] = i
+                else:
+                    level.seed(int(i))
 
     def set_task(self, args=None):
         """
@@ -276,7 +319,5 @@ class Curriculum(Serializable):
         Then set the task as usual.
         """
         env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
-        # print("Setting task! Index is currently", env_index, np.random.uniform())
-        self._wrapped_env = self.levels_list[env_index]
-        # print(type(self._wrapped_env))
+        self._wrapped_env = self.set_wrapped_env(env_index)
         return self._wrapped_env.set_task(args)
