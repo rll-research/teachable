@@ -156,13 +156,13 @@ class Curriculum(Serializable):
                 level = PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs)  # 4
             elif index == 5:
                 level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 5
-                             **kwargs),
+                             **kwargs)
             elif index == 6:
                 level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
-                             **kwargs),
+                             **kwargs)
             elif index == 7:
                 level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
-                             **kwargs),
+                             **kwargs)
             elif index == 8:
                 level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
                              reset_start=False, **kwargs)
@@ -289,14 +289,14 @@ class Curriculum(Serializable):
         Set the curriculum at a certain level
         :param index: Index of the level to use
         """
-        self._wrapped_env = self.set_wrapped_env(index)
+        self.set_wrapped_env(index)
 
     def set_level_distribution(self, index):
         """
         Set the curriculum at a certain level, and set the distribution to only sample that level.
         :param index: Index of the level to use
         """
-        self._wrapped_env = self.set_wrapped_env(index)
+        self.set_wrapped_env(index)
         self.distribution = np.zeros((len(self.levels_list)))
         self.distribution[index] = 1
         self.index = index
@@ -319,5 +319,5 @@ class Curriculum(Serializable):
         Then set the task as usual.
         """
         env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
-        self._wrapped_env = self.set_wrapped_env(env_index)
+        self.set_wrapped_env(env_index)
         return self._wrapped_env.set_task(args)
