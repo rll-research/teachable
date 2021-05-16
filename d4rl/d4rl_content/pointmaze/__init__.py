@@ -24,6 +24,33 @@ register(
         'reset_target': False,
         'ref_min_score': 0.94,
         'ref_max_score': 62.6,
+        'maze_size': 6,
+    }
+)
+
+register(
+    id='maze2d-randommaze-7x7-v0',
+    entry_point='d4rl_content.pointmaze:MazeEnv',
+    max_episode_steps=110,
+    kwargs={
+        'reward_type':'sparse',
+        'reset_target': False,
+        'ref_min_score': 0.94,
+        'ref_max_score': 62.6,
+        'maze_size': 7,
+    }
+)
+
+register(
+    id='maze2d-randommaze-8x8-v0',
+    entry_point='d4rl_content.pointmaze:MazeEnv',
+    max_episode_steps=120,
+    kwargs={
+        'reward_type':'sparse',
+        'reset_target': False,
+        'ref_min_score': 0.94,
+        'ref_max_score': 62.6,
+        'maze_size': 8,
     }
 )
 
