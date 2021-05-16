@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import time
 import copy
+from pcgrad.pcgrad import PCGrad
 
 from babyai.rl.algos.base import BaseAlgo
 
@@ -61,8 +62,8 @@ class PPOAlgo(BaseAlgo):
         params = list(self.policy_dict[first_teacher].parameters())# + list(self.reconstructor_dict[first_teacher].parameters())
         if self.reconstructor_dict is not None:
             params += list(self.reconstructor_dict[first_teacher].parameters())
-        self.optimizer_dict = {first_teacher: torch.optim.Adam(params,
-                                                               self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
+        self.optimizer_dict = {first_teacher: PCGrad(torch.optim.Adam(params,
+                                                               self.lr, (args.beta1, args.beta2), eps=args.optim_eps))}
         for teacher in teachers[1:]:
             policy = self.policy_dict[teacher]
             if policy is self.policy_dict[first_teacher]:
@@ -71,27 +72,27 @@ class PPOAlgo(BaseAlgo):
                 params = list(self.policy_dict[teacher].parameters())# + list(self.reconstructor_dict[teacher].parameters())
                 if self.reconstructor_dict is not None:
                     params += list(self.reconstructor_dict[teacher].parameters())
-                self.optimizer_dict[teacher] = torch.optim.Adam(params,
-                                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
+                self.optimizer_dict[teacher] = PCGrad(torch.optim.Adam(params,
+                                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps))
         self.batch_num = 0
 
         if self.reconstructor_dict is not None:
             self.reconstructor_optimizer_dict = {
-                first_teacher: torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
-                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
+                first_teacher: PCGrad(torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
+                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps))}
             for teacher in teachers[1:]:
                 policy = self.reconstructor_dict[teacher]
                 if policy is self.reconstructor_dict[first_teacher]:
                     self.reconstructor_optimizer_dict[teacher] = self.reconstructor_optimizer_dict[first_teacher]
                 else:
-                    self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                    self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
+                    self.reconstructor_optimizer_dict[teacher] = PCGrad(torch.optim.Adam(self.policy_dict[teacher].parameters(),
+                                                                    self.lr, (args.beta1, args.beta2), eps=args.optim_eps))
 
 
 
     def set_optimizer(self):
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
-                                          eps=self.adam_eps)
+        self.optimizer = PCGrad(torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
+                                          eps=self.adam_eps))
 
     def update_parameters(self):
         return self.optimize_policy(None, True)
