@@ -404,8 +404,12 @@ def main():
     # Get the levels of the envs to test on
     env_names = args.envs
     env_indices = []
-    num_train_envs = len(default_env.train_levels)
-    num_test_envs = len(default_env.held_out_levels)
+    try:  # only works for babyai
+        num_train_envs = len(default_env.train_levels)
+        num_test_envs = len(default_env.held_out_levels)
+    except:
+        num_train_envs = len(default_env.levels_list)
+        num_test_envs = len(default_env.levels_list)
     for env_name in env_names:
         if env_name == 'train':
             env_indices += list(range(num_train_envs))
