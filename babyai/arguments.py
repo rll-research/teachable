@@ -212,6 +212,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--act_norm', action='store_true')
         self.add_argument('--loss_type', type=str, default='log_prob')
         self.add_argument('--hidden_size', type=int, default=64)
+        self.add_argument('--early_stop', type=int, default=float('inf'))
 
     def parse_args(self, arg=None):
         """

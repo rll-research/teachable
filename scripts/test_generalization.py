@@ -269,6 +269,8 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                 setattr(args, k, v)
         if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
+        # if additional_args['distill_teacher_policy'] is not None:
+        #     policy[args.distill_teacher_policy_key] = load_policy(args.distill_teacher_policy)[0][args.distill_teacher_policy_key]
         n_itr = args.n_itr
     else:
         n_itr = 0
@@ -283,9 +285,13 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
             finetune_path.mkdir()
         args.seed = seed
         num_feedback = 0
-        if args.finetune_teacher_first > 0:
+        if not args.finetune_teacher_first in [0, '0']:
             finetune_teacher_args = copy.deepcopy(args)
-            finetune_teacher_args.n_itr = args.finetune_teacher_first
+            if 'variable' in args.finetune_teacher_first:
+                finetune_teacher_args.n_itr = 1000
+                finetune_teacher_args.early_stop = int(args.finetune_teacher_first[9:])
+            else:
+                finetune_teacher_args.n_itr = int(args.finetune_teacher_first)
             finetune_teacher_args.teacher_schedule = 'first_teacher'
             finetune_teacher_args.distillation_strategy = 'single_teachers'
             finetune_teacher_args.yes_distill = True
@@ -344,7 +350,9 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--policy", required=True)
     parser.add_argument('--target_policy', type=str, default=None)
+    parser.add_argument('--distill_teacher_policy', type=str, default=None)
     parser.add_argument('--target_policy_key', type=str, default='none')
+    parser.add_argument('--distill_teacher_policy_key', type=str, default='none')
     parser.add_argument('--envs', nargs='+', required=True, type=str)
     parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
     parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
@@ -364,7 +372,7 @@ def main():
     parser.add_argument('--rollout_temperature', type=float, default=1)
     parser.add_argument('--finetune_il', action='store_true')
     parser.add_argument('--log_every', type=int, default=1)
-    parser.add_argument('--finetune_teacher_first', type=int, default=0)
+    parser.add_argument('--finetune_teacher_first', type=str, default=0)
     parser.add_argument('--repeated_seed', action='store_true')
     parser.add_argument('--distillation_steps', type=int, default=None)
     parser.add_argument('--seeds', nargs='+', default=[0], type=int)

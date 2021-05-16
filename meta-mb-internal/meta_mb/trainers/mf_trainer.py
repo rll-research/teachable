@@ -101,8 +101,10 @@ class Trainer(object):
         self.advancement_count = 0
         self.success_dict = {k: 0 for k in self.no_teacher_dict.keys()}
         self.success_dict['none'] = 0
+        self.best_train_perf = (0, 0)  # success, accuracy
+        self.itrs_since_best = 0
 
-    def check_advance_curriculum(self, episode_logs, data):
+    def check_advance_curriculum_train(self, episode_logs, data):
         if False:  # data.obs[0]['gave_PreActionAdvice']:
             acc_threshold = .98
         else:
@@ -117,6 +119,12 @@ class Trainer(object):
         avg_success = np.mean(episode_logs["success_per_episode"])
         should_advance_curriculum = (avg_success >= self.args.success_threshold_rl) \
                                     and (avg_accuracy >= acc_threshold)
+        best_success, best_accuracy = self.best_train_perf
+        if avg_success > best_success or (avg_success == best_success and avg_accuracy > best_accuracy):
+            self.itrs_since_best = 0
+            self.best_train_perf = (avg_success, avg_accuracy)
+        else:
+            self.itrs_since_best += 1
         return should_advance_curriculum, avg_success, avg_accuracy
 
     def check_advance_curriculum_rollout(self, data, use_teacher):
@@ -257,8 +265,8 @@ class Trainer(object):
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
             logger.logkv('Curriculum Step', self.curriculum_step)
-            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum(episode_logs,
-                                                                                          raw_samples_data)
+            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_train(episode_logs,
+                                                                                                raw_samples_data)
             if self.args.no_train_rl or skip_training_rl:
                 advance_curriculum = True
             else:
@@ -527,14 +535,24 @@ class Trainer(object):
             params = self.get_itr_snapshot(itr)
             step = self.curriculum_step
 
+            early_stopping = 'early_stop' in self.args and self.itrs_since_best > self.args.early_stop
+            best_success, best_accuracy = self.best_train_perf
+            logger.logkv('Train/BestSuccess', best_success)
+            logger.logkv('Train/BestAccuracy', best_accuracy)
+            logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
+
+
             if self.log_and_save:
-                if (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or \
+                if early_stopping or (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or \
                         (not self.args.single_level and advance_curriculum):
                     saving_time_start = time.time()
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
                     logger.log("Saved")
                     saving_time = time.time() - saving_time_start
+
+            if early_stopping:
+                break
 
             if self.args.end_on_full_buffer:
                 advance_curriculum = buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity
