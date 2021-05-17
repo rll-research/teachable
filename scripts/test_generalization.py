@@ -293,8 +293,9 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                 finetune_teacher_args.n_itr = int(args.finetune_teacher_first)
             finetune_teacher_args.teacher_schedule = 'first_teacher'
             finetune_teacher_args.distillation_strategy = 'single_teachers'
-            finetune_teacher_args.yes_distill = True
-            finetune_teacher_args.no_distill = False
+            finetune_teacher_args.yes_distill = True  # TODO: change this if we want to be able to distill from one teacher to another
+            finetune_teacher_args.no_distill = True
+            finetune_teacher_args.no_train_rl = False
             if seed is not None:
                 finetune_teacher_path = full_save_dir.joinpath(f'finetuned_teachers{seed}')
                 if not finetune_teacher_path.exists():
