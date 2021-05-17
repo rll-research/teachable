@@ -537,6 +537,7 @@ class Trainer(object):
 
             early_stopping = 'early_stop' in self.args and self.itrs_since_best > self.args.early_stop
             best_success, best_accuracy = self.best_train_perf
+            early_stopping = early_stopping and best_success > .7
             logger.logkv('Train/BestSuccess', best_success)
             logger.logkv('Train/BestAccuracy', best_accuracy)
             logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
