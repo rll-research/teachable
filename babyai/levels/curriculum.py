@@ -1,6 +1,7 @@
 from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
 from envs.d4rl_envs import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
+import copy
 
 class Curriculum(Serializable):
     def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, reward_type='dense', **kwargs):
@@ -325,3 +326,12 @@ class Curriculum(Serializable):
         env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
         self.set_wrapped_env(env_index)
         return self._wrapped_env.set_task(args)
+
+    def copy(self, index=None):
+        env = copy.deepcopy(self)
+        if index is None:
+            index = self.index
+        env.set_level_distribution(index)
+        env.set_task()
+        env.reset()
+        return env

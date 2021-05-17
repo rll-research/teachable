@@ -208,9 +208,8 @@ def run_experiment(**config):
         positive_adv=False,
     )
 
-    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    envs = [env.copy() for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
-        new_env.update_distribution_from_other(env)
         new_env.seed(i)
         new_env.set_task()
         new_env.reset()

@@ -190,10 +190,9 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         normalize_adv=True,
         positive_adv=False,
     )
-    envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
+    envs = [env.copy() for _ in range(args.num_envs)]
     offset = seed
     for i, new_env in enumerate(envs):
-        new_env.update_distribution_from_other(env)
         new_env.seed(i + offset * 100)
         new_env.set_task()
         new_env.reset()
@@ -234,7 +233,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         algo=algo,
         algo_dagger=algo,
         policy=policy,
-        env=copy.deepcopy(env),
+        env=env.copy(),
         sampler=sampler,
         sample_processor=sample_processor,
         buffer_name=args.buffer_name if args.buffer_name is not None else save_name,
@@ -437,10 +436,7 @@ def main():
                         env_indices.append(i)
     envs = []
     for env_index in env_indices:
-        env = copy.deepcopy(default_env)
-        env.set_level_distribution(env_index)
-        env.set_task()
-        env.reset()
+        env = default_env.copy(env_index)
         envs.append((env, env_index))
 
     additional_args = {}

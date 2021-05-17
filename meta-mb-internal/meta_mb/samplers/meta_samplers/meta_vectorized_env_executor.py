@@ -18,11 +18,10 @@ class MetaIterativeEnvExecutor(object):
     """
 
     def __init__(self, env, meta_batch_size, envs_per_task, max_path_length):
-        self.envs = np.asarray([copy.deepcopy(env) for _ in range(meta_batch_size * envs_per_task)])
+        self.envs = np.asarray([env.copy() for _ in range(meta_batch_size * envs_per_task)])
         seeds = np.random.choice(range(10 ** 6), size=meta_batch_size, replace=False)
         self.meta_batch_size = meta_batch_size
         for new_env, seed in zip(self.envs, seeds):
-            new_env.update_distribution_from_other(env)
             new_env.seed(int(seed))
             new_env.set_task()
             new_env.reset()
