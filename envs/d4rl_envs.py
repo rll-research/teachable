@@ -206,6 +206,9 @@ class D4RLEnv:
             elif ft == 'Direction':
                 teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
                                                     controller=self.waypoint_controller)
+            elif ft == 'Direction2':
+                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
+                                                    controller=self.waypoint_controller)
         teacher = BatchTeacher(teachers)
         self.teacher = teacher
         # TODO: create teachers
