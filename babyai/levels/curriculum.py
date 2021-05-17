@@ -204,7 +204,7 @@ class Curriculum(Serializable):
             elif index == 10:
                 level = AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs)  # 10
             elif index == 11:
-                level = AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs),  # 11
+                level = AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs)  # 11
             else:
                 raise NotImplementedError(index)
             level.seed(seed)
