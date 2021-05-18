@@ -349,7 +349,7 @@ class D4RLEnv:
                 dist_to_wall = min(dist_to_wall, y_pos - (y - 1))
             if y < len(grid) - 1 and grid[x, y + 1] == WALL:
                 dist_to_wall = min(dist_to_wall, y + 1 - y_pos)
-            rew += dist_to_wall / 10
+            rew += dist_to_wall / 100
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
         elif self.reward_type == 'vector_dir_waypoint_negative':
