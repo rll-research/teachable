@@ -12,7 +12,7 @@ def trim_batch(batch):
     # Remove keys which aren't useful for distillation
     batch_info = {
         "obs": batch.obs,
-        "action": batch.action.int(),
+        "action": batch.action,
         "full_done": batch.full_done.int(),
         "success": batch.env_infos.success,
     }
