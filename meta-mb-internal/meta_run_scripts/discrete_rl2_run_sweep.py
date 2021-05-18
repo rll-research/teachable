@@ -104,6 +104,7 @@ def run_experiment(**config):
         "fully_observed": args.fully_observed,
         "padding": args.padding,
         "args": args,
+        "seed": args.seed,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule,
                                              args.success_intervention_cutoff,

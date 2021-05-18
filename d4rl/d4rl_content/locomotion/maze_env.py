@@ -245,15 +245,6 @@ class MazeEnv(gym.Env):
     sample_choices = goal_cells if goal_cells else valid_cells
     cell = sample_choices[np_random.choice(len(sample_choices))]
     xy = self._rowcol_to_xy(cell, add_random_noise=True)
-
-    # random_x = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
-    # random_y = np.random.uniform(low=0, high=0.5) * 0.25 * self._maze_size_scaling
-
-    # random_x = 0
-    # random_y = 0
-    # xy = (max(xy[0] + random_x, 0), max(xy[1] + random_y, 0))
-    # import IPython
-    # IPython.embed()
     return xy
   
   def set_target_goal(self, goal_input=None):
@@ -261,8 +252,7 @@ class MazeEnv(gym.Env):
       self.target_goal = self.goal_sampler(np.random)
     else:
       self.target_goal = goal_input
-    
-    # print ('Target Goal: ', self.target_goal)
+
     ## Make sure that the goal used in self._goal is also reset:
     self._goal = self.target_goal
 

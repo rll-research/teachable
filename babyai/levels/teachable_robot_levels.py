@@ -44,7 +44,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], fully_observed=False, padding=False, **kwargs):
+                 cartesian_steps=[1], fully_observed=False, padding=False, args=None, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes

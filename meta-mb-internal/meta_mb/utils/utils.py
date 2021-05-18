@@ -3,6 +3,7 @@ import scipy
 import scipy.signal
 import json
 # import tensorflow as tf
+import torch
 
 def compile_function(inputs, outputs, log_name=None):
     def run(*input_vals):
@@ -206,6 +207,7 @@ def set_seed(seed):
     seed %= 4294967294
     random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
     # tf.set_random_seed(seed)
     print('using seed %s' % (str(seed)))
 

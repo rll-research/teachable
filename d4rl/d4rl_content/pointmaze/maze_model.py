@@ -233,10 +233,10 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
 
     def set_target(self, target_location=None):
         if target_location is None:
-            idx = self.np_random.choice(len(self.empty_and_goal_locations))
+            idx = np.random.choice(len(self.empty_and_goal_locations))
             reset_location = np.array(self.empty_and_goal_locations[idx]).astype(self.observation_space.dtype)
             target_location = reset_location
-        self._target = np.array(target_location) + self.np_random.uniform(low=-.1, high=.1, size=self.model.nq)
+        self._target = np.array(target_location) + np.random.uniform(low=-.1, high=.1, size=self.model.nq)
 
     def set_marker(self):
         self.data.site_xpos[self.model.site_name2id('target_site')] = np.array([self._target[0]+1, self._target[1]+1, 0.0])
@@ -247,12 +247,12 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
 
     def reset_model(self):
         if self._start is None:
-            idx = self.np_random.choice(len(self.empty_and_goal_locations))
+            idx = np.random.choice(len(self.empty_and_goal_locations))
             reset_location = np.array(self.empty_and_goal_locations[idx]).astype(self.observation_space.dtype)
         else:
             reset_location = self._start
-        qpos = reset_location + self.np_random.uniform(low=-.1, high=.1, size=self.model.nq)
-        qvel = self.init_qvel + self.np_random.randn(self.model.nv) * .1
+        qpos = reset_location + np.random.uniform(low=-.1, high=.1, size=self.model.nq)
+        qvel = self.init_qvel + np.random.randn(self.model.nv) * .1
         self.set_state(qpos, qvel)
         if self.reset_target:
             self.set_target()
@@ -261,8 +261,8 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
     def reset_to_location(self, location):
         self.sim.reset()
         reset_location = np.array(location).astype(self.observation_space.dtype)
-        qpos = reset_location + self.np_random.uniform(low=-.1, high=.1, size=self.model.nq)
-        qvel = self.init_qvel + self.np_random.randn(self.model.nv) * .1
+        qpos = reset_location + np.random.uniform(low=-.1, high=.1, size=self.model.nq)
+        qvel = self.init_qvel + np.random.randn(self.model.nv) * .1
         self.set_state(qpos, qvel)
         return self._get_obs()
 

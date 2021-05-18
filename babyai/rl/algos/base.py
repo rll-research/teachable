@@ -258,7 +258,8 @@ class BaseAlgo(ABC):
                     self.log_done_counter += 1
                     self.log_return.append(self.log_episode_return[i].item())
                     self.log_success.append(self.log_episode_success[i].item())
-                    self.log_dist_to_goal.append(env_info[i]['dist_to_goal'].item())
+                    if 'dist_to_goal' in env_info[i]:
+                        self.log_dist_to_goal.append(env_info[i]['dist_to_goal'].item())
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())
                     self.log_num_frames.append(self.log_episode_num_frames[i].item())
 

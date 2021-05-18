@@ -57,8 +57,8 @@ def generate_maze(maze_size=6):
         maze.append(line)
 
     # Randomize starting point and set it a cell
-    starting_height = int(random.random() * height)
-    starting_width = int(random.random() * width)
+    starting_height = int(np.random.uniform() * height)
+    starting_width = int(np.random.uniform() * width)
     if (starting_height == 0):
         starting_height += 1
     if (starting_height == height - 1):
@@ -84,7 +84,7 @@ def generate_maze(maze_size=6):
 
     while (walls):
         # Pick a random wall
-        rand_wall = walls[int(random.random() * len(walls)) - 1]
+        rand_wall = walls[int(np.random.uniform() * len(walls)) - 1]
 
         # Check if it is a left wall
         if (rand_wall[1] != 0):
