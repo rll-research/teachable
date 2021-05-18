@@ -28,7 +28,6 @@ class PointMassEnvSimple:
         self.target = np.array([0, 0], dtype=np.float32)
         self.pos = np.array([3, 4], dtype=np.float32)
         self.feedback_type = feedback_type
-        self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
         self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
         self.action_space = Box(low=np.array([-1, -1]), high=np.array([1, 1]))
@@ -90,7 +89,6 @@ class PointMassEnvSimpleDiscrete:
         self.target = np.array([0, 0], dtype=np.float32)
         self.pos = np.array([3, 4], dtype=np.float32)
         self.feedback_type = feedback_type
-        self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
         self.teacher_action = np.array(-1)
         self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
         self.action_space = Discrete(5)
@@ -169,7 +167,7 @@ class D4RLEnv:
         self._wrapped_env = gym.envs.make(env_name, reset_target=reset_target, reset_start=reset_start,
                                           reward_type=reward_type)
         self.feedback_type = feedback_type
-        self.np_random = np.random.RandomState(kwargs.get('seed', 0))  # TODO: seed isn't passed in
+        self.np_random = np.random.RandomState(kwargs.get('seed', 0))
         self.teacher_action = self.action_space.sample() * 0 - 1
         if 'ant' in env_name:
             om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
@@ -228,11 +226,37 @@ class D4RLEnv:
     def get_maze(self):
         raise NotImplementedError
 
+    def wall_distance(self):
+        agent_pos = self.get_pos() + np.array(self.waypoint_controller.offset_mapping)
+        agent_coord = np.round(agent_pos)
+        x, y = agent_coord.astype(np.int32)
+        x_pos, y_pos = agent_pos
+        grid = self.waypoint_controller.env.gs.spec
+        WALL = 0  # TODO: don't hardcode
+        if x > 0 and grid[x - 1, y] == WALL:
+            dist_to_wall_0 = x_pos - (x - 1)
+        else:
+            dist_to_wall_0 = 1
+        if x < len(grid) - 1 and grid[x + 1, y] == WALL:
+            dist_to_wall_1 = x + 1 - x_pos
+        else:
+            dist_to_wall_1 = 1
+        if y > 0 and grid[x, y - 1] == WALL:
+            dist_to_wall_2 = y_pos - (y - 1)
+        else:
+            dist_to_wall_2 = 1
+        if y < len(grid) - 1 and grid[x, y + 1] == WALL:
+            dist_to_wall_3 = y + 1 - y_pos
+        else:
+            dist_to_wall_3 = 1
+        return np.array([dist_to_wall_0, dist_to_wall_1, dist_to_wall_2, dist_to_wall_3])
+
     def update_obs(self, obs_dict):
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
         max_grid[:h, :w] = state
+        # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs'] / self.scale_factor
         obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])  # TODO: /5 is a hacky way of trying to make the max grid less useful
         if self.teacher is not None and not 'None' in self.teacher.teachers:
@@ -342,12 +366,12 @@ class D4RLEnv:
             dir_taken = new_pos - prev_pos
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
-            rew = np.dot(dir_taken, dir_desired)
+            rew = np.dot(dir_taken, dir_desired) / 5
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
             success = self.get_success()
             if success:
-                rew += 5  # TODO: is this a reasonable scale?
+                rew += 20  # TODO: is this a reasonable scale?
         elif self.reward_type == 'vector_dir2':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
