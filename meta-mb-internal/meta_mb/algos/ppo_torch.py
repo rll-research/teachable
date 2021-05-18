@@ -327,6 +327,7 @@ class PPOAlgo(BaseAlgo):
                 if self.reconstructor_dict is not None:
                     reconstructor_optimizer.zero_grad()
                     batch_reconstruction_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(reconstructor.parameters(), self.max_grad_norm)
                     reconstructor_optimizer.step()
 
                 optimizer.step()
