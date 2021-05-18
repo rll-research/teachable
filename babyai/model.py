@@ -229,7 +229,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             else:
                 self.embedding_size += 1
         if self.use_memory:
-            self.memory_rnn = nn.LSTMCell(self.image_dim, self.memory_dim)
+            self.memory_rnn = nn.LSTMCell(self.embedding_size, self.memory_dim)
             self.embedding_size = self.semi_memory_size
 
         # Define actor's model
