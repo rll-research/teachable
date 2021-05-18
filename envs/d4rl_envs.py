@@ -295,6 +295,39 @@ class D4RLEnv:
             rew = np.dot(dir_taken, dir_desired)
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
+        elif self.reward_type == 'vector_next_waypoint':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            dir_desired = self.waypoint_controller.waypoints[0] - new_pos  # Same offset (or lack thereof)? Same scale?
+            dir_desired = dir_desired / np.linalg.norm(dir_desired)
+            rew = np.dot(dir_taken, dir_desired)
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew += 1
+        elif self.reward_type == 'wall_penalty':
+            new_pos = self.get_pos().copy()
+            dir_taken = new_pos - prev_pos
+            dir_desired = self.waypoint_controller.waypoints[0] - new_pos  # Same offset (or lack thereof)? Same scale?
+            dir_desired = dir_desired / np.linalg.norm(dir_desired)
+            rew = np.dot(dir_taken, dir_desired)
+            agent_pos = new_pos + np.array(self.waypoint_controller.offset_mapping)
+            agent_coord = np.round(agent_pos)
+            x, y = agent_coord.astype(np.int32)
+            x_pos, y_pos = agent_pos
+            # compute the distance to all other cells
+            grid = self.waypoint_controller.env.gs.spec
+            WALL = 0  # TODO: don't hardcode
+            dist_to_wall = 1
+            if x > 0 and grid[x - 1, y] == WALL:
+                dist_to_wall = min(dist_to_wall, x_pos - (x - 1))
+            if x < len(grid) - 1 and grid[x + 1, y] == WALL:
+                dist_to_wall = min(dist_to_wall, x + 1 - x_pos)
+            if y > 0 and grid[x, y - 1] == WALL:
+                dist_to_wall = min(dist_to_wall, y_pos - (y - 1))
+            if y < len(grid) - 1 and grid[x, y + 1] == WALL:
+                dist_to_wall = min(dist_to_wall, y + 1 - y_pos)
+            rew += dist_to_wall / 10
+            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+                rew += 1
         elif self.reward_type == 'vector_dir_waypoint_negative':
             new_pos = self.get_pos().copy()
             dir_taken = new_pos - prev_pos
