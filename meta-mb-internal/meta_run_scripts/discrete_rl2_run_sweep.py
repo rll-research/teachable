@@ -56,7 +56,10 @@ def load_model(args):
         start_itr = 0
         curriculum_step = args.level
     il_optimizer = saved_model.get('il_optimizer', None)
-    log_dict = saved_model.get('log_dict', {})
+    if not args.override_old_config:
+        log_dict = saved_model.get('log_dict', {})
+    else:
+        log_dict = {}
     return policy_dict, optimizer, start_itr, curriculum_step, args, \
         il_optimizer, log_dict
 
@@ -134,8 +137,7 @@ def run_experiment(**config):
         else:
             last_teacher_index = -1
         obs = env.reset()
-        args.reconstruct_advice_size = sum(
-            [np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
+        args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
@@ -155,8 +157,8 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
         policy_dict = {}
-        args.reconstruct_advice_size = sum([np.prod(obs[teacher].shape) for teacher in teacher_null_dict.keys() if teacher in obs])
         teachers_list = list(teacher_null_dict.keys())
+        args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
         if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
                                                                 'single_teachers_none']:
             teachers_list += ['none']
