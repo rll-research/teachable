@@ -349,7 +349,7 @@ class D4RLEnv:
                 dist_to_wall = min(dist_to_wall, y_pos - (y - 1))
             if y < len(grid[0]) - 1 and grid[x, y + 1] == WALL:
                 dist_to_wall = min(dist_to_wall, y + 1 - y_pos)
-            rew += dist_to_wall / 100
+            rew += dist_to_wall / 10000
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
                 rew += 1
         elif self.reward_type == 'vector_dir_waypoint_negative':
@@ -541,9 +541,19 @@ class AntEnv(D4RLEnv):
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)
+    
+    def reset(self):
+        obs_dict = super().reset()
+        pos = self.get_pos() / self.scale_factor
+        target = self.get_target() / self.scale_factor
+        #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
+        return obs_dict
 
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
+        pos = self.get_pos() / self.scale_factor
+        target = self.get_target() / self.scale_factor
+        #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 100 + .1
         return obs_dict, rew, done, info
