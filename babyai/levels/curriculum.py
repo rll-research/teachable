@@ -22,7 +22,7 @@ class Curriculum(Serializable):
         if env == 'point_mass':
             self.levels_list = {k: -1 for k in range(13)}
         elif env == 'ant':
-            self.levels_list = {k: -1 for k in range(12)}
+            self.levels_list = {k: -1 for k in range(12 + 10)}
         elif env == 'babyai':
             # List of all the levels.  There are actually a bunch more: some ones which were omitted since they were
             # very similar to the current ones (e.g. more Level_GoToLocal variants with different sizes and num dists)
@@ -206,6 +206,9 @@ class Curriculum(Serializable):
                 level = AntEnv('antmaze-randommaze-huge-v0', reward_type=reward_type, **kwargs)  # 10
             elif index == 11:
                 level = AntEnv('antmaze-6x6-v0', reward_type=reward_type, **kwargs)  # 11
+            elif index >= 12 and index < 22:
+                i = index - 12
+                level = AntEnv(f'antmaze-fixed{i}-6x6-v0', reward_type=reward_type, **kwargs)
             else:
                 raise NotImplementedError(index)
             level.seed(seed)
