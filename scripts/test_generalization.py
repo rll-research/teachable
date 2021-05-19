@@ -10,6 +10,9 @@ import time
 from meta_mb.samplers.utils import rollout
 from meta_mb.logger import logger
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
+from babyai.levels.curriculum import Curriculum
+from meta_mb.meta_envs.rl2_env import rl2env
+from meta_mb.envs.normalized_env import normalize
 import matplotlib
 
 matplotlib.use('Agg')
@@ -266,10 +269,6 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         for k, v in additional_args.items():
             if not hasattr(args, k) or (not v is None):
                 setattr(args, k, v)
-        if additional_args['target_policy'] is not None:
-            policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
-        # if additional_args['distill_teacher_policy'] is not None:
-        #     policy[args.distill_teacher_policy_key] = load_policy(args.distill_teacher_policy)[0][args.distill_teacher_policy_key]
         n_itr = args.n_itr
     else:
         n_itr = 0
@@ -285,6 +284,11 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         args.seed = seed
         num_feedback = 0
         if not args.finetune_teacher_first in [0, '0']:
+            finetune_log_teachers = list(policy.keys())
+            if additional_args['distill_teacher_policy'] is not None:
+                policy[args.distill_teacher_policy_key] = load_policy(args.distill_teacher_policy)[0][
+                    args.distill_teacher_policy_key]
+
             finetune_teacher_args = copy.deepcopy(args)
             if 'variable' in args.finetune_teacher_first:
                 finetune_teacher_args.n_itr = 1000
@@ -293,9 +297,16 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                 finetune_teacher_args.n_itr = int(args.finetune_teacher_first)
             finetune_teacher_args.teacher_schedule = 'first_teacher'
             finetune_teacher_args.distillation_strategy = 'single_teachers'
-            finetune_teacher_args.yes_distill = True  # TODO: change this if we want to be able to distill from one teacher to another
-            finetune_teacher_args.no_distill = True
-            finetune_teacher_args.no_train_rl = False
+            if additional_args['finetune_il']:
+                finetune_teacher_args.yes_distill = True
+                finetune_teacher_args.no_distill = False
+                finetune_teacher_args.no_train_rl = True
+                finetune_teacher_args.self_distill = True
+                assert finetune_teacher_args.buffer_capacity > 1000, finetune_teacher_args.buffer_capacity
+            else:
+                finetune_teacher_args.yes_distill = False
+                finetune_teacher_args.no_distill = True
+                finetune_teacher_args.no_train_rl = False
             if seed is not None:
                 finetune_teacher_path = full_save_dir.joinpath(f'finetuned_teachers{seed}')
                 if not finetune_teacher_path.exists():
@@ -307,13 +318,15 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                 finetune_teacher_args.seed = seed
             trainer = finetune_policy(env, env_index, policy,
                                       finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
-                                      save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                                      save_dir=save_dir, teachers=finetune_log_teachers, policy_name=policy_name, env_name=env_name,
                                       hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                                       num_rollouts=num_rollouts, model_data=model_data, seed=seed)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
             # policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))  # TODO: this might be important!
             if args.target_policy is not None:
                 policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
+        if additional_args['target_policy'] is not None:
+            policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         finetune_policy(env, env_index, policy,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
@@ -351,6 +364,7 @@ def main():
     parser.add_argument("--policy", required=True)
     parser.add_argument('--target_policy', type=str, default=None)
     parser.add_argument('--distill_teacher_policy', type=str, default=None)
+    parser.add_argument('--teacher_policy_key', type=str, default=None)
     parser.add_argument('--target_policy_key', type=str, default='none')
     parser.add_argument('--distill_teacher_policy_key', type=str, default='none')
     parser.add_argument('--envs', nargs='+', required=True, type=str)
@@ -388,7 +402,7 @@ def main():
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
 
-    _, default_env, config, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
+    _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_env.reset()
     try:
         teacher_null_dict = default_env.teacher.null_feedback()
@@ -437,10 +451,36 @@ def main():
                         env_indices.append(i)
     envs = []
     for env_index in env_indices:
-        env = default_env.copy(env_index)
+        feedback_list = default_args.feedback_type
+        if args.target_policy is not None and not args.target_policy_key in feedback_list:
+            feedback_list += [args.target_policy_key]
+        if args.distill_teacher_policy is not None and not args.distill_teacher_policy_key in feedback_list:
+            feedback_list = [args.distill_teacher_policy_key] + feedback_list
+        arguments = {
+            "start_loc": 'all',
+            "include_holdout_obj": not default_args.leave_out_object,
+            "persist_goal": not default_args.reset_goal,
+            "persist_objs": not default_args.reset_objs,
+            "persist_agent": not default_args.reset_agent,
+            "feedback_type": feedback_list,
+            "feedback_freq": default_args.feedback_freq,
+            "cartesian_steps": default_args.cartesian_steps,
+            "num_meta_tasks": default_args.rollouts_per_meta_task,
+            "intermediate_reward": default_args.reward_type == 'dense',
+            "reward_type": default_args.reward_type,
+            "fully_observed": default_args.fully_observed,
+            "padding": default_args.padding,
+            "args": default_args,
+            "seed": default_args.seed,
+        }
+        env = rl2env(normalize(Curriculum(default_args.advance_curriculum_func, env=default_args.env, start_index=env_index,
+                                          curriculum_type=default_args.curriculum_type, **arguments),
+                               normalize_actions=default_args.act_norm, normalize_reward=default_args.rew_norm,
+                               ), ceil_reward=default_args.ceil_reward)
         envs.append((env, env_index))
 
     additional_args = {}
+    additional_args['feedback_type'] = feedback_list
     additional_args['n_itr'] = args.finetune_itrs
     additional_args['teacher_schedule'] = args.teacher_schedule
     additional_args['distillation_strategy'] = args.distillation_strategy
@@ -459,6 +499,8 @@ def main():
         additional_args['distillation_steps'] = args.distillation_steps
     additional_args['target_policy'] = args.target_policy
     additional_args['target_policy_key'] = args.target_policy_key
+    additional_args['distill_teacher_policy'] = args.distill_teacher_policy
+    additional_args['distill_teacher_policy_key'] = args.distill_teacher_policy_key
     additional_args['distill_successful_only'] = args.distill_successful_only
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
