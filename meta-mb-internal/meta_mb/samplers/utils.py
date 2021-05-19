@@ -199,7 +199,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 reward_predictor.reset(dones=[True])
             env.set_task()
         o = env.reset()
-
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
             if 'gave_SubgoalCorrections' in o:

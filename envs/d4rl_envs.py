@@ -281,7 +281,7 @@ class D4RLEnv:
         end_points = self.waypoint_controller.waypoints
         distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
         gave_reward = True
-
+        self.reward_type = 'wall_penalty'
         if self.reward_type == 'dense':
             gave_reward = done
         if self.reward_type == 'oracle_action':
@@ -340,14 +340,14 @@ class D4RLEnv:
             # compute the distance to all other cells
             grid = self.waypoint_controller.env.gs.spec
             WALL = 0  # TODO: don't hardcode
-            dist_to_wall = 1
+            dist_to_wall = 2
             if x > 0 and grid[x - 1, y] == WALL:
                 dist_to_wall = min(dist_to_wall, x_pos - (x - 1))
             if x < len(grid) - 1 and grid[x + 1, y] == WALL:
                 dist_to_wall = min(dist_to_wall, x + 1 - x_pos)
             if y > 0 and grid[x, y - 1] == WALL:
                 dist_to_wall = min(dist_to_wall, y_pos - (y - 1))
-            if y < len(grid) - 1 and grid[x, y + 1] == WALL:
+            if y < len(grid[0]) - 1 and grid[x, y + 1] == WALL:
                 dist_to_wall = min(dist_to_wall, y + 1 - y_pos)
             rew += dist_to_wall / 100
             if len(self.waypoint_controller.waypoints) < self.min_waypoints:
