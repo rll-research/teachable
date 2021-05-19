@@ -281,7 +281,6 @@ class D4RLEnv:
         end_points = self.waypoint_controller.waypoints
         distance = sum([np.linalg.norm(end - start) for start, end in zip(start_points, end_points)])
         gave_reward = True
-        self.reward_type = 'wall_penalty'
         if self.reward_type == 'dense':
             gave_reward = done
         if self.reward_type == 'oracle_action':
