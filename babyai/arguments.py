@@ -95,7 +95,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--continue_train', action='store_true')
         self.add_argument('--prefix', type=str, default='DEBUG')
         self.add_argument('--description', type=str, default='yolo')
-        self.add_argument('--saved_path', type=str, default=None)
+        self.add_argument('--saved_path', nargs='+', type=str)
         self.add_argument('--override_old_config', action='store_true')
         self.add_argument('--save_option', type=str, default='level',
                           choices=['all', 'level', 'latest', 'none', 'gap'])

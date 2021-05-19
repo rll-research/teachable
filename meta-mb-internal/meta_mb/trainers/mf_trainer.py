@@ -33,7 +33,7 @@ class Trainer(object):
     def __init__(
             self,
             args,
-            algo,
+            algos,
             algo_dagger,
             policy,
             env,
@@ -60,7 +60,7 @@ class Trainer(object):
             log_fn=lambda w, x, y, z: None,
     ):
         self.args = args
-        self.algo = algo
+        self.algos = algos
         self.algo_dagger = algo_dagger
         self.policy_dict = policy
         self.env = copy.deepcopy(env)
@@ -232,12 +232,14 @@ class Trainer(object):
             should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
-                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
+                for algo in self.algos:
+                    samples_data, episode_logs = algo.collect_experiences(teacher_train_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
                                                                            collection_dict=collection_dict)
-                raw_samples_data = copy.deepcopy(samples_data)
+                    raw_samples_data = copy.deepcopy(samples_data)
+                    buffer.add_batch(raw_samples_data, self.curriculum_step)
                 try:
                     counts_train = buffer.counts_train[self.curriculum_step]
                 except:
@@ -281,8 +283,8 @@ class Trainer(object):
                     self.args.collect_before_threshold or advance_curriculum)
             if self.args.yes_distill:
                 should_store_data = raw_samples_data is not None
-            if should_store_data:
-                buffer.add_batch(raw_samples_data, self.curriculum_step)
+            # if should_store_data:
+            #     buffer.add_batch(raw_samples_data, self.curriculum_step)
 
                 if self.args.use_dagger:
                     for i in range(1):
@@ -782,9 +784,9 @@ class Trainer(object):
                  policy=self.policy_dict,
                  env=self.env,
                  args=self.args,
-                 optimizer=self.algo.optimizer_dict,
-                 reconstructor=self.algo.reconstructor_dict,
-                 reconstructor_optimizer=self.algo.reconstructor_optimizer_dict,
+                 # optimizer=self.algo.optimizer_dict,
+                 # reconstructor=self.algo.reconstructor_dict,
+                 # reconstructor_optimizer=self.algo.reconstructor_optimizer_dict,
                  il_reconstructor_optimizer=self.il_trainer.reconstructor_optimizer_dict,
                  curriculum_step=self.curriculum_step,
                  il_optimizer=il_optimizer,

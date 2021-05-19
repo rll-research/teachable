@@ -73,12 +73,16 @@ def run_experiment(**config):
 
     set_seed(args.seed)
     original_saved_path = args.saved_path
-    if original_saved_path is not None:
-        policy_dict, optimizer, start_itr, curriculum_step, args, \
-            il_optimizer, log_dict = load_model(args)
-    else:
-        il_optimizer = None
-        log_dict = {}
+    if len(original_saved_path) > 0:
+        policy_dicts = []
+        env_levels = []
+        for saved_path in args.saved_path:
+            saved_model = joblib.load(saved_path)
+            policy_dicts.append(saved_model['policy'])
+            env_levels.append(saved_model['curriculum_step'])
+    optimizer = None
+    il_optimizer = None
+    log_dict = {}
 
     if args.env in ['point_mass', 'ant']:
         args.no_instr = True
@@ -119,11 +123,20 @@ def run_experiment(**config):
         args.accuracy_threshold_distill_no_teacher = 0
         args.accuracy_threshold_rollout_teacher = 0
         args.accuracy_threshold_rollout_no_teacher = 0
-    if original_saved_path is not None:
-        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=curriculum_step,
+    if len(original_saved_path) > 0:
+        # Test env
+        test_env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
                                           curriculum_type=args.curriculum_type, **arguments),
                                normalize_actions=args.act_norm, normalize_reward=args.rew_norm,
                                ), ceil_reward=args.ceil_reward)
+        # Train envs
+        envs = []
+        for level in env_levels:
+            env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=level,
+                                              curriculum_type=args.curriculum_type, **arguments),
+                                   normalize_actions=args.act_norm, normalize_reward=args.rew_norm,
+                                   ), ceil_reward=args.ceil_reward)
+            envs.append(env)
         try:
             teacher_null_dict = env.teacher.null_feedback()
         except Exception as e:
@@ -137,9 +150,10 @@ def run_experiment(**config):
             last_teacher_index = -2
         else:
             last_teacher_index = -1
-        obs = env.reset()
+        obs = test_env.reset()
         args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
     else:
+        raise NotImplementedError
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
                                           curriculum_type=args.curriculum_type,
@@ -157,35 +171,35 @@ def run_experiment(**config):
         include_zeros = args.include_zeros or args.same_model
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
-        policy_dict = {}
-        teachers_list = list(teacher_null_dict.keys())
-        args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
-        if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
-                                                                'single_teachers_none']:
-            teachers_list += ['none']
-            last_teacher_index = -2
+    policy_dict = {}
+    teachers_list = list(teacher_null_dict.keys())
+    args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
+    if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
+                                                            'single_teachers_none']:
+        teachers_list += ['none']
+        last_teacher_index = -2
+    else:
+        last_teacher_index = -1
+    for teacher in teachers_list:
+        if not args.include_zeros and not args.same_model:
+            args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
+        if args.same_model and not teacher == teachers_list[0]:
+            policy = policy_dict[teachers_list[0]]
         else:
-            last_teacher_index = -1
-        for teacher in teachers_list:
-            if not args.include_zeros and not args.same_model:
-                args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
-            if args.same_model and not teacher == teachers_list[0]:
-                policy = policy_dict[teachers_list[0]]
-            else:
-                policy = ACModel(action_space=env.action_space,
-                                 env=env,
-                                 args=args)
-            policy_dict[teacher] = policy
+            policy = ACModel(action_space=test_env.action_space,
+                             env=test_env,
+                             args=args)
+        policy_dict[teacher] = policy
 
-        start_itr = 0
-        curriculum_step = env.index
+    start_itr = 0
+    curriculum_step = args.level
 
     args.model = 'default_il'
     if args.reconstruction:
-        reconstructor_dict = {k: Reconstructor(env, args) for k in teachers_list}
+        reconstructor_dict = {k: Reconstructor(test_env, args) for k in teachers_list}  # TODO: reload!!
     else:
         reconstructor_dict = None
-    il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
+    il_trainer = ImitationLearning(policy_dict, test_env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor,
                                    instr_dropout_prob=args.distill_dropout_prob,
                                    reconstructor_dict=reconstructor_dict)
@@ -194,7 +208,7 @@ def run_experiment(**config):
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
 
     sampler = MetaSampler(
-        env=env,
+        env=test_env,
         policy=policy_dict,
         rollouts_per_meta_task=args.rollouts_per_meta_task,
         meta_batch_size=10,
@@ -211,13 +225,12 @@ def run_experiment(**config):
         positive_adv=False,
     )
 
-    envs = [env.copy() for _ in range(args.num_envs)]
-    for i, new_env in enumerate(envs):
-        new_env.seed(i)
-        new_env.set_task()
-        new_env.reset()
-    augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+    augmenter = DataAugmenter(test_env.vocab()) if args.augment else None
+
+    algos = []
+    for env, policy_dict in zip(envs, policy_dicts):
+        algo = PPOAlgo(policy_dict, [env], args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+        algos.append(algo)
 
     if args.use_dagger:
         envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
@@ -254,7 +267,7 @@ def run_experiment(**config):
     else:
         log_teacher = teachers_list[last_teacher_index]  # Second to last (last is none)
     num_rollouts = 1 if is_debug else 10
-    log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
+    log_fn = make_log_fn(test_env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),  # TODO: fix this for babyai!
                          log_every=10)
@@ -262,10 +275,10 @@ def run_experiment(**config):
 
     trainer = Trainer(
         args,
-        algo=algo,
+        algos=algos,
         algo_dagger=algo_dagger,
         policy=policy_dict,
-        env=deepcopy(env),
+        env=test_env.copy(),  # TODO: ???
         sampler=sampler,
         sample_processor=sample_processor,
         start_itr=start_itr,
