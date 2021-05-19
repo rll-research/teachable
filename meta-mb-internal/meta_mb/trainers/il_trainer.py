@@ -66,6 +66,8 @@ class ImitationLearning(object):
                 k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in
                 self.reconstructor_optimizer_dict.items()
             }
+        else:
+            self.reconstructor_optimizer_dict = None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

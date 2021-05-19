@@ -86,6 +86,8 @@ class PPOAlgo(BaseAlgo):
                 else:
                     self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
                                                                     self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
+        else:
+            self.reconstructor_optimizer_dict = None
 
 
 
