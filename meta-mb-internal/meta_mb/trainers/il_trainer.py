@@ -219,7 +219,7 @@ class ImitationLearning(object):
                 t1 = action_step.detach().cpu().numpy()
                 t2 = dist.mean.detach().cpu().numpy()
                 temp = np.concatenate([t1, t2, t1 - t2], axis=1)
-                if self.args.loss_type == 'log_prob':
+                if True:#self.args.loss_type == 'log_prob':
                     policy_loss = -dist.log_prob(action_step)
                 elif self.args.loss_type == 'rsample':
                     loss_fn = torch.nn.MSELoss()
