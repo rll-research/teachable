@@ -1,4 +1,4 @@
-from .maze_model import MazeEnv, OPEN, U_MAZE, MEDIUM_MAZE, LARGE_MAZE, U_MAZE_EVAL, MEDIUM_MAZE_EVAL, LARGE_MAZE_EVAL
+from .maze_model import MazeEnv, OPEN, U_MAZE, MEDIUM_MAZE, LARGE_MAZE, U_MAZE_EVAL, MEDIUM_MAZE_EVAL, LARGE_MAZE_EVAL, TWELVE, FIFTEEN
 from gym.envs.registration import register
 
 register(
@@ -89,6 +89,34 @@ register(
     max_episode_steps=300,
     kwargs={
         'maze_spec':LARGE_MAZE,
+        'reward_type':'sparse',
+        'reset_target': False,
+        'ref_min_score': 4.83,
+        'ref_max_score': 191.99,
+        'dataset_url':'http://rail.eecs.berkeley.edu/datasets/offline_rl/maze2d/maze2d-large-sparse.hdf5'
+    }
+)
+
+register(
+    id='maze2d-12x12-v0',
+    entry_point='d4rl_content.pointmaze:MazeEnv',
+    max_episode_steps=400,
+    kwargs={
+        'maze_spec': TWELVE,
+        'reward_type':'sparse',
+        'reset_target': False,
+        'ref_min_score': 4.83,
+        'ref_max_score': 191.99,
+        'dataset_url':'http://rail.eecs.berkeley.edu/datasets/offline_rl/maze2d/maze2d-large-sparse.hdf5'
+    }
+)
+
+register(
+    id='maze2d-15x15-v0',
+    entry_point='d4rl_content.pointmaze:MazeEnv',
+    max_episode_steps=500,
+    kwargs={
+        'maze_spec': FIFTEEN,
         'reward_type':'sparse',
         'reset_target': False,
         'ref_min_score': 4.83,

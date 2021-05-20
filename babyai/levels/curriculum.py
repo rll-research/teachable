@@ -20,7 +20,7 @@ class Curriculum(Serializable):
         self.reward_type = reward_type
         self.reward_env_name = reward_env_name
         if env == 'point_mass':
-            self.levels_list = {k: -1 for k in range(13)}
+            self.levels_list = {k: -1 for k in range(15)}
         elif env == 'ant':
             self.levels_list = {k: -1 for k in range(12 + 10)}
         elif env == 'babyai':
@@ -175,9 +175,13 @@ class Curriculum(Serializable):
                 level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
                              reset_start=False, **kwargs)
             elif index == 11:
-                level = PointMassEnv('maze2d-randommaze-7x7-v0', reward_type=reward_type, **kwargs)  # 4
+                level = PointMassEnv('maze2d-randommaze-7x7-v0', reward_type=reward_type, **kwargs)  # 11
             elif index == 12:
-                level = PointMassEnv('maze2d-randommaze-8x8-v0', reward_type=reward_type, **kwargs)  # 4
+                level = PointMassEnv('maze2d-randommaze-8x8-v0', reward_type=reward_type, **kwargs)  # 12
+            elif index == 13:
+                level = PointMassEnv('maze2d-12x12-v0', reward_type=reward_type, **kwargs)  # 13
+            elif index == 14:
+                level = PointMassEnv('maze2d-15x15-v0', reward_type=reward_type, **kwargs)  # 14
             else:
                 raise NotImplementedError(index)
             self.levels_list[index] = level

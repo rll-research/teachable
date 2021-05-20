@@ -156,6 +156,37 @@ OPEN = \
         "#OOOOS#\\"+\
         "#######"
 
+TWELVE = \
+"############\\"+\
+"#OOOOO##O#O#\\"+\
+"###G#OO#O#O#\\"+\
+"######OOOOO#\\"+\
+"#O##O#O#####\\"+\
+"#OOOOOO###O#\\"+\
+"###O##OOOOO#\\"+\
+"##OO#OO#####\\"+\
+"#OO##O###S##\\"+\
+"##O##O#O#O##\\"+\
+"#OO##OOOOOO#\\"+\
+"############"
+
+FIFTEEN = \
+"###############\\"+\
+"#OO#O#O##O#OOO#\\"+\
+"##O#OOO##OOO###\\"+\
+"#OOGO#O#OO#####\\"+\
+"##O######OOOOO#\\"+\
+"#OOO#O#O#O#####\\"+\
+"##O##O#O#OOOOO#\\"+\
+"#OO##OOOOO#O#O#\\"+\
+"#O##OO#O#######\\"+\
+"#OO#O#####O#O##\\"+\
+"#O##O#O##OOOOO#\\"+\
+"#OO#OOO#OO#####\\"+\
+"#O##O#OOO####O#\\"+\
+"#OOOO#O#OOOOOO#\\"+\
+"###############"
+
 
 class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
     def __init__(self,
