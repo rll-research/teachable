@@ -138,6 +138,7 @@ class Curriculum(Serializable):
         self.index = start_index
 
     def set_wrapped_env(self, index):
+        self.index = index
         if not self.levels_list[index] == -1:
             self._wrapped_env = self.levels_list[index]
             return

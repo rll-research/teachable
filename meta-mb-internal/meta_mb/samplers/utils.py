@@ -164,6 +164,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
             save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False,
             temperature=1):
+    print("rolling out with", env.index)
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:

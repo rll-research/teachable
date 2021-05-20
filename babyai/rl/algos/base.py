@@ -157,6 +157,7 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
+        print("Collecting with env", self.env.envs[0].index)
         active_teachers = [k for k, v in teacher_dict.items() if v]
         assert len(active_teachers) < 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
