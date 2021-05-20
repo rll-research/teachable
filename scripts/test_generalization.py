@@ -417,7 +417,7 @@ def main():
     parser.add_argument('--lr', type=float, default=None)
     parser.add_argument('--buffer_capacity', type=int, default=10000)
     args = parser.parse_args()
-    set_seed(args.seeds)
+    set_seed(args.seeds[0])
 
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
@@ -544,6 +544,7 @@ def main():
             while hasattr(inner_env, '_wrapped_env'):
                 inner_env = inner_env._wrapped_env
             for seed in args.seeds:
+                set_seed(seed)
                 teacher_null_dict = env.teacher.null_feedback()
                 test_success(env, env_index, save_dir, args.num_rollouts, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
