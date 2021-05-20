@@ -13,7 +13,7 @@ class Curriculum(Serializable):
         :param kwargs: arguments for the environment
         """
         Serializable.quick_init(self, locals())
-        reward_env_name = 'sparse' if reward_type == 'sparse' else 'dense'
+        reward_env_name = '' if reward_type == 'sparse' else '-dense'
         self.advance_curriculum_func = advance_curriculum_func
         self.env = env
         self.kwargs = kwargs
@@ -147,32 +147,32 @@ class Curriculum(Serializable):
         seed = self.levels_list[index]
         if self.env == 'point_mass':
             if index == 0:
-                level = PointMassEnv(f'maze2d-open-{reward_env_name}-v0', reward_type=reward_type, **kwargs)  # 0
+                level = PointMassEnv(f'maze2d-open{reward_env_name}-v0', reward_type=reward_type, **kwargs)  # 0
             elif index == 1:
-                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 1
+                level = PointMassEnv(f'maze2d-umaze{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 1
             elif index == 2:
-                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 2
+                level = PointMassEnv(f'maze2d-medium{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 2
             elif index == 3:
-                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 3
+                level = PointMassEnv(f'maze2d-large{reward_env_name}-v1', reward_type=reward_type, **kwargs)  # 3
             elif index == 4:
                 level = PointMassEnv('maze2d-randommaze-v0', reward_type=reward_type, **kwargs)  # 4
             elif index == 5:
-                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 5
+                level = PointMassEnv(f'maze2d-umaze{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 5
                              **kwargs)
             elif index == 6:
-                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
+                level = PointMassEnv(f'maze2d-medium{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 6
                              **kwargs)
             elif index == 7:
-                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
+                level = PointMassEnv(f'maze2d-large{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 7
                              **kwargs)
             elif index == 8:
-                level = PointMassEnv(f'maze2d-umaze-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
+                level = PointMassEnv(f'maze2d-umaze{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 8
                              reset_start=False, **kwargs)
             elif index == 9:
-                level = PointMassEnv(f'maze2d-medium-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
+                level = PointMassEnv(f'maze2d-medium{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 9
                              reset_start=False, **kwargs)
             elif index == 10:
-                level = PointMassEnv(f'maze2d-large-{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
+                level = PointMassEnv(f'maze2d-large{reward_env_name}-v1', reward_type=reward_type, reset_target=False,  # 10
                              reset_start=False, **kwargs)
             elif index == 11:
                 level = PointMassEnv('maze2d-randommaze-7x7-v0', reward_type=reward_type, **kwargs)  # 11
