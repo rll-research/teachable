@@ -14,6 +14,7 @@ from babyai.levels.curriculum import Curriculum
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
 import matplotlib
+from meta_mb.utils.utils import set_seed
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -416,6 +417,7 @@ def main():
     parser.add_argument('--lr', type=float, default=None)
     parser.add_argument('--buffer_capacity', type=int, default=10000)
     args = parser.parse_args()
+    set_seed(args.seed)
 
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
