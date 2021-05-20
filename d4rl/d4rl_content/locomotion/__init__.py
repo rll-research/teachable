@@ -230,7 +230,7 @@ register(
 register(
     id='antmaze-large-diverse-v0',
     entry_point='d4rl_content.locomotion.ant:make_ant_maze_env',
-    max_episode_steps=1200,
+    max_episode_steps=1400,
     kwargs={
         'maze_map': maze_env.HARDEST_MAZE_TEST,
         'reward_type':'sparse',
