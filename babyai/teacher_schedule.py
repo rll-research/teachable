@@ -153,11 +153,21 @@ def easy_swap_harder_each_time(level, success_rate, accuracy_rate, easy_teacher,
     distillation_dict = {easy_teacher: False, harder_teacher: True}
     return teacher_train_dict, distillation_dict
 
+def specific_teachers(level, collect_with=None, distill_to=None, teacher_list=[]):
+    no_teacher_dict = {k: False for k in teacher_list}
+    if level == -1:  # Generate no_teacher_dict
+        return no_teacher_dict, None
+    teacher_train_dict = {k: k == collect_with for k in teacher_list}
+    distillation_dict = {k: k == distill_to for k in teacher_list}
+    return teacher_train_dict, distillation_dict
 
-def make_teacher_schedule(feedback_types, teacher_schedule, success_intervention_cutoff=.95,
-                          accuracy_intervention_cutoff=.95, remove_easy_level=13):
+
+def make_teacher_schedule(feedback_types=[], teacher_schedule=None, success_intervention_cutoff=.95,
+                          accuracy_intervention_cutoff=.95, remove_easy_level=13, collect_with=None, distill_to=None):
     feedback_types = [teacher for teacher in feedback_types if not teacher == 'None']
-    if teacher_schedule == 'none':
+    if teacher_schedule == 'specific_teachers':
+        return lambda level, a, b: specific_teachers(level, collect_with, distill_to, feedback_types)
+    elif teacher_schedule == 'none':
         return lambda level, a, b: no_teacher(level, feedback_types)
     elif teacher_schedule == 'all_teachers':
         return lambda level, a, b: all_teachers(level, feedback_types)

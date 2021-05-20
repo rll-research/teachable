@@ -131,9 +131,9 @@ def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, s
 
 
 def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
-                    save_dir=pathlib.Path("."), teachers={}, policy_name="", env_name="",
+                    save_dir=pathlib.Path("."), policy_name="", env_name="",
                     hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0,
-                    start_num_feedback=0):
+                    start_num_feedback=0, collect_with=None, distill_to=None):
     # Normally we would put the imports up top, but we also import this file in Trainer
     # Importing here prevents us from getting stuck in infinite loops
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -218,12 +218,13 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
 
     except Exception as e:
         print("Couldn't load normal optimizer", e)
-    teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule)
+    teacher_schedule = make_teacher_schedule(feedback_types=args.feedback_type, teacher_schedule='specific_teachers',
+                                             collect_with=collect_with, distill_to=distill_to)
     # Standardize args
     args.single_level = True
     args.reward_when_necessary = False  # TODO: make this a flag
 
-    log_fn = make_log_fn(env, args, start_num_feedback, save_dir, teachers[0], hide_instrs, seed=seed,
+    log_fn = make_log_fn(env, args, start_num_feedback, save_dir, distill_to, hide_instrs, seed=seed,
                          stochastic=stochastic, num_rollouts=num_rollouts, policy_name=policy_name, env_name=env_name,
                          log_every=args.log_every)
 
@@ -256,16 +257,18 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     )
     print("TRAINING!!!")
     trainer.train()
-    print("TOTAL FEEDBACK", trainer.num_feedback_reward / 800, trainer.num_feedback_advice / 800)
+    print("TOTAL FEEDBACK", trainer.num_feedback_reward, trainer.num_feedback_advice)
     print("All done!")
     return trainer
 
 
-def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_dict, policy_path=None, policy=None,
+def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
-                 seed=0):
+                 seed=0, teacher_key=None, distill_teacher_key=None, target_key=None):
     if policy is None:
         policy, _, args, model_data = load_policy(policy_path)
+        if teacher_key is None:
+            teacher_key = list(policy.keys())[0]
         for k, v in additional_args.items():
             if not hasattr(args, k) or (not v is None):
                 setattr(args, k, v)
@@ -284,7 +287,6 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
         args.seed = seed
         num_feedback = 0
         if not args.finetune_teacher_first in [0, '0']:
-            finetune_log_teachers = list(policy.keys())
             if additional_args['distill_teacher_policy'] is not None:
                 policy[args.distill_teacher_policy_key] = load_policy(args.distill_teacher_policy)[0][
                     args.distill_teacher_policy_key]
@@ -303,10 +305,14 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                 finetune_teacher_args.no_train_rl = True
                 finetune_teacher_args.self_distill = True
                 assert finetune_teacher_args.buffer_capacity > 1000, finetune_teacher_args.buffer_capacity
+                collect_with = distill_teacher_key
+                distill_to = teacher_key
             else:
                 finetune_teacher_args.yes_distill = False
                 finetune_teacher_args.no_distill = True
                 finetune_teacher_args.no_train_rl = False
+                collect_with = teacher_key
+                distill_to = teacher_key
             if seed is not None:
                 finetune_teacher_path = full_save_dir.joinpath(f'finetuned_teachers{seed}')
                 if not finetune_teacher_path.exists():
@@ -316,27 +322,40 @@ def test_success(env, env_index, save_dir, num_rollouts, teachers, teacher_null_
                     with open(finetune_teacher_path.joinpath('results.csv'), 'w') as f:
                         f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
                 finetune_teacher_args.seed = seed
+            print("=" * 20, "Finetuning Teacher", "=" * 20)
+            print("All feedback forms:", finetune_teacher_args.feedback_type)
+            print("collect with", collect_with, "distill to", distill_to, "actually distilling?",
+                  finetune_teacher_args.yes_distill, "RL?", not finetune_teacher_args.no_train_rl)
             trainer = finetune_policy(env, env_index, policy,
                                       finetune_teacher_path, finetune_teacher_args, teacher_null_dict,
-                                      save_dir=save_dir, teachers=finetune_log_teachers, policy_name=policy_name, env_name=env_name,
+                                      save_dir=save_dir, policy_name=policy_name, env_name=env_name,
                                       hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                                      num_rollouts=num_rollouts, model_data=model_data, seed=seed)
+                                      num_rollouts=num_rollouts, model_data=model_data, seed=seed,
+                                      collect_with=collect_with, distill_to=distill_to)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
-            # policy, _, _, _ = load_policy(finetune_path.joinpath('latest.pkl'))  # TODO: this might be important!
             if args.target_policy is not None:
                 policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
+        collect_with = teacher_key
+        distill_to = target_key
+
+
+        print("=" * 20, "Distilling", "target policy:", target_key, "distill from", args.feedback_type, "=" * 20)
+        print("All feedback forms:", args.feedback_type)
+        print("collect with", collect_with, "distill to", distill_to, "actually distilling?", args.yes_distill,
+              "RL?", not args.no_train_rl)
+
         finetune_policy(env, env_index, policy,
                         finetune_path, args, teacher_null_dict,
-                        save_dir=save_dir, teachers=teachers, policy_name=policy_name, env_name=env_name,
+                        save_dir=save_dir, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
-                        num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback)
-    assert len(teachers) == 1
-    teacher_policy = policy[teachers[0]]
+                        num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback,
+                        collect_with=collect_with, distill_to=distill_to)
+    teacher_policy = policy[target_key]
     success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, teacher_policy, full_save_dir,
                                                                            num_rollouts,
-                                                                           teachers, hide_instrs, stochastic, args,
+                                                                           [target_key], hide_instrs, stochastic, args,
                                                                            seed)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}, reward: {reward}")
     with open(save_dir.joinpath('results.csv'), 'a') as f:
@@ -366,10 +385,9 @@ def main():
     parser.add_argument('--distill_teacher_policy', type=str, default=None)
     parser.add_argument('--teacher_policy_key', type=str, default=None)
     parser.add_argument('--target_policy_key', type=str, default='none')
-    parser.add_argument('--distill_teacher_policy_key', type=str, default='none')
+    parser.add_argument('--distill_teacher_policy_key', type=str, default=None)
     parser.add_argument('--envs', nargs='+', required=True, type=str)
     parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
-    parser.add_argument('--teachers', nargs='+', default=['all'], type=str)
     parser.add_argument("--finetune_itrs", default=0, type=int)
     parser.add_argument("--min_itr_steps_distill", default=0, type=int)
     parser.add_argument("--num_rollouts", default=50, type=int)
@@ -404,10 +422,6 @@ def main():
 
     _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_env.reset()
-    try:
-        teacher_null_dict = default_env.teacher.null_feedback()
-    except:
-        teacher_null_dict = {}
 
     # Get the levels of the policies to load
     policy_levels = args.levels
@@ -528,11 +542,15 @@ def main():
             while hasattr(inner_env, '_wrapped_env'):
                 inner_env = inner_env._wrapped_env
             for seed in args.seeds:
-                test_success(env, env_index, save_dir, args.num_rollouts, args.teachers, teacher_null_dict,
+                teacher_null_dict = env.teacher.null_feedback()
+                test_success(env, env_index, save_dir, args.num_rollouts, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
                              policy_name=policy_path.stem, env_name=str(env_index),  # inner_env.__class__.__name__, 
                              hide_instrs=args.hide_instrs, heldout_env=env, stochastic=not args.deterministic,
-                             additional_args=additional_args, seed=seed)
+                             additional_args=additional_args, seed=seed,
+                             teacher_key=args.teacher_policy_key,
+                             distill_teacher_key=args.distill_teacher_policy_key,
+                             target_key=args.target_policy_key)
 
 
 if __name__ == '__main__':
