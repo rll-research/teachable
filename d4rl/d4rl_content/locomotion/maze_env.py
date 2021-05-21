@@ -167,6 +167,7 @@ class MazeEnv(gym.Env):
           temp_maze_map[i][j] = 1
     
     self._np_maze_map = np.array(temp_maze_map)
+    self.np_maze_map = np.array(temp_maze_map)
 
     torso_x, torso_y = self._find_robot()
     self._init_torso_x = torso_x

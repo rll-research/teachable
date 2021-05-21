@@ -255,10 +255,26 @@ class D4RLEnv:
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
-        max_grid[:h, :w] = state
+        x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
+        state[int(x), int(y)] = 2
+        y_start = self.offset_y
+        y_end = y_start + h
+        x_start = self.offset_x
+        x_end = x_start + w
+        assert y_end <= len(max_grid)
+        assert x_end <= len(max_grid[0])
+        max_grid[y_start:y_end, x_start:x_end] = state
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
-        state_obs = obs_dict['obs'] / self.scale_factor
-        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])  # TODO: /5 is a hacky way of trying to make the max grid less useful
+        state_obs = obs_dict['obs']
+
+        # Compute the offset and add the goal
+        offset = np.array([self.offset_y, self.offset_x])
+        agent_pos = self.get_pos() + offset
+        agent_goal = (self.get_target() + offset) - agent_pos
+        state_obs[:2] = agent_pos / self.scale_factor
+        state_obs = np.concatenate([state_obs, agent_goal / self.scale_factor])
+
+        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
@@ -421,6 +437,12 @@ class D4RLEnv:
     def reset(self):
         self._wrapped_env = gym.envs.make(self.env_name, reset_target=self.reset_target, reset_start=self.reset_start,
                                           reward_type=self.reward_type)
+        grid_y, grid_x = self._wrapped_env.np_maze_map.shape
+        margin_y = self.max_grid_size - grid_y
+        margin_x = self.max_grid_size - grid_x
+        self.offset_y = np.random.randint(0, margin_y)
+        self.offset_x = np.random.randint(0, margin_x)
+
         obs = self._wrapped_env.reset()
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
@@ -493,7 +515,7 @@ class PointMassEnv(D4RLEnv):
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         target = self.get_target() / self.scale_factor
-        obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
+        obs_dict['obs'] = np.concatenate([obs_dict['obs']])
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
         # done = done or info['success']
@@ -504,7 +526,7 @@ class PointMassEnv(D4RLEnv):
     def reset(self):
         obs_dict = super().reset()
         target = self.get_target() / self.scale_factor
-        obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
+        obs_dict['obs'] = np.concatenate([obs_dict['obs']])
         return obs_dict
 
 
