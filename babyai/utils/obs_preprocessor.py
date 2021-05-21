@@ -3,7 +3,7 @@ import numpy as np
 from babyai.rl.utils.dictlist import DictList
 
 def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                          include_zeros=True, pad_size=51):
+                          include_zeros=True, pad_size=30):
     def obss_preprocessor(obs, teacher_dict, show_instrs=True, show_feedback=1.0, show_obs=1.0):
         obs_output = {}
         assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
@@ -40,6 +40,8 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                     advice_list.append(v * feedback_mask)
                 elif k == 'instr':
                     obs_output[k].append(np.array(v) * instr_mask)
+                elif k == 'state':
+                    obs_output[k].append(v * obs_mask)
                 elif k == 'obs':
                     if type(v) is tuple:  # Padding for egocentric view
                         obs_output[k].append((v[0] * obs_mask, v[1], v[2]))
@@ -58,12 +60,13 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
             if len(v) == 0:
                 continue
             if k == 'obs' and type(v[0]) is tuple:  # Padding for egocentric view
-                obs_final[k] = np.zeros((len(v), pad_size, pad_size, 3))
+                obs_final[k] = np.zeros((len(v), pad_size, pad_size, 1))
                 middle = int(pad_size / 2)
                 for i, (img, x, y) in enumerate(v):
                     y_start = middle - y
                     x_start = middle - x
                     obs_final[k][i][x_start:x_start + len(img), y_start:y_start + len(img[0])] = img
+                temp = obs_final[k][0, :, :, 0]
                 obs_final[k] = torch.FloatTensor(obs_final[k]).to(device)
             else:
                 obs_final[k] = torch.FloatTensor(v).to(device)

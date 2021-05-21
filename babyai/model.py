@@ -136,13 +136,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))
-        if self.img_obs:
+        if True:#self.img_obs:
             if args.padding:
                 self.image_conv = nn.Sequential(*[
                     *([ImageBOWEmbedding(147, 128)] if use_bow else []),
                     nn.Conv2d(
                         in_channels=128 if use_bow or pixel else 3, out_channels=32,
-                        kernel_size=(8, 8), stride=8, padding=1),
+                        kernel_size=(8, 8), stride=4, padding=1),
                     nn.BatchNorm2d(32),
                     nn.ReLU(),
                     *([nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
@@ -178,11 +178,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 ])
                 self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
-        else:
-            try:
-                self.image_dim = env.observation_space.n
-            except AttributeError:  # continuous
-                self.image_dim = len(obs['obs'])
+        try:
+            state_dim = env.observation_space.n
+        except AttributeError:  # continuous
+            state_dim = len(obs['state'])
 
         if self.advice_size > 0:
             self.advice_embedding = nn.Sequential(
@@ -222,12 +221,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 self.add_module('FiLM_' + str(ni), mod)
 
         # Define memory and resize image embedding
-        self.embedding_size = self.image_dim
-        if not self.img_obs:
-            if self.use_instr:
-                self.embedding_size += self.instr_dim
-            else:
-                self.embedding_size += 1
+        self.embedding_size = self.image_dim + state_dim
+        # if not self.img_obs:
+        #     if self.use_instr:
+        #         self.embedding_size += self.instr_dim
+        #     else:
+        #         self.embedding_size += 1
         if self.use_memory:
             self.memory_rnn = nn.LSTMCell(self.embedding_size, self.memory_dim)
             self.embedding_size = self.semi_memory_size
@@ -397,6 +396,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = obs.obs
+        state_vector = obs.state
         if self.use_instr:
             instruction_vector = obs.instr.long()
             if instr_embedding is None:
@@ -423,7 +423,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-        if self.img_obs:  # b, h, w, c
+        if True:#self.img_obs:  # b, h, w, c
             x = torch.transpose(torch.transpose(img_vector, 1, 3), 2, 3)
 
             if 'pixel' in self.arch:
@@ -439,6 +439,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             x = x.reshape(x.shape[0], -1)
         else:
             x = torch.cat([img_vector, instr_embedding], dim=1)
+        x = torch.cat([x, state_vector], dim=1)
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])

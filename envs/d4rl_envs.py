@@ -263,18 +263,23 @@ class D4RLEnv:
         x_end = x_start + w
         assert y_end <= len(max_grid)
         assert x_end <= len(max_grid[0])
-        max_grid[y_start:y_end, x_start:x_end] = state
+        # max_grid[y_start:y_end, x_start:x_end] = state
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs']
 
         # Compute the offset and add the goal
-        offset = np.array([self.offset_y, self.offset_x])
-        agent_pos = self.get_pos() + offset
-        agent_goal = (self.get_target() + offset) - agent_pos
+        # offset = np.array([self.offset_y, self.offset_x])
+        # agent_pos = self.get_pos() + offset
+        # agent_goal = (self.get_target() + offset) - agent_pos
+        agent_pos = self.get_pos()
+        agent_goal = self.get_target()
         state_obs[:2] = agent_pos / self.scale_factor
         state_obs = np.concatenate([state_obs, agent_goal / self.scale_factor])
 
-        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
+        # obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
+        coord_1, coord_2 = np.round(self.get_pos()).astype(np.int32)
+        obs_dict['obs'] = (np.expand_dims(state, 2), coord_1, coord_2)
+        obs_dict['state'] = np.concatenate([state_obs] * self.repeat_input)
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
@@ -565,15 +570,15 @@ class AntEnv(D4RLEnv):
     
     def reset(self):
         obs_dict = super().reset()
-        pos = self.get_pos() / self.scale_factor
-        target = self.get_target() / self.scale_factor
+        # pos = self.get_pos() / self.scale_factor
+        # target = self.get_target() / self.scale_factor
         #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
         return obs_dict
 
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
-        pos = self.get_pos() / self.scale_factor
-        target = self.get_target() / self.scale_factor
+        # pos = self.get_pos() / self.scale_factor
+        # target = self.get_target() / self.scale_factor
         #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 100 + .1
