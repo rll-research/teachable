@@ -214,6 +214,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--loss_type', type=str, default='log_prob')
         self.add_argument('--hidden_size', type=int, default=64)
         self.add_argument('--early_stop', type=int, default=float('inf'))
+        self.add_argument('--show_pos', type=str, choices=['ours', 'default', 'none'], default='none')
+        self.add_argument('--show_goal', type=str, choices=['ours', 'offset', 'none'], default='none')
+        self.add_argument('--show_agent_in_grid', action='store_true')
 
     def parse_args(self, arg=None):
         """

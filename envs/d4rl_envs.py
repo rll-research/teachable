@@ -255,9 +255,26 @@ class D4RLEnv:
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
+        if self.args.show_agent_in_grid:
+            x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
+            state[int(x), int(y)] = 2
         max_grid[:h, :w] = state
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
-        state_obs = obs_dict['obs'] / self.scale_factor
+        state_obs = obs_dict['obs']# / self.scale_factor
+        if self.args.env == 'ant':
+            if self.args.show_pos == 'ours':
+                state_obs[:2] = self.get_pos() / self.scale_factor
+            elif self.args.show_pos == 'none':
+                state_obs[:2] *= 0
+            elif self.args.show_pos == 'default':
+                state_obs[:2] /= 5
+            if self.args.show_goal == 'ours':
+                goal = self.get_target() / self.scale_factor
+            elif self.args.show_goal == 'offset':
+                goal = (self.get_target() - self.get_pos()) / self.scale_factor
+            elif self.args.show_goal == 'none':
+                goal = np.array([0, 0])
+            state_obs = np.concatenate([state_obs, goal])
         obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])  # TODO: /5 is a hacky way of trying to make the max grid less useful
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)

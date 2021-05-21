@@ -29,6 +29,7 @@ class GoalReachingEnv(object):
     base_obs = self.BASE_ENV._get_obs(self)
     goal_direction = self._goal - self.get_xy()
     if not self.eval:
+      assert False, "including goal direction"
       obs = np.concatenate([base_obs, goal_direction])
       return obs
     else:
