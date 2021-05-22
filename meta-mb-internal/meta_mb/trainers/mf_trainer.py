@@ -324,8 +324,12 @@ class Trainer(object):
                 time_sampling_from_buffer = 0
                 time_train_distill = 0
                 time_val_distill = 0
+                distill_log = None
                 for dist_i in range(self.args.distillation_steps):
                     sample_start = time.time()
+                    # Don't try to sample if we don't have any successes
+                    if sum(list(buffer.counts_train.values())) == 0:
+                        continue
                     sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
@@ -353,38 +357,40 @@ class Trainer(object):
                             for k, v in log_dict.items():
                                 logger.logkv(f'Distill/DAgger_{key_set}{k}_Train', v)
 
-                for key_set, log_dict in distill_log.items():
-                    key_set = '_'.join(key_set)
-                    for k, v in log_dict.items():
-                        logger.logkv(f"Distill/{key_set}{k}_Train", v)
+                if distill_log is not None:
+                    for key_set, log_dict in distill_log.items():
+                        key_set = '_'.join(key_set)
+                        for k, v in log_dict.items():
+                            logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
-                sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
-                                                  split='val')
-                distill_log_val = self.distill(sampled_val_batch,
-                                               is_training=False,
-                                               #source='teacher',
-                                               teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel,
-                                               relabel_dict=teacher_train_dict)
+                if sum(list(buffer.counts_val.values())) > 0:
+                    sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
+                                                      split='val')
+                    distill_log_val = self.distill(sampled_val_batch,
+                                                   is_training=False,
+                                                   #source='teacher',
+                                                   teachers_dict=teacher_distill_dict,
+                                                   relabel=self.args.relabel,
+                                                   relabel_dict=teacher_train_dict)
 
-                time_val_distill += (time.time() - sample_start)
-                for key_set, log_dict in distill_log_val.items():
-                    key_set = '_'.join(key_set)
-                    for k, v in log_dict.items():
-                        logger.logkv(f"Distill/{key_set}{k}_Val", v)
-                distill_time = time.time() - time_distill_start
-                advance_curriculum = True
-                for teacher_key_set in distill_log_val.keys():
-                    acc = distill_log_val[teacher_key_set]['Accuracy']
-                    if teacher_key_set == ():
-                        advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
-                    else:
-                        advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
-                    key_set_name = '_'.join(list(teacher_key_set))
-                    logger.logkv(f'Distill/Advance_{key_set_name}', int(advance_teacher))
-                    advance_curriculum = advance_curriculum and advance_teacher
+                    time_val_distill += (time.time() - sample_start)
+                    for key_set, log_dict in distill_log_val.items():
+                        key_set = '_'.join(key_set)
+                        for k, v in log_dict.items():
+                            logger.logkv(f"Distill/{key_set}{k}_Val", v)
+                    distill_time = time.time() - time_distill_start
+                    advance_curriculum = True
+                    for teacher_key_set in distill_log_val.keys():
+                        acc = distill_log_val[teacher_key_set]['Accuracy']
+                        if teacher_key_set == ():
+                            advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
+                        else:
+                            advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
+                        key_set_name = '_'.join(list(teacher_key_set))
+                        logger.logkv(f'Distill/Advance_{key_set_name}', int(advance_teacher))
+                        advance_curriculum = advance_curriculum and advance_teacher
                 logger.logkv('Distill/Advance_Overall', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
 
