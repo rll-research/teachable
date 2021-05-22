@@ -318,6 +318,7 @@ class Trainer(object):
                 should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.no_distill:
                 should_distill = False
+            distill_time = 0
             if should_distill:
                 logger.log("Distilling ...")
                 time_distill_start = time.time()
@@ -393,9 +394,6 @@ class Trainer(object):
                         advance_curriculum = advance_curriculum and advance_teacher
                 logger.logkv('Distill/Advance_Overall', int(advance_curriculum))
                 logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
-
-            else:
-                distill_time = 0
 
             """ ------------------ Policy rollouts ---------------------"""
             should_policy_rollout = ((itr % self.eval_every == 0) or (
