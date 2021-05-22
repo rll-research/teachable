@@ -56,12 +56,14 @@ def load_model(args):
         start_itr = 0
         curriculum_step = args.level
     il_optimizer = saved_model.get('il_optimizer', None)
+    reconstructor_optimizer = saved_model.get('reconstructor_optimizer', None)
+    il_reconstructor_optimizer = saved_model.get('il_reconstructor_optimizer', None)
     if not args.override_old_config:
         log_dict = saved_model.get('log_dict', {})
     else:
         log_dict = {}
     return policy_dict, optimizer, start_itr, curriculum_step, args, \
-        il_optimizer, log_dict
+        il_optimizer, log_dict, reconstructor_optimizer, il_reconstructor_optimizer
 
 
 def run_experiment(**config):
@@ -75,7 +77,7 @@ def run_experiment(**config):
     original_saved_path = args.saved_path
     if original_saved_path is not None:
         policy_dict, optimizer, start_itr, curriculum_step, args, \
-            il_optimizer, log_dict = load_model(args)
+            il_optimizer, log_dict, reconstructor_optimizer, il_reconstructor_optimizer = load_model(args)
     else:
         il_optimizer = None
         log_dict = {}
@@ -189,7 +191,7 @@ def run_experiment(**config):
                                    preprocess_obs=obs_preprocessor,
                                    instr_dropout_prob=args.distill_dropout_prob,
                                    reconstructor_dict=reconstructor_dict)
-    if il_optimizer is not None:  # TODO: modify for same model
+    if il_optimizer is not None:
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
 
@@ -218,6 +220,14 @@ def run_experiment(**config):
         new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
     algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+
+    if args.reconstruction and original_saved_path:
+        if il_reconstructor_optimizer is not None:
+            for k, v in il_reconstructor_optimizer.items():
+                il_trainer.reconstructor_optimizer_dict[k].load_state_dict(v.state_dict())
+        if reconstructor_optimizer is not None:
+            for k, v in reconstructor_optimizer.items():
+                algo.reconstructor_optimizer_dict[k].load_state_dict(v.state_dict())
 
     if args.use_dagger:
         envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
