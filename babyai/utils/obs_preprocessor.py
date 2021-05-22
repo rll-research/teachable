@@ -67,7 +67,7 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                     x_start = middle - x
                     obs_final[k][i][x_start:x_start + len(img), y_start:y_start + len(img[0])] = img
                 temp = obs_final[k][0, :, :, 0]
-                obs_final[k] = torch.FloatTensor(obs_final[k]).to(device)
+                obs_final[k] = torch.FloatTensor(obs_final[k]).to(device).int()
             else:
                 obs_final[k] = torch.FloatTensor(v).to(device)
         return DictList(obs_final)
