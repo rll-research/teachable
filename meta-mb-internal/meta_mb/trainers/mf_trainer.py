@@ -184,6 +184,11 @@ class Trainer(object):
 
         for itr in range(self.start_itr, self.args.n_itr):
 
+            if False:
+                params = self.get_itr_snapshot(itr)
+                step = self.curriculum_step
+                logger.save_itr_params(itr, step, params)
+                assert False
             if itr % self.log_every == 0:
                 if self.args.feedback_from_buffer:
                     num_feedback = self.buffer.num_feedback
