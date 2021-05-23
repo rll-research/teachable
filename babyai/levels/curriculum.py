@@ -2,6 +2,7 @@ from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
 from envs.d4rl_envs import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
 import copy
+NULL_SEED = 1000
 
 class Curriculum(Serializable):
     def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, reward_type='dense', **kwargs):
@@ -20,11 +21,11 @@ class Curriculum(Serializable):
         self.reward_type = reward_type
         self.reward_env_name = reward_env_name
         if env == 'point_mass':
-            self.levels_list = {k: -1 for k in range(15)}
+            self.levels_list = {k: NULL_SEED for k in range(15)}
         elif env == 'ant':
-            self.levels_list = {k: -1 for k in range(12 + 10)}
+            self.levels_list = {k: NULL_SEED for k in range(12 + 10)}
         elif env == 'babyai':
-            self.levels_list = {k: -1 for k in range(48)}
+            self.levels_list = {k: NULL_SEED for k in range(48)}
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
         if self.advance_curriculum_func == 'four_levels':
@@ -55,7 +56,7 @@ class Curriculum(Serializable):
         self.index = start_index
 
     def set_wrapped_env(self, index):
-        if not self.levels_list[index] == -1:
+        if not self.levels_list[index] == NULL_SEED:
             self._wrapped_env = self.levels_list[index]
             return
         kwargs = self.kwargs
