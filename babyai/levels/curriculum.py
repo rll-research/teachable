@@ -56,7 +56,7 @@ class Curriculum(Serializable):
         self.index = start_index
 
     def set_wrapped_env(self, index):
-        if not self.levels_list[index] == NULL_SEED:
+        if not type(self.levels_list[index]) is int:
             self._wrapped_env = self.levels_list[index]
             return
         kwargs = self.kwargs
