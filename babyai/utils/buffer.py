@@ -113,10 +113,9 @@ class Buffer:
         with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:
             pkl.dump(self.trajs_train, f)
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
-            pkl.dump(self.trajs_train, f)
+            pkl.dump(self.trajs_val, f)
 
     def add_trajs(self, batch, level, trim=True):
-        print("COUNTS", self.counts_train[level], self.counts_val[level], self.index_train[level], self.index_val[level])
         if trim:
             batch = trim_batch(batch)
         trajs = self.split_batch(batch)
@@ -134,6 +133,7 @@ class Buffer:
             self.index_train[level] = (self.index_train[level] + len(traj)) % self.train_buffer_capacity
             self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + len(traj))
         self.save_buffer()
+        print("COUNTS", self.counts_train[level], self.counts_val[level], self.index_train[level], self.index_val[level])
 
     def add_batch(self, batch, level, trim=True):
         # Starting a new level

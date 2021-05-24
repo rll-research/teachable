@@ -323,6 +323,8 @@ class Trainer(object):
                 should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.no_distill:
                 should_distill = False
+            if sum(list(buffer.counts_train.values())) == 0:
+                should_distill = False
             if should_distill:
                 logger.log("Distilling ...")
                 time_distill_start = time.time()

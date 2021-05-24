@@ -129,7 +129,7 @@ class ImitationLearning(object):
         policy_loss = -dist.log_prob(action_true).mean()
         entropy = dist.entropy().mean()
 
-        # Optional loss for reconstructing the feedback (currently, all models all teachers)34
+        # Optional loss for reconstructing the feedback (currently, all models all teachers)
         if self.reconstructor_dict is not None and 'advice' in obss:
             # Loss for training the reconstructor
             reconstruction_embedding = info['reconstruction_embedding']
@@ -224,7 +224,7 @@ class ImitationLearning(object):
                 self.per_token_correct[j] += correct
                 self.per_token_count[j] += count
 
-                action_teacher_index = action_teacher[indexes]
+                action_teacher_index = action_teacher
                 assert action_teacher_index.shape == action_pred.shape == action_true.shape, (
                     action_teacher_index.shape, action_pred.shape, action_true.shape)
                 teacher_token_indices = np.where(action_teacher_index == j)[0]
@@ -242,15 +242,15 @@ class ImitationLearning(object):
 
     def log_final(self):
         log = {}
-        log["Entropy_Loss"] = float(self.final_entropy / self.args.recurrence * self.args.entropy_coef)
-        log["Entropy"] = float(self.final_entropy / self.args.recurrence)
-        log["Loss"] = float(self.final_policy_loss / self.args.recurrence)
-        log["TotalLoss"] = float(self.final_loss / self.args.recurrence)
-        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss / self.args.recurrence * self.args.mi_coef)
-        log["KL_Loss"] = float(self.final_kl_loss / self.args.recurrence * self.args.kl_coef)
+        log["Entropy_Loss"] = float(self.final_entropy * self.args.entropy_coef)
+        log["Entropy"] = float(self.final_entropy)
+        log["Loss"] = float(self.final_policy_loss)
+        log["TotalLoss"] = float(self.final_loss)
+        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss * self.args.mi_coef)
+        log["KL_Loss"] = float(self.final_kl_loss * self.args.kl_coef)
         log["Accuracy"] = float(self.accuracy)
-        log["Mean_Dist"] = float(self.final_mean_dist / self.args.recurrence)
-        log["Std"] = float(self.final_std / self.args.recurrence)
+        log["Mean_Dist"] = float(self.final_mean_dist)
+        log["Std"] = float(self.final_std)
 
         if self.args.discrete:
             log["Label_A"] = float(self.label_accuracy)
@@ -285,12 +285,6 @@ class ImitationLearning(object):
                 self.accuracy, agent_numerator / agent_denominator)
             log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
         return log
-
-    def starting_indexes(self, num_frames):
-        if num_frames % self.args.recurrence == 0:
-            return np.arange(0, num_frames, self.args.recurrence)
-        else:
-            return np.arange(0, num_frames, self.args.recurrence)[:-1]
 
     def relabel(self, batch, relabel_dict, source):
         if source == 'teacher':
