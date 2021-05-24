@@ -14,6 +14,7 @@ def trim_batch(batch):
         "obs": batch.obs,
         "action": batch.action,
         "full_done": batch.full_done.int(),
+        "success": batch.env_infos.success,
     }
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
@@ -51,7 +52,7 @@ class Buffer:
     def create_blank_buffer(self, batch, label):
         train_dict = {}
         val_dict = {}
-        for key in ['obs', 'action', 'full_done', 'action_probs', 'teacher_action']:
+        for key in ['obs', 'action', 'action_probs', 'teacher_action']:
             if not hasattr(batch, key):
                 continue
             value = getattr(batch, key)
@@ -97,14 +98,14 @@ class Buffer:
             value = self.trajs_val[level]
         max_val = min(len(traj), len(value) - index)
         # We can fit the entire traj in
-        for k in traj:
+        for k in value:
             arr = getattr(value, k)
             arr[index:index + max_val] = getattr(traj, k)[:max_val]
 
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = len(traj) - max_val
         if remainder > 0:
-            for k in traj:
+            for k in value:
                 arr = getattr(value, k)
                 arr[:remainder] = getattr(traj, k)[-remainder:]
 
