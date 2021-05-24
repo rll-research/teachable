@@ -392,7 +392,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             info_list.append(info_dict)
         return actions, info_list
 
-    def forward(self, obs, memory, instr_embedding=None):
+    def forward(self, obs, memory=None, instr_embedding=None):
         if self.advice_size > 0:
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)

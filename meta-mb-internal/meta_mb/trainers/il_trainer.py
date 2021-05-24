@@ -79,8 +79,6 @@ class ImitationLearning(object):
                 action_true = action_true[:, 0]
         elif source == 'agent':
             action_true = batch.action
-        elif source == 'agent_argmax':
-            action_true = batch.argmax_action
         elif source == 'agent_probs':
             if self.args.discrete == False:
                 raise NotImplementedError('Action probs not implemented for continuous envs.')
@@ -91,41 +89,7 @@ class ImitationLearning(object):
         action_teacher = batch.teacher_action
         if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
             action_teacher = action_teacher[:, 0]
-        done = batch.full_done
-
-        # rearrange all demos to be in descending order of length
-        inds = np.concatenate([[0], torch.where(done == 1)[0].detach().cpu().numpy() + 1])
-        obss_list = []
-        action_true_list = []
-        action_teacher_list = []
-        done_list = []
-
-        for i in range(len(inds) - 1):
-            start = inds[i]
-            end = inds[i + 1]
-            obss_list.append(obss[start: end])
-            action_true_list.append(action_true[start: end])
-            action_teacher_list.append(action_teacher[start: end])
-            done_list.append(done[start: end])
-        trajs = list(zip(obss_list, action_true_list, action_teacher_list, done_list))
-        trajs.sort(key=lambda x: len(x[0]), reverse=True)
-        obss_list, action_true_list, action_teacher_list, done_list = zip(*trajs)
-
-        obss = obss_list
-        action_true = torch.cat(action_true_list, dim=0)
-        action_teacher = np.concatenate([a.detach().cpu().numpy() if type(a) is torch.Tensor else a
-                                         for a in action_teacher_list], axis=0)
-        done = torch.cat(done_list, dim=0)
-
-        inds = torch.where(done == 1)[0].detach().cpu().numpy() + 1
-        done = done.detach().cpu().numpy()
-        inds = np.concatenate([[0], inds[:-1]])
-
-        mask = np.ones([len(action_true)], dtype=np.float64)
-        mask[inds] = 0
-        mask = torch.tensor(mask, device=self.device, dtype=torch.float).unsqueeze(1)
-
-        return obss, action_true, action_teacher, done, inds, mask
+        return obss, action_true, action_teacher
 
     def set_mode(self, is_training, acmodel, reconstructor):
         if is_training:
@@ -153,133 +117,58 @@ class ImitationLearning(object):
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
-        obss_list, action_true, action_teacher, done, inds, mask = batch
+        obss, action_true, action_teacher = batch
+        self.initialize_logs(len(action_true))
         # Dropout instructions with probability instr_dropout_prob,
         # unless we have no teachers present in which case we keep the instr.
         instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
-        obss_list = [self.preprocess_obs(o, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
-                     for o in obss_list]
-        obss = {}
-        keys = obss_list[0].keys()
-        for k in keys:
-            obss[k] = torch.cat([getattr(o, k) for o in obss_list])
-        obss = DictList(obss)
-        num_frames = len(obss)
+        obss = self.preprocess_obs(obss, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
 
-        # Memory to be stored
-        memories = torch.zeros([num_frames, acmodel.memory_size], device=self.device)
-        memory = torch.zeros([len(inds), acmodel.memory_size], device=self.device)
+        dist, info = acmodel(obss)
+        kl_loss = info['kl']
+        policy_loss = -dist.log_prob(action_true).mean()
+        entropy = dist.entropy().mean()
 
-        # We're going to loop through each trajectory together.
-        # inds holds the current index of each trajectory (initialized to the start of each trajectory)
-        # memories is currently empty, but we will fill it with memory vectors.
-        # memory holds the current memory vector
-        while True:
-            # taking observations and done located at inds
-            num_demos = len(inds)
-            obs = obss[inds]
-            done_step = done[inds]
+        # Optional loss for reconstructing the feedback (currently, all models all teachers)34
+        if self.reconstructor_dict is not None and 'advice' in obss:
+            # Loss for training the reconstructor
+            reconstruction_embedding = info['reconstruction_embedding']
+            advice = reconstructor(reconstruction_embedding)
+            full_advice_size = int(len(advice[0]) / 2)
+            mean = advice[:, :full_advice_size]
+            var = torch.exp(advice[:, full_advice_size:])
+            loss_fn = torch.nn.GaussianNLLLoss()
+            true_advice = obss.advice
+            reconstruction_loss = loss_fn(true_advice, mean, var)
+        else:
+            reconstruction_loss = torch.FloatTensor([0]).to(self.device)
 
-            with torch.no_grad():
-                # Taking memory up until num_demos, as demos after that have finished
-                dist, info = acmodel(obs, memory[:num_demos])
-                new_memory = info['memory']
-
-            memories[inds] = memory[:num_demos]
-            memory[:num_demos] = new_memory
-
-            # Updating inds, by removing those indices corresponding to which the demonstrations have finished
-            num_trajs_finished = sum(done_step)
-            inds = inds[:int(num_demos - num_trajs_finished)]
-            if len(inds) == 0:
-                break
-
-            # Incrementing the remaining indices
-            inds += 1
-        # Here, we take our trajectories and split them into chunks and compute the loss for each chunk.
-        # Indexes currently holds the first index of each chunk.
-        indexes = self.starting_indexes(num_frames)
-        self.initialize_logs(indexes)
-        memory = memories[indexes]
-        final_loss = 0
-        final_reconstruction_loss = 0
-        kl_loss = torch.zeros(1).to(self.device)
-        for i in range(self.args.recurrence):
-            # Get the current obs for each chunk, and compute the agent's output
-            obs = obss[indexes]
-            action_step = action_true[indexes]
-            mask_step = mask[indexes]
-            dist, info = acmodel(obs, memory * mask_step)
-            memory = info["memory"]
-            kl_loss += info['kl']
-
-            if source == 'agent_probs':
-                loss_fn = torch.nn.BCEWithLogitsLoss()
-                policy_loss = loss_fn(dist.logits, action_step)
-                action_step = torch.argmax(action_step, dim=1)
-            else:
-                t1 = action_step.detach().cpu().numpy()
-                t2 = dist.mean.detach().cpu().numpy()
-                temp = np.concatenate([t1, t2, t1 - t2], axis=1)
-                if True:#self.args.loss_type == 'log_prob':
-                    policy_loss = -dist.log_prob(action_step)
-                elif self.args.loss_type == 'rsample':
-                    loss_fn = torch.nn.MSELoss()
-                    policy_loss = loss_fn(action_step, dist.rsample())
-                elif self.args.loss_type == 'mean':
-                    loss_fn = torch.nn.MSELoss()
-                    policy_loss = loss_fn(action_step, dist.mean)
-            policy_loss = policy_loss.mean()
-            # Compute the cross-entropy loss with an entropy bonus
-            entropy = dist.entropy().mean()
-
-            # Optional loss for reconstructing the feedback (currently, all models all teachers)34
-            if self.reconstructor_dict is not None and 'advice' in obs:
-                # Loss for training the reconstructor
-                reconstruction_embedding = info['reconstruction_embedding']
-                advice = reconstructor(reconstruction_embedding)
-                full_advice_size = int(len(advice[0]) / 2)
-                mean = advice[:, :full_advice_size]
-                var = torch.exp(advice[:, full_advice_size:])
-                loss_fn = torch.nn.GaussianNLLLoss()
-                true_advice = obs.advice
-                reconstruction_loss = loss_fn(true_advice, mean, var)
-            else:
-                reconstruction_loss = torch.FloatTensor([0]).to(self.device)
-
-            loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
-            if self.args.discrete:
-                action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
-                avg_mean_dist = -1
-                avg_std = -1
-            else:  # Continuous env
-                action_pred = dist.mean
-                avg_std = dist.scale.mean()
-                avg_mean_dist = torch.abs(action_pred - action_step).mean()
-            final_loss += loss
-            final_reconstruction_loss += reconstruction_loss
-            self.log_t(action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
-                       kl_loss, avg_mean_dist, avg_std, loss)
-            # Increment indexes to hold the next step for each chunk
-            indexes += 1
-        # Update the model
-        final_loss /= self.args.recurrence
-        final_reconstruction_loss /= self.args.recurrence
+        loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
+        if self.args.discrete:
+            action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
+            avg_mean_dist = -1
+            avg_std = -1
+        else:  # Continuous env
+            action_pred = dist.mean
+            avg_std = dist.scale.mean()
+            avg_mean_dist = torch.abs(action_pred - action_true).mean()
+        self.log_t(action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
+                   kl_loss, avg_mean_dist, avg_std, loss)
         if is_training and backprop:
             optimizer.zero_grad()
-            final_loss.backward(retain_graph=self.reconstructor_dict is not None)
+            loss.backward(retain_graph=self.reconstructor_dict is not None)
 
-            if self.reconstructor_dict is not None and 'advice' in obs:
+            if self.reconstructor_dict is not None and 'advice' in obss:
                 reconstructor_optimizer.zero_grad()
-                final_reconstruction_loss.backward()
+                reconstruction_loss.backward()
                 reconstructor_optimizer.step()
             optimizer.step()
 
         # Store log info
         log = self.log_final()
-        return log, final_loss
+        return log, loss
 
-    def initialize_logs(self, indexes):
+    def initialize_logs(self, total_frames):
         self.per_token_correct = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
         self.per_token_count = [0, 0, 0, 0, 0, 0, 0]
@@ -294,22 +183,20 @@ class ImitationLearning(object):
         self.final_value_loss = 0
         self.accuracy = 0
         self.label_accuracy = 0
-        self.total_frames = len(indexes) * self.args.recurrence
+        self.total_frames = total_frames
         self.accuracy_list = []
-        self.lengths_list = []
         self.agent_running_count_long = 0
         self.teacher_running_count_long = 0
         self.final_mean_dist = 0
         self.final_std = 0
         self.final_loss = 0
 
-    def log_t(self, action_pred, action_step, action_teacher, indexes, entropy, policy_loss, reconstruction_loss,
+    def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
               kl_loss, avg_mean_dist, avg_std, loss):
-        self.accuracy_list.append(float((action_pred == action_step).sum()))
-        self.lengths_list.append((action_pred.shape, action_step.shape, indexes.shape))
-        self.accuracy += float((action_pred == action_step).sum()) / self.total_frames
-        if action_step.shape == action_teacher[indexes].shape:
-            self.label_accuracy += np.sum(action_teacher[indexes] == action_step.detach().cpu().numpy()) / self.total_frames
+        self.accuracy_list.append(float((action_pred == action_true).sum()))
+        self.accuracy += float((action_pred == action_true).sum()) / self.total_frames
+        if action_true.shape == action_teacher.shape:
+            self.label_accuracy += np.sum(action_teacher == action_true.detach().cpu().numpy()) / self.total_frames
 
         self.final_entropy += entropy
         self.final_policy_loss += policy_loss
@@ -319,7 +206,7 @@ class ImitationLearning(object):
         self.final_std += avg_std
         self.final_loss += loss
 
-        action_step = action_step.detach().cpu().numpy()  # ground truth action
+        action_true = action_true.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
         agent_running_count = 0
         teacher_running_count = 0
@@ -327,19 +214,19 @@ class ImitationLearning(object):
             for j in range(len(self.per_token_count)):
                 # Sort by agent action
                 action_taken_indices = np.where(action_pred == j)[0]
-                self.precision_correct[j] += np.sum(action_step[action_taken_indices] == action_pred[action_taken_indices])
+                self.precision_correct[j] += np.sum(action_true[action_taken_indices] == action_pred[action_taken_indices])
                 self.precision_count[j] += len(action_taken_indices)
 
                 # Sort by label action
-                token_indices = np.where(action_step == j)[0]
+                token_indices = np.where(action_true == j)[0]
                 count = len(token_indices)
-                correct = np.sum(action_step[token_indices] == action_pred[token_indices])
+                correct = np.sum(action_true[token_indices] == action_pred[token_indices])
                 self.per_token_correct[j] += correct
                 self.per_token_count[j] += count
 
                 action_teacher_index = action_teacher[indexes]
-                assert action_teacher_index.shape == action_pred.shape == action_step.shape, (
-                    action_teacher_index.shape, action_pred.shape, action_step.shape)
+                assert action_teacher_index.shape == action_pred.shape == action_true.shape, (
+                    action_teacher_index.shape, action_pred.shape, action_true.shape)
                 teacher_token_indices = np.where(action_teacher_index == j)[0]
                 teacher_count = len(teacher_token_indices)
                 teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
@@ -350,8 +237,8 @@ class ImitationLearning(object):
                 self.agent_running_count_long += teacher_count
                 self.teacher_running_count_long += teacher_count
             assert agent_running_count == teacher_running_count, (agent_running_count, teacher_running_count)
-            assert agent_running_count == len(action_step) == len(action_pred), \
-                (agent_running_count, len(action_step), len(action_pred))
+            assert agent_running_count == len(action_true) == len(action_pred), \
+                (agent_running_count, len(action_true), len(action_pred))
 
     def log_final(self):
         log = {}

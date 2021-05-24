@@ -14,12 +14,9 @@ def trim_batch(batch):
         "obs": batch.obs,
         "action": batch.action,
         "full_done": batch.full_done.int(),
-        "success": batch.env_infos.success,
     }
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
-    if 'argmax_action' in batch:
-        batch_info['argmax_action'] = batch.argmax_action
     if 'teacher_action' in batch.env_infos:
         batch_info['teacher_action'] = batch.env_infos.teacher_action
     return DictList(batch_info)
@@ -39,6 +36,8 @@ class Buffer:
         self.counts_train = {}
         self.index_val = {}
         self.counts_val = {}
+        self.trajs_train = {}
+        self.trajs_val = {}
         self.buffer_path = pathlib.Path(path).joinpath(buffer_name)
         self.successful_only = successful_only
         self.num_feedback = 0
@@ -49,32 +48,33 @@ class Buffer:
             self.buffer_path.mkdir()
         self.val_prob = val_prob
 
-    def load_buffer(self):
-        # If the buffer stats exist, we don't have to load each file individually
-        buffer_stats_path = self.buffer_path.joinpath('buffer_stats.pkl')
-        if buffer_stats_path.exists():
-            with open(buffer_stats_path, 'rb') as f:
-                buffer_stats = pkl.load(f)
-                self.counts_train, self.index_train, self.counts_val, self.index_val, self.num_feedback = buffer_stats
-        else:
-            # Otherwise, loop through
-            for file_name in self.buffer_path.iterdir():
-                file_name = file_name.name
-                if 'train' in file_name:
-                    index = self.index_train
-                    counts = self.counts_train
-                    capacity = self.train_buffer_capacity
-                elif 'val' in file_name:
-                    index = self.index_val
-                    counts = self.counts_val
-                    capacity = self.val_buffer_capacity
-                # otherwise, we probably have a buffer stats file
-                level = int(file_name[file_name.index('_level') + 6: file_name.index('_idx')])
-                if level in counts:
-                    counts[level] += 1
-                else:
-                    counts[level] = 1
-                index[level] = counts[level] % capacity
+    def create_blank_buffer(self, batch, label):
+        train_dict = {}
+        val_dict = {}
+        for key in ['obs', 'action', 'full_done', 'action_probs', 'teacher_action']:
+            if not hasattr(batch, key):
+                continue
+            value = getattr(batch, key)
+            if type(value) is list:
+                train_dict[key] = [None] * self.train_buffer_capacity
+                val_dict[key] = [None] * self.val_buffer_capacity
+            elif type(value) is torch.Tensor:
+                shape = value.shape
+                tensor_class = torch.IntTensor if value.dtype is torch.int32 else torch.FloatTensor
+                device = value.device
+                train_dict[key] = tensor_class(size=(self.train_buffer_capacity, *shape[1:])).to(device)
+                val_dict[key] = tensor_class(size=(self.val_buffer_capacity, *shape[1:])).to(device)
+            elif type(value) is np.ndarray:
+                shape = value.shape
+                dtype = value.dtype
+                train_dict[key] = np.zeros(shape=(self.train_buffer_capacity, *shape[1:]), dtype=dtype)
+                val_dict[key] = np.zeros(shape=(self.val_buffer_capacity, *shape[1:]), dtype=dtype)
+            else:
+                raise NotImplementedError((key, type(value)))
+        self.trajs_train[label] = DictList(train_dict)
+        self.trajs_val[label] = DictList(val_dict)
+
+        pass
 
     def to_numpy(self, t):
         return t.detach().cpu().numpy()
@@ -91,17 +91,31 @@ class Buffer:
         return trajs
 
     def save_traj(self, traj, level, index, split):
-        file_name = self.buffer_path.joinpath(f'traj_{split}_level{level}_idx{index}.pkl')
-        with open(file_name, 'wb') as f:
-            pkl.dump(traj, f)
+        if split == 'train':
+            value = self.trajs_train[level]
+        elif split == 'val':
+            value = self.trajs_val[level]
+        max_val = min(len(traj), len(value) - index)
+        # We can fit the entire traj in
+        for k in traj:
+            arr = getattr(value, k)
+            arr[index:index + max_val] = getattr(traj, k)[:max_val]
 
-    def load_traj(self, level, index, split):
-        file_name = self.buffer_path.joinpath(f'traj_{split}_level{level}_idx{index}.pkl')
-        with open(file_name, 'rb') as f:
-            batch = pkl.load(f)
-        return batch
+        # Uh oh, overfilling the buffer. Let's wrap around.
+        remainder = len(traj) - max_val
+        if remainder > 0:
+            for k in traj:
+                arr = getattr(value, k)
+                arr[:remainder] = getattr(traj, k)[-remainder:]
+
+    def save_buffer(self):
+        with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:
+            pkl.dump(self.trajs_train, f)
+        with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
+            pkl.dump(self.trajs_train, f)
 
     def add_trajs(self, batch, level, trim=True):
+        print("COUNTS", self.counts_train[level], self.counts_val[level], self.index_train[level], self.index_val[level])
         if trim:
             batch = trim_batch(batch)
         trajs = self.split_batch(batch)
@@ -112,20 +126,22 @@ class Buffer:
             split = 1
         for traj in trajs[:split]:
             self.save_traj(traj, level, self.index_val[level], 'val')
-            self.index_val[level] = (self.index_val[level] + 1) % self.val_buffer_capacity
-            self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + 1)
+            self.index_val[level] = (self.index_val[level] + len(traj)) % self.val_buffer_capacity
+            self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + len(traj))
         for traj in trajs[split:]:
             self.save_traj(traj, level, self.index_train[level], 'train')
-            self.index_train[level] = (self.index_train[level] + 1) % self.train_buffer_capacity
-            self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + 1)
+            self.index_train[level] = (self.index_train[level] + len(traj)) % self.train_buffer_capacity
+            self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + len(traj))
+        self.save_buffer()
 
     def add_batch(self, batch, level, trim=True):
         # Starting a new level
         if not level in self.index_train:
-            self.counts_train[level] = 0
             self.index_train[level] = 0
-            self.counts_val[level] = 0
             self.index_val[level] = 0
+            self.counts_val[level] = 0
+            self.counts_train[level] = 0
+            self.create_blank_buffer(trim_batch(batch), level)
         self.add_trajs(batch, level, trim)
         self.update_stats(batch)
 
@@ -137,60 +153,23 @@ class Buffer:
         with open(self.buffer_path.joinpath('buffer_stats.pkl'), 'wb') as f:
             pkl.dump(buffer_stats, f)
 
-    def trim_level(self, level, max_trajs=20000):
-        if not level in self.counts_train:
-            return
-        for i in range(max_trajs, self.counts_train[level]):
-            file_name = self.buffer_path.joinpath(f'traj_train_level{level}_idx{i}.pkl')
-            file_name.unlink()
-        self.counts_train[level] = min(self.counts_train[level], max_trajs)
-        self.index_train[level] = min(self.index_train[level], max_trajs - 1)
 
     def sample(self, total_num_samples=None, total_num_trajs=None, split='train'):
-        self.load_buffer()
         if split == 'train':
             index = self.index_train
             counts = self.counts_train
+            trajs = self.trajs_train
         else:
             index = self.index_val
             counts = self.counts_val
+            trajs = self.trajs_val
+            # Early in training we may not have any val trajs yet
             if len(counts) == 0:
-                split = 'train'
-                index = self.index_train
                 counts = self.counts_train
-
-        trajs = []
-        num_samples = 0
-        num_trajs = 0
+                trajs = self.trajs_val
+        # Half from the latest level, otherwise choose uniformly from other levels  # TODO: later!!!
         possible_levels = list(index.keys())
-        done = False
-        while not done:
-            # With prob_current probability, sample from the latest level.
-            if random.random() < self.prob_current:
-                level = max(possible_levels)
-            else:  # Otherwise, sample uniformly from the other levels
-                level = random.choice(possible_levels)
-            if not level in self.counts_train:
-                continue
-            index = random.randint(0, counts[level] - 1)
-            try:
-                traj = self.load_traj(level, index, split)
-            except Exception as e:
-                print("error loading traj", level, index, split, e)
-                continue
-            if self.augmenter is not None:
-                traj = self.augmenter.augment(traj, include_original=False)[0]
-            num_samples += len(traj.action)
-            num_trajs += 1
-            trajs.append(traj)
-
-            if total_num_samples is not None:
-                done = num_samples >= total_num_samples
-            elif total_num_trajs is not None:
-                done = num_trajs >= total_num_trajs
-            else:  # if not specified, just add one traj
-                done = True
-
-        # Combine our list of trajs in to a single DictList
-        batch = merge_dictlists(trajs)
-        return batch
+        level = possible_levels[0]
+        indices = np.random.randint(0, counts[level], size=total_num_samples)
+        data = merge_dictlists([trajs[level][i:i+1] for i in indices])
+        return data
