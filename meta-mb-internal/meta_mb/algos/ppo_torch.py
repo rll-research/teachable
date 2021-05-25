@@ -228,7 +228,10 @@ class PPOAlgo(BaseAlgo):
                     memory = agent_info['memory']
                     kl_loss = agent_info['kl']
                     # control penalty
-                    control_penalty = torch.clamp(dist.rsample() ** 2 - 10, 0, float('inf')).mean()
+                    if self.control_penalty > 0:
+                        control_penalty = torch.clamp(dist.rsample() ** 2 - 10, 0, float('inf')).mean()
+                    else:
+                        control_penalty = torch.FloatTensor([0]).to(self.device)
                     entropy = dist.entropy().mean()
 
                     log_prob = dist.log_prob(sb.action)
@@ -276,8 +279,8 @@ class PPOAlgo(BaseAlgo):
                     batch_reconstruction_loss += reconstruction_loss * self.mi_coef
                     batch_feedback_reconstruction += feedback_reconstruction.item()
                     batch_loss += loss
-                    batch_action_magnitude += torch.linalg.norm(sb.action, ord=1, dim=1).mean().item()
-                    batch_action_max += torch.max(torch.abs(sb.action), dim=1)[0].mean().item()
+                    batch_action_magnitude += torch.linalg.norm(sb.action.float(), ord=1, dim=-1).mean().item()
+                    batch_action_max += torch.max(torch.abs(sb.action.float()), dim=-1)[0].mean().item()
 
                     batch_returnn += sb.returnn.mean().item()
                     batch_advantage += sb.advantage.mean().item()
