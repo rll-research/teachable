@@ -335,14 +335,17 @@ class Curriculum(Serializable):
         """
         self.set_wrapped_env(index)
 
-    def set_level_distribution(self, index):
+    def set_level_distribution(self, index=None, copy_distribution=None):
         """
         Set the curriculum at a certain level, and set the distribution to only sample that level.
         :param index: Index of the level to use
         """
         self.set_wrapped_env(index)
-        self.distribution = np.zeros((len(self.levels_list)))
-        self.distribution[index] = 1
+        if copy_distribution is not None:
+            self.distribution = copy_distribution
+        else:
+            self.distribution = np.zeros((len(self.levels_list)))
+            self.distribution[index] = 1
         self.index = index
 
     def seed(self, i):
@@ -370,7 +373,7 @@ class Curriculum(Serializable):
         env = copy.deepcopy(self)
         if index is None:
             index = self.index
-        env.set_level_distribution(index)
+        env.set_level_distribution(index=index, copy_distribution=self.distribution.copy())
         env.set_task()
         env.reset()
         return env
