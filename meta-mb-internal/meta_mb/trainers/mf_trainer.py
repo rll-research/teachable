@@ -159,7 +159,7 @@ class Trainer(object):
         rollout_time = 0
         saving_time = 0
 
-        if not self.args.no_buffer:
+        if not getattr(self.args, 'no_buffer', False):
             buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                             augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
             self.buffer = buffer
@@ -286,7 +286,7 @@ class Trainer(object):
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 5
             should_store_data = raw_samples_data is not None and (
-                    self.args.collect_before_threshold or advance_curriculum) and not self.args.no_buffer
+                    self.args.collect_before_threshold or advance_curriculum) and not getattr(self.args, 'no_buffer', False)
             if self.args.yes_distill:
                 should_store_data = raw_samples_data is not None
             if should_store_data:
