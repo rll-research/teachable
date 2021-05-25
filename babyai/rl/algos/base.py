@@ -15,7 +15,7 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
-                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -76,6 +76,7 @@ class BaseAlgo(ABC):
         self.aux_info = aux_info
         self.rollouts_per_meta_task = rollouts_per_meta_task
         self.instr_dropout_prob = instr_dropout_prob
+        self.reset_each_batch = reset_each_batch
 
         # Store helpers values
 
@@ -165,6 +166,10 @@ class BaseAlgo(ABC):
             acmodel.train()
         else:
             acmodel.eval()
+
+        if self.reset_each_batch:
+            self.obs = self.env.reset()
+
         # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction

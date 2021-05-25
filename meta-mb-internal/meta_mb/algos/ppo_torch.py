@@ -17,7 +17,7 @@ class PPOAlgo(BaseAlgo):
         super().__init__(envs, policy_dict, args.frames_per_proc, args.discount, args.lr, args.gae_lambda, args.entropy_coef,
                          args.value_loss_coef, args.max_grad_norm, args.recurrence, obs_preprocessor, None,
                          None, not args.sequential, args.rollouts_per_meta_task, instr_dropout_prob=args.collect_dropout_prob,
-                         repeated_seed=repeated_seed)
+                         repeated_seed=repeated_seed, reset_each_batch=args.reset_each_batch)
 
         num_frames_per_proc = args.frames_per_proc or 128
         self.policy_dict = policy_dict

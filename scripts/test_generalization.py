@@ -416,6 +416,8 @@ def main():
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=None)
     parser.add_argument('--buffer_capacity', type=int, default=10000)
+    parser.add_argument('--num_envs', type=int, default=None)
+    parser.add_argument('--recurrence', type=int, default=None)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -518,6 +520,9 @@ def main():
     additional_args['distill_teacher_policy'] = args.distill_teacher_policy
     additional_args['distill_teacher_policy_key'] = args.distill_teacher_policy_key
     additional_args['distill_successful_only'] = args.distill_successful_only
+    if args.distill_successful_only:
+        additional_args['reset_each_batch'] = True
+    additional_args['num_envs'] = args.num_envs
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
     additional_args['source'] = 'agent'
@@ -526,6 +531,7 @@ def main():
     additional_args['lr'] = args.lr
     additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
     additional_args['buffer_capacity'] = args.buffer_capacity
+    additional_args['recurrence'] = args.recurrence
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
