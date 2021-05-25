@@ -216,10 +216,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             stoch_a = a
             if discrete:
                 det_a = np.argmax(agent_info[0]['probs'])
-                correct = int(a.item() == env.teacher_action.item())
             else:
                 det_a = agent_info[0]['argmax_action']
-                correct = True
             if not stochastic:
                 a = det_a
             if (save_locally or save_wandb) and i < num_save:
