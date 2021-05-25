@@ -419,6 +419,8 @@ def main():
     parser.add_argument('--num_envs', type=int, default=None)
     parser.add_argument('--recurrence', type=int, default=None)
     parser.add_argument('--advance_curriculum_func', type=str, default=None)
+    parser.add_argument('--cartesian_steps', type=int, default=None)
+    parser.add_argument('--feedback_freq', type=int, default=None)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -482,8 +484,8 @@ def main():
             "persist_objs": not default_args.reset_objs,
             "persist_agent": not default_args.reset_agent,
             "feedback_type": feedback_list,
-            "feedback_freq": default_args.feedback_freq,
-            "cartesian_steps": default_args.cartesian_steps,
+            "feedback_freq": default_args.feedback_freq if args.feedback_freq is None else args.feedback_freq,
+            "cartesian_steps": default_args.cartesian_steps if args.cartesian_steps is None else args.cartesian_steps,
             "num_meta_tasks": default_args.rollouts_per_meta_task,
             "intermediate_reward": default_args.reward_type == 'dense',
             "reward_type": default_args.reward_type,
