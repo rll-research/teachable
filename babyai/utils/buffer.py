@@ -170,7 +170,7 @@ class Buffer:
                 trajs = self.trajs_val
         # Half from the latest level, otherwise choose uniformly from other levels  # TODO: later!!!
         possible_levels = list(index.keys())
-        level = possible_levels[0]
+        level = np.random.choice(possible_levels)
         indices = np.random.randint(0, counts[level], size=total_num_samples)
         data = merge_dictlists([trajs[level][i:i+1] for i in indices])
         return data
