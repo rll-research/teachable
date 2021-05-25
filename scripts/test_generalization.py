@@ -529,6 +529,8 @@ def main():
     additional_args['distill_successful_only'] = args.distill_successful_only
     if args.distill_successful_only:
         additional_args['reset_each_batch'] = True
+    else:
+        additional_args['reset_each_batch'] = False
     additional_args['num_envs'] = args.num_envs
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
