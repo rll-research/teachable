@@ -33,3 +33,6 @@ class PreActionAdvice(Teacher):
         opt_action = int(self.last_action)
         followed_opt_action = (opt_action == action)
         return followed_opt_action and self.gave_feedback
+
+    def feedback_condition(self):
+        return True

@@ -418,6 +418,7 @@ def main():
     parser.add_argument('--buffer_capacity', type=int, default=10000)
     parser.add_argument('--num_envs', type=int, default=None)
     parser.add_argument('--recurrence', type=int, default=None)
+    parser.add_argument('--advance_curriculum_func', type=str, default=None)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -491,7 +492,11 @@ def main():
             "args": default_args,
             "seed": default_args.seed,
         }
-        env = rl2env(normalize(Curriculum(default_args.advance_curriculum_func, env=default_args.env, start_index=env_index,
+        if args.advance_curriculum_func is not None:
+            advance_curriculum_func = args.advance_curriculum_func
+        else:
+            advance_curriculum_func = default_args.advance_curriculum_func
+        env = rl2env(normalize(Curriculum(advance_curriculum_func, env=default_args.env, start_index=env_index,
                                           curriculum_type=default_args.curriculum_type, **arguments),
                                normalize_actions=default_args.act_norm, normalize_reward=default_args.rew_norm,
                                ), ceil_reward=default_args.ceil_reward)
