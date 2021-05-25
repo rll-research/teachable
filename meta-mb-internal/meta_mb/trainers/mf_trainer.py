@@ -159,14 +159,17 @@ class Trainer(object):
         rollout_time = 0
         saving_time = 0
 
-        buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                        augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
-        self.buffer = buffer
-        if self.args.use_dagger:
-            dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                                   buffer_name='dagger_buffer', successful_only=self.args.distill_successful_only)
+        if not self.args.no_buffer:
+            buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+                            augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
+            self.buffer = buffer
+            if self.args.use_dagger:
+                dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+                                       buffer_name='dagger_buffer', successful_only=self.args.distill_successful_only)
+            else:
+                dagger_buffer = None
         else:
-            dagger_buffer = None
+            buffer = None
 
         itr_start_time = time.time()
 
@@ -283,7 +286,7 @@ class Trainer(object):
                     self.next_train_itr = itr + 1
                     self.num_train_skip_itrs = 5
             should_store_data = raw_samples_data is not None and (
-                    self.args.collect_before_threshold or advance_curriculum)
+                    self.args.collect_before_threshold or advance_curriculum) and not self.args.no_buffer
             if self.args.yes_distill:
                 should_store_data = raw_samples_data is not None
             if should_store_data:
@@ -323,7 +326,7 @@ class Trainer(object):
                 should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.no_distill:
                 should_distill = False
-            if sum(list(buffer.counts_train.values())) == 0:
+            if buffer is not None and sum(list(buffer.counts_train.values())) == 0:
                 should_distill = False
             if should_distill:
                 logger.log("Distilling ...")
