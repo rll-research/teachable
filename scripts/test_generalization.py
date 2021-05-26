@@ -114,8 +114,10 @@ def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, s
         if itr == 0:
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
-            with open(full_save_dir.joinpath('results.csv'), 'w') as f:
-                f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward\n')
+            file_name = full_save_dir.joinpath('results.csv')
+            if not file_name.exists():
+                with open(file_name, 'w') as f:
+                    f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward\n')
         if not itr % log_every == 0:
             return
         policy = policy[teacher]

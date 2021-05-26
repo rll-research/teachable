@@ -49,6 +49,12 @@ class Buffer:
             self.buffer_path.mkdir()
         self.val_prob = val_prob
 
+    def load_buffer(self):
+        with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'rb') as f:
+            self.trajs_train = pkl.load(f)
+        with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
+            self.trajs_val = pkl.load(f)
+
     def create_blank_buffer(self, batch, label):
         train_dict = {}
         val_dict = {}
