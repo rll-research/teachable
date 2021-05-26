@@ -1,5 +1,8 @@
 # BabyAI Platform
 
+You will need to install mujoco, osmesa
+
+
 [![Build Status](https://travis-ci.org/mila-iqia/babyai.svg?branch=master)](https://travis-ci.org/mila-iqia/babyai)
 
 A platform for simulating language learning with a human in the loop. This is an ongoing research project based at [Mila](https://mila.quebec/en/).
