@@ -167,7 +167,7 @@ class Buffer:
             # Early in training we may not have any val trajs yet
             if len(counts) == 0:
                 counts = self.counts_train
-                trajs = self.trajs_val
+                trajs = self.trajs_train
         # Half from the latest level, otherwise choose uniformly from other levels  # TODO: later!!!
         possible_levels = list(index.keys())
         level = np.random.choice(possible_levels)
