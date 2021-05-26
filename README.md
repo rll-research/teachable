@@ -1,6 +1,6 @@
 # BabyAI Platform
 
-You will need to install mujoco, osmesa
+You will need to install mujoco, osmesa, patchelf, absl-py
 
 
 [![Build Status](https://travis-ci.org/mila-iqia/babyai.svg?branch=master)](https://travis-ci.org/mila-iqia/babyai)
