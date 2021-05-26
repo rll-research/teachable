@@ -267,7 +267,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
 
 def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, policy_path=None, policy=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
-                 seed=0, teacher_key=None, distill_teacher_key=None, target_key=None):
+                 seed=0, teacher_key=None, distill_teacher_key=None, target_key=None, num_feedback=0):
     if policy is None:
         policy, _, args, model_data = load_policy(policy_path)
         if teacher_key is None:
@@ -288,7 +288,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
         if not finetune_path.exists():
             finetune_path.mkdir()
         args.seed = seed
-        num_feedback = 0
+        # num_feedback = 0
         if not args.finetune_teacher_first in [0, '0']:
             if additional_args['distill_teacher_policy'] is not None:
                 policy[args.distill_teacher_policy_key] = load_policy(args.distill_teacher_policy)[0][
@@ -423,6 +423,7 @@ def main():
     parser.add_argument('--advance_curriculum_func', type=str, default=None)
     parser.add_argument('--cartesian_steps', type=int, default=None)
     parser.add_argument('--feedback_freq', type=int, default=None)
+    parser.add_argument('--start_num_feedback', type=int, default=0)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -570,7 +571,7 @@ def main():
                              additional_args=additional_args, seed=seed,
                              teacher_key=args.teacher_policy_key,
                              distill_teacher_key=args.distill_teacher_policy_key,
-                             target_key=args.target_policy_key)
+                             target_key=args.target_policy_key, num_feedback=args.start_num_feedback)
 
 
 if __name__ == '__main__':
