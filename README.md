@@ -1,6 +1,8 @@
 # BabyAI Platform
 
-You will need to install mujoco, osmesa, patchelf, absl-py
+You will need to install mujoco, osmesa, patchelf, absl-py, libosmesa-6
+
+opencv-python, gym_minigrid, numpy==1.19.5, gym=0.18.0, colorama
 
 
 [![Build Status](https://travis-ci.org/mila-iqia/babyai.svg?branch=master)](https://travis-ci.org/mila-iqia/babyai)
