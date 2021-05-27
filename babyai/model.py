@@ -395,6 +395,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def forward(self, obs, memory=None, instr_embedding=None):
         if self.advice_size > 0:
             advice_vector = obs.advice
+            if self.args.hide_feedback:
+                advice_vector *= 0
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = obs.obs
         if self.use_instr:
