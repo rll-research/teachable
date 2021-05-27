@@ -172,6 +172,7 @@ class Buffer:
             trajs = self.trajs_val
             # Early in training we may not have any val trajs yet
             if len(counts) == 0:
+                index = self.index_train
                 counts = self.counts_train
                 trajs = self.trajs_train
         # Half from the latest level, otherwise choose uniformly from other levels  # TODO: later!!!
