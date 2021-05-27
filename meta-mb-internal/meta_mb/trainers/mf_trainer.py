@@ -793,9 +793,6 @@ class Trainer(object):
                  env=self.env,
                  args=self.args,
                  optimizer=self.algo.optimizer_dict,
-                 reconstructor=self.algo.reconstructor_dict,
-                 reconstructor_optimizer=self.algo.reconstructor_optimizer_dict,
-                 il_reconstructor_optimizer=self.il_trainer.reconstructor_optimizer_dict,
                  curriculum_step=self.curriculum_step,
                  il_optimizer=il_optimizer,
                  log_dict={

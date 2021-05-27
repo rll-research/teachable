@@ -9,8 +9,7 @@ from gym.spaces import Discrete
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3,
-                 reconstructor_dict=None):
+                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
@@ -18,7 +17,6 @@ class ImitationLearning(object):
         self.label_weightings = label_weightings
         self.instr_dropout_prob = instr_dropout_prob
         self.obs_dropout_prob = obs_dropout_prob
-        self.reconstructor_dict = reconstructor_dict
 
         utils.seed(self.args.seed)
         self.env = env
@@ -29,11 +27,6 @@ class ImitationLearning(object):
             policy.train()
             if torch.cuda.is_available():
                 policy.cuda()
-        if self.reconstructor_dict is not None:
-            for reconstructor in reconstructor_dict.values():
-                reconstructor.train()
-                if torch.cuda.is_available():
-                    reconstructor.cuda()
 
         teachers = list(self.policy_dict.keys())
         # Dfferent optimizers for different models, same optimizer for same model
@@ -50,24 +43,6 @@ class ImitationLearning(object):
         self.scheduler_dict = {
             k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in self.optimizer_dict.items()
         }
-
-        if self.reconstructor_dict is not None:
-            self.reconstructor_optimizer_dict = {
-                first_teacher: torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
-                                                self.args.lr, eps=self.args.optim_eps)}
-            for teacher in teachers[1:]:
-                policy = self.reconstructor_dict[teacher]
-                if policy is self.reconstructor_dict[first_teacher]:
-                    self.reconstructor_optimizer_dict[teacher] = self.reconstructor_optimizer_dict[first_teacher]
-                else:
-                    self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                    self.args.lr, eps=self.args.optim_eps)
-            self.reconstructor_scheduler_dict = {
-                k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in
-                self.reconstructor_optimizer_dict.items()
-            }
-        else:
-            self.reconstructor_optimizer_dict = None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -91,16 +66,11 @@ class ImitationLearning(object):
             action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
-    def set_mode(self, is_training, acmodel, reconstructor):
+    def set_mode(self, is_training, acmodel):
         if is_training:
             acmodel.train()
         else:
             acmodel.eval()
-        if reconstructor is not None:
-            if is_training:
-                reconstructor.train()
-            else:
-                reconstructor.eval()
 
     def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}, backprop=True):
         active_teachers = [k for k, v in teacher_dict.items() if v]
@@ -108,12 +78,7 @@ class ImitationLearning(object):
         teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher_name]
         optimizer = self.optimizer_dict[teacher_name]
-        if self.reconstructor_dict is not None:
-            reconstructor = self.reconstructor_dict[teacher_name]
-            reconstructor_optimizer = self.reconstructor_optimizer_dict[teacher_name]
-        else:
-            reconstructor = None
-        self.set_mode(is_training, acmodel, reconstructor)
+        self.set_mode(is_training, acmodel)
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
@@ -130,16 +95,13 @@ class ImitationLearning(object):
         entropy = dist.entropy().mean()
 
         # Optional loss for reconstructing the feedback (currently, all models all teachers)
-        if self.reconstructor_dict is not None and 'advice' in obss:
+        if self.args.reconstruct and 'advice' in obss:
             # Loss for training the reconstructor
-            reconstruction_embedding = info['reconstruction_embedding']
-            advice = reconstructor(reconstruction_embedding)
+            advice = info['reconstruction']
             full_advice_size = int(len(advice[0]) / 2)
-            mean = advice[:, :full_advice_size]
-            var = torch.exp(advice[:, full_advice_size:])
-            loss_fn = torch.nn.GaussianNLLLoss()
+            loss_fn = torch.nn.MSELoss()
             true_advice = obss.advice
-            reconstruction_loss = loss_fn(true_advice, mean, var)
+            reconstruction_loss = loss_fn(true_advice, advice)
         else:
             reconstruction_loss = torch.FloatTensor([0]).to(self.device)
 
@@ -156,12 +118,7 @@ class ImitationLearning(object):
                    kl_loss, avg_mean_dist, avg_std, loss)
         if is_training and backprop:
             optimizer.zero_grad()
-            loss.backward(retain_graph=self.reconstructor_dict is not None)
-
-            if self.reconstructor_dict is not None and 'advice' in obss:
-                reconstructor_optimizer.zero_grad()
-                reconstruction_loss.backward()
-                reconstructor_optimizer.step()
+            loss.backward()
             optimizer.step()
 
         # Store log info
@@ -430,7 +387,4 @@ class ImitationLearning(object):
         if is_training:
             for scheduler in self.scheduler_dict.values():
                 scheduler.step()
-            if self.reconstructor_dict is not None:
-                for scheduler in self.reconstructor_scheduler_dict.values():
-                    scheduler.step()
         return logs

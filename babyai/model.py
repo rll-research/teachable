@@ -87,7 +87,7 @@ class Reconstructor(nn.Module):
             self.reconstructor = nn.Sequential(
                 nn.Linear(embedding_size + action_shape, 64),
                 nn.Tanh(),
-                nn.Linear(64, args.reconstruct_advice_size * 2)
+                nn.Linear(64, args.reconstruct_advice_size)
             )
 
     def forward(self, embedding):
@@ -274,12 +274,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         )
 
         # Define reconstruction model
-        if self.reconstruction:
-            self.reconstructor = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
-                nn.Tanh(),
-                nn.Linear(64, self.reconstruct_advice_size * 2)
-            )
+        if self.args.reconstruction:
+            self.reconstructor = Reconstructor(self.env, self.args)
 
         # Initialize parameters correctly
         self.apply(initialize_parameters)
@@ -491,11 +487,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "value": value,
             "memory": memory,
             "kl": kl_loss,
-            "reconstruction_embedding": reconstruction_embedding,
         }
-
-        if self.reconstruction:
-            info['advice'] = self.reconstructor(embedding)
+        if self.args.reconstruction:
+            info['reconstruction'] = self.reconstructor(reconstruction_embedding)
 
         return dist, info
 

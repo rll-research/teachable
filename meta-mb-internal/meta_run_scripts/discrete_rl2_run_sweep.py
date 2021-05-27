@@ -181,14 +181,9 @@ def run_experiment(**config):
         curriculum_step = env.index
 
     args.model = 'default_il'
-    if args.reconstruction:
-        reconstructor_dict = {k: Reconstructor(env, args) for k in teachers_list}
-    else:
-        reconstructor_dict = None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor,
-                                   instr_dropout_prob=args.distill_dropout_prob,
-                                   reconstructor_dict=reconstructor_dict)
+                                   instr_dropout_prob=args.distill_dropout_prob)
     if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
@@ -217,11 +212,11 @@ def run_experiment(**config):
         new_env.set_task()
         new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
 
     if args.use_dagger:
         envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
     else:
         algo_dagger = None
 
