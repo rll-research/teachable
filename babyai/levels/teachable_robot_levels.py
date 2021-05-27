@@ -85,7 +85,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
             for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
                 if ft == 'none':
-                    teacher = DummyAdvice(Bot, self)
+                    teacher = DummyAdvice(Bot, self, fully_observed=fully_observed)
                 elif ft == 'PostActionAdvice':
                     teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
                                                feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
