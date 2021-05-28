@@ -44,7 +44,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
                  feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], fully_observed=False, padding=False, args=None, **kwargs):
+                 cartesian_steps=[1], fully_observed=False, padding=False, args=None, static_env=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
@@ -57,6 +57,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
+        self.static_env = static_env
         self.intermediate_reward = intermediate_reward
         self.include_holdout_obj = include_holdout_obj
         self.persist_agent = persist_agent
@@ -619,6 +620,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         Reset both the env and the teacher
         :return: observation from the env reset
         """
+        if self.static_env:
+            self.seed(0)
         super().reset()
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.oracle = self.teacher.reset(self.oracle)

@@ -105,6 +105,7 @@ def run_experiment(**config):
         "padding": args.padding,
         "args": args,
         "seed": args.seed,
+        "static_env": args.static_env,
     }
     teacher_schedule = make_teacher_schedule(args.feedback_type, args.teacher_schedule,
                                              args.success_intervention_cutoff,

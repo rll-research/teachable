@@ -424,6 +424,7 @@ def main():
     parser.add_argument('--cartesian_steps', type=int, default=None)
     parser.add_argument('--feedback_freq', type=int, default=None)
     parser.add_argument('--start_num_feedback', type=int, default=0)
+    parser.add_argument('--static_env', action='store_true')
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -496,6 +497,7 @@ def main():
             "padding": default_args.padding,
             "args": default_args,
             "seed": default_args.seed,
+            "static_env": args.static_env
         }
         if args.advance_curriculum_func is not None:
             advance_curriculum_func = args.advance_curriculum_func
