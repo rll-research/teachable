@@ -369,6 +369,8 @@ class BaseAlgo(ABC):
         for key in exps.obs[0].keys():
             if 'gave_' in key:
                 teacher_name = key[5:]
+                if teacher_name == 'none':
+                    continue
                 # Only count collection for the teachers we'll actually use
                 if not collection_dict[teacher_name]:
                     log[key] = 0
