@@ -278,7 +278,8 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
         """
         Sets task dictionary. The parameter is a dummy passed in for compatibility with the normal RL2 set task function
         """
-        self.task = self.sample_task()
+        if not self.static_env:
+            self.task = self.sample_task()
         self.itr = 0
 
     def get_task(self):
