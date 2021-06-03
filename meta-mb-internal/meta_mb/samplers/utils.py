@@ -74,12 +74,12 @@ def get_readable_feedback(env_info, obs, teacher_name):
             agent_pos = offset[3: 5]
         timesteps_ago = np.argmax(offset[6:])
         return f"{start_str} {coords_offset}, {timesteps_ago + 1}/{env_info['num_steps']}, pos {agent_pos}, dir {agent_dir}"
-    elif teacher_name == 'SubgoalCorrections':
+    elif teacher_name in ['SubgoalCorrections', 'SubgoalSimple']:
         subgoal_names = ['OpenSubgoal',
                          'DropSubgoal',
                          'PickupSubgoal',
                          'GoNextToSubgoal']
-        subgoal = obs['SubgoalCorrections']
+        subgoal = obs[teacher_name]
         # Subgoal Name
         subgoal_name = subgoal_names[np.argmax(subgoal[:len(subgoal_names)]).item()]
         curr_idx = len(subgoal_names) + 1
@@ -87,7 +87,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
         obj_color = (COLOR_NAMES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(COLOR_NAMES) + 1]).item()]
         curr_idx += len(COLOR_NAMES) + 1
         # Obj name
-        obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES)]).item() + 1]
+        obj_type = (OBJ_TYPES + ['none'])[np.argmax(subgoal[curr_idx: curr_idx + len(OBJ_TYPES) + 1]).item()]
         curr_idx += len(OBJ_TYPES) + 1
         # Target coordinate
         coordinate = subgoal[curr_idx: curr_idx + 2]
