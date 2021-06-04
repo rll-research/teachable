@@ -2,8 +2,6 @@
 
 The codebase is based on the [BabyAI platform](https://github.com/mila-iqia/babyai).
 
-opencv-python, gym_minigrid, numpy==1.19.5, gym=0.18.0, colorama
-
 ## Replicating NeurIPS Results
 
 The main branch of this repository is updated frequently. If you are looking to replicate or compare against the results from the NeurIPS paper, please use the code on the il branch.
@@ -53,7 +51,7 @@ cd ../babyai
 pip install --editable .
 ```
 
-Do the same for the `d4rl directory
+Do the same for the `d4rl` directory
 
 ```
 cd d4rl
