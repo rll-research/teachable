@@ -1,43 +1,18 @@
-# BabyAI Platform
+# Official codebase for the paper Teachable Reinforcement Learning via AdviceDistillation.
 
-You will need to install mujoco, osmesa, patchelf, absl-py, libosmesa-6
+The codebase is based on the [BabyAI platform](https://github.com/mila-iqia/babyai).
 
 opencv-python, gym_minigrid, numpy==1.19.5, gym=0.18.0, colorama
 
 
-[![Build Status](https://travis-ci.org/mila-iqia/babyai.svg?branch=master)](https://travis-ci.org/mila-iqia/babyai)
-
-A platform for simulating language learning with a human in the loop. This is an ongoing research project based at [Mila](https://mila.quebec/en/).
-
 Contents:
-- [Citation](#citation)
 - [Replicating ICLR19 Results](#replicating-iclr19-results)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Codebase Structure](docs/codebase.md)
-- [Levels](#the-levels)
-- [Training and Evaluation](docs/train-eval.md)
-- [Contributing](CONTRIBUTING.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [About](#about-this-project)
 
-## Citation
-If you use this platform in your research, please cite:
+## Replicating Neurips Results
 
-```
-@inproceedings{
-  babyai_iclr19,
-  title={Baby{AI}: First Steps Towards Grounded Language Learning With a Human In the Loop},
-  author={Maxime Chevalier-Boisvert and Dzmitry Bahdanau and Salem Lahlou and Lucas Willems and Chitwan Saharia and Thien Huu Nguyen and Yoshua Bengio},
-  booktitle={International Conference on Learning Representations},
-  year={2019},
-  url={https://openreview.net/forum?id=rJeXCo0cYX},
-}
-```
-
-## Replicating ICLR19 Results
-
-The master branch of this repository is updated frequently. If you are looking to replicate or compare against the results from the [ICLR19 BabyAI paper](https://openreview.net/forum?id=rJeXCo0cYX), please use the docker image, demonstration dataset and source code from the [iclr19 branch](https://github.com/mila-iqia/babyai/tree/iclr19) of this repository.
+The main branch of this repository is updated frequently. If you are looking to replicate or compare against the results from the NeurIPS paper, please use the code on the il branch.
 
 ## Installation
 
@@ -47,17 +22,15 @@ Requirements:
 - NumPy
 - PyTorch 0.4.1+
 - blosc
+- Mujoco
+- osmesa
+- patchelf
+- absl-py
+- libosmesa-6
 
 Start by manually installing PyTorch. See the [PyTorch website](http://pytorch.org/)
 for installation instructions specific to your platform.
 
-Then, clone this repository and install the other dependencies with `pip3`:
-
-```
-git clone https://github.com/mila-iqia/babyai.git
-cd babyai
-pip3 install --editable .
-```
 
 ### Installation using Conda (Alternative Method)
 
@@ -86,53 +59,14 @@ cd ../babyai
 pip install --editable .
 ```
 
-### BabyAI Storage Path
-
-Add this line to `.bashrc` (Linux), or `.bash_profile` (Mac).
+Do the same for the `d4rl directory
 
 ```
-export BABYAI_STORAGE='/<PATH>/<TO>/<BABYAI>/<REPOSITORY>/<PARENT>'
+cd d4rl
+pip install --editable .
 ```
-
-where `/<PATH>/<TO>/<BABYAI>/<REPOSITORY>/<PARENT>` is the folder where you typed `git clone https://github.com/mila-iqia/babyai.git` earlier.
-
-Models, logs and demos will be produced in this directory, in the folders `models`, `logs` and `demos` respectively.
 
 ## Usage
 
-To run the interactive GUI application that illustrates the platform:
-
-```
-scripts/manual_control.py
-```
-
-The level being run can be selected with the `--env` option, eg:
-
-```
-scripts/manual_control.py --env BabyAI-UnlockPickup-v0
-```
-
-### The Levels
-
-Documentation for the ICLR19 levels can be found in
-[docs/iclr19_levels.md](docs/iclr19_levels.md).
-There are also older levels documented in
-[docs/bonus_levels.md](docs/bonus_levels.md).
-
-### Pixel Observations
-
-Please note that the default observation format is a partially observable view of the environment using a compact encoding, with 3 input values per visible grid cell, 7x7x3 values total. These values are **not pixels**. If you want to obtain an array of RGB pixels as observations instead, use the `RGBImgPartialObsWrapper`. You can use it as follows:
-
-```
-import babyai
-from gym_minigrid.wrappers import *
-env = gym.make('BabyAI-GoToRedBall-v0')
-env = RGBImgPartialObsWrapper(env)
-```
-
-This wrapper, as well as other wrappers to change the observation format can be [found here](https://github.com/maximecb/gym-minigrid/blob/master/gym_minigrid/wrappers.py).
-
-## About this Project
-
-BabyAI is an open-ended grounded language acquisition effort at [Mila](https://mila.quebec/en/). The current BabyAI platform was designed to study data-effiency of existing methods under the assumption that a human provides all teaching signals
-(i.e. demonstrations, rewards, etc.). For more information, see the [ICLR19 paper](https://openreview.net/forum?id=rJeXCo0cYX).
+To train a model, use the `discrete_rl2_run_sweep.py` script (sorry, the name of the script is out of date and will hopefully be updated soon).
+To evaluate a trained model, train a model through bootstrapping, or finetune on a new level, use the `test_generalization.py` script.
