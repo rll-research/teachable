@@ -10,8 +10,7 @@ from meta_mb.envs.normalized_env import normalize
 
 use_buffer = False
 
-buffer_file = "/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/T1250_CC3_DISILL_ORACLE_teacherPreActionAdviceCartesianCorrections_SD_threshS1_threshAR0.6_threshAD0.99_lr0.0001_ent0.0001_1"
-# buffer_file = "/home/olivia/Teachable/babyai/meta-mb-internal/data/T1369_COLLECT_teacherPreActionAdviceCartesianCorrections_threshS1_threshAR0.95_threshAD0.95_lr0.0001_ent0.0001_1"
+buffer_file = None
 if use_buffer:
     buffer = Buffer(buffer_file, 1000, 1, val_prob=.1, augmenter=None)#, buffer_name='dataset'
 else:

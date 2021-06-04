@@ -58,4 +58,3 @@ for folder in args.folders:
             copyfile(file_name, new_tb_file)
 
 
-print('scp -r filetransfer/* olivia@pabrtxs1.ist.berkeley.edu:~/Teachable/babyai/meta-mb-internal/data/')

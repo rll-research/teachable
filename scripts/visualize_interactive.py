@@ -52,7 +52,7 @@ if True:
     # teacher_name = 'pa'
 
     # Turn left policy
-    base_path = "/home/olivia/Documents/Teachable/babyai/meta-mb-internal/data/"
+    base_path = "babyai/meta-mb-internal/data/"
     pkl_path = args.path
 
     pkl_path = base_path + pkl_path
