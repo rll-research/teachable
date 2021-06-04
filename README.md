@@ -4,13 +4,7 @@ The codebase is based on the [BabyAI platform](https://github.com/mila-iqia/baby
 
 opencv-python, gym_minigrid, numpy==1.19.5, gym=0.18.0, colorama
 
-
-Contents:
-- [Replicating ICLR19 Results](#replicating-iclr19-results)
-- [Installation](#installation)
-- [Usage](#usage)
-
-## Replicating Neurips Results
+## Replicating NeurIPS Results
 
 The main branch of this repository is updated frequently. If you are looking to replicate or compare against the results from the NeurIPS paper, please use the code on the il branch.
 
