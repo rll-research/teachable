@@ -126,7 +126,7 @@ def run_experiment(**config):
                                normalize_actions=args.act_norm, normalize_reward=args.rew_norm,
                                ), ceil_reward=args.ceil_reward)
         try:
-            teacher_null_dict = env.teacher.null_feedback()
+            teacher_null_dict = env.teacher.empty_feedback()
         except Exception as e:
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model
@@ -152,7 +152,7 @@ def run_experiment(**config):
             args.advice_size = 0
 
         try:
-            teacher_null_dict = env.teacher.null_feedback()
+            teacher_null_dict = env.teacher.empty_feedback()
         except Exception as e:
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model

@@ -46,22 +46,11 @@ class BatchTeacher:
             return_dict[k] = v.feedback_condition()
         return return_dict
 
-    def set_feedback_type(self, feedback_type):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.set_feedback_type(feedback_type)
-        return return_dict
-
     def reset(self, oracle):
         return_dict = {}
         for k, v in self.teachers.items():
             return_dict[k] = v.reset(oracle[k])
         return return_dict
-
-    def get_last_step_error(self):
-        last_step_error = [t.last_step_error for t in self.teachers.values()]
-        last_step_error = np.max(last_step_error)
-        return last_step_error
 
     def success_check(self, state, action, oracle):
         return_dict = {}

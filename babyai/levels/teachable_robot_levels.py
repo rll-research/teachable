@@ -577,7 +577,6 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.oracle = self.teacher.step(action, self.oracle)
             for k, v in self.teacher.success_check(obs['obs'], action, self.oracle).items():
                 info[f'followed_{k}'] = v
-            info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
         else:

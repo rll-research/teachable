@@ -1,16 +1,21 @@
-import numpy as np
-
 class BatchTeacher:
     """
     Batched version of the Teacher class.
     """
-    def __init__(self, teachers):
+    def __init__(self, controller, teachers):
+        self.waypoint_controller = controller
         self.teachers = teachers
 
+    def get_action(self, env):
+        action, _ = self.waypoint_controller.get_action(env.get_pos(), env.get_vel(), env.get_target())
+        return action, self.waypoint_controller.waypoints.copy()
+
     def step(self, env):
+        self.last_action = self.next_action
+        self.next_action, self.waypoints = self.get_action(env)
         return_dict = {}
         for k, v in self.teachers.items():
-            return_dict[k] = v.step(env)
+            return_dict[k] = v.step()
         return return_dict
 
     def give_feedback(self, env):
@@ -22,43 +27,22 @@ class BatchTeacher:
         return return_dict
 
     def empty_feedback(self):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.empty_feedback()
-        return return_dict
-
-    # TODO: do we really want null feedback to always be 0?  Maybe it should be noise?  Or some special token?
-    def null_feedback(self):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.empty_feedback() * 0
-        return return_dict
+        return {k: v.empty_feedback() for k, v in self.teachers.items()}
 
     def compute_feedback(self, env):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.compute_feedback(env)
-        return return_dict
+        return {k: v.compute_feedback(env) for k, v in self.teachers.items()}
 
     def feedback_condition(self):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.feedback_condition()
-        return return_dict
+        return {k: v.feedback_condition() for k, v in self.teachers.items()}
 
     def reset(self, env):
+        self.last_action = -1
+        self.next_action, self.waypoints = self.get_action(env)
         return_dict = {}
         for k, v in self.teachers.items():
-            return_dict[k] = v.reset(env)
+            return_dict[k] = v.reset()
         return return_dict
-
-    def get_last_step_error(self):
-        last_step_error = [t.last_step_error for t in self.teachers.values()]
-        last_step_error = np.max(last_step_error)
-        return last_step_error
 
     def success_check(self, state, action, oracle):
-        return_dict = {}
-        for k, v in self.teachers.items():
-            return_dict[k] = v.success_check(state, action, oracle[k])
-        return return_dict
+        # Not implemented for the d4rl envs
+        return {k: True for k in self.teacher.keys()}

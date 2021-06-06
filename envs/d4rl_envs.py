@@ -152,8 +152,8 @@ class D4RLEnv:
     multiple times for multiple runs within the same meta-task.
     """
 
-    def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
+    def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None,
+                 max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
@@ -178,38 +178,13 @@ class D4RLEnv:
         self.scale_factor = 5
         self.repeat_input = 5
         teachers = {}
-        if type(cartesian_steps) is int:
-            cartesian_steps = [cartesian_steps]
-        assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
-            "you must provide either one cartesian_steps value for all teachers or one per teacher"
-        assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
-            "you must provide either one feedback_freq value for all teachers or one per teacher"
-        if len(cartesian_steps) == 1:
-            cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
-        if len(feedback_freq) == 1:
-            feedback_freq = [feedback_freq[0]] * len(feedback_type)
-        for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
-            if ft == 'none':
-                teachers[ft] = DummyAdvice(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Cardinal':
-                teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Waypoint':
-                teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'OffsetWaypoint':
-                teachers[ft] = OffsetWaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Direction':
-                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                    controller=self.waypoint_controller)
-            elif ft == 'Direction2':
-                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                    controller=self.waypoint_controller)
-        teacher = BatchTeacher(teachers)
-        self.teacher = teacher
-        # TODO: create teachers
+        for ft in feedback_type:
+            if ft == 'none': teachers[ft] = DummyAdvice()
+            elif ft == 'Cardinal': teachers[ft] = CardinalCorrections()
+            elif ft == 'Waypoint': teachers[ft] = WaypointCorrections()
+            elif ft == 'OffsetWaypoint': teachers[ft] = OffsetWaypointCorrections()
+            elif ft == 'Direction': teachers[ft] = DirectionCorrections()
+        self.teacher = BatchTeacher(self.waypoint_controller, teachers)
 
     def get_timestep(self):
         return .02
@@ -415,7 +390,6 @@ class D4RLEnv:
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = self.get_teacher_action()
             self.teacher.step(self)  # TODO: OBOE? should this be before update_obs?
-            info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
         return obs_dict, rew, done, info
