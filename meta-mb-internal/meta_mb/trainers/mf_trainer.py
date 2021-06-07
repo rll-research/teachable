@@ -1,17 +1,11 @@
 import torch
 import numpy as np
 from meta_mb.logger import logger
-from meta_mb.samplers.utils import rollout
-from babyai.utils.buffer import Buffer, trim_batch
-# from scripts.test_generalization import eval_policy, test_success
-import os.path as osp
-import joblib
+from babyai.utils.buffer import Buffer
 import time
 import psutil
 import os
 import copy
-import random
-import pathlib
 
 
 class Trainer(object):
@@ -169,6 +163,7 @@ class Trainer(object):
         self.last_accuracy = 0
 
     def update_logs(self, time_training, time_collection, distill_time, saving_time):
+        logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
         for k in self.teacher_train_dict.keys():
             if self.should_train_rl:
                 logger.logkv(f'Feedback/Trained_{k}', int(self.teacher_train_dict[k]))
@@ -275,15 +270,7 @@ class Trainer(object):
                                                                            train=self.should_train_rl,
                                                                            collection_dict=self.collection_dict)
                 raw_samples_data = copy.deepcopy(samples_data)
-                try:
-                    counts_train = self.buffer.counts_train[self.curriculum_step]
-                except:
-                    counts_train = 0
-                logger.logkv("BufferSize", counts_train)
-                if self.args.single_level and self.args.end_on_full_buffer and \
-                    (self.buffer.counts_train[self.curriculum_step] == self.buffer.train_buffer_capacity):
-                    print("ALL DONE!")
-                    return
+
             else:
                 episode_logs = None
                 raw_samples_data = None
@@ -301,7 +288,6 @@ class Trainer(object):
                 summary_logs = None
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
-            logger.logkv('Curriculum Step', self.curriculum_step)
             advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_train(episode_logs,
                                                                                                 raw_samples_data)
             if self.args.no_train_rl or self.skip_training_rl:
@@ -337,9 +323,7 @@ class Trainer(object):
                                   self.itrs_on_level >= self.args.min_itr_steps_distill
             if self.args.yes_distill:
                 self.should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
-            if self.args.no_distill:
-                self.should_distill = False
-            if self.buffer is not None and sum(list(self.buffer.counts_train.values())) == 0:
+            if self.args.no_distill or (self.buffer is not None and sum(list(self.buffer.counts_train.values())) == 0):
                 self.should_distill = False
             if self.should_distill:
                 logger.log("Distilling ...")
@@ -353,7 +337,7 @@ class Trainer(object):
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
                     self.total_distillation_frames += len(sampled_batch)
-                    self.distill(sampled_batch,
+                    self.distill_log = self.distill(sampled_batch,
                                  is_training=True,
                                  teachers_dict=self.teacher_distill_dict,
                                  relabel=self.args.relabel,
@@ -407,7 +391,6 @@ class Trainer(object):
                     logger.logkv(f'Distill/Advance_{key_set_name}', int(advance_teacher))
                     advance_curriculum = advance_curriculum and advance_teacher
                 logger.logkv('Distill/Advance_Overall', int(advance_curriculum))
-                logger.logkv('Distill/TotalFrames', self.total_distillation_frames)
             else:
                 distill_time = 0
 
@@ -464,6 +447,12 @@ class Trainer(object):
         return False  # keep going
 
     def _log(self, episode_logs, summary_logs, data, tag=""):
+        logger.logkv('Curriculum Step', self.curriculum_step)
+        try:
+            counts_train = self.buffer.counts_train[self.curriculum_step]
+        except:
+            counts_train = 0
+        logger.logkv("BufferSize", counts_train)
         if episode_logs is not None:
             avg_return = np.mean(episode_logs['return_per_episode'])
             avg_path_length = np.mean(episode_logs['num_frames_per_episode'])
@@ -513,7 +502,7 @@ class Trainer(object):
             source = self.args.source
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
                                       teachers_dict=teachers_dict, distill_target=self.args.distillation_strategy,
-                                      relabel=relabel, relabel_dict=relabel_dict, distill_to_none=distill_to_none)
+                                      distill_to_none=distill_to_none)
         return log
 
     def get_itr_snapshot(self, itr):
@@ -526,9 +515,6 @@ class Trainer(object):
                  env=self.env,
                  args=self.args,
                  optimizer=self.algo.optimizer_dict,
-                 reconstructor=self.algo.reconstructor_dict,
-                 reconstructor_optimizer=self.algo.reconstructor_optimizer_dict,
-                 il_reconstructor_optimizer=self.il_trainer.reconstructor_optimizer_dict,
                  curriculum_step=self.curriculum_step,
                  il_optimizer=il_optimizer,
                  log_dict={

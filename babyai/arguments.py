@@ -169,8 +169,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distillation_strategy', type=str, choices=[
-            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
-        ], default='distill_powerset')
+            'no_teachers', 'single_teachers', 'single_teachers_none'], default='single_teachers')
         self.add_argument('--distill_label_weightings', action='store_true')
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
