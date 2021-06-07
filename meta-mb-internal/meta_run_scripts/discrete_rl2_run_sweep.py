@@ -7,7 +7,7 @@ from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcess
 from babyai.model import ACModel, Reconstructor
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
-from babyai.utils.obs_preprocessor import make_obs_preprocessor, make_obs_preprocessor_choose_teachers
+from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
 from scripts.test_generalization import make_log_fn
@@ -16,7 +16,6 @@ import torch
 import copy
 import shutil
 from meta_mb.logger import logger
-from gym import spaces
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 from babyai.levels.iclr19_levels import *

@@ -159,8 +159,6 @@ class ArgumentParser(argparse.ArgumentParser):
                                                               'vector_next_waypoint', 'wall_penalty'],
                           default='oracle_dist')
         self.add_argument('--ceil_reward', action='store_true')
-        self.add_argument('--use_rp_inner', action='store_true')
-        self.add_argument('--use_rp_outer', action='store_true')
         self.add_argument('--reward_when_necessary', action='store_true')
 
         # Distillations
@@ -220,6 +218,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--reset_each_batch', action='store_true')
         self.add_argument('--no_buffer', action='store_true')
         self.add_argument('--static_env', action='store_true')
+        self.add_argument('--save_untrained', action='store_true')
 
     def parse_args(self, arg=None):
         """

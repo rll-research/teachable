@@ -222,7 +222,7 @@ class WandBOutputFormat(KVWriter):
         if not self.initialized:
             self.initialized = True
             wandb.init(project="teachablerobot", config=self.config, name=self.name)
-        wandb.log(kvs)
+        wandb.log_rollouts(kvs)
 
     def close(self):
         pass

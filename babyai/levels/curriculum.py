@@ -1,6 +1,6 @@
 from meta_mb.utils.serializable import Serializable
 from babyai.levels.iclr19_levels import *
-from envs.d4rl_envs import PointMassEnv, AntEnv, PointMassEnvSimple, PointMassEnvSimpleDiscrete
+from envs.d4rl_envs import PointMassEnv, AntEnv
 import copy
 NULL_SEED = 1000
 
@@ -51,7 +51,6 @@ class Curriculum(Serializable):
         else:
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[start_index] = 1
-        # class_name, class_args = self.levels_list[start_index]  # TODO: double check this doesn't do horrible things with the babyai levels
         self.set_wrapped_env(start_index)
         self.index = start_index
 
