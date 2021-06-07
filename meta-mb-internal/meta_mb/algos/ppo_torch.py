@@ -51,13 +51,8 @@ class PPOAlgo(BaseAlgo):
                                                                 self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
         self.batch_num = 0
 
-    def set_optimizer(self):
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
-                                          eps=self.adam_eps)
-
     def update_parameters(self):
         return self.optimize_policy(None, True)
-
 
     def optimize_policy(self, original_exps, teacher_dict={}, entropy_coef=None):
         '''
@@ -142,26 +137,8 @@ class PPOAlgo(BaseAlgo):
             for inds in [inds[:-1]]:
                 # inds is a numpy array of indices that correspond to the beginning of a sub-batch
                 # there are as many inds as there are batches
-                # Initialize batch values
 
-                batch_entropy = 0
-                batch_value = 0
-                batch_policy_loss = 0
-                batch_value_loss = 0
-                batch_kl_loss = 0
-                batch_reconstruction_loss = 0
-                batch_feedback_reconstruction = 0
                 batch_loss = 0
-                batch_action_magnitude = 0
-                batch_action_max = 0
-
-                batch_returnn = 0
-                batch_advantage = 0
-                batch_value_clip = 0
-                batch_policy_clip = 0
-                batch_ratio = 0
-                batch_log_prob = 0
-                batch_sb_value = 0
 
                 # Initialize memory
 
@@ -223,49 +200,31 @@ class PPOAlgo(BaseAlgo):
                            self.args.control_penalty * control_penalty + \
                            self.args.mi_coef * reconstruction_loss
 
-                    batch_entropy -= entropy.item() * self.entropy_coef
-                    batch_value += value.mean().item()
-                    batch_policy_loss += policy_loss.item()
-                    batch_value_loss += value_loss.item() * self.value_loss_coef
-                    batch_kl_loss += kl_loss.item() * self.args.kl_coef
-                    batch_reconstruction_loss += reconstruction_loss * self.args.mi_coef
-                    batch_feedback_reconstruction += feedback_reconstruction.item()
-                    batch_loss += loss
-                    batch_action_magnitude += torch.linalg.norm(sb.action.float(), ord=1, dim=-1).mean().item()
-                    batch_action_max += torch.max(torch.abs(sb.action.float()), dim=-1)[0].mean().item()
+                    log_entropies.append(- entropy.item() * self.entropy_coef)
+                    log_values.append(value.mean().item())
+                    log_policy_losses.append(policy_loss.item())
+                    log_value_losses.append(value_loss.item() * self.value_loss_coef)
+                    log_kl_losses.append(kl_loss.item() * self.args.kl_coef)
+                    log_reconstruction_losses.append(reconstruction_loss.item() * self.args.mi_coef)
+                    log_feedback_reconstruction.append(feedback_reconstruction.item())
+                    log_action_magnitude.append(torch.linalg.norm(sb.action.float(), ord=1, dim=-1).mean().item())
+                    log_action_max.append(torch.max(torch.abs(sb.action.float()), dim=-1)[0].mean().item())
 
-                    batch_returnn += sb.returnn.mean().item()
-                    batch_advantage += sb.advantage.mean().item()
-                    batch_value_clip += (surr1 - surr2).mean().item()
-                    batch_policy_clip += (surrr1 - surrr2).mean().item()
-                    batch_ratio += ratio.mean().item()
-                    batch_log_prob += sb.log_prob.mean().item()
-                    batch_sb_value += sb.value.mean().item()
+                    log_returnn.append(sb.returnn.mean().item())
+                    log_advantage.append(sb.advantage.mean().item())
+                    log_value_clip.append((surr1 - surr2).mean().item())
+                    log_policy_clip.append((surrr1 - surrr2).mean().item())
+                    log_ratio.append(ratio.mean().item())
+                    log_log_prob.append(sb.log_prob.mean().item())
+                    log_sb_value.append(sb.value.mean().item())
+                    batch_loss += loss
+                    log_losses.append(loss.item())
 
                     # Update memories for next epoch
                     if i < self.recurrence - 1:
                         exps.memory[inds + i + 1] = memory.detach()
 
-                # Update batch values
-
-                batch_entropy /= self.recurrence
-                batch_value /= self.recurrence
-                batch_policy_loss /= self.recurrence
-                batch_value_loss /= self.recurrence
-                batch_kl_loss /= self.recurrence
-                batch_reconstruction_loss /= self.recurrence
-                batch_feedback_reconstruction /= self.recurrence
                 batch_loss /= self.recurrence
-                batch_action_magnitude /= self.recurrence
-                batch_action_max /= self.recurrence
-
-                batch_returnn /= self.recurrence
-                batch_advantage /= self.recurrence
-                batch_value_clip /= self.recurrence
-                batch_policy_clip /= self.recurrence
-                batch_ratio /= self.recurrence
-                batch_log_prob /= self.recurrence
-                batch_sb_value /= self.recurrence
 
                 # Update actor-critic
 
@@ -283,26 +242,7 @@ class PPOAlgo(BaseAlgo):
 
                 backward_end = time.time() - backward_start
                 backward_time += backward_end
-
-                # Update log values
-                log_entropies.append(batch_entropy)
-                log_values.append(batch_value)
-                log_policy_losses.append(batch_policy_loss)
-                log_value_losses.append(batch_value_loss)
-                log_kl_losses.append(batch_kl_loss)
-                log_reconstruction_losses.append(batch_reconstruction_loss.item())
-                log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
-                log_action_magnitude.append(batch_action_magnitude)
-                log_action_max.append(batch_action_max)
-
-                log_returnn.append(batch_returnn)
-                log_advantage.append(batch_advantage)
-                log_value_clip.append(batch_value_clip)
-                log_policy_clip.append(batch_policy_clip)
-                log_ratio.append(batch_ratio)
-                log_log_prob.append(batch_log_prob)
-                log_sb_value.append(batch_sb_value)
 
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
