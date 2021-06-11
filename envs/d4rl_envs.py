@@ -95,8 +95,10 @@ class D4RLEnv:
             x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
             state[int(x), int(y)] = 2
         max_grid[:h, :w] = state
+        # max_grid = self.max_grid
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs']# / self.scale_factor
+        # state_obs[:2] = np.random.randint(low=1, high=4, size=2)
         if self.args.env == 'ant':
             if self.args.show_pos == 'ours':
                 state_obs[:2] = self.get_pos() / self.scale_factor
@@ -355,6 +357,8 @@ class PointMassEnv(D4RLEnv):
 
     def reset(self):
         obs_dict = super().reset()
+        # fake_target = np.random.randint(low=1, high=4, size=2)
+        # target = fake_target / self.scale_factor
         target = self.get_target() / self.scale_factor
         obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         return obs_dict
