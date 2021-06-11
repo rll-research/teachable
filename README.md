@@ -60,5 +60,5 @@ pip install --editable .
 
 ## Usage
 
-To train a model, use the `discrete_rl2_run_sweep.py` script (sorry, the name of the script is out of date and will hopefully be updated soon).
+To train a model, use the `train_model.py` script.
 To evaluate a trained model, train a model through bootstrapping, or finetune on a new level, use the `test_generalization.py` script.
