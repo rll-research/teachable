@@ -29,7 +29,7 @@ for installation instructions specific to your platform.
 If you are using conda, you can create a `babyai` environment with all the dependencies by running:
 
 ```
-git clone https://github.com/mila-iqia/babyai.git
+git clone https://github.com/AliengirlLiv/teachable.git
 cd babyai
 conda env create -f environment.yaml
 source activate babyai
