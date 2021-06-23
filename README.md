@@ -30,7 +30,7 @@ If you are using conda, you can create a `babyai` environment with all the depen
 
 ```
 git clone https://github.com/AliengirlLiv/teachable.git
-cd babyai
+cd teachable
 conda env create -f environment.yaml
 source activate babyai
 ```
@@ -41,13 +41,6 @@ After that, execute the following commands to setup the environment.
 cd ..
 git clone https://github.com/maximecb/gym-minigrid.git
 cd gym-minigrid
-pip install --editable .
-```
-
-The last command installs the repository in editable mode. Move back to the `babyai` repository and install that in editable mode as well.
-
-```
-cd ../babyai
 pip install --editable .
 ```
 
