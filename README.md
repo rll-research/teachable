@@ -24,7 +24,7 @@ Start by manually installing PyTorch. See the [PyTorch website](http://pytorch.o
 for installation instructions specific to your platform.
 
 
-### Installation using Conda (Alternative Method)
+### Installation using Conda
 
 If you are using conda, you can create a `babyai` environment with all the dependencies by running:
 
@@ -50,6 +50,8 @@ Do the same for the `d4rl` directory
 cd d4rl
 pip install --editable .
 ```
+
+Install doodad, and add it to your PythonPath. Also add the meta-mb-internal and the teachable directories to your PythonPath.
 
 ## Usage
 
