@@ -106,11 +106,11 @@ class BaseAlgo(ABC):
         if self.discrete:
             self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
             self.teacher_actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
-            self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
+            self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float32)
         else:
-            self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
-            self.teacher_actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
-            self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
+            self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float32)
+            self.teacher_actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float32)
+            self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float32)
         self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
         self.advantages = torch.zeros(*shape, device=self.device)
