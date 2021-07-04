@@ -121,7 +121,7 @@ class Buffer:
             arr[index:index + max_val] = getattr(traj, k)[:max_val]
 
         # Uh oh, overfilling the buffer. Let's wrap around.
-        remainder = len(traj) - max_val
+        remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:
             for k in value:
                 arr = getattr(value, k)
