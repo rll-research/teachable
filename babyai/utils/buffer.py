@@ -20,6 +20,10 @@ def trim_batch(batch):
         batch_info['action_probs'] = batch.action_probs
     if 'teacher_action' in batch.env_infos:
         batch_info['teacher_action'] = batch.env_infos.teacher_action
+    if 'followed_teacher' in batch.env_infos:
+        batch_info['followed_teacher'] = batch.env_infos.followed_teacher
+    if 'advice_count' in batch.env_infos:
+        batch_info['advice_count'] = batch.env_infos.advice_count
     return DictList(batch_info)
 
 
@@ -50,34 +54,42 @@ class Buffer:
         self.val_prob = val_prob
 
     def load_buffer(self):
-        with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'rb') as f:
-            self.trajs_train = pkl.load(f)
-        with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
-            self.trajs_val = pkl.load(f)
+        train_path = self.buffer_path.joinpath(f'train_buffer.pkl')
+        if train_path.exists():
+            with open(train_path, 'rb') as f:
+                self.trajs_train, self.index_train, self.counts_train = pkl.load(f)
+        val_path = self.buffer_path.joinpath(f'val_buffer.pkl')
+        if val_path.exists():
+            with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
+                self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
 
     def create_blank_buffer(self, batch, label):
         train_dict = {}
         val_dict = {}
-        for key in ['obs', 'action', 'action_probs', 'teacher_action']:
-            if not hasattr(batch, key):
-                continue
-            value = getattr(batch, key)
-            if type(value) is list:
-                train_dict[key] = [None] * self.train_buffer_capacity
-                val_dict[key] = [None] * self.val_buffer_capacity
-            elif type(value) is torch.Tensor:
-                shape = value.shape
-                tensor_class = torch.IntTensor if value.dtype is torch.int32 else torch.FloatTensor
-                device = value.device
-                train_dict[key] = tensor_class(size=(self.train_buffer_capacity, *shape[1:])).to(device)
-                val_dict[key] = tensor_class(size=(self.val_buffer_capacity, *shape[1:])).to(device)
-            elif type(value) is np.ndarray:
-                shape = value.shape
-                dtype = value.dtype
-                train_dict[key] = np.zeros(shape=(self.train_buffer_capacity, *shape[1:]), dtype=dtype)
-                val_dict[key] = np.zeros(shape=(self.val_buffer_capacity, *shape[1:]), dtype=dtype)
-            else:
-                raise NotImplementedError((key, type(value)))
+        # for key in ['obs', 'action', 'action_probs', 'teacher_action', 'followed_teacher', 'advice_count']:
+        for key in ['obs', 'action', 'followed_teacher', 'advice_count']:
+            # if not hasattr(batch, key):
+            #     continue
+            try:
+                value = getattr(batch, key)
+                if type(value) is list:
+                    train_dict[key] = [None] * self.train_buffer_capacity
+                    val_dict[key] = [None] * self.val_buffer_capacity
+                elif type(value) is torch.Tensor:
+                    shape = value.shape
+                    tensor_class = torch.IntTensor if value.dtype is torch.int32 else torch.FloatTensor
+                    device = value.device
+                    train_dict[key] = tensor_class(size=(self.train_buffer_capacity, *shape[1:])).to(device)
+                    val_dict[key] = tensor_class(size=(self.val_buffer_capacity, *shape[1:])).to(device)
+                elif type(value) is np.ndarray:
+                    shape = value.shape
+                    dtype = value.dtype
+                    train_dict[key] = np.zeros(shape=(self.train_buffer_capacity, *shape[1:]), dtype=dtype)
+                    val_dict[key] = np.zeros(shape=(self.val_buffer_capacity, *shape[1:]), dtype=dtype)
+                else:
+                    raise NotImplementedError((key, type(value)))
+            except:
+                print("?", key)
         self.trajs_train[label] = DictList(train_dict)
         self.trajs_val[label] = DictList(val_dict)
 
@@ -117,9 +129,9 @@ class Buffer:
 
     def save_buffer(self):
         with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:
-            pkl.dump(self.trajs_train, f)
+            pkl.dump((self.trajs_train, self.index_train, self.counts_train), f)
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
-            pkl.dump(self.trajs_val, f)
+            pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
 
     def add_trajs(self, batch, level, trim=True):
         if trim:
@@ -171,7 +183,7 @@ class Buffer:
             counts = self.counts_val
             trajs = self.trajs_val
             # Early in training we may not have any val trajs yet
-            if len(counts) == 0:
+            if sum(counts.values()) == 0:
                 index = self.index_train
                 counts = self.counts_train
                 trajs = self.trajs_train
