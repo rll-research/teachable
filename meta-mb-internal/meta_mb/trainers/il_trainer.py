@@ -86,7 +86,10 @@ class ImitationLearning(object):
         if not source == 'agent_probs':
             dtype = torch.long if self.args.discrete else torch.float32
             action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
-        action_teacher = batch.teacher_action
+        if hasattr(batch, 'teacher_action'):
+            action_teacher = batch.teacher_action
+        else:
+            action_teacher = torch.zeros_like(action_true)
         if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
             action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
@@ -126,6 +129,8 @@ class ImitationLearning(object):
 
         dist, info = acmodel(obss)
         kl_loss = info['kl']
+        if len(action_true.shape) == 3:  # Has an extra dimension
+            action_true = action_true.squeeze(1)
         policy_loss = -dist.log_prob(action_true).mean()
         entropy = dist.entropy().mean()
 
