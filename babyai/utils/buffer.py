@@ -51,9 +51,9 @@ class Buffer:
 
     def load_buffer(self):
         with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'rb') as f:
-            self.trajs_train = pkl.load(f)
+            self.trajs_train, self.index_train, self.counts_train = pkl.load(f)
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
-            self.trajs_val = pkl.load(f)
+            self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
 
     def create_blank_buffer(self, batch, label):
         train_dict = {}
@@ -109,7 +109,7 @@ class Buffer:
             arr[index:index + max_val] = getattr(traj, k)[:max_val]
 
         # Uh oh, overfilling the buffer. Let's wrap around.
-        remainder = len(traj) - max_val
+        remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:
             for k in value:
                 arr = getattr(value, k)
