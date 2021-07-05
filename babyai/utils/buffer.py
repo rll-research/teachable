@@ -52,6 +52,8 @@ class Buffer:
         else:
             self.buffer_path.mkdir()
         self.val_prob = val_prob
+        self.added_count = 0
+        self.total_count = 0
 
     def load_buffer(self):
         train_path = self.buffer_path.joinpath(f'train_buffer.pkl')
@@ -107,6 +109,9 @@ class Buffer:
             traj = batch[start: end]
             if (not self.successful_only) or traj.success[-1].item():
                 trajs.append(traj)
+                self.added_count += 1
+        self.total_count += 1
+        print("Buffer Counts", self.added_count, self.total_count, self.added_count/self.total_count)
         return trajs
 
     def save_traj(self, traj, level, index, split):
