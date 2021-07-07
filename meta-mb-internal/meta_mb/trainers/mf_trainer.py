@@ -238,6 +238,7 @@ class Trainer(object):
             should_collect = (not self.args.no_collect) and (
                     (not skip_training_rl) or self.args.self_distill)
             should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
+            #should_collect = should_collect and ((not self.curriculum_step in self.buffer.counts_train) or self.buffer.counts_train[self.curriculum_step] < self.buffer.train_buffer_capacity)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
@@ -256,6 +257,7 @@ class Trainer(object):
                     print("ALL DONE!")
                     return
             else:
+                print("Not collecting")
                 episode_logs = None
                 raw_samples_data = None
                 samples_data = None
@@ -346,7 +348,6 @@ class Trainer(object):
                                                relabel=self.args.relabel,
                                                relabel_dict=teacher_train_dict, distill_to_none=True)  # dist_i < 5)
                     time_train_distill += (time.time() - sample_start)
-
                     if self.args.use_dagger:
                         sampled_dagger_batch = dagger_buffer.sample(total_num_samples=self.args.batch_size,
                                                                     split='train')
