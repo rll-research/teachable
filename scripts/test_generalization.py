@@ -63,6 +63,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
         teacher_null_dict = {}
     obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=args.include_zeros)
     policy.eval()
+    policy.whatever = "WORKING"
     paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
                                                                     instrs=not hide_instrs,
                                                                     reset_every=1,
@@ -376,7 +377,7 @@ def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, policy, full_save_dir, num_rollouts,
                                                                      teachers, hide_instrs, stochastic, args,
-                                                                     seed, f'vid_{itr}', num_save=num_save)
+                                                                     seed, f'vid', num_save=num_save)
     print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}")
     return success_rate, stoch_accuracy, det_accuracy, reward
 
@@ -425,6 +426,8 @@ def main():
     parser.add_argument('--feedback_freq', type=int, default=None)
     parser.add_argument('--start_num_feedback', type=int, default=0)
     parser.add_argument('--static_env', action='store_true')
+    parser.add_argument('--early_stop', type=int, default=None)
+    parser.add_argument('--early_stop_metric', type=str, default=None)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -499,10 +502,7 @@ def main():
             "seed": default_args.seed,
             "static_env": args.static_env
         }
-        if args.advance_curriculum_func is not None:
-            advance_curriculum_func = args.advance_curriculum_func
-        else:
-            advance_curriculum_func = default_args.advance_curriculum_func
+        advance_curriculum_func = 'one_hot'
         env = rl2env(normalize(Curriculum(advance_curriculum_func, env=default_args.env, start_index=env_index,
                                           curriculum_type=default_args.curriculum_type, **arguments),
                                normalize_actions=default_args.act_norm, normalize_reward=default_args.rew_norm,
@@ -546,6 +546,8 @@ def main():
     additional_args['min_itr_steps_distill'] = args.min_itr_steps_distill
     additional_args['buffer_capacity'] = args.buffer_capacity
     additional_args['recurrence'] = args.recurrence
+    additional_args['early_stop'] = args.early_stop
+    additional_args['early_stop_metric'] = args.early_stop_metric
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
@@ -565,6 +567,7 @@ def main():
                 inner_env = inner_env._wrapped_env
             for seed in args.seeds:
                 set_seed(seed)
+                env.seed(seed)
                 teacher_null_dict = env.teacher.null_feedback()
                 test_success(env, env_index, save_dir, args.num_rollouts, teacher_null_dict,
                              policy_path=policy_path.joinpath(policy_name),
