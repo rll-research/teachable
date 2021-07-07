@@ -54,7 +54,7 @@ def point_maze(maze_str):
 
     visual = mjcmodel.root.visual()
     visual.headlight(ambient=".4 .4 .4",diffuse=".8 .8 .8",specular="0.1 0.1 0.1")
-    visual.map(znear=.01)
+    visual.map(znear=.1)
     visual.quality(shadowsize=2048)
 
     worldbody = mjcmodel.root.worldbody()
@@ -298,6 +298,8 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
         return self._get_obs()
 
     def viewer_setup(self):
-        temp = 3
+        from mujoco_py.generated import const
+        self.viewer.cam.type = const.CAMERA_FREE
+        self.viewer.cam.fixedcamid = 0
         pass
 

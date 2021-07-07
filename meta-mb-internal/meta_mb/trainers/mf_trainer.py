@@ -101,7 +101,7 @@ class Trainer(object):
         self.advancement_count = 0
         self.success_dict = {k: 0 for k in self.no_teacher_dict.keys()}
         self.success_dict['none'] = 0
-        self.best_train_perf = (0, 0)  # success, accuracy
+        self.best_train_perf = (0, 0, float('inf'))  # success, accuracy, loss
         self.itrs_since_best = 0
 
     def check_advance_curriculum_train(self, episode_logs, data):
@@ -119,12 +119,14 @@ class Trainer(object):
         avg_success = np.mean(episode_logs["success_per_episode"])
         should_advance_curriculum = (avg_success >= self.args.success_threshold_rl) \
                                     and (avg_accuracy >= acc_threshold)
-        best_success, best_accuracy = self.best_train_perf
+        best_success, best_accuracy, best_loss = self.best_train_perf
         if avg_success > best_success or (avg_success == best_success and avg_accuracy > best_accuracy):
-            self.itrs_since_best = 0
-            self.best_train_perf = (avg_success, avg_accuracy)
+            if self.args.early_stop_metric == 'success':
+                self.itrs_since_best = 0
+            self.best_train_perf = (avg_success, avg_accuracy, best_loss)
         else:
-            self.itrs_since_best += 1
+            if self.args.early_stop_metric == 'success':
+                self.itrs_since_best += 1
         return should_advance_curriculum, avg_success, avg_accuracy
 
     def check_advance_curriculum_rollout(self, data, use_teacher):
@@ -381,6 +383,15 @@ class Trainer(object):
                                                relabel_dict=teacher_train_dict)
 
                 time_val_distill += (time.time() - sample_start)
+                best_success, best_accuracy, best_loss = self.best_train_perf
+                val_loss = distill_log_val[()]['Loss']
+                if val_loss < best_loss:
+                    self.best_train_perf = (best_success, best_accuracy, val_loss)
+                    if self.args.early_stop_metric == 'val_loss':
+                        self.itrs_since_best = 0
+                else:
+                    if self.args.early_stop_metric == 'val_loss':
+                        self.itrs_since_best += 1
                 for key_set, log_dict in distill_log_val.items():
                     key_set = '_'.join(key_set)
                     for k, v in log_dict.items():
@@ -546,11 +557,12 @@ class Trainer(object):
             params = self.get_itr_snapshot(itr)
             step = self.curriculum_step
 
-            early_stopping = 'early_stop' in self.args and self.itrs_since_best > self.args.early_stop
-            best_success, best_accuracy = self.best_train_perf
-            early_stopping = early_stopping and best_success > .7
+            early_stopping = self.itrs_since_best > self.args.early_stop
+            best_success, best_accuracy, best_loss = self.best_train_perf
+            # early_stopping = early_stopping and best_success > .7
             logger.logkv('Train/BestSuccess', best_success)
             logger.logkv('Train/BestAccuracy', best_accuracy)
+            logger.logkv('Train/BestLoss', best_loss)
             logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
 
 
