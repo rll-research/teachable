@@ -64,6 +64,14 @@ class Buffer:
         if val_path.exists():
             with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
                 self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
+        # if buffers are too big, trim them
+        for level, count in self.counts_train.items():
+            self.counts_train[level] = min(count, self.train_buffer_capacity)
+        for level, index in self.index_train.items():
+            self.index_train[level] = min(index, self.train_buffer_capacity - 1)
+        for level, arr in self.trajs_train.items():
+            if self.train_buffer_capacity < len(arr):
+                self.trajs_train[level] = arr[:self.train_buffer_capacity]
 
     def create_blank_buffer(self, batch, label):
         train_dict = {}
@@ -138,7 +146,7 @@ class Buffer:
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
             pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
 
-    def add_trajs(self, batch, level, trim=True):
+    def add_trajs(self, batch, level, trim=True, only_val=False):
         if trim:
             batch = trim_batch(batch)
         trajs = self.split_batch(batch)
@@ -147,6 +155,8 @@ class Buffer:
         # Make sure we get at least one of each
         if split == 0 and len(trajs) > 1:
             split = 1
+        if only_val:
+            split = len(trajs)
         for traj in trajs[:split]:
             self.save_traj(traj, level, self.index_val[level], 'val')
             self.index_val[level] = (self.index_val[level] + len(traj)) % self.val_buffer_capacity
@@ -158,7 +168,7 @@ class Buffer:
         self.save_buffer()
         print("COUNTS", self.counts_train[level], self.counts_val[level], self.index_train[level], self.index_val[level])
 
-    def add_batch(self, batch, level, trim=True):
+    def add_batch(self, batch, level, trim=True, only_val=False):
         # Starting a new level
         if not level in self.index_train:
             self.index_train[level] = 0
@@ -166,7 +176,7 @@ class Buffer:
             self.counts_val[level] = 0
             self.counts_train[level] = 0
             self.create_blank_buffer(trim_batch(batch), level)
-        self.add_trajs(batch, level, trim)
+        self.add_trajs(batch, level, trim, only_val)
         self.update_stats(batch)
 
     def update_stats(self, batch):
