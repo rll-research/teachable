@@ -13,6 +13,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from babyai.rl.utils.dictlist import DictList
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
+from meta_mb.utils.utils import set_seed
+import time
+import pickle as pkl
+D4RL_TILE_PIXELS = 49#64 # WORKS for L2
+D4RL_TILE_PIXELS = 75 # Works for L0
+
+# agent_x = 255
+# agent_y = 250
+
+# Works for L0
+AGENT_X = 248
+AGENT_Y = 252
+
+# # WORKS FOR L2
+# AGENT_X = 202
+# AGENT_Y = 296
 
 class HumanFeedback:
     def __init__(self):
@@ -26,9 +42,10 @@ class HumanFeedback:
         self.env.set_level_distribution(self.args.env)
         # Create buffer
         save_path = pathlib.Path(self.args.save_path)
+        self.save_path = save_path
         if not save_path.exists():
             save_path.mkdir()
-        self.buffer = Buffer(save_path, 100000, 1, val_prob=.1, successful_only=False)
+        self.buffer = Buffer(save_path, self.args.num_trajs, 1, val_prob=.1, successful_only=self.args.successful_only)
         self.teacher_null_dict = self.env.teacher.null_feedback()
         self.teacher_dict = {k: k == self.args.feedback_type for k in self.teacher_null_dict.keys()}
         self.obs_preprocessor = make_obs_preprocessor(self.teacher_null_dict, include_zeros=False)
@@ -44,16 +61,21 @@ class HumanFeedback:
         self.action_probs = []
         self.teacher_action = []
         self.full_done = []
+        self.advice_count = []
+        self.followed_teacher = []
         self.advance_count = 0
         self.current_feedback_type = self.args.feedback_type
         self.feedback_indicator = 0
         self.steps_since_feedback = 0
+        self.last = None
         try:
             self.advance_count = int(self.args.advance)
         except:
             print(self.args.advance)
         self.num_frames = 1
         self.num_correct = 1
+        self.ready = False
+        self.collecting_val = False
 
         self.reset()
 
@@ -62,9 +84,12 @@ class HumanFeedback:
 
     def redraw(self, img):
         if not self.args.agent_view:
-            vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
-            # img = self.env.render('rgb_array')
-            img = self.env.render('rgb_array', tile_size=self.args.tile_size, full_vis_mask=vis_mask)
+            try:
+                vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
+                # img = self.env.render('rgb_array')
+                img = self.env.render('rgb_array', tile_size=self.args.tile_size, full_vis_mask=vis_mask, highlight=False)
+            except:
+                img = self.env.render('rgb_array')
         self.window.show_img(img)
 
     def reset(self):
@@ -76,17 +101,34 @@ class HumanFeedback:
                 self.policy['none'] = target_policy['none']
         for agent in self.policy.values():
             agent.reset(dones=[True])
+        self.obs_list = []
+        self.action_list = []
+        self.action_probs = []
+        self.teacher_action = []
+        self.full_done = []
+        self.advice_count = []
+        self.followed_teacher = []
+        self.times = []
+        self.timesteps = []
+        self.timestep_counter = 0
+        self.start_time = time.time()
         self.env.set_task()
         print("=" * 100)
         self.obs = self.env.reset()
-        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
+        # self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
+        self.last_feedback = self.obs[self.args.feedback_type] * 0
         self.clear_feedback()
-        plt.title(f"Trajectory {self.num_trajs}, frame {self.num_frames}, acc {self.num_correct / self.num_frames}")
+        title_str = f"Trajectory {self.num_trajs}, frame {self.num_frames}, Last: {self.last}"
+        if self.collecting_val:
+            title_str += ' (validation)'
+        plt.title(title_str)
+        # plt.title(f"Trajectory {self.num_trajs}, frame {self.num_frames}, acc {self.num_correct / self.num_frames}")
         if hasattr(self.env, 'mission'):
             print('Mission: %s' % self.env.mission)
             self.window.set_caption(self.env.mission)
-        print("TEACHER ACTION:", self.env.teacher_action)
+        # print("TEACHER ACTION:", self.env.teacher_action)
         self.redraw(self.obs)
+        self.ready = True  # TODO: change back!
 
     def load_policy(self, path):
         base_path = os.path.join(os.getcwd(), "data")
@@ -94,10 +136,12 @@ class HumanFeedback:
         print("PATH", path)
         saved_model = joblib.load(path)
         env = saved_model['env']
+        set_seed(1)
+        env.seed(1)
         policy = saved_model['policy']
         args = saved_model['args']
-        for p_dict in policy.values():
-            p_dict.instr_rnn.flatten_parameters()
+        # for p_dict in policy.values():
+        #     p_dict.instr_rnn.flatten_parameters()
         return policy, env, args, saved_model
 
     def clear_feedback(self):
@@ -152,6 +196,12 @@ class HumanFeedback:
             default=32
         )
         parser.add_argument(
+            "--skip",
+            type=int,
+            help="number of times to repeat acctions",
+            default=1
+        )
+        parser.add_argument(
             '--agent_view',
             default=False,
             help="draw the agent sees (partially observable view)",
@@ -169,46 +219,68 @@ class HumanFeedback:
             '--train_concurrently',
             action='store_true'
         )
+
+        parser.add_argument(
+            '--env_type',
+            default='babyai'
+        )
+        parser.add_argument(
+            '--num_trajs',
+            type=int,
+            default=100000,
+        )
         args = parser.parse_args()
         return args
 
     def step(self, action=None, demo=False):
-        self.num_frames += 1
-        if not demo:
-            self.preprocess_obs()
-            self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human")
-        self.feedback_indicator += 1  # TODO: redundant with the other indicator
-        # print("H obs", self.obs[self.args.feedback_type])
-        if action is None:
-            teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
-            o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=False)  # TODO: show instrs flag
-            agent = self.policy[self.current_feedback_type]
-            agent.eval()
-            action, agent_info = agent.get_actions_t(o, temp=1)
-            action = action.item()
-            self.action_probs.append(agent_info[0]['probs'])
-        # print('Taking action', action, 'suggested action', self.env.teacher_action)
-        if action == self.env.teacher_action.item():
-            self.num_correct += 1
-        print(f"Taking action {action}")
-        new_obs, reward, done, info = self.env.step(action)
-        # print("OG OBS", new_obs[self.args.feedback_type])
-        self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag=' orig')
-        self.obs_list.append(self.obs)
-        self.action_list.append(action)
-        self.teacher_action.append(0)
-        self.full_done.append(done)
-        self.obs = new_obs
-        self.steps_since_feedback += 1
+        if not self.ready:
+            return
+        for i in range(self.args.skip):
+            self.num_frames += 1
+            if not demo:
+                self.preprocess_obs()
+                # self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
+            self.feedback_indicator += 1  # TODO: redundant with the other indicator
+            if action is None:
+                teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
+                o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=True)  # TODO: show instrs flag
+                agent = self.policy[self.current_feedback_type]
+                agent.eval()
+                action, agent_info = agent.get_actions_t(o, temp=1)
+            teacher_action = self.env.teacher_action
+            new_obs, reward, done, info = self.env.step(action)
+            self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
+            self.steps_since_feedback += 1
+            self.timestep_counter += 1
+            self.obs_list.append(self.obs)
+            self.action_list.append(action)
+            self.teacher_action.append(0)
+            self.full_done.append(done)
+            self.followed_teacher.append(action == teacher_action)
+            self.times.append(time.time() - self.start_time)
+            self.timesteps.append(self.timestep_counter)
+            self.obs = new_obs
+            action = None
+
+            if done:
+                break
+        # self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag=' orig')
+
+
         if done:
+            self.last = 'success' if info['success'] else 'timed out'
             self.end_trajectory()
         else:
-            self.redraw(self.obs)
+            if np.random.uniform() < .25:
+                self.redraw(self.obs)
 
     def preprocess_obs(self):
         if not self.args.feedback_type == 'PreActionAdvice':
             self.set_feedback()
         feedback_obs = self.obs[self.args.feedback_type]
+        if self.args.feedback_type == 'OffsetWaypoint':
+            # print("POS", self.env.get_pos())
+            feedback_obs[:] -= self.env.get_pos()
         if self.args.feedback_type in ['SubgoalCorrections', 'SubgoalSimple']:
             # Add agent pos and dir
             feedback_obs[-1] = self.env.agent_dir / 3
@@ -244,8 +316,29 @@ class HumanFeedback:
     def onclick(self, event):
         try:
             ix, iy = event.xdata, event.ydata
-            coord_width = ix / TILE_PIXELS
-            coord_height = iy / TILE_PIXELS
+            pixels = TILE_PIXELS if self.args.env_type == 'babyai' else D4RL_TILE_PIXELS
+            coord_width = ix / pixels
+            coord_height = iy / pixels
+
+            if self.args.env_type == 'd4rl':
+                coord_x = (ix - AGENT_X) / D4RL_TILE_PIXELS
+                coord_y = (iy - AGENT_Y) / D4RL_TILE_PIXELS
+                if self.args.feedback_type == 'Direction':
+                    dir = np.array([coord_x, coord_y])
+                    self.set_feedback(dir)
+                    return
+                elif self.args.feedback_type in ['Waypoint', 'OffsetWaypoint']:
+                    if event.button == 1:  # left click, normal waypoint
+                        x = round(coord_x)
+                        y = round(coord_y)
+                        # print("before rounding", coord_x, coord_y)
+                        # print("after rounding", x, y)
+                    elif event.button == 3:  # right click, goal
+                        x = coord_x
+                        y = coord_y
+                    self.set_feedback(np.array([-y, x], dtype=np.float64))
+                    return
+
             x = int(coord_width)
             y = int(coord_height)
             offset_x = x - self.env.agent_pos[0]
@@ -345,22 +438,49 @@ class HumanFeedback:
                 # Index current agent orientation
                 subgoal_idx_all[curr_idx] = self.env.agent_dir / 3
                 self.set_feedback(subgoal_idx_all)
+
+
         except Exception as e:
             print("invalid coordinate", e)
 
     def add_feedback_indicator(self):
-        if self.args.feedback_type in ['PreActionAdvice', 'SubgoalCorrections', 'SubgoalSimple']:
-            return
-        else:
+        if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OFFSR', 'OSREasy']:
             indicator = self.env.teacher.teachers[self.args.feedback_type].get_last_feedback_indicator()
             print("INDICATOR", indicator)
             self.obs[self.args.feedback_type] = np.concatenate([self.obs[self.args.feedback_type], indicator])
 
     def decode_feedback(self, feedback, preprocessed=True, tag=''):
+        if self.args.feedback_type == 'Direction':
+            self.decode_direction(feedback.copy(), preprocessed, tag)
+        elif self.args.feedback_type == 'Cardinal':
+            self.decode_cardinal(feedback.copy(), preprocessed, tag)
+        elif self.args.feedback_type  == 'Waypoint':
+            self.decode_waypoint(feedback.copy(), preprocessed, tag)
+        elif self.args.feedback_type == 'OffsetWaypoint':
+            self.decode_offsetwaypoint(feedback.copy(), preprocessed, tag)
         if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OFFSR', 'OSREasy']:
             self.decode_offset(feedback.copy(), preprocessed, tag)
         elif self.args.feedback_type in ['SubgoalCorrections', 'SubgoalSimple']:
             self.decode_subgoal(feedback.copy(), preprocessed, tag)
+
+    def decode_direction(self, feedback, _, tag):
+        print(f"{tag} Head in direction {feedback}")
+
+    def decode_cardinal(self, feedback, _, tag):
+        index = np.argmax(feedback)
+        dir = ['left', 'up', 'right', 'down'][index]
+        print(f"{tag} Head in direction {dir}")
+
+    def decode_offsetwaypoint(self, feedback, preprocessed, tag):
+        if not preprocessed:
+            # TODO: okay??
+            og = feedback.copy()
+            feedback = feedback - self.env.get_pos()
+        og = None
+        print(f"{tag} OffsetWaypoint: {feedback}, {og}")
+
+    def decode_waypoint(self, feedback, _, tag):
+        print(f"{tag} Waypoint: {feedback * 15}")
 
     def decode_offset(self, offset, preprocessed=True, tag=""):  # TODO: currently only handles sparse
         first = offset[0]
@@ -376,7 +496,6 @@ class HumanFeedback:
         else:
             agent_pos = agent_dir = timesteps_ago = -1
 
-            # TODO: okay??
             coords_offset -= self.env.agent_pos
 
         print(f"{tag} {start_str} {coords_offset}, {timesteps_ago} timesteps ago"
@@ -414,6 +533,7 @@ class HumanFeedback:
             self.step()
 
     def set_feedback(self, feedback=None, demo=False):
+        self.ready = True
         if self.args.demos and demo:
             action = int(feedback)
             self.step(action, demo)
@@ -432,34 +552,42 @@ class HumanFeedback:
             assert feedback >= 0
             assert feedback <= 7
             curr_feedback = np.zeros(8)
-            print("argmax", feedback)
+            # print("argmax", feedback)
             curr_feedback[feedback] = 1
             self.obs[self.args.feedback_type] = curr_feedback
             self.last_feedback = curr_feedback
-        elif self.args.feedback_type in ['OFFSparse', 'OFFSparseRandom', 'OFFIO', 'SubgoalCorrections',
-                                         'SubgoalSimple', 'OSRPeriodicImplicit', 'OSREasy']:
+        else:
             self.obs[self.args.feedback_type] = feedback
         for _ in range(self.advance_count):
             self.step()
-        print("LAST FEEDBACK", self.last_feedback)
-        self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False)
-        # self.clear_feedback() # TODO: consider re-adding
+        # self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False, tag="human-nop")
 
     def end_trajectory(self):
         self.num_trajs += 1
+        self.full_done[-1] = 1
         if not self.args.no_save:
             # Save buffer
+            env_infos = {
+                'advice_count': torch.IntTensor(self.advice_count),
+                'success': torch.FloatTensor(self.full_done),
+                'followed_teacher': torch.IntTensor(self.followed_teacher)
+            }
+
             traj_dict = {
                 'obs': self.obs_list,
-                'action': torch.FloatTensor(self.action_list),
+                'action': torch.FloatTensor(np.concatenate(self.action_list)).cuda(),
                 # 'action_probs': self.action_probs,
                 'teacher_action': torch.FloatTensor(self.teacher_action),
                 'full_done': torch.FloatTensor(self.full_done),
-                'success': torch.FloatTensor(self.full_done),
+                'env_infos': DictList(env_infos)
             }
             assert len(traj_dict['teacher_action'].shape) == len(traj_dict['full_done'].shape) == 1
             traj = DictList(traj_dict)
-            self.buffer.add_batch(traj, str(self.args.env), trim=False)
+            self.buffer.add_batch(traj, int(self.args.env), trim=True, only_val=self.collecting_val)
+            path = self.save_path.joinpath('timesteps.pkl')
+            time_dict = {'timesteps': self.timesteps, 'times': self.times}
+            with open(path, 'wb') as f:
+                pkl.dump(time_dict, f)
         # Reset
         self.reset()
 
@@ -468,13 +596,28 @@ class HumanFeedback:
         # if event.key == ' ':
         #     self.step()
         #     return
+        if event.key == 'v':
+            self.collecting_val = not self.collecting_val
         if event.key == 'r':
+            self.last = 'manual reset'
             self.end_trajectory()
             return
         if event.key == 'c':
             self.step()
-        if self.args.feedback_type == 'PreActionAdvice' or self.args.demos:
-            actions = self.env._wrapped_env._wrapped_env._wrapped_env.Actions
+        if self.args.feedback_type == 'Cardinal':
+            arr = np.zeros(4)
+            if event.key == 'left':
+                arr[0] = 1
+            if event.key == 'right':
+                arr[2] = 1
+            if event.key == 'up':
+                arr[1] = 1
+            if event.key == 'down':
+                arr[3] = 1
+            self.set_feedback(arr, demo=False)
+            return
+        elif self.args.env_type == 'babyai' and (self.args.feedback_type == 'PreActionAdvice' or self.args.demos):
+            actions = self.env._wrapped_env.Actions
             if event.key == 'left':
                 print("FEEDBACK TYPES", type(actions), type(actions.left))
                 self.set_feedback(actions.left, demo=demo)
@@ -497,7 +640,7 @@ class HumanFeedback:
                 self.set_feedback(actions.drop, demo=demo)
                 return
         else:
-            raise NotImplementedError
+            raise print("Invalid key", event.key)
         print('pressed', event.key)
 
 
