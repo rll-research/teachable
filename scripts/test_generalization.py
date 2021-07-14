@@ -166,9 +166,6 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         print("using repeated seed")
         args.num_envs = num_rollouts
     args.model = 'default_il'
-    if hasattr(args, 'instr_dropout_prob'):
-        # TODO: remove this once the current runs are irrelevant
-        args.distill_dropout_prob = args.instr_dropout_prob
     il_trainer = ImitationLearning(policy, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                    instr_dropout_prob=args.distill_dropout_prob)
@@ -428,6 +425,7 @@ def main():
     parser.add_argument('--static_env', action='store_true')
     parser.add_argument('--early_stop', type=int, default=None)
     parser.add_argument('--early_stop_metric', type=str, default=None)
+    parser.add_argument('--distill_dropout_prob', type=float, default=.5)
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -548,6 +546,7 @@ def main():
     additional_args['recurrence'] = args.recurrence
     additional_args['early_stop'] = args.early_stop
     additional_args['early_stop_metric'] = args.early_stop_metric
+    additional_args['distill_dropout_prob'] = args.distill_dropout_prob
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
