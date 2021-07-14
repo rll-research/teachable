@@ -73,7 +73,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
             agent_dir = offset[5]
             agent_pos = offset[3: 5]
         timesteps_ago = np.argmax(offset[6:])
-        return f"{start_str} {coords_offset}, {timesteps_ago + 1}/{env_info['num_steps']}, pos {agent_pos}, dir {agent_dir}"
+        return f"{start_str} {coords_offset}, {timesteps_ago + 1}, pos {agent_pos}, dir {agent_dir}"
     elif teacher_name in ['SubgoalCorrections', 'SubgoalSimple']:
         subgoal_names = ['OpenSubgoal',
                          'DropSubgoal',

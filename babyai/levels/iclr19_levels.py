@@ -1050,7 +1050,7 @@ class Level_UnlockLocal(Level_Unlock):
         super().__init__(
             num_rows=1,
             num_cols=2,
-            room_size=16,
+            room_size=8,
             **kwargs
         )
 

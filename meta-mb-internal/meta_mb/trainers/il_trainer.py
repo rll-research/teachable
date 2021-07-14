@@ -232,7 +232,7 @@ class ImitationLearning(object):
                 action_teacher_index = action_teacher
                 assert action_teacher_index.shape == action_pred.shape == action_true.shape, (
                     action_teacher_index.shape, action_pred.shape, action_true.shape)
-                teacher_token_indices = np.where(action_teacher_index == j)[0]
+                teacher_token_indices = np.where(action_teacher_index.detach().cpu().numpy() == j)[0]
                 teacher_count = len(teacher_token_indices)
                 teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
                 self.per_token_teacher_correct[j] += teacher_correct
