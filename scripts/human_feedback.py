@@ -16,8 +16,6 @@ from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from meta_mb.utils.utils import set_seed
 import time
 import pickle as pkl
-D4RL_TILE_PIXELS = 49#64 # WORKS for L2
-D4RL_TILE_PIXELS = 75 # Works for L0
 
 # agent_x = 255
 # agent_y = 250
@@ -25,10 +23,12 @@ D4RL_TILE_PIXELS = 75 # Works for L0
 # Works for L0
 AGENT_X = 248
 AGENT_Y = 252
+D4RL_TILE_PIXELS = 75 # Works for L0
 
 # # WORKS FOR L2
-# AGENT_X = 202
-# AGENT_Y = 296
+AGENT_X = 202
+AGENT_Y = 296
+D4RL_TILE_PIXELS = 49#64 # WORKS for L2
 
 class HumanFeedback:
     def __init__(self):
@@ -62,7 +62,6 @@ class HumanFeedback:
         self.teacher_action = []
         self.full_done = []
         self.advice_count = []
-        self.followed_teacher = []
         self.advance_count = 0
         self.current_feedback_type = self.args.feedback_type
         self.feedback_indicator = 0
@@ -107,7 +106,6 @@ class HumanFeedback:
         self.teacher_action = []
         self.full_done = []
         self.advice_count = []
-        self.followed_teacher = []
         self.times = []
         self.timesteps = []
         self.timestep_counter = 0
@@ -115,7 +113,7 @@ class HumanFeedback:
         self.env.set_task()
         print("=" * 100)
         self.obs = self.env.reset()
-        # self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
+        self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
         self.last_feedback = self.obs[self.args.feedback_type] * 0
         self.clear_feedback()
         title_str = f"Trajectory {self.num_trajs}, frame {self.num_frames}, Last: {self.last}"
@@ -219,6 +217,10 @@ class HumanFeedback:
             '--train_concurrently',
             action='store_true'
         )
+        parser.add_argument(
+            '--verbose',
+            action='store_true'
+        )
 
         parser.add_argument(
             '--env_type',
@@ -239,7 +241,7 @@ class HumanFeedback:
             self.num_frames += 1
             if not demo:
                 self.preprocess_obs()
-                # self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
+                self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
             self.feedback_indicator += 1  # TODO: redundant with the other indicator
             if action is None:
                 teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
@@ -256,7 +258,6 @@ class HumanFeedback:
             self.action_list.append(action)
             self.teacher_action.append(0)
             self.full_done.append(done)
-            self.followed_teacher.append(action == teacher_action)
             self.times.append(time.time() - self.start_time)
             self.timesteps.append(self.timestep_counter)
             self.obs = new_obs
@@ -264,15 +265,15 @@ class HumanFeedback:
 
             if done:
                 break
-        # self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag=' orig')
+        self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag=' orig')
 
 
         if done:
             self.last = 'success' if info['success'] else 'timed out'
             self.end_trajectory()
         else:
-            if np.random.uniform() < .25:
-                self.redraw(self.obs)
+            # if np.random.uniform() < .25:
+            self.redraw(self.obs)
 
     def preprocess_obs(self):
         if not self.args.feedback_type == 'PreActionAdvice':
@@ -450,6 +451,8 @@ class HumanFeedback:
             self.obs[self.args.feedback_type] = np.concatenate([self.obs[self.args.feedback_type], indicator])
 
     def decode_feedback(self, feedback, preprocessed=True, tag=''):
+        if not self.args.verbose:
+            return
         if self.args.feedback_type == 'Direction':
             self.decode_direction(feedback.copy(), preprocessed, tag)
         elif self.args.feedback_type == 'Cardinal':
@@ -535,7 +538,7 @@ class HumanFeedback:
     def set_feedback(self, feedback=None, demo=False):
         self.ready = True
         if self.args.demos and demo:
-            action = int(feedback)
+            action = np.array([int(feedback)])
             self.step(action, demo)
             return
         if feedback is None:
@@ -560,7 +563,7 @@ class HumanFeedback:
             self.obs[self.args.feedback_type] = feedback
         for _ in range(self.advance_count):
             self.step()
-        # self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False, tag="human-nop")
+        self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False, tag="human-nop")
 
     def end_trajectory(self):
         self.num_trajs += 1
@@ -570,7 +573,6 @@ class HumanFeedback:
             env_infos = {
                 'advice_count': torch.IntTensor(self.advice_count),
                 'success': torch.FloatTensor(self.full_done),
-                'followed_teacher': torch.IntTensor(self.followed_teacher)
             }
 
             traj_dict = {
