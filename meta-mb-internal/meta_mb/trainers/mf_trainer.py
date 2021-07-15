@@ -384,7 +384,8 @@ class Trainer(object):
 
                 time_val_distill += (time.time() - sample_start)
                 best_success, best_accuracy, best_loss = self.best_train_perf
-                val_loss = distill_log_val[()]['Loss']
+                val_loss_key = () if () in distill_log_val.keys() else list(distill_log_val.keys())[0]
+                val_loss = distill_log_val[val_loss_key]['Loss']
                 if val_loss < best_loss:
                     self.best_train_perf = (best_success, best_accuracy, val_loss)
                     if self.args.early_stop_metric == 'val_loss':
