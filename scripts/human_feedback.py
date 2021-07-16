@@ -92,6 +92,7 @@ class HumanFeedback:
         self.window.show_img(img)
 
     def reset(self):
+        self.ready = False
         # If we're training concurrently, reload so we get the new model
         if self.args.train_concurrently:
             self.policy, _, _, self.saved_model = self.load_policy(self.args.model)
@@ -126,7 +127,7 @@ class HumanFeedback:
             self.window.set_caption(self.env.mission)
         # print("TEACHER ACTION:", self.env.teacher_action)
         self.redraw(self.obs)
-        self.ready = True  # TODO: change back!
+
 
     def load_policy(self, path):
         base_path = os.path.join(os.getcwd(), "data")
@@ -134,8 +135,8 @@ class HumanFeedback:
         print("PATH", path)
         saved_model = joblib.load(path)
         env = saved_model['env']
-        set_seed(1)
-        env.seed(1)
+        set_seed(self.args.seed)
+        env.seed(self.args.seed)
         policy = saved_model['policy']
         args = saved_model['args']
         # for p_dict in policy.values():
@@ -173,6 +174,11 @@ class HumanFeedback:
         parser.add_argument(
             '--speed',
             default=0.1,
+        )
+        parser.add_argument(
+            '--seed',
+            type=int,
+            default=0,
         )
         parser.add_argument(
             '--successful_only',
@@ -245,13 +251,22 @@ class HumanFeedback:
             self.feedback_indicator += 1  # TODO: redundant with the other indicator
             if action is None:
                 teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
-                o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=True)  # TODO: show instrs flag
+                o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=False)  # TODO: show instrs flag
                 agent = self.policy[self.current_feedback_type]
                 agent.eval()
                 action, agent_info = agent.get_actions_t(o, temp=1)
             teacher_action = self.env.teacher_action
+            actions = self.env._wrapped_env.Actions
+            if self.args.env_type == 'babyai' and action.item() in [actions.pickup, actions.drop]:
+                self.ready = False
             new_obs, reward, done, info = self.env.step(action)
-            self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
+            if self.args.env_type == 'babyai' and self.args.feedback_type == 'OSREasy':
+                # If we've reached the subgoal, wait
+                if np.array_equal(self.env.agent_pos, self.last_feedback[1:3]):
+                    self.ready = False
+                self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
+            else:
+                print("Currently at", self.env.agent_pos, "going to", self.last_feedback[1:3])
             self.steps_since_feedback += 1
             self.timestep_counter += 1
             self.obs_list.append(self.obs)
@@ -272,7 +287,7 @@ class HumanFeedback:
             self.last = 'success' if info['success'] else 'timed out'
             self.end_trajectory()
         else:
-            # if np.random.uniform() < .25:
+            # if np.random.uniform() < .5:
             self.redraw(self.obs)
 
     def preprocess_obs(self):
@@ -280,7 +295,6 @@ class HumanFeedback:
             self.set_feedback()
         feedback_obs = self.obs[self.args.feedback_type]
         if self.args.feedback_type == 'OffsetWaypoint':
-            # print("POS", self.env.get_pos())
             feedback_obs[:] -= self.env.get_pos()
         if self.args.feedback_type in ['SubgoalCorrections', 'SubgoalSimple']:
             # Add agent pos and dir
@@ -315,6 +329,7 @@ class HumanFeedback:
         # if self.args.feedback_type in ['OFFIO', 'OFFSparse', 'OFFSparseRandom']:
 
     def onclick(self, event):
+        self.ready = True
         try:
             ix, iy = event.xdata, event.ydata
             pixels = TILE_PIXELS if self.args.env_type == 'babyai' else D4RL_TILE_PIXELS
@@ -332,8 +347,6 @@ class HumanFeedback:
                     if event.button == 1:  # left click, normal waypoint
                         x = round(coord_x)
                         y = round(coord_y)
-                        # print("before rounding", coord_x, coord_y)
-                        # print("after rounding", x, y)
                     elif event.button == 3:  # right click, goal
                         x = coord_x
                         y = coord_y
@@ -536,7 +549,6 @@ class HumanFeedback:
             self.step()
 
     def set_feedback(self, feedback=None, demo=False):
-        self.ready = True
         if self.args.demos and demo:
             action = np.array([int(feedback)])
             self.step(action, demo)
@@ -594,6 +606,7 @@ class HumanFeedback:
         self.reset()
 
     def key_handler(self, event):
+        self.ready = True
         demo = self.args.demos
         # if event.key == ' ':
         #     self.step()
@@ -621,7 +634,6 @@ class HumanFeedback:
         elif self.args.env_type == 'babyai' and (self.args.feedback_type == 'PreActionAdvice' or self.args.demos):
             actions = self.env._wrapped_env.Actions
             if event.key == 'left':
-                print("FEEDBACK TYPES", type(actions), type(actions.left))
                 self.set_feedback(actions.left, demo=demo)
                 return
             if event.key == 'right':

@@ -1045,6 +1045,58 @@ class Level_Unlock(Level_TeachableRobot):
         self.check_objs_reachable()
         return [key] + all_dists + self.get_doors(), door
 
+
+
+class Level_UnlockTopLeft(Level_TeachableRobot):
+    """
+    Unlock a door.
+
+    Competencies: Maze, Open, Unlock. No unblocking.
+    """
+
+    def make_mission(self):
+        _, obj_color = self.sample_object()
+        return {
+            "task": obj_color,
+            "instrs": OpenInstr(ObjDesc("door", obj_color))
+        }
+
+    def add_objs(self, task):
+
+        obj_color = task
+        id = 1
+        jd = 0
+        door, pos = self.add_door(id, jd, door_idx=2, color=obj_color, locked=True)
+
+        # Add the key to a different room
+        jk = 0
+        ik = 0
+        key, _ = self.add_object(ik, jk, 'key', door.color)
+
+        # Ensure that the locked door is the only
+        # door of that color
+        colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
+        self.connect_all(door_colors=colors)
+
+        # Add distractors to all but the locked room.
+        # We do this to speed up the reachability test,
+        # which otherwise will reject all levels with
+        # objects in the locked room.
+        all_dists = []
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
+                if i is not id or j is not jd:
+                    dists = self.add_distractors(
+                        i,
+                        j,
+                        num_distractors=3,
+                        all_unique=False
+                    )
+                    all_dists += dists
+
+        self.check_objs_reachable()
+        return [key] + all_dists + self.get_doors(), door
+
 class Level_UnlockLocal(Level_Unlock):
     def __init__(self, **kwargs):
         super().__init__(
