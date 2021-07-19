@@ -91,7 +91,7 @@ class D4RLEnv:
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
-        if self.args.show_agent_in_grid:
+        if False:#self.args.show_agent_in_grid:
             x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
             state[int(x), int(y)] = 2
         max_grid[:h, :w] = state

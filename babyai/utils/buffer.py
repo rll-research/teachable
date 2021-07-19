@@ -131,14 +131,20 @@ class Buffer:
         # We can fit the entire traj in
         for k in value:
             arr = getattr(value, k)
-            arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            try:
+                arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            except Exception as e:
+                print("???")
 
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:
             for k in value:
                 arr = getattr(value, k)
-                arr[:remainder] = getattr(traj, k)[-remainder:]
+                try:
+                    arr[:remainder] = getattr(traj, k)[-remainder:]
+                except:
+                    print("???")
 
     def save_buffer(self):
         with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:

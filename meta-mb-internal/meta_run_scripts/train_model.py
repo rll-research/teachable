@@ -1,16 +1,15 @@
 from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
-from meta_mb.algos.ppo_torch import PPOAlgo
+from meta_mb.algos.sac_torch import SacAeAgent
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
-from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
 from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
 from scripts.test_generalization import make_log_fn
+from meta_mb.algos.data_collector import DataCollector
 
 import torch
 import copy
@@ -199,27 +198,14 @@ def run_experiment(**config):
         obs_preprocessor=obs_preprocessor,
     )
 
-    sample_processor = RL2SampleProcessor(
-        discount=args.discount,
-        gae_lambda=args.gae_lambda,
-        normalize_adv=True,
-        positive_adv=False,
-    )
-
     envs = [env.copy() for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
         new_env.seed(i)
         new_env.set_task()
         new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
-
-    if args.use_dagger:
-        envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
-    else:
-        algo_dagger = None
-
+    collector = DataCollector(policy_dict, envs, args, obs_preprocessor, augmenter)
+    algo = SacAeAgent(policy_dict, envs, args, obs_preprocessor, augmenter)  # TODO: add correct args!
     if optimizer is not None:
         for k, v in optimizer.items():
             algo.optimizer_dict[k].load_state_dict(v.state_dict())
@@ -262,7 +248,6 @@ def run_experiment(**config):
         policy=policy_dict,
         env=deepcopy(env),
         sampler=sampler,
-        sample_processor=sample_processor,
         start_itr=start_itr,
         buffer_name=buffer_path,
         exp_name=exp_dir,
