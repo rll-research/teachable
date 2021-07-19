@@ -107,9 +107,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollouts_per_meta_task', type=int, default=1)
 
         # Teacher
-        self.add_argument('--feedback_type', nargs='+', default=["None"])#,
-                          #choices=["None", "PreActionAdviceMultiple", "PreActionAdvice", "CartesianCorrections",
-                          #         "SubgoalCorrections", "XYCorrections", "OffsetCorrections"])
+        self.add_argument('--feedback_type', nargs='+', default=["None"])
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
         self.add_argument('--cartesian_steps', nargs='+', type=int, default=[1])
@@ -159,8 +157,6 @@ class ArgumentParser(argparse.ArgumentParser):
                                                               'vector_next_waypoint', 'wall_penalty'],
                           default='oracle_dist')
         self.add_argument('--ceil_reward', action='store_true')
-        self.add_argument('--use_rp_inner', action='store_true')
-        self.add_argument('--use_rp_outer', action='store_true')
         self.add_argument('--reward_when_necessary', action='store_true')
 
         # Distillations
@@ -171,8 +167,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distillation_strategy', type=str, choices=[
-            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
-        ], default='distill_powerset')
+            'no_teachers', 'single_teachers', 'single_teachers_none'], default='single_teachers')
         self.add_argument('--distill_label_weightings', action='store_true')
         self.add_argument('--new_distill', action='store_true')
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
@@ -221,6 +216,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--reset_each_batch', action='store_true')
         self.add_argument('--no_buffer', action='store_true')
         self.add_argument('--static_env', action='store_true')
+        self.add_argument('--save_untrained', action='store_true')
 
     def parse_args(self, arg=None):
         """

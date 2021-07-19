@@ -99,23 +99,12 @@ class SampleProcessor(object):
         for idx, path in enumerate(paths):
             path["returns"] = utils.discount_cumsum(path["rewards"], self.discount)
 
-        # # 2) fit baseline estimator using the path returns and predict the return baselines
-        # self.baseline.fit(paths, target_key="returns")
-        # all_path_baselines = [self.baseline.predict(path) for path in paths]
-        #
-        # # 3) compute advantages and adjusted rewards
         all_path_baselines = None
         paths = self._compute_advantages(paths, all_path_baselines)
 
         # 4) stack path data
         observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = self._concatenate_path_data(
             paths)
-
-        # 5) if desired normalize / shift advantages
-        # if self.normalize_adv:
-        #     advantages = utils.normalize_advantages(advantages)
-        # if self.positive_adv:
-        #     advantages = utils.shift_advantages_to_positive(advantages)
 
         # 6) create samples_data object
         samples_data = dict(
@@ -196,14 +185,6 @@ class SampleProcessor(object):
 
         for idx, path in enumerate(paths):
             path['advantages'] = path['actions']  # TODO: REMOVE THIS! IT'S JUST A PLACEHOLDER SINCE THE REAL ADVANTAGES GET RECOMPUTED LATER
-
-
-            # path_baselines = np.append(all_path_baselines[idx], 0)
-            # deltas = path["rewards"] + \
-            #          self.discount * path_baselines[1:] - \
-            #          path_baselines[:-1]
-            # path["advantages"] = utils.discount_cumsum(
-            #     deltas, self.discount * self.gae_lambda)
 
         return paths
 

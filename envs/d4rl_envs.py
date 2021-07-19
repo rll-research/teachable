@@ -1,8 +1,6 @@
 # Allow us to interact wth the D4RLEnv the same way we interact with the TeachableRobotLevels class.
 import numpy as np
 import gym
-import d4rl_content
-import torch
 from gym.spaces import Box, Discrete
 from d4rl_content.pointmaze.waypoint_controller import WaypointController
 from d4rl.oracle.batch_teacher import BatchTeacher
@@ -14,146 +12,9 @@ from oracle.offset_waypoint_teacher import OffsetWaypointCorrections
 from oracle.dummy_advice import DummyAdvice
 
 
-class PointMassEnvSimple:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
-    def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], **kwargs):
-        self.timesteps = 0
-        self.time_limit = 10
-        self.target = np.array([0, 0], dtype=np.float32)
-        self.pos = np.array([3, 4], dtype=np.float32)
-        self.feedback_type = feedback_type
-        self.teacher_action = np.array(-1)
-        self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
-        self.action_space = Box(low=np.array([-1, -1]), high=np.array([1, 1]))
-
-    def seed(self, *args, **kwargs):
-        pass
-
-    def step(self, action):
-        action = np.clip(action, -1, 1)
-        if action.shape == (1, 2):
-            action = action[0]
-        self.pos += action
-        rew = -np.linalg.norm(self.target - self.pos) / 10
-        self.timesteps += 1
-        done = self.timesteps >= self.time_limit
-        obs = self.pos
-        obs_dict = {'obs': obs}
-        reached_goal = np.linalg.norm(self.target - self.pos) < .49
-        success = done and reached_goal
-        info = {}
-        info['success'] = success
-        info['gave_reward'] = True
-        info['teacher_action'] = np.array(-1)
-        info['episode_length'] = self.timesteps
-        return obs_dict, rew, done, info
-
-    def set_task(self, *args, **kwargs):
-        pass  # for compatibility with babyai, which does set tasks
-
-    def reset(self):
-        self.pos = np.array([3, 4], dtype=np.float32)
-        self.timesteps = 0
-        obs_dict = {'obs': self.pos}
-        return obs_dict
-
-    def render(self, mode='human'):
-        img = np.zeros((100, 100, 3), dtype=np.float32)
-        img[48:52, 48:52, :2] = 1
-        y = int(min(98, max(2, np.round(self.pos[0] * 10) + 50)))
-        x = int(min(98, max(2, np.round(self.pos[1] * 10) + 50)))
-        img[y - 2: y + 2, x - 2: x + 2] = 1
-        return img * 255
-
-    def vocab(self):  # We don't have vocab
-        return [0]
-
-
-class PointMassEnvSimpleDiscrete:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
-    def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
-                 cartesian_steps=[1], **kwargs):
-        self.timesteps = 0
-        self.time_limit = 10
-        self.target = np.array([0, 0], dtype=np.float32)
-        self.pos = np.array([3, 4], dtype=np.float32)
-        self.feedback_type = feedback_type
-        self.teacher_action = np.array(-1)
-        self.observation_space = Box(low=np.array([-5, -5]), high=np.array([5, 5]))
-        self.action_space = Discrete(5)
-        # TODO: create teachers
-
-    def seed(self, *args, **kwargs):
-        pass
-
-    def step(self, action):
-        if action == 0:
-            action = np.array([-1, 0])
-        elif action == 1:
-            action = np.array([1, 0])
-        elif action == 2:
-            action = np.array([0, -1])
-        elif action == 3:
-            action = np.array([0, 1])
-        elif action == 4:
-            action = np.array([0, 0])
-        else:
-            print("uh oh")
-        self.pos += action
-        rew = -np.linalg.norm(self.target - self.pos) / 10
-        self.timesteps += 1
-        done = self.timesteps >= self.time_limit
-        obs = self.pos
-        obs_dict = {'obs': obs}
-        success = done and np.linalg.norm(self.target - self.pos) < .49
-        info = {}
-        info['success'] = success
-        info['gave_reward'] = True
-        info['teacher_action'] = np.array(-1)
-        info['episode_length'] = self.timesteps
-        return obs_dict, rew, done, info
-
-    def set_task(self, *args, **kwargs):
-        pass  # for compatibility with babyai, which does set tasks
-
-    def reset(self):
-        self.pos = np.array([3, 4], dtype=np.float32)
-        self.timesteps = 0
-        obs_dict = {'obs': self.pos}
-        return obs_dict
-
-    def render(self, mode='human'):
-        img = np.zeros((100, 100, 3), dtype=np.float32)
-        img[48:52, 48:52, :2] = 1
-        y = int(min(98, max(2, np.round(self.pos[0] * 10) + 50)))
-        x = int(min(98, max(2, np.round(self.pos[1] * 10) + 50)))
-        img[y - 2: y + 2, x - 2: x + 2] = 1
-        return img * 255
-
-    def vocab(self):  # We don't have vocab
-        return [0]
-
-
 class D4RLEnv:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
-    def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
-                 cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
+    def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None,
+                 max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
         self.max_grid_size = max_grid_size
         self.reward_type = reward_type
@@ -178,38 +39,13 @@ class D4RLEnv:
         self.scale_factor = 5
         self.repeat_input = 5
         teachers = {}
-        if type(cartesian_steps) is int:
-            cartesian_steps = [cartesian_steps]
-        assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
-            "you must provide either one cartesian_steps value for all teachers or one per teacher"
-        assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
-            "you must provide either one feedback_freq value for all teachers or one per teacher"
-        if len(cartesian_steps) == 1:
-            cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
-        if len(feedback_freq) == 1:
-            feedback_freq = [feedback_freq[0]] * len(feedback_type)
-        for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
-            if ft == 'none':
-                teachers[ft] = DummyAdvice(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Cardinal':
-                teachers[ft] = CardinalCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Waypoint':
-                teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'OffsetWaypoint':
-                teachers[ft] = OffsetWaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                   controller=self.waypoint_controller)
-            elif ft == 'Direction':
-                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                    controller=self.waypoint_controller)
-            elif ft == 'Direction2':
-                teachers[ft] = DirectionCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
-                                                    controller=self.waypoint_controller)
-        teacher = BatchTeacher(teachers)
-        self.teacher = teacher
-        # TODO: create teachers
+        for ft in feedback_type:
+            if ft == 'none': teachers[ft] = DummyAdvice()
+            elif ft == 'Cardinal': teachers[ft] = CardinalCorrections()
+            elif ft == 'Waypoint': teachers[ft] = WaypointCorrections()
+            elif ft == 'OffsetWaypoint': teachers[ft] = OffsetWaypointCorrections()
+            elif ft == 'Direction': teachers[ft] = DirectionCorrections()
+        self.teacher = BatchTeacher(self.waypoint_controller, teachers)
 
     def get_timestep(self):
         return .02
@@ -259,8 +95,10 @@ class D4RLEnv:
             x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
             state[int(x), int(y)] = 2
         max_grid[:h, :w] = state
+        # max_grid = self.max_grid
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs']# / self.scale_factor
+        # state_obs[:2] = np.random.randint(low=1, high=4, size=2)
         if self.args.env == 'ant':
             if self.args.show_pos == 'ours':
                 state_obs[:2] = self.get_pos() / self.scale_factor
@@ -415,7 +253,6 @@ class D4RLEnv:
             # We can log what action is the next one on this path (currently in teacher.next_action).
             info['teacher_action'] = self.get_teacher_action()
             self.teacher.step(self)  # TODO: OBOE? should this be before update_obs?
-            info['teacher_error'] = float(self.teacher.get_last_step_error())
             # Update the observation with the teacher's new feedback
             self.teacher_action = self.get_teacher_action()
         return obs_dict, rew, done, info
@@ -520,6 +357,8 @@ class PointMassEnv(D4RLEnv):
 
     def reset(self):
         obs_dict = super().reset()
+        # fake_target = np.random.randint(low=1, high=4, size=2)
+        # target = fake_target / self.scale_factor
         target = self.get_target() / self.scale_factor
         obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input)
         return obs_dict

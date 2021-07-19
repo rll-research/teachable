@@ -83,16 +83,14 @@ class Reconstructor(nn.Module):
             action_shape = env.action_space.n
         except:  # continuous
             action_shape = env.action_space.shape[0] * 2  # 2 for mean and std
-        if args.reconstruction:
-            self.reconstructor = nn.Sequential(
-                nn.Linear(embedding_size + action_shape, 64),
-                nn.Tanh(),
-                nn.Linear(64, args.reconstruct_advice_size * 2)
-            )
+        self.reconstructor = nn.Sequential(
+            nn.Linear(embedding_size + action_shape, 64),
+            nn.Tanh(),
+            nn.Linear(64, args.reconstruct_advice_size * 2)
+        )
 
     def forward(self, embedding):
         output = self.reconstructor(embedding)
-        # TODO: may need to consider something different for non-gaussian forms of input
         return output
 
 
@@ -105,6 +103,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         use_bow = 'bow' in args.arch
         pixel = 'pixel' in args.arch
         self.res = 'res' in args.arch
+        if self.args.reconstruction:
+            self.reconstructor = Reconstructor(env, args)
 
         # Decide which components are enabled
         self.use_instr = not args.no_instr
@@ -126,7 +126,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.advice_size = args.advice_size
         self.info_bot = args.info_bot
         self.num_modules = args.num_modules
-        self.reconstruction = args.reconstruction
         self.reconstruct_advice_size = args.reconstruct_advice_size
         self.discrete = args.discrete
         obs = env.reset()
@@ -272,14 +271,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             nn.Tanh(),
             nn.Linear(layer_2_size, 1)
         )
-
-        # Define reconstruction model
-        if self.reconstruction:
-            self.reconstructor = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
-                nn.Tanh(),
-                nn.Linear(64, self.reconstruct_advice_size * 2)
-            )
 
         # Initialize parameters correctly
         self.apply(initialize_parameters)
@@ -489,11 +480,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             "value": value,
             "memory": memory,
             "kl": kl_loss,
-            "reconstruction_embedding": reconstruction_embedding,
         }
-
-        if self.reconstruction:
-            info['advice'] = self.reconstructor(embedding)
+        if self.args.reconstruction:
+            reconstruction = self.reconstructor(reconstruction_embedding)
+            info['reconstruction'] = reconstruction
 
         return dist, info
 

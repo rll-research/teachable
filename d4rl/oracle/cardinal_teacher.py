@@ -12,12 +12,6 @@ class CardinalCorrections(Teacher):
         """
         return np.zeros(4) - 1
 
-    def random_feedback(self):
-        """
-        Return a tensor corresponding to no feedback.
-        """
-        return np.random.uniform(0, 1, size=4)
-
     def give_feedback(self, env):
         # Always re-compute feedback, but only count it as new feedback if it changes
         action = self.next_action
@@ -42,6 +36,3 @@ class CardinalCorrections(Teacher):
         self.last_feedback = cardinal_dir_one_hot.copy()
         return cardinal_dir_one_hot, gave_feedback
 
-    # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
-    def success_check(self, state, action, oracle):
-        return True

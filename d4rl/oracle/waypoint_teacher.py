@@ -13,12 +13,6 @@ class WaypointCorrections(Teacher):
         """
         return np.zeros(2) - 1
 
-    def random_feedback(self):
-        """
-        Return a tensor corresponding to no feedback.
-        """
-        return np.random.uniform(0, 1, size=2)
-
     def give_feedback(self, env):
         """
         Return the expert action from the previous timestep.
@@ -34,10 +28,3 @@ class WaypointCorrections(Teacher):
         self.gave_feedback = gave_feedback
         # # Divide by 15 so the numbers aren't too big.
         return waypoint / 15, gave_feedback
-
-    # TODO: THIS IS NO IMPLEMENTED FOR THIS TEACHER! IF WE END UP USING THIS METRIC, WE SHOULD MAKE IT CORRECT!
-    def success_check(self, state, action, oracle):
-        return True
-
-    def reset(self, env):
-        super().reset(env)

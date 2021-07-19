@@ -4,10 +4,10 @@ from meta_mb.algos.ppo_torch import PPOAlgo
 from meta_mb.trainers.mf_trainer import Trainer
 from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
 from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-from babyai.model import ACModel, Reconstructor
+from babyai.model import ACModel
 from meta_mb.trainers.il_trainer import ImitationLearning
 from babyai.arguments import ArgumentParser
-from babyai.utils.obs_preprocessor import make_obs_preprocessor, make_obs_preprocessor_choose_teachers
+from babyai.utils.obs_preprocessor import make_obs_preprocessor
 from babyai.teacher_schedule import make_teacher_schedule
 from babyai.levels.augment import DataAugmenter
 from scripts.test_generalization import make_log_fn
@@ -16,7 +16,6 @@ import torch
 import copy
 import shutil
 from meta_mb.logger import logger
-from gym import spaces
 from experiment_utils.run_sweep import run_sweep
 from meta_mb.utils.utils import set_seed, ClassEncoder
 from babyai.levels.iclr19_levels import *
@@ -126,7 +125,7 @@ def run_experiment(**config):
                                normalize_actions=args.act_norm, normalize_reward=args.rew_norm,
                                ), ceil_reward=args.ceil_reward)
         try:
-            teacher_null_dict = env.teacher.null_feedback()
+            teacher_null_dict = env.teacher.empty_feedback()
         except Exception as e:
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model
@@ -152,7 +151,7 @@ def run_experiment(**config):
             args.advice_size = 0
 
         try:
-            teacher_null_dict = env.teacher.null_feedback()
+            teacher_null_dict = env.teacher.empty_feedback()
         except Exception as e:
             teacher_null_dict = {}
         include_zeros = args.include_zeros or args.same_model
@@ -182,14 +181,9 @@ def run_experiment(**config):
         curriculum_step = env.index
 
     args.model = 'default_il'
-    if args.reconstruction:
-        reconstructor_dict = {k: Reconstructor(env, args) for k in teachers_list}
-    else:
-        reconstructor_dict = None
     il_trainer = ImitationLearning(policy_dict, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor,
-                                   instr_dropout_prob=args.distill_dropout_prob,
-                                   reconstructor_dict=reconstructor_dict)
+                                   instr_dropout_prob=args.distill_dropout_prob)
     if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
@@ -218,11 +212,11 @@ def run_experiment(**config):
         new_env.set_task()
         new_env.reset()
     augmenter = DataAugmenter(env.vocab()) if args.augment else None
-    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+    algo = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
 
     if args.use_dagger:
         envs = [copy.deepcopy(env) for _ in range(args.num_envs)]
-        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter, reconstructor_dict=reconstructor_dict)
+        algo_dagger = PPOAlgo(policy_dict, envs, args, obs_preprocessor, augmenter)
     else:
         algo_dagger = None
 
@@ -254,7 +248,7 @@ def run_experiment(**config):
         log_teacher = 'none'
     else:
         log_teacher = teachers_list[last_teacher_index]  # Second to last (last is none)
-    num_rollouts = 1 if is_debug else 10
+    num_rollouts = 1 #if is_debug else 10
     log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),  # TODO: fix this for babyai!

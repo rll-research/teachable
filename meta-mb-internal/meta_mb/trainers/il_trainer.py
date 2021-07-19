@@ -1,16 +1,11 @@
 import numpy as np
 import torch
 import babyai.utils as utils
-from itertools import chain, combinations
-import time
-import copy
-from babyai.rl.utils.dictlist import DictList
-from gym.spaces import Discrete
+
 
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
-                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3,
-                 reconstructor_dict=None):
+                 label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3):
         self.args = args
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
@@ -18,7 +13,6 @@ class ImitationLearning(object):
         self.label_weightings = label_weightings
         self.instr_dropout_prob = instr_dropout_prob
         self.obs_dropout_prob = obs_dropout_prob
-        self.reconstructor_dict = reconstructor_dict
 
         utils.seed(self.args.seed)
         self.env = env
@@ -26,17 +20,11 @@ class ImitationLearning(object):
         # Define actor-critic model
         self.policy_dict = model
         for policy in model.values():
-            policy.train()
             if torch.cuda.is_available():
                 policy.cuda()
-        if self.reconstructor_dict is not None:
-            for reconstructor in reconstructor_dict.values():
-                reconstructor.train()
-                if torch.cuda.is_available():
-                    reconstructor.cuda()
 
         teachers = list(self.policy_dict.keys())
-        # Dfferent optimizers for different models, same optimizer for same model
+        # Different optimizers for different models, same optimizer for same model
         first_teacher = teachers[0]
         self.optimizer_dict = {first_teacher: torch.optim.Adam(self.policy_dict[first_teacher].parameters(),
                                                                self.args.lr, eps=self.args.optim_eps)}
@@ -48,26 +36,9 @@ class ImitationLearning(object):
                 self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
                                                                 self.args.lr, eps=self.args.optim_eps)
         self.scheduler_dict = {
-            k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in self.optimizer_dict.items()
+            k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99)
+            for k, optimizer in self.optimizer_dict.items()
         }
-
-        if self.reconstructor_dict is not None:
-            self.reconstructor_optimizer_dict = {
-                first_teacher: torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
-                                                self.args.lr, eps=self.args.optim_eps)}
-            for teacher in teachers[1:]:
-                policy = self.reconstructor_dict[teacher]
-                if policy is self.reconstructor_dict[first_teacher]:
-                    self.reconstructor_optimizer_dict[teacher] = self.reconstructor_optimizer_dict[first_teacher]
-                else:
-                    self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                    self.args.lr, eps=self.args.optim_eps)
-            self.reconstructor_scheduler_dict = {
-                k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in
-                self.reconstructor_optimizer_dict.items()
-            }
-        else:
-            self.reconstructor_optimizer_dict = None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -94,32 +65,23 @@ class ImitationLearning(object):
             action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
-    def set_mode(self, is_training, acmodel, reconstructor):
+    def set_mode(self, is_training, acmodel):
         if is_training:
             acmodel.train()
         else:
             acmodel.eval()
-        if reconstructor is not None:
-            if is_training:
-                reconstructor.train()
-            else:
-                reconstructor.eval()
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}, backprop=True):
+    def distill_batch(self, batch, is_training=False, teacher_dict={}, backprop=True):
+        ### SETUP ###
+
+        # Select which model to train based on which teachers are provided
         active_teachers = [k for k, v in teacher_dict.items() if v]
-        assert len(active_teachers) <= 2
         teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher_name]
         optimizer = self.optimizer_dict[teacher_name]
-        if self.reconstructor_dict is not None:
-            reconstructor = self.reconstructor_dict[teacher_name]
-            reconstructor_optimizer = self.reconstructor_optimizer_dict[teacher_name]
-        else:
-            reconstructor = None
-        self.set_mode(is_training, acmodel, reconstructor)
+        self.set_mode(is_training, acmodel)
 
-        # All the batch demos are in a single flat vector.
-        # Inds holds the start of each demo
+        # Obtain batch and preprocess
         obss, action_true, action_teacher = batch
         self.initialize_logs(len(action_true))
         # Dropout instructions with probability instr_dropout_prob,
@@ -127,6 +89,7 @@ class ImitationLearning(object):
         instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
         obss = self.preprocess_obs(obss, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
 
+        ### RUN MODEL, COMPUTE LOSS ###
         dist, info = acmodel(obss)
         kl_loss = info['kl']
         if len(action_true.shape) == 3:  # Has an extra dimension
@@ -135,10 +98,9 @@ class ImitationLearning(object):
         entropy = dist.entropy().mean()
 
         # Optional loss for reconstructing the feedback (currently, all models all teachers)
-        if self.reconstructor_dict is not None and 'advice' in obss:
+        if 'reconstruction' in info:
             # Loss for training the reconstructor
-            reconstruction_embedding = info['reconstruction_embedding']
-            advice = reconstructor(reconstruction_embedding)
+            advice = info['reconstruction']
             full_advice_size = int(len(advice[0]) / 2)
             mean = advice[:, :full_advice_size]
             var = torch.exp(advice[:, full_advice_size:])
@@ -147,8 +109,9 @@ class ImitationLearning(object):
             reconstruction_loss = loss_fn(true_advice, mean, var)
         else:
             reconstruction_loss = torch.FloatTensor([0]).to(self.device)
-
         loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
+
+        ### LOGGING ###
         if self.args.discrete:
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             avg_mean_dist = -1
@@ -159,18 +122,15 @@ class ImitationLearning(object):
             avg_mean_dist = torch.abs(action_pred - action_true).mean()
         self.log_t(action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
                    kl_loss, avg_mean_dist, avg_std, loss)
-        if is_training and backprop:
-            optimizer.zero_grad()
-            loss.backward(retain_graph=self.reconstructor_dict is not None)
-
-            if self.reconstructor_dict is not None and 'advice' in obss:
-                reconstructor_optimizer.zero_grad()
-                reconstruction_loss.backward()
-                reconstructor_optimizer.step()
-            optimizer.step()
-
         # Store log info
         log = self.log_final()
+
+        ### UPDATE ###
+
+        if is_training and backprop:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
         return log, loss
 
     def initialize_logs(self, total_frames):
@@ -219,7 +179,8 @@ class ImitationLearning(object):
             for j in range(len(self.per_token_count)):
                 # Sort by agent action
                 action_taken_indices = np.where(action_pred == j)[0]
-                self.precision_correct[j] += np.sum(action_true[action_taken_indices] == action_pred[action_taken_indices])
+                self.precision_correct[j] += np.sum(
+                    action_true[action_taken_indices] == action_pred[action_taken_indices])
                 self.precision_count[j] += len(action_taken_indices)
 
                 # Sort by label action
@@ -234,7 +195,8 @@ class ImitationLearning(object):
                     action_teacher_index.shape, action_pred.shape, action_true.shape)
                 teacher_token_indices = np.where(action_teacher_index.detach().cpu().numpy() == j)[0]
                 teacher_count = len(teacher_token_indices)
-                teacher_correct = np.sum(action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
+                teacher_correct = np.sum(
+                    action_teacher_index[teacher_token_indices] == action_pred[teacher_token_indices])
                 self.per_token_teacher_correct[j] += teacher_correct
                 self.per_token_teacher_count[j] += teacher_count
                 teacher_running_count += teacher_count
@@ -291,151 +253,24 @@ class ImitationLearning(object):
             log["TeacherAccuracy"] = float(teacher_numerator / teacher_denominator)
         return log
 
-    def relabel(self, batch, relabel_dict, source):
-        if source == 'teacher':
-            return batch
-        self.set_mode(False)
-        obss_list_original, action_true, action_teacher, done, inds_original, mask = batch
-        inds = inds_original.copy()
-
-        # All the batch demos are in a single flat vector.
-        # Inds holds the start of each demo
-        obss_list = [self.preprocess_obs(o, relabel_dict, show_instrs=True) for o in obss_list_original]
-        obss = {}
-        keys = obss_list[0].keys()
-        for k in keys:
-            obss[k] = torch.cat([getattr(o, k) for o in obss_list])
-        obss = DictList(obss)
-        dtype = torch.long if self.args.discrete and not (source == 'agent_probs') else torch.float32
-        actions = torch.zeros_like(action_true, device=self.device,
-                                   dtype=dtype)
-        memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
-
-        # We're going to loop through each trajectory together.
-        # inds holds the current index of each trajectory (initialized to the start of each trajectory)
-        while True:
-            # taking observations and done located at inds
-            num_demos = len(inds)
-            obs = obss[inds]
-            done_step = done[inds]
-
-            with torch.no_grad():
-                # Taking memory up until num_demos, as demos after that have finished
-                dist, info = self.acmodel(obs, memory[:num_demos])
-                if source == 'agent':
-                    action = dist.sample().to(dtype)
-                elif source == 'agent_argmax':
-                    action = dist.probs.max(1, keepdim=False)[1].to(dtype)
-                elif source == 'agent_probs':
-                    action = dist.probs.float()
-                new_memory = info['memory']
-            actions[inds] = action[:num_demos]
-            memory[:num_demos] = new_memory
-
-            # Updating inds, by removing those indices corresponding to which the demonstrations have finished
-            num_trajs_finished = sum(done_step)
-            inds = inds[:int(num_demos - num_trajs_finished)]
-            if len(inds) == 0:
-                break
-
-            # Incrementing the remaining indices
-            inds = [index + 1 for index in inds]
-        return obss_list_original, actions, action_teacher, done, inds_original, mask
-
-    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='distill_powerset',
-                relabel=False, relabel_dict={}, distill_to_none=True):
-
+    def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='single_teachers',
+                distill_to_none=True):
         preprocessed_batch = self.preprocess_batch(demo_batch, source)
-        if relabel:
-            preprocessed_batch = self.relabel(preprocessed_batch, relabel_dict, source)
-
-        # Distill to the powerset of distillation types
-        keys = [key for key in teachers_dict.keys() if teachers_dict[key]]
-        powerset = chain.from_iterable(combinations(keys, r) for r in range(len(keys) + 1))
-        logs = {}
-        if distill_target =='single_teachers_none' and not distill_to_none:
+        if distill_target == 'single_teachers_none' and not distill_to_none:
             distill_target = 'single_teachers'
-            print('NOT distilling to none this itr')
-
-        if distill_target == 'powerset':
-            for key_set in powerset:
-                if len(key_set) > 1:
-                    continue
-                teacher_subset_dict = {}
-                for k in teachers_dict.keys():
-                    if k in key_set:
-                        teacher_subset_dict[k] = True
-                    else:
-                        teacher_subset_dict[k] = False
-                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
-                                                          teacher_dict=teacher_subset_dict)
-                logs[key_set] = log
-        elif distill_target == 'all_but_none':
-            for key_set in powerset:
-                if len(key_set) > 1:
-                    continue
-                teacher_subset_dict = {}
-                if len(key_set) == 0:  # Don't distill to no teacher
-                    continue
-                for k in teachers_dict.keys():
-                    if k in key_set:
-                        teacher_subset_dict[k] = True
-                    else:
-                        teacher_subset_dict[k] = False
-                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
-                                                          teacher_dict=teacher_subset_dict)
-                logs[key_set] = log
-        elif distill_target == 'single_teachers':
-            for key in teachers_dict.keys():
-                if not teachers_dict[key]:
-                    continue
-                teacher_subset_dict = {k: k == key for k in teachers_dict.keys()}
-                log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
-                                                          teacher_dict=teacher_subset_dict)
-                logs[(key,)] = log
-        elif distill_target == 'single_teachers_none':  # TODO: modify things to wrk with all distill_targets
-            teacher_dict_list = [((), {k: False for k in teachers_dict.keys()})] 
-            for key in teachers_dict.keys():
-                if not teachers_dict[key]:
-                    continue
-                teacher_dict_list.append(((key,), {k: k == key for k in teachers_dict.keys()}))
-            full_loss = None
-            mixed_batch = False
-            for key_set, teacher_subset_dict in teacher_dict_list:
-                log, loss = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training,
-                                                                source=source, teacher_dict=teacher_subset_dict,
-                                                                backprop=not mixed_batch)
-                if full_loss is None:
-                    full_loss = loss
-                else:
-                    full_loss += loss
-                logs[key_set] = log
-            if is_training and mixed_batch:
-                optimizer = list(self.optimizer_dict.values())[0]  # All the same, so we can use any one
-                optimizer.zero_grad()
-                full_loss.backward()
-                optimizer.step()
-
-        elif distill_target == 'all_teachers':
-            key_set = tuple(set(keys))
-            if len(key_set) > 1:
-                raise NotImplementedError
-            log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
-                                                      teacher_dict=teachers_dict)
-            logs[key_set] = log
+        if distill_target == 'single_teachers':
+            dict_list = [(key,) for key in teachers_dict.keys() if teachers_dict[key]]
+        elif distill_target == 'single_teachers_none':
+            dict_list = [(key,) for key in teachers_dict.keys() if teachers_dict[key]] + [()]
         elif distill_target == 'no_teachers':
-            key_set = tuple(set())
-            teacher_subset_dict = {}
-            for k in teachers_dict.keys():
-                teacher_subset_dict[k] = False
-            log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
-                                                      teacher_dict=teacher_subset_dict)
-            logs[key_set] = log
-
+            dict_list = [()]
+        logs = {}
+        for keys in dict_list:
+            teacher_subset_dict = {k: k in keys for k in teachers_dict.keys()}
+            log, _ = self.distill_batch(preprocessed_batch, is_training=is_training,
+                                        teacher_dict=teacher_subset_dict)
+            logs[keys] = log
         if is_training:
             for scheduler in self.scheduler_dict.values():
                 scheduler.step()
-            if self.reconstructor_dict is not None:
-                for scheduler in self.reconstructor_scheduler_dict.values():
-                    scheduler.step()
         return logs

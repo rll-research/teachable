@@ -11,7 +11,7 @@ class PPOAlgo(BaseAlgo):
     """The class for the Proximal Policy Optimization algorithm
     ([Schulman et al., 2015](https://arxiv.org/abs/1707.06347))."""
 
-    def __init__(self, policy_dict, envs, args, obs_preprocessor, augmenter, repeated_seed=None, reconstructor_dict=None):
+    def __init__(self, policy_dict, envs, args, obs_preprocessor, augmenter, repeated_seed=None):
         self.discrete = args.discrete
 
         super().__init__(envs, policy_dict, args.frames_per_proc, args.discount, args.lr, args.gae_lambda, args.entropy_coef,
@@ -19,85 +19,40 @@ class PPOAlgo(BaseAlgo):
                          None, not args.sequential, args.rollouts_per_meta_task, instr_dropout_prob=args.collect_dropout_prob,
                          repeated_seed=repeated_seed, reset_each_batch=args.reset_each_batch)
 
-        num_frames_per_proc = args.frames_per_proc or 128
         self.policy_dict = policy_dict
         for policy in policy_dict.values():
             policy.train()
             policy.to(self.device)
-        self.num_frames_per_proc = num_frames_per_proc
-        self.discount = args.discount
-        self.lr = args.lr
-        self.gae_lambda = args.gae_lambda
-        self.entropy_coef = args.entropy_coef
-        self.value_loss_coef = args.value_loss_coef
-        self.max_grad_norm = args.max_grad_norm
-        self.recurrence = args.recurrence
-        self.aux_info = None
         self.single_env = envs[0]
-        self.kl_coef = args.kl_coef
-        self.mi_coef = args.mi_coef
-        self.control_penalty = args.control_penalty
-        self.reconstructor_dict = reconstructor_dict
-
+        self.args = copy.deepcopy(args)
+        self.args.batch_size = self.args.meta_batch_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_frames = self.num_frames_per_proc * self.num_procs
 
-        assert self.num_frames_per_proc % self.recurrence == 0
+        assert self.num_frames_per_proc % self.args.recurrence == 0
 
-        self.clip_eps = args.clip_eps
-        self.epochs = args.epochs
-        self.batch_size = args.meta_batch_size
-
-        self.beta1 = args.beta1
-        self.beta2 = args.beta2
-        self.adam_eps = args.optim_eps
         self.augmenter = augmenter
 
-        assert self.batch_size % self.recurrence == 0
+        assert self.args.batch_size % self.args.recurrence == 0
 
         teachers = list(self.policy_dict.keys())
         # Dfferent optimizers for different models, same optimizer for same model
         first_teacher = teachers[0]
-        params = list(self.policy_dict[first_teacher].parameters())# + list(self.reconstructor_dict[first_teacher].parameters())
-        if self.reconstructor_dict is not None:
-            params += list(self.reconstructor_dict[first_teacher].parameters())
-        self.optimizer_dict = {first_teacher: torch.optim.Adam(params,
-                                                               self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
+        params = list(self.policy_dict[first_teacher].parameters())
+        self.optimizer_dict = {first_teacher: torch.optim.Adam(params, self.lr,
+                                                               (args.beta1, args.beta2), eps=args.optim_eps)}
         for teacher in teachers[1:]:
             policy = self.policy_dict[teacher]
             if policy is self.policy_dict[first_teacher]:
                 self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
             else:
-                params = list(self.policy_dict[teacher].parameters())# + list(self.reconstructor_dict[teacher].parameters())
-                if self.reconstructor_dict is not None:
-                    params += list(self.reconstructor_dict[teacher].parameters())
+                params = list(self.policy_dict[teacher].parameters())
                 self.optimizer_dict[teacher] = torch.optim.Adam(params,
                                                                 self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
         self.batch_num = 0
 
-        if self.reconstructor_dict is not None:
-            self.reconstructor_optimizer_dict = {
-                first_teacher: torch.optim.Adam(self.reconstructor_dict[first_teacher].parameters(),
-                                                self.lr, (args.beta1, args.beta2), eps=args.optim_eps)}
-            for teacher in teachers[1:]:
-                policy = self.reconstructor_dict[teacher]
-                if policy is self.reconstructor_dict[first_teacher]:
-                    self.reconstructor_optimizer_dict[teacher] = self.reconstructor_optimizer_dict[first_teacher]
-                else:
-                    self.reconstructor_optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                    self.lr, (args.beta1, args.beta2), eps=args.optim_eps)
-        else:
-            self.reconstructor_optimizer_dict = None
-
-
-
-    def set_optimizer(self):
-        self.optimizer = torch.optim.Adam(self.acmodel.parameters(), self.lr, (self.beta1, self.beta2),
-                                          eps=self.adam_eps)
-
     def update_parameters(self):
         return self.optimize_policy(None, True)
-
 
     def optimize_policy(self, original_exps, teacher_dict={}, entropy_coef=None):
         '''
@@ -116,9 +71,6 @@ class PPOAlgo(BaseAlgo):
         assert len(active_teachers) <= 2
         teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
         acmodel = self.policy_dict[teacher]
-        reconstructor = None if self.reconstructor_dict is None else self.reconstructor_dict[teacher]
-        if self.reconstructor_dict is not None:
-            reconstructor_optimizer = self.reconstructor_optimizer_dict[teacher]
         optimizer = self.optimizer_dict[teacher]
 
         acmodel.train()
@@ -128,49 +80,49 @@ class PPOAlgo(BaseAlgo):
         model_running_time = 0
         backward_time = 0
 
-        for e in range(self.epochs):
+        # Initialize log values
+        log_returnn = []
+        log_advantage = []
+        log_value_clip = []
+        log_policy_clip = []
+        log_ratio = []
+        log_log_prob = []
+        log_sb_value = []
+        log_action_magnitude = []
+        log_action_max = []
+
+        log_entropies = []
+        log_values = []
+        log_policy_losses = []
+        log_value_losses = []
+        log_kl_losses = []
+        log_reconstruction_losses = []
+        log_feedback_reconstruction = []
+        log_grad_norms = []
+        try:
+            num_actions = self.single_env.action_space.n
+            discrete = True
+        except:
+            discrete = False
+        if discrete:
+            log_actions_taken = {}
+            log_teacher_actions_taken = {}
+            log_teacher_following = {}
+            log_agent_following = {}
+            for i in range(num_actions):
+                log_actions_taken[i] = []
+                log_teacher_actions_taken[i] = []
+                log_teacher_following[i] = []
+                log_agent_following[i] = []
+        log_losses = []
+        model_calls = 0
+        model_samples_calls = 0
+
+        for e in range(self.args.epochs):
             exps = copy.deepcopy(original_exps)
             exps.obs = self.preprocess_obss(exps.obs, teacher_dict)
             teacher_max = exps.teacher_action.detach().cpu().numpy()
             orig_actions = exps.action.detach().cpu().numpy()
-
-            # Initialize log values
-            log_returnn = []
-            log_advantage = []
-            log_value_clip = []
-            log_policy_clip = []
-            log_ratio = []
-            log_log_prob = []
-            log_sb_value = []
-            log_action_magnitude = []
-            log_action_max = []
-
-            log_entropies = []
-            log_values = []
-            log_policy_losses = []
-            log_value_losses = []
-            log_kl_losses = []
-            log_reconstruction_losses = []
-            log_feedback_reconstruction = []
-            log_grad_norms = []
-            try:
-                num_actions = self.single_env.action_space.n
-                discrete = True
-            except:
-                discrete = False
-            if discrete:
-                log_actions_taken = {}
-                log_teacher_actions_taken = {}
-                log_teacher_following = {}
-                log_agent_following = {}
-                for i in range(num_actions):
-                    log_actions_taken[i] = []
-                    log_teacher_actions_taken[i] = []
-                    log_teacher_following[i] = []
-                    log_agent_following[i] = []
-            log_losses = []
-            model_calls = 0
-            model_samples_calls = 0
 
             '''
             For each epoch, we create int(total_frames / batch_size + 1) batches, each of size batch_size (except
@@ -183,29 +135,10 @@ class PPOAlgo(BaseAlgo):
             # we could split this up.
             inds = numpy.arange(0, len(exps.action), self.recurrence)
             for inds in [inds[:-1]]:
-                # for inds in self._get_batches_starting_indexes():
                 # inds is a numpy array of indices that correspond to the beginning of a sub-batch
                 # there are as many inds as there are batches
-                # Initialize batch values
 
-                batch_entropy = 0
-                batch_value = 0
-                batch_policy_loss = 0
-                batch_value_loss = 0
-                batch_kl_loss = 0
-                batch_reconstruction_loss = 0
-                batch_feedback_reconstruction = 0
                 batch_loss = 0
-                batch_action_magnitude = 0
-                batch_action_max = 0
-
-                batch_returnn = 0
-                batch_advantage = 0
-                batch_value_clip = 0
-                batch_policy_clip = 0
-                batch_ratio = 0
-                batch_log_prob = 0
-                batch_sb_value = 0
 
                 # Initialize memory
 
@@ -228,7 +161,7 @@ class PPOAlgo(BaseAlgo):
                     memory = agent_info['memory']
                     kl_loss = agent_info['kl']
                     # control penalty
-                    if self.control_penalty > 0:
+                    if self.args.control_penalty > 0:
                         control_penalty = torch.clamp(dist.rsample() ** 2 - 10, 0, float('inf')).mean()
                     else:
                         control_penalty = torch.FloatTensor([0]).to(self.device)
@@ -240,88 +173,64 @@ class PPOAlgo(BaseAlgo):
                         log_prob = log_prob.sum(axis=-1)
                     ratio = torch.exp(log_prob - sb.log_prob)
                     surrr1 = ratio * sb.advantage
-                    surrr2 = torch.clamp(ratio, 1.0 - self.clip_eps, 1.0 + self.clip_eps) * sb.advantage
+                    surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * sb.advantage
                     policy_loss = -torch.min(surrr1, surrr2).mean()
 
-                    value_clipped = sb.value + torch.clamp(value - sb.value, -self.clip_eps, self.clip_eps)
+                    value_clipped = sb.value + torch.clamp(value - sb.value, -self.args.clip_eps, self.args.clip_eps)
                     surr1 = (value - sb.returnn).pow(2)
                     surr2 = (value_clipped - sb.returnn).pow(2)
                     value_loss = torch.max(surr1, surr2).mean()
 
                     # Optional loss for reconstructing the feedback (currently, all models all teachers)
-                    if self.reconstructor_dict is not None:
-                        # Loss for training the reconstructor
-                        reconstruction_embedding = agent_info['reconstruction_embedding']
-                        advice = reconstructor(reconstruction_embedding)
+                    if 'reconstruction' in agent_info:
+                        advice = agent_info['reconstruction']
                         full_advice_size = int(len(advice[0]) / 2)
                         mean = advice[:, :full_advice_size]
                         var = torch.exp(advice[:, full_advice_size:])
                         loss_fn = torch.nn.GaussianNLLLoss()
                         true_advice = sb.obs.advice
-                        reconstruction_loss = loss_fn(true_advice, mean, var)
+                        reconstruction_loss = loss_fn(sb.obs.advice, mean, var)
                         feedback_reconstruction = torch.abs(true_advice - mean).sum()
                     else:
                         reconstruction_loss = torch.FloatTensor([0]).to(self.device)
                         feedback_reconstruction = torch.FloatTensor([0]).to(self.device)
 
                     loss = policy_loss - entropy_coef * entropy + self.value_loss_coef * value_loss + \
-                           self.kl_coef * kl_loss + \
-                           self.control_penalty * control_penalty
+                           self.args.kl_coef * kl_loss + \
+                           self.args.control_penalty * control_penalty + \
+                           self.args.mi_coef * reconstruction_loss
 
-                    # self.mi_coef * reconstruction_loss + \
+                    log_entropies.append(- entropy.item() * self.entropy_coef)
+                    log_values.append(value.mean().item())
+                    log_policy_losses.append(policy_loss.item())
+                    log_value_losses.append(value_loss.item() * self.value_loss_coef)
+                    log_kl_losses.append(kl_loss.item() * self.args.kl_coef)
+                    log_reconstruction_losses.append(reconstruction_loss.item() * self.args.mi_coef)
+                    log_feedback_reconstruction.append(feedback_reconstruction.item())
+                    log_action_magnitude.append(torch.linalg.norm(sb.action.float(), ord=1, dim=-1).mean().item())
+                    log_action_max.append(torch.max(torch.abs(sb.action.float()), dim=-1)[0].mean().item())
 
-
-                    batch_entropy -= entropy.item() * self.entropy_coef
-                    batch_value += value.mean().item()
-                    batch_policy_loss += policy_loss.item()
-                    batch_value_loss += value_loss.item() * self.value_loss_coef
-                    batch_kl_loss += kl_loss.item() * self.kl_coef
-                    batch_reconstruction_loss += reconstruction_loss * self.mi_coef
-                    batch_feedback_reconstruction += feedback_reconstruction.item()
+                    log_returnn.append(sb.returnn.mean().item())
+                    log_advantage.append(sb.advantage.mean().item())
+                    log_value_clip.append((surr1 - surr2).mean().item())
+                    log_policy_clip.append((surrr1 - surrr2).mean().item())
+                    log_ratio.append(ratio.mean().item())
+                    log_log_prob.append(sb.log_prob.mean().item())
+                    log_sb_value.append(sb.value.mean().item())
                     batch_loss += loss
-                    batch_action_magnitude += torch.linalg.norm(sb.action.float(), ord=1, dim=-1).mean().item()
-                    batch_action_max += torch.max(torch.abs(sb.action.float()), dim=-1)[0].mean().item()
-
-                    batch_returnn += sb.returnn.mean().item()
-                    batch_advantage += sb.advantage.mean().item()
-                    batch_value_clip += (surr1 - surr2).mean().item()
-                    batch_policy_clip += (surrr1 - surrr2).mean().item()
-                    batch_ratio += ratio.mean().item()
-                    batch_log_prob += sb.log_prob.mean().item()
-                    batch_sb_value += sb.value.mean().item()
-
-
+                    log_losses.append(loss.item())
 
                     # Update memories for next epoch
                     if i < self.recurrence - 1:
                         exps.memory[inds + i + 1] = memory.detach()
 
-                # Update batch values
-
-                batch_entropy /= self.recurrence
-                batch_value /= self.recurrence
-                batch_policy_loss /= self.recurrence
-                batch_value_loss /= self.recurrence
-                batch_kl_loss /= self.recurrence
-                batch_reconstruction_loss /= self.recurrence
-                batch_feedback_reconstruction /= self.recurrence
                 batch_loss /= self.recurrence
-                batch_action_magnitude /= self.recurrence
-                batch_action_max /= self.recurrence
-
-                batch_returnn /= self.recurrence
-                batch_advantage /= self.recurrence
-                batch_value_clip /= self.recurrence
-                batch_policy_clip /= self.recurrence
-                batch_ratio /= self.recurrence
-                batch_log_prob /= self.recurrence
-                batch_sb_value /= self.recurrence
 
                 # Update actor-critic
 
                 backward_start = time.time()
                 optimizer.zero_grad()
-                batch_loss.backward(retain_graph=self.reconstructor_dict is not None)
+                batch_loss.backward()
                 grad_norm = sum(p.grad.data.norm(2) ** 2 for p in acmodel.parameters() if p.grad is not None) ** 0.5
                 if discrete:
                     desired_action = sb.teacher_action.int()
@@ -329,36 +238,11 @@ class PPOAlgo(BaseAlgo):
 
                 torch.nn.utils.clip_grad_norm_(acmodel.parameters(), self.max_grad_norm)
 
-                if self.reconstructor_dict is not None:
-                    reconstructor_optimizer.zero_grad()
-                    batch_reconstruction_loss.backward()
-                    torch.nn.utils.clip_grad_norm_(reconstructor.parameters(), self.max_grad_norm)
-                    reconstructor_optimizer.step()
-
                 optimizer.step()
 
                 backward_end = time.time() - backward_start
                 backward_time += backward_end
-
-                # Update log values
-                log_entropies.append(batch_entropy)
-                log_values.append(batch_value)
-                log_policy_losses.append(batch_policy_loss)
-                log_value_losses.append(batch_value_loss)
-                log_kl_losses.append(batch_kl_loss)
-                log_reconstruction_losses.append(batch_reconstruction_loss.item())
-                log_feedback_reconstruction.append(batch_feedback_reconstruction)
                 log_grad_norms.append(grad_norm.item())
-                log_action_magnitude.append(batch_action_magnitude)
-                log_action_max.append(batch_action_max)
-
-                log_returnn.append(batch_returnn)
-                log_advantage.append(batch_advantage)
-                log_value_clip.append(batch_value_clip)
-                log_policy_clip.append(batch_policy_clip)
-                log_ratio.append(batch_ratio)
-                log_log_prob.append(batch_log_prob)
-                log_sb_value.append(batch_sb_value)
 
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
@@ -391,7 +275,6 @@ class PPOAlgo(BaseAlgo):
             logs['Returnn'] = numpy.mean(log_returnn)
 
             logs['LogProb'] = numpy.mean(log_log_prob)
-            # logs['Returnn'] = numpy.mean(log_sb_value)
 
             logs["Entropy_loss"] = numpy.mean(log_entropies)
             logs["Entropy"] = numpy.mean(log_entropies) / self.entropy_coef
@@ -408,11 +291,9 @@ class PPOAlgo(BaseAlgo):
             if discrete:
                 logs['Accuracy'] = accuracy
                 for i in range(num_actions):
-                    # logs[f'Took{i}'] = np.mean(log_actions_taken[i])
                     if len(log_teacher_following[i]) > 0:
                         logs[f'Accuracy{i}'] = np.mean(log_teacher_following[i])
                         logs[f'Precision{i}'] = np.mean(log_agent_following[i])
-                        # logs[f'TeacherTook{i}'] = np.mean(log_teacher_actions_taken[i])
 
         return logs
 

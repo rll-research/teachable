@@ -43,13 +43,13 @@ def finalize_videos_local(video_filename, all_writer, success_writer, failure_wr
 
 def finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps):
     video = np.transpose(np.stack(all_videos), (0, 3, 1, 2))[:, ::-1]
-    wandb.log({video_name + '_all': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+    wandb.log_rollouts({video_name + '_all': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
     if len(success_videos) > 0:
         video = np.transpose(np.stack(success_videos), (0, 3, 1, 2))[:, ::-1]
-        wandb.log({video_name + '_success': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        wandb.log_rollouts({video_name + '_success': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
     if len(failure_videos) > 0:
         video = np.transpose(np.stack(failure_videos), (0, 3, 1, 2))[:, ::-1]
-        wandb.log({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
+        wandb.log_rollouts({video_name + '_failure': wandb.Video(video, fps=fps, format="mp4")}, commit=False)
 
 
 def get_readable_feedback(env_info, obs, teacher_name):
