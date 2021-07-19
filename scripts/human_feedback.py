@@ -25,10 +25,10 @@ AGENT_X = 248
 AGENT_Y = 252
 D4RL_TILE_PIXELS = 75 # Works for L0
 
-# # WORKS FOR L2
-AGENT_X = 202
-AGENT_Y = 296
-D4RL_TILE_PIXELS = 49#64 # WORKS for L2
+# WORKS FOR L2
+# AGENT_X = 202
+# AGENT_Y = 296
+# D4RL_TILE_PIXELS = 49#64 # WORKS for L2
 
 class HumanFeedback:
     def __init__(self):
@@ -66,6 +66,8 @@ class HumanFeedback:
         self.current_feedback_type = self.args.feedback_type
         self.feedback_indicator = 0
         self.steps_since_feedback = 0
+        self.times = []
+        self.timesteps = []
         self.last = None
         try:
             self.advance_count = int(self.args.advance)
@@ -107,8 +109,6 @@ class HumanFeedback:
         self.teacher_action = []
         self.full_done = []
         self.advice_count = []
-        self.times = []
-        self.timesteps = []
         self.timestep_counter = 0
         self.start_time = time.time()
         self.env.set_task()
@@ -256,17 +256,16 @@ class HumanFeedback:
                 agent.eval()
                 action, agent_info = agent.get_actions_t(o, temp=1)
             teacher_action = self.env.teacher_action
-            actions = self.env._wrapped_env.Actions
-            if self.args.env_type == 'babyai' and action.item() in [actions.pickup, actions.drop]:
-                self.ready = False
+            if self.args.env_type == 'babyai':
+                actions = self.env._wrapped_env.Actions
+                if action.item() in [actions.pickup, actions.drop]:
+                    self.ready = False
             new_obs, reward, done, info = self.env.step(action)
             if self.args.env_type == 'babyai' and self.args.feedback_type == 'OSREasy':
                 # If we've reached the subgoal, wait
                 if np.array_equal(self.env.agent_pos, self.last_feedback[1:3]):
                     self.ready = False
-                self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
-            else:
-                print("Currently at", self.env.agent_pos, "going to", self.last_feedback[1:3])
+            self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
             self.steps_since_feedback += 1
             self.timestep_counter += 1
             self.obs_list.append(self.obs)
