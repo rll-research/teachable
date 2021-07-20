@@ -19,26 +19,6 @@ class ImitationLearning(object):
 
         # Define actor-critic model
         self.policy_dict = model
-        for policy in model.values():
-            if torch.cuda.is_available():
-                policy.cuda()
-
-        teachers = list(self.policy_dict.keys())
-        # Different optimizers for different models, same optimizer for same model
-        first_teacher = teachers[0]
-        self.optimizer_dict = {first_teacher: torch.optim.Adam(self.policy_dict[first_teacher].parameters(),
-                                                               self.args.lr, eps=self.args.optim_eps)}
-        for teacher in teachers[1:]:
-            policy = self.policy_dict[teacher]
-            if policy is self.policy_dict[first_teacher]:
-                self.optimizer_dict[teacher] = self.optimizer_dict[first_teacher]
-            else:
-                self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
-                                                                self.args.lr, eps=self.args.optim_eps)
-        self.scheduler_dict = {
-            k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99)
-            for k, optimizer in self.optimizer_dict.items()
-        }
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

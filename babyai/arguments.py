@@ -87,16 +87,11 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--source', type=str, default='agent_probs', choices=['agent', 'teacher', 'agent_argmax',
                                                                                 'agent_probs'])
         self.add_argument('--single_level', action='store_true')
-        self.add_argument('--no_collect', action='store_true')
-        self.add_argument('--no_train_rl', action='store_true')
         self.add_argument('--end_on_full_buffer', action='store_true')
 
         # Saving/loading/finetuning
-        self.add_argument('--continue_train', action='store_true')
         self.add_argument('--prefix', type=str, default='DEBUG')
         self.add_argument('--description', type=str, default='yolo')
-        self.add_argument('--saved_path', type=str, default=None)
-        self.add_argument('--override_old_config', action='store_true')
         self.add_argument('--save_option', type=str, default='level',
                           choices=['all', 'level', 'latest', 'none', 'gap'])
 
@@ -107,7 +102,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollouts_per_meta_task', type=int, default=1)
 
         # Teacher
-        self.add_argument('--feedback_type', nargs='+', default=["None"])
         self.add_argument('--feedback_always', action='store_true')
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
         self.add_argument('--cartesian_steps', nargs='+', type=int, default=[1])
@@ -159,22 +153,25 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--reward_when_necessary', action='store_true')
 
+        # Policies
+        self.add_argument('--collect_policy', default=None, help='path to collection policy')
+        self.add_argument('--collect_teacher', default=None,
+                          help="Teacher to for collection. If None, no collection happens. If no teacher, put 'None'")
+        self.add_argument('--rl_policy', default=None, help='path to rl policy')
+        self.add_argument('--rl_teacher', default=None)
+        self.add_argument('--distill_policy', default=None, help='path to distill policy')
+        self.add_argument('--distill_teacher', default=None)
+        self.add_argument('--collect_with_rl_policy', action='store_true')
+        self.add_argument('--collect_with_distill_policy', action='store_true')
+
         # Distillations
-        self.add_argument('--self_distill', action='store_true')
-        self.add_argument('--distill_same_model', action='store_true')
         self.add_argument('--distillation_steps', type=int, default=15)
         self.add_argument('--buffer_capacity', type=int, default=500)
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
-        self.add_argument('--distillation_strategy', type=str, choices=[
-            'no_teachers', 'single_teachers', 'single_teachers_none'], default='single_teachers')
-        self.add_argument('--distill_label_weightings', action='store_true')
-        self.add_argument('--new_distill', action='store_true')
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
         self.add_argument('--collect_dropout_prob', type=float, default=0.)
         self.add_argument('--rollout_without_instrs', action='store_true')
-        self.add_argument('--modify_cc3', action='store_true')
-        self.add_argument('--relabel', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0)
@@ -217,6 +214,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--no_buffer', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--save_untrained', action='store_true')
+        self.add_argument('--reload_exp_path', type=str, default=None)
+        self.add_argument('--continue_train', action='store_true')
 
     def parse_args(self, arg=None):
         """

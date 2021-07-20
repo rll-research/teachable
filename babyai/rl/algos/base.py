@@ -13,7 +13,7 @@ from babyai.rl.utils.dictlist import merge_dictlists
 class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
-    def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
+    def __init__(self, envs, policy, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
                  rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False):
         """
@@ -23,8 +23,8 @@ class BaseAlgo(ABC):
         ----------
         envs : list
             a list of environments that will be run in parallel
-        acmodel : torch.Module
-            the model
+        collect_policy : torch.Module
+            the model + rl training algo
         num_frames_per_proc : int
             the number of frames collected by every process for an update
         discount : float
@@ -59,10 +59,8 @@ class BaseAlgo(ABC):
             self.env = ParallelEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
         else:
             self.env = SequentialEnv(envs, rollouts_per_meta_task, repeated_seed=repeated_seed)
-        self.policy_dict = acmodel
-        for policy in self.policy_dict.values():
-            policy.train()
-        example_policy = list(self.policy_dict.values())[0]
+        self.policy = policy
+        self.policy.train()
         self.num_frames_per_proc = num_frames_per_proc
         self.discount = discount
         self.lr = lr
@@ -93,10 +91,6 @@ class BaseAlgo(ABC):
         self.obs = self.env.reset()
         self.obss = [None]*(shape[0])
 
-        self.memory = torch.zeros(shape[1], example_policy.memory_size, device=self.device)
-        self.memories = torch.zeros(*shape, example_policy.memory_size, device=self.device)
-        self.dagger_memory = torch.zeros(shape[1], example_policy.memory_size, device=self.device)
-
         self.mask = torch.ones(shape[1], device=self.device).float()
         self.masks = torch.zeros(*shape, device=self.device)
         try:
@@ -111,10 +105,7 @@ class BaseAlgo(ABC):
             self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
             self.teacher_actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
             self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
-        self.values = torch.zeros(*shape, device=self.device)
         self.rewards = torch.zeros(*shape, device=self.device)
-        self.advantages = torch.zeros(*shape, device=self.device)
-        self.log_probs = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
         self.done_index = torch.zeros(self.num_procs, device=self.device)
         self.env_infos = [None] * len(self.dones)
@@ -136,8 +127,7 @@ class BaseAlgo(ABC):
         self.log_success = [0] * self.num_procs
         self.log_dist_to_goal = [0] * self.num_procs
 
-    def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True, train=True, collection_dict={}):
+    def collect_experiences(self, collect_with_oracle=False, collect_reward=True, train=True):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -158,14 +148,11 @@ class BaseAlgo(ABC):
             reward, policy loss, value loss, etc.
 
         """
-        active_teachers = [k for k, v in teacher_dict.items() if v]
-        assert len(active_teachers) < 2
-        teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
-        acmodel = self.policy_dict[teacher]
+        policy = self.policy
         if train:
-            acmodel.train()
+            policy.train()
         else:
-            acmodel.eval()
+            policy.eval()
 
         if self.reset_each_batch:
             self.obs = self.env.reset()
@@ -174,41 +161,23 @@ class BaseAlgo(ABC):
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
             instr_dropout_prob = self.instr_dropout_prob
-            preprocessed_obs = [self.preprocess_obss([o], teacher_dict,
+            preprocessed_obs = [self.preprocess_obss([o], policy.teacher,
                                                      show_instrs=np.random.uniform() > instr_dropout_prob)
                 for o in self.obs]
             preprocessed_obs = merge_dictlists(preprocessed_obs)
 
             with torch.no_grad():
-                dist, model_results = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
-                value = model_results['value']
-                memory = model_results['memory']
-                extra_predictions = None
+                action, agent_dict = policy.act(preprocessed_obs)
 
-            action = dist.sample()
             action_to_take = action.cpu().numpy()
-
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
-            elif use_dagger:
-                with torch.no_grad():
-                    dagger_obs = self.preprocess_obss(self.obs, dagger_dict,
-                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
-                    dagger_teachers = [k for k, v in teacher_dict.items() if v]
-                    assert len(dagger_teachers) < 2
-                    teacher = 'none' if len(active_teachers) == 0 else active_teachers[0]
-                    dagger_model = self.policy_dict[teacher]
-                    dagger_dist, dagger_model_results = dagger_model(dagger_obs,
-                                                                     self.dagger_memory * self.mask.unsqueeze(1))
-                    self.dagger_memory = dagger_model_results['memory']
-                    action_to_take = dagger_dist.sample().cpu().numpy()
 
             obs, reward, done, env_info = self.env.step(action_to_take)
             if not collect_reward:
                 reward = [np.nan for _ in reward]
 
             # Update experiences values
-
             self.env_infos[i] = env_info
             self.obss[i] = self.obs
             self.obs = obs
@@ -216,9 +185,6 @@ class BaseAlgo(ABC):
                 self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'] for ei in env_info]).to(self.device)
             except:
                 self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1  # TODO: compute teacher action for new envs
-
-            self.memories[i] = self.memory
-            self.memory = memory
 
             self.masks[i] = self.mask
             done_tensor = torch.FloatTensor(done).to(self.device)
@@ -230,11 +196,10 @@ class BaseAlgo(ABC):
             self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action
             if self.discrete:
-                probs = dist.probs
+                probs = agent_dict['probs']
                 self.action_probs[i] = probs
             else:
-                self.argmax_action[i] = dist.mean
-            self.values[i] = value
+                self.argmax_action[i] = agent_dict['argmax_action']
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
                     self.reshape_reward(obs_, action_, reward_, done_)
@@ -242,14 +207,6 @@ class BaseAlgo(ABC):
                 ], device=self.device)
             else:
                 self.rewards[i] = torch.tensor(reward, device=self.device)
-            log_prob = dist.log_prob(action)
-            # take log prob from the univariate normal, sum it to get multivariate normal
-            if len(log_prob.shape) == 2:
-                log_prob = log_prob.sum(axis=-1)
-            self.log_probs[i] = log_prob
-
-            if self.aux_info:
-                self.aux_info_collector.fill_dictionaries(i, env_info, extra_predictions)
 
             # Update log values
 
@@ -274,21 +231,6 @@ class BaseAlgo(ABC):
             self.log_episode_reshaped_return *= self.mask
             self.log_episode_num_frames *= self.mask
 
-        # Add advantage and return to experiences
-
-        preprocessed_obs = self.preprocess_obss(self.obs, teacher_dict,
-                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
-        with torch.no_grad():
-            next_value = acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))[1]['value']
-
-        for i in reversed(range(self.num_frames_per_proc)):
-            next_mask = self.masks[i+1] if i < self.num_frames_per_proc - 1 else self.mask
-            next_value = self.values[i+1] if i < self.num_frames_per_proc - 1 else next_value
-            next_advantage = self.advantages[i+1] if i < self.num_frames_per_proc - 1 else 0
-
-            delta = self.rewards[i] + self.discount * next_value * next_mask - self.values[i]
-            self.advantages[i] = delta + self.discount * self.gae_lambda * next_advantage * next_mask
-
         # Flatten the data correctly, making sure that
         # each episode's data is a continuous chunk
 
@@ -311,14 +253,11 @@ class BaseAlgo(ABC):
         # In commments below T is self.num_frames_per_proc, P is self.num_procs,
         # D is the dimensionality
 
-        # T x P x D -> P x T x D -> (P * T) x D
-        exps.memory = self.memories.transpose(0, 1).reshape(-1, *self.memories.shape[2:])
         # T x P -> P x T -> (P * T) x 1
         exps.mask = self.masks.transpose(0, 1).reshape(-1).unsqueeze(1)
 
         # for all tensors below, T x P -> P x T -> P * T
         exps.action = self.actions.transpose(0, 1).reshape(-1)
-        exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
         if self.discrete:
             exps.action_probs = self.action_probs.transpose(0, 1)
             exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
@@ -332,10 +271,7 @@ class BaseAlgo(ABC):
             exps.teacher_action = self.teacher_actions.transpose(0, 1)
             exps.teacher_action = exps.teacher_action.reshape(self.teacher_actions.shape[0] * self.actions.shape[1], -1)
 
-        exps.value = self.values.transpose(0, 1).reshape(-1)
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
-        exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
-        exps.returnn = exps.value + exps.advantage
         exps.done = self.dones.transpose(0, 1).reshape(-1)
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1
@@ -371,12 +307,8 @@ class BaseAlgo(ABC):
                 teacher_name = key[5:]
                 if teacher_name == 'none':
                     continue
-                # Only count collection for the teachers we'll actually use
-                if not collection_dict[teacher_name]:
-                    log[key] = 0
-                else:
-                    log[key] = np.sum([d[key] for d in exps.obs])
-                    num_feedback_advice += np.sum([d[key] for d in exps.obs])
+                log[key] = np.sum([d[key] for d in exps.obs])
+                num_feedback_advice += np.sum([d[key] for d in exps.obs])
         log["num_feedback_advice"] = num_feedback_advice
         log["num_feedback_reward"] = np.sum(exps.env_infos.gave_reward) if collect_reward else 0
         for key in exps.env_infos.keys():

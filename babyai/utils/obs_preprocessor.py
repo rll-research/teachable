@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from babyai.rl.utils.dictlist import DictList
 
-def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                          include_zeros=True, pad_size=51):
-    def obss_preprocessor(obs, teacher_dict, show_instrs=True, show_feedback=1.0, show_obs=1.0):
+def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+                          pad_size=51):
+    def obss_preprocessor(obs, teacher, show_instrs=True, show_feedback=1.0, show_obs=1.0):
         obs_output = {}
         assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
 
@@ -12,32 +12,20 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
         for k in obs[0].keys():
             # Don't have individual elements for the advice, since we concat these together
             # We might consider changing this if we process diff advice types differently (e.g. cartesian with a conv net)
-            if not k in teacher_dict:
+            if not k in feedback_list:
                 obs_output[k] = []
-        if len(teacher_dict) > 0:
+        if teacher is not 'none':
             obs_output['advice'] = []
-            obs_output['full_advice'] = []
-            obs_output['full_advice_mask'] = []
 
         instr_mask = int(show_instrs)
         feedback_mask = int((not show_instrs) or np.random.uniform() < show_feedback)
         obs_mask = ((not show_instrs) or (not feedback_mask) or np.random.uniform() < show_obs)
         for o in obs:
-            advice_list = []
-            full_advice_list = []
-            full_advice_mask = []
             for k, v in o.items():
                 if k == 'extra':
                     continue
-                if k in teacher_dict:
-                    full_advice_list.append(v)
-                    full_advice_mask.append(np.array([int(teacher_dict[k])]))
-                    # Mask out particular teachers
-                    if not teacher_dict[k]:
-                        if not include_zeros:  # If we're not including 0's, filter out all teachers we aren't giving
-                            continue
-                        v = teacher_null_dict[k]
-                    advice_list.append(v * feedback_mask)
+                if k == teacher:
+                    obs_output['advice'].append(v * feedback_mask)
                 elif k == 'instr':
                     obs_output[k].append(np.array(v) * instr_mask)
                 elif k == 'obs':
@@ -47,11 +35,6 @@ def make_obs_preprocessor(teacher_null_dict, device=torch.device("cuda" if torch
                         obs_output[k].append(v * obs_mask)
                 else:
                     continue
-            if len(advice_list) > 0:
-                obs_output['advice'].append(np.concatenate(advice_list))
-            # if len(full_advice_list) > 0:
-            #     obs_output['full_advice'].append(np.concatenate(full_advice_list))
-            #     obs_output['full_advice_mask'].append(np.concatenate(full_advice_mask))
 
         obs_final = {}
         for k, v in obs_output.items():

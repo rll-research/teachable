@@ -6,24 +6,27 @@ import pickle as pkl
 import torch
 
 from babyai.rl.utils.dictlist import merge_dictlists, DictList
-from babyai.utils.obs_preprocessor import obss_preprocessor_distill
 
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation
     batch_info = {
-        "obs": batch.obs,
-        "action": batch.action,
-        "full_done": batch.full_done.int(),
-        "success": batch.env_infos.success,
+        "obs": batch.obs[:-1],
+        "next_obs": batch.obs[1:],
+        "action": batch.action[:-1],
+        "full_done": batch.full_done.int()[:-1],
+        "success": batch.env_infos.success[:-1],
     }
     if 'action_probs' in batch:
-        batch_info['action_probs'] = batch.action_probs
+        batch_info['action_probs'] = batch.action_probs[:-1]
     if 'teacher_action' in batch.env_infos:
-        batch_info['teacher_action'] = batch.env_infos.teacher_action
+        batch_info['teacher_action'] = batch.env_infos.teacher_action[:-1]
     if 'followed_teacher' in batch.env_infos:
-        batch_info['followed_teacher'] = batch.env_infos.followed_teacher
-    if 'advice_count' in batch.env_infos:
-        batch_info['advice_count'] = batch.env_infos.advice_count
+        batch_info['followed_teacher'] = batch.env_infos.followed_teacher[:-1]
+    if 'advice_count' in batch:
+        batch_info['advice_count'] = batch.env_infos.advice_count[:-1]
+    if 'reward' in batch:
+        batch_info['reward'] = batch.reward[:-1]
+
     return DictList(batch_info)
 
 
@@ -76,10 +79,7 @@ class Buffer:
     def create_blank_buffer(self, batch, label):
         train_dict = {}
         val_dict = {}
-        # for key in ['obs', 'action', 'action_probs', 'teacher_action', 'followed_teacher', 'advice_count']:
-        for key in ['obs', 'action', 'advice_count']:
-            # if not hasattr(batch, key):
-            #     continue
+        for key in list(batch.keys()):
             try:
                 value = getattr(batch, key)
                 if type(value) is list:
