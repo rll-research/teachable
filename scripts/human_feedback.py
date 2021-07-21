@@ -5,15 +5,15 @@ import pathlib
 import torch
 import matplotlib
 matplotlib.use('TkAgg')
-from babyai.utils.buffer import Buffer
-from babyai.bot import OBJ_TYPES
+from envs.babyai.utils.buffer import Buffer
+from envs.babyai import OBJ_TYPES
 from gym_minigrid.window import Window
 from gym_minigrid.minigrid import TILE_PIXELS, Key, Ball, Box, Door, Wall, COLOR_NAMES
 import numpy as np
 import matplotlib.pyplot as plt
-from babyai.rl.utils.dictlist import DictList
-from babyai.utils.obs_preprocessor import make_obs_preprocessor
-from meta_mb.utils.utils import set_seed
+from envs.babyai.rl.utils import DictList
+from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
+from utils.utils import set_seed
 import time
 import pickle as pkl
 

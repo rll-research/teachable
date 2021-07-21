@@ -23,7 +23,7 @@ import numpy as np
 import blosc
 import torch
 
-import babyai.utils as utils
+from envs import babyai as utils
 
 # Parse arguments
 

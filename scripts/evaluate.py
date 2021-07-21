@@ -9,8 +9,8 @@ import gym
 import time
 import datetime
 
-import babyai.utils as utils
-from babyai.evaluate import evaluate_demo_agent, batch_evaluate, evaluate
+from envs import babyai as utils
+from envs.babyai import evaluate_demo_agent, batch_evaluate, evaluate
 # Parse arguments
 
 parser = argparse.ArgumentParser()

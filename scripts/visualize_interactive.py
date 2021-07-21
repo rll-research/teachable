@@ -1,11 +1,10 @@
 import joblib
-import tensorflow as tf
 import numpy as np
 import argparse
 import copy
 from matplotlib import pyplot as plt
 import torch
-from babyai.utils.obs_preprocessor import make_obs_preprocessor
+from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
 import pickle as pkl
 
 parser = argparse.ArgumentParser()
@@ -52,7 +51,7 @@ if True:
     # teacher_name = 'pa'
 
     # Turn left policy
-    base_path = "babyai/meta-mb-internal/data/"
+    base_path = "babyai/logs/data/"
     pkl_path = args.path
 
     pkl_path = base_path + pkl_path

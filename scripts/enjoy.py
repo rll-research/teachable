@@ -8,7 +8,7 @@ import argparse
 import gym
 import time
 
-import babyai.utils as utils
+from envs import babyai as utils
 
 # Parse arguments
 

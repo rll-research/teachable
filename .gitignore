@@ -1,10 +1,12 @@
 *.png
+data/
+logs/
 old_data/
 wandb/
 *.mp4
 model/glove50.txt
 trained_models
-meta-mb-internal/data
+logs/data
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

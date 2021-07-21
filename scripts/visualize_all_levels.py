@@ -1,5 +1,5 @@
 import argparse
-from babyai.levels.curriculum import Curriculum
+from envs.babyai.levels.curriculum import Curriculum
 import pathlib
 import matplotlib.pyplot as plt
 

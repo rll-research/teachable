@@ -5,14 +5,12 @@ import argparse
 import pathlib
 import time
 
-from meta_mb.samplers.utils import rollout
-from meta_mb.logger import logger
-from babyai.utils.obs_preprocessor import make_obs_preprocessor
-from babyai.levels.curriculum import Curriculum
-from meta_mb.meta_envs.rl2_env import rl2env
-from meta_mb.envs.normalized_env import normalize
+from utils.rollout import rollout
+from logger import logger
+from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
+from envs.babyai.levels.curriculum import Curriculum
 import matplotlib
-from meta_mb.utils.utils import set_seed
+from utils.utils import set_seed
 
 matplotlib.use('Agg')
 
@@ -113,12 +111,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                     start_num_feedback=0, collect_with=None, distill_to=None):
     # Normally we would put the imports up top, but we also import this file in Trainer
     # Importing here prevents us from getting stuck in infinite loops
-    from meta_mb.algos.ppo_torch import PPOAlgo
-    from meta_mb.trainers.mf_trainer import Trainer
-    from meta_mb.samplers.meta_samplers.meta_sampler import MetaSampler
-    from meta_mb.samplers.meta_samplers.rl2_sample_processor import RL2SampleProcessor
-    from meta_mb.trainers.il_trainer import ImitationLearning
-    from babyai.teacher_schedule import make_teacher_schedule
+    from algos.mf_trainer import Trainer
 
     # TODO: consider deleting this!
     arguments = {
@@ -475,10 +468,8 @@ def main():
             "static_env": args.static_env
         }
         advance_curriculum_func = 'one_hot'
-        env = rl2env(normalize(Curriculum(advance_curriculum_func, env=default_args.env, start_index=env_index,
-                                          curriculum_type=default_args.curriculum_type, **arguments),
-                               normalize_actions=default_args.act_norm, normalize_reward=default_args.rew_norm,
-                               ), ceil_reward=default_args.ceil_reward)
+        env = Curriculum(advance_curriculum_func, env=default_args.env, start_index=env_index,
+                                          curriculum_type=default_args.curriculum_type, **arguments)
         envs.append((env, env_index))
 
     additional_args = {}

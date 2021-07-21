@@ -1,9 +1,9 @@
 # Allow us to interact wth the D4RLEnv the same way we interact with the TeachableRobotLevels class.
 import numpy as np
 import gym
-from gym.spaces import Box, Discrete
+from gym.spaces import Box
 from d4rl_content.pointmaze.waypoint_controller import WaypointController
-from d4rl.oracle.batch_teacher import BatchTeacher
+from envs.d4rl.oracle.batch_teacher import BatchTeacher
 from oracle.cardinal_teacher import CardinalCorrections
 from oracle.direction_teacher import DirectionCorrections
 from oracle.waypoint_teacher import WaypointCorrections

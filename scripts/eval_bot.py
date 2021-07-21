@@ -15,13 +15,11 @@ eval_boy.py --advise_mode --bad_action_proba .8 --non_optimal_steps 10 --random_
 
 """
 
-import random
 import time
-import traceback
 from optparse import OptionParser
-from babyai.levels import level_dict
-from babyai.bot import Bot, GoNextToSubgoal
-from babyai.utils.agent import ModelAgent, RandomAgent
+from envs.babyai import level_dict
+from envs.babyai import Bot
+from envs.babyai import ModelAgent, RandomAgent
 from random import Random
 
 
