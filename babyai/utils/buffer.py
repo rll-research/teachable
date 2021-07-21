@@ -194,7 +194,7 @@ class Buffer:
             pkl.dump(buffer_stats, f)
 
 
-    def sample(self, total_num_samples=None, total_num_trajs=None, split='train'):
+    def sample(self, total_num_samples=None, split='train'):
         if split == 'train':
             index = self.index_train
             counts = self.counts_train

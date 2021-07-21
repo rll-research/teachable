@@ -181,7 +181,7 @@ class SACAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device)
+        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 10
         dist = self.actor(obs)
         action = dist.sample() if sample else dist.mean
         min_val, max_val = self.action_range
@@ -189,6 +189,7 @@ class SACAgent:
         action = torch.minimum(action, torch.FloatTensor(max_val).unsqueeze(0).to(self.device))
         agent_info = {
             'argmax_action': dist.mean,
+            'dist': dist,
         }
         return action, agent_info
 
@@ -206,7 +207,7 @@ class SACAgent:
         current_Q1, current_Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
-        logger.logkv('train_critic/loss', critic_loss)
+        logger.logkv('train_critic/loss', utils.to_np(critic_loss))
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
@@ -222,21 +223,23 @@ class SACAgent:
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
 
-        logger.logkv('train_actor/loss', actor_loss)
+        logger.logkv('train_actor/loss', utils.to_np(actor_loss))
         logger.logkv('train_actor/target_entropy', self.target_entropy)
-        logger.logkv('train_actor/entropy', -log_prob.mean())
+        logger.logkv('train_actor/entropy', utils.to_np(-log_prob.mean()))
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
         self.actor_optimizer.step()
 
         if self.learnable_temperature:
             self.log_alpha_optimizer.zero_grad()
             alpha_loss = (self.alpha *
                           (-log_prob - self.target_entropy).detach()).mean()
-            logger.logkv('train_alpha/loss', alpha_loss)
-            logger.logkv('train_alpha/value', self.alpha)
+            logger.logkv('train_alpha/loss', utils.to_np(alpha_loss))
+            logger.logkv('train_alpha/value', utils.to_np(self.alpha))
             alpha_loss.backward()
             self.log_alpha_optimizer.step()
 
@@ -247,11 +250,11 @@ class SACAgent:
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)  # TODO:!!
-        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device)
+        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 10
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)  # TODO:!!
-        next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device)
+        next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 10
 
-        logger.logkv('train/batch_reward', reward.mean())
+        logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
         self.update_critic(obs, action, reward, next_obs, not_done)
 
@@ -259,8 +262,7 @@ class SACAgent:
             self.update_actor_and_alpha(obs)
 
         if step % self.critic_target_update_frequency == 0:
-            utils.soft_update_params(self.critic, self.critic_target,
-                                     self.critic_tau)
+            utils.soft_update_params(self.critic, self.critic_target, self.critic_tau)
 
     def save(self, model_dir, step):
         torch.save(
@@ -294,3 +296,81 @@ class SACAgent:
         self.train(training=training)
         action, agent_dict = self.act(obs, sample=True)
         return utils.to_np(action[0]), agent_dict
+
+    def log_distill(self, action_true, action_teacher, entropy, policy_loss, loss, dist, train):
+        if self.args.discrete:
+            action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
+            avg_mean_dist = -1
+            avg_std = -1
+        else:  # Continuous env
+            action_pred = dist.mean
+            avg_std = dist.scale.mean()
+            avg_mean_dist = torch.abs(action_pred - action_true).mean()
+        log = {
+            'Loss': float(policy_loss),
+            'Accuracy': float((action_pred == action_true).sum()) / len(action_pred),
+        }
+        train_str = 'Train' if train else 'Val'
+        logger.logkv(f"Distill/Entropy_Loss_{train_str}", float(entropy * self.args.entropy_coef))
+        logger.logkv(f"Distill/Entropy_{train_str}", float(entropy))
+        logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
+        logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))
+        logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
+        logger.logkv(f"Distill/Mean_Dist_{train_str}", float(avg_mean_dist))
+        logger.logkv(f"Distill/Std_{train_str}", float(avg_std))
+        return log
+
+    def preprocess_distill(self, batch, source):
+        obss = batch.obs
+        if source == 'teacher':
+            action_true = batch.teacher_action
+            if len(action_true.shape) == 2 and action_true.shape[1] == 1:
+                action_true = action_true[:, 0]
+        elif source == 'agent':
+            action_true = batch.action
+        elif source == 'agent_probs':
+            if self.args.discrete == False:
+                raise NotImplementedError('Action probs not implemented for continuous envs.')
+            action_true = batch.argmax_action
+        if not source == 'agent_probs':
+            dtype = torch.long if self.args.discrete else torch.float32
+            action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
+        if hasattr(batch, 'teacher_action'):
+            action_teacher = batch.teacher_action
+        else:
+            action_teacher = torch.zeros_like(action_true)
+        if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
+            action_teacher = action_teacher[:, 0]
+        return obss, action_true, action_teacher
+
+    def distill(self, batch, is_training=False, source='agent'):
+        ### SETUP ###
+        self.train(is_training)
+
+        # Obtain batch and preprocess
+        obss, action_true, action_teacher = self.preprocess_distill(batch, source)
+        # Dropout instructions with probability instr_dropout_prob,
+        # unless we have no teachers present in which case we keep the instr.
+        instr_dropout_prob = 0 if self.teacher == 'none' else self.args.instr_dropout_prob
+        obss = self.obs_preprocessor(obss, self.teacher, show_instrs=np.random.uniform() > instr_dropout_prob)
+
+        ### RUN MODEL, COMPUTE LOSS ###
+        _, info = self.act(obss, sample=True)
+        dist = info['dist']
+        if len(action_true.shape) == 3:  # Has an extra dimension
+            action_true = action_true.squeeze(1)
+        policy_loss = -dist.log_prob(action_true).mean()
+        # entropy = dist.entropy().mean()
+        entropy = 0
+        # TODO: consider re-adding recon loss
+        loss = policy_loss# - self.args.entropy_coef * entropy
+
+        ### LOGGING ###
+        log = self.log_distill(action_true, action_teacher, entropy, policy_loss, loss, dist, is_training)
+
+        ### UPDATE ###
+        if is_training:
+            self.actor_optimizer.zero_grad()
+            loss.backward()
+            self.actor_optimizer.step()
+        return log

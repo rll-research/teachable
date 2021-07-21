@@ -149,10 +149,7 @@ class BaseAlgo(ABC):
 
         """
         policy = self.policy
-        if train:
-            policy.train()
-        else:
-            policy.eval()
+        policy.train(train)
 
         if self.reset_each_batch:
             self.obs = self.env.reset()
@@ -167,7 +164,7 @@ class BaseAlgo(ABC):
             preprocessed_obs = merge_dictlists(preprocessed_obs)
 
             with torch.no_grad():
-                action, agent_dict = policy.act(preprocessed_obs)
+                action, agent_dict = policy.act(preprocessed_obs, sample=True)
 
             action_to_take = action.cpu().numpy()
             if collect_with_oracle:

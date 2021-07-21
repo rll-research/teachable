@@ -218,6 +218,8 @@ class Trainer(object):
 
             """ -------------------- Training --------------------------"""
 
+            logger.log("RL Training...")
+
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if self.should_train_rl:
@@ -261,26 +263,18 @@ class Trainer(object):
                     time_sampling_from_buffer += (time.time() - sample_start)
                     sample_start = time.time()
                     self.total_distillation_frames += len(sampled_batch)
-                    self.distill_log = self.distill(sampled_batch,
-                                 is_training=True,
-                                 teacher=self.args.distill_teacher)
+                    self.distill_log = self.distill(sampled_batch, is_training=True)
                     time_train_distill += (time.time() - sample_start)
-                for key_set, log_dict in self.distill_log.items():
-                    key_set = '_'.join(key_set)
-                    for k, v in log_dict.items():
-                        logger.logkv(f"Distill/{key_set}{k}_Train", v)
                 sample_start = time.time()
                 time_sampling_from_buffer += (time.time() - sample_start)
                 sample_start = time.time()
                 sampled_val_batch = self.buffer.sample(total_num_samples=self.args.batch_size,
                                                        split='val')
-                distill_log_val = self.distill(sampled_val_batch,
-                                               is_training=False,
-                                               teacher=self.args.distill_teacher)
+                distill_log_val = self.distill(sampled_val_batch, is_training=False)
 
                 time_val_distill += (time.time() - sample_start)
                 best_success, best_accuracy, best_loss = self.best_train_perf
-                val_loss = distill_log_val[()]['Loss']
+                val_loss = distill_log_val['Loss']
                 if val_loss < best_loss:
                     self.best_train_perf = (best_success, best_accuracy, val_loss)
                     if self.args.early_stop_metric == 'val_loss':
@@ -288,22 +282,15 @@ class Trainer(object):
                 else:
                     if self.args.early_stop_metric == 'val_loss':
                         self.itrs_since_best += 1
-                for key_set, log_dict in distill_log_val.items():
-                    key_set = '_'.join(key_set)
-                    for k, v in log_dict.items():
-                        logger.logkv(f"Distill/{key_set}{k}_Val", v)
                 distill_time = time.time() - time_distill_start
                 advance_curriculum = True
-                for teacher_key_set in distill_log_val.keys():
-                    acc = distill_log_val[teacher_key_set]['Accuracy']
-                    if teacher_key_set == ():
-                        advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
-                    else:
-                        advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
-                    key_set_name = '_'.join(list(teacher_key_set))
-                    logger.logkv(f'Distill/Advance_{key_set_name}', int(advance_teacher))
-                    advance_curriculum = advance_curriculum and advance_teacher
-                logger.logkv('Distill/Advance_Overall', int(advance_curriculum))
+                acc = distill_log_val['Accuracy']
+                if self.args.distill_teacher == 'none':
+                    advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
+                else:
+                    advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
+                logger.logkv(f'Distill/Advance_After_Distillation', int(advance_teacher))
+                advance_curriculum = advance_curriculum and advance_teacher
             else:
                 distill_time = 0
 
@@ -412,10 +399,10 @@ class Trainer(object):
                 if not k == 'Accuracy':
                     logger.logkv(f"{tag}/{k}", v)
 
-    def distill(self, samples, is_training=False, teacher=None, source=None):
+    def distill(self, samples, is_training=False, source=None):
         if source is None:
             source = self.args.source
-        log = self.distill_policy.distill(samples, source=source, is_training=is_training, teacher=teacher)
+        log = self.il_policy.distill(samples, source=source, is_training=is_training)
         return log
 
     def get_itr_snapshot(self, itr):
