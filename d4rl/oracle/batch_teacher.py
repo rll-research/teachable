@@ -15,6 +15,9 @@ class BatchTeacher:
         self.next_action, self.waypoints = self.get_action(env)
         return_dict = {}
         for k, v in self.teachers.items():
+            v.last_action = self.last_action
+            v.next_action = self.next_action
+            v.waypoints = self.waypoints
             return_dict[k] = v.step()
         return return_dict
 
@@ -40,6 +43,9 @@ class BatchTeacher:
         self.next_action, self.waypoints = self.get_action(env)
         return_dict = {}
         for k, v in self.teachers.items():
+            v.last_action = self.last_action
+            v.next_action = self.next_action
+            v.waypoints = self.waypoints
             return_dict[k] = v.reset()
         return return_dict
 
