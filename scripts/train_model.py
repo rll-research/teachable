@@ -73,7 +73,7 @@ def get_feedback_list(args):
     return feedback_list
 
 def make_env(args, feedback_list):
-    if args.env in ['point_mass', 'ant']:
+    if args.env in ['point_mass', 'ant', 'dummy']:
         args.no_instr = True
         args.discrete = False
     elif args.env in ['babyai']:
@@ -172,6 +172,7 @@ def run_experiment():
     sampler = DataCollector(collect_policy, envs, args, obs_preprocessor)
 
     exp_dir = os.getcwd() + '/logs/data/' + exp_name + "_" + str(args.seed)
+    args.exp_dir = exp_dir
     is_debug = args.prefix == 'DEBUG'
     configure_logger(args, exp_dir, start_itr, is_debug)
 
@@ -191,7 +192,6 @@ def run_experiment():
         env=deepcopy(env),
         start_itr=start_itr,
         buffer_name=buffer_path,
-        exp_name=exp_dir,
         curriculum_step=curriculum_step,
         obs_preprocessor=obs_preprocessor,
         log_dict=log_dict,

@@ -246,9 +246,9 @@ class SACAgent:
     def optimize_policy(self, batch, step):
         obs = batch.obs
         action = batch.action
-        reward = batch.reward
+        reward = batch.reward.unsqueeze(1)
         next_obs = batch.next_obs
-        not_done = 1 - batch.full_done
+        not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)  # TODO:!!
         obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 10
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)  # TODO:!!
@@ -264,30 +264,13 @@ class SACAgent:
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target, self.critic_tau)
 
-    def save(self, model_dir, step):
-        torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
-        )
-        torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
-        )
-        if self.decoder is not None:
-            torch.save(
-                self.decoder.state_dict(),
-                '%s/decoder_%s.pt' % (model_dir, step)
-            )
+    def save(self, model_dir):
+        torch.save(self.actor.state_dict(), f'{model_dir}_actor.pt')
+        torch.save(self.critic.state_dict(), f'{model_dir}_critic.pt')
 
     def load(self, model_dir, step):
-        self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
-        )
-        self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
-        )
-        if self.decoder is not None:
-            self.decoder.load_state_dict(
-                torch.load('%s/decoder_%s.pt' % (model_dir, step))
-            )
+        self.actor.load_state_dict(torch.load(f'{model_dir}_actor.pt'))
+        self.critic.load_state_dict(torch.load(f'{model_dir}_critic.pt'))
 
     def reset(self, *args, **kwargs):
         pass

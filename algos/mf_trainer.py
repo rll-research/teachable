@@ -32,7 +32,6 @@ class Trainer(object):
         env=None,
         start_itr=0,
         buffer_name="",
-        exp_name="",
         curriculum_step=0,
         eval_every=100,
         save_every=100,
@@ -53,7 +52,6 @@ class Trainer(object):
         self.env = copy.deepcopy(env)
         self.itr = start_itr
         self.buffer_name = buffer_name
-        self.exp_name = exp_name
         self.curriculum_step = curriculum_step
         self.eval_every = eval_every
         self.save_every = save_every
@@ -107,6 +105,10 @@ class Trainer(object):
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
         step = self.curriculum_step
+        if self.rl_policy is not None:
+            self.rl_policy.save(f"{self.args.exp_dir}/rl")
+        if self.il_policy is not None:
+            self.il_policy.save(f"{self.args.exp_dir}/il")
         logger.save_itr_params(self.itr, step, params)
 
     def log_rollouts(self):
@@ -295,7 +297,7 @@ class Trainer(object):
                 distill_time = 0
 
             """ ------------------- Logging Stuff --------------------------"""
-            logger.log(self.exp_name)
+            logger.log(self.args.exp_dir)
             self.update_logs(time_training, time_collection, distill_time, self.saving_time)
 
             """ ------------------- Stop or advance --------------------------"""
@@ -409,14 +411,10 @@ class Trainer(object):
         """
         Gets the current policy and env for storage
         """
-        return {}  # TODO: MAKE THIS BETTER!
         d = dict(itr=itr,
-                 policy=self.policy_dict,
                  env=self.env,
                  args=self.args,
-                 optimizer=self.algo.optimizer_dict,
                  curriculum_step=self.curriculum_step,
-                 il_optimizer=il_optimizer,
                  log_dict={
                      'num_feedback_advice': self.num_feedback_advice,
                      'num_feedback_reward': self.num_feedback_reward,

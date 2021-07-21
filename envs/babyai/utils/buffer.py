@@ -10,22 +10,22 @@ from envs.babyai.rl.utils.dictlist import merge_dictlists, DictList
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation
     batch_info = {
-        "obs": batch.obs[:-1],
-        "next_obs": batch.obs[1:],
-        "action": batch.action[:-1],
-        "full_done": batch.full_done.int()[:-1],
-        "success": batch.env_infos.success[:-1],
+        "obs": batch.obs,
+        "next_obs": batch.env_infos.next_obs,
+        "action": batch.action,
+        "full_done": batch.full_done.int(),
+        "success": batch.env_infos.success,
     }
     if 'action_probs' in batch:
-        batch_info['action_probs'] = batch.action_probs[:-1]
+        batch_info['action_probs'] = batch.action_probs
     if 'teacher_action' in batch.env_infos:
-        batch_info['teacher_action'] = batch.env_infos.teacher_action[:-1]
+        batch_info['teacher_action'] = batch.env_infos.teacher_action
     if 'followed_teacher' in batch.env_infos:
-        batch_info['followed_teacher'] = batch.env_infos.followed_teacher[:-1]
+        batch_info['followed_teacher'] = batch.env_infos.followed_teacher
     if 'advice_count' in batch:
-        batch_info['advice_count'] = batch.env_infos.advice_count[:-1]
+        batch_info['advice_count'] = batch.env_infos.advice_count
     if 'reward' in batch:
-        batch_info['reward'] = batch.reward[:-1]
+        batch_info['reward'] = batch.reward
 
     return DictList(batch_info)
 
