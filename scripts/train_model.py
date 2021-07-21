@@ -171,7 +171,7 @@ def run_experiment():
         new_env.reset()
     sampler = DataCollector(collect_policy, envs, args, obs_preprocessor)
 
-    exp_dir = os.getcwd() + '/data/' + exp_name + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/logs/data/' + exp_name + "_" + str(args.seed)
     is_debug = args.prefix == 'DEBUG'
     configure_logger(args, exp_dir, start_itr, is_debug)
 
