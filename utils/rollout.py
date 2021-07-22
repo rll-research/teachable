@@ -162,8 +162,7 @@ def check_followed_cc3(obs_list):
 def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
-            save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False,
-            temperature=1):
+            save_wandb=False, obs_preprocessor=None, teacher_name="", rollout_oracle=False):
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:

@@ -41,16 +41,12 @@ def load_experiment(args):
     return start_itr, curriculum_step, args, log_dict
 
 
-def load_model(path):
-    model, teacher = joblib.load(path)
-    return model, teacher
-
-
 def create_policy(path, teacher, env, args, obs_preprocessor):
-    if path is not None:
-        return load_model(path)
-    return SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env,
+    agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env,
                     init_temperature=args.entropy_coef)
+    if path is not None:
+        agent.load(path)
+    return agent
 
 
 def zero_thresholds(args):
@@ -162,6 +158,8 @@ def run_experiment():
         args.collect_teacher = args.distill_teacher
     elif args.collect_teacher is not None:
         collect_policy = create_policy(args.collect_policy, args.collect_teacher, env, args, obs_preprocessor)
+        if log_policy is None:
+            log_policy = collect_policy
     else:
         collect_policy = None
 

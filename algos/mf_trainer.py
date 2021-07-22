@@ -225,8 +225,8 @@ class Trainer(object):
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if self.should_train_rl:
-                sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
                 for _ in range(self.args.epochs):
+                    sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     summary_logs = self.rl_policy.optimize_policy(sampled_batch, itr)
             else:
                 summary_logs = None

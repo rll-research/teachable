@@ -271,7 +271,7 @@ class SACAgent:
         torch.save(self.actor.state_dict(), f'{model_dir}_actor.pt')
         torch.save(self.critic.state_dict(), f'{model_dir}_critic.pt')
 
-    def load(self, model_dir, step):
+    def load(self, model_dir):
         self.actor.load_state_dict(torch.load(f'{model_dir}_actor.pt'))
         self.critic.load_state_dict(torch.load(f'{model_dir}_critic.pt'))
 
