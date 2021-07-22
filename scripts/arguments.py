@@ -52,8 +52,8 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=2048,
                           help="batch size for distillation")
-        self.add_argument("--entropy-coef", type=float, default=0.0001,
-                          help="entropy term coefficient (default: 0.01; 'optimal' for non-distill .001)")
+        self.add_argument("--entropy-coef", type=float, default=0.1,
+                          help="entropy term coefficient")
 
         # Model parameters
         self.add_argument("--image-dim", type=int, default=128,

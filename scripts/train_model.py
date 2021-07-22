@@ -49,7 +49,8 @@ def load_model(path):
 def create_policy(path, teacher, env, args, obs_preprocessor):
     if path is not None:
         return load_model(path)
-    return SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
+    return SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env,
+                    init_temperature=args.entropy_coef)
 
 
 def zero_thresholds(args):
