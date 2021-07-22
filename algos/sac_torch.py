@@ -226,6 +226,9 @@ class SACAgent:
         logger.logkv('train_actor/loss', utils.to_np(actor_loss))
         logger.logkv('train_actor/target_entropy', self.target_entropy)
         logger.logkv('train_actor/entropy', utils.to_np(-log_prob.mean()))
+        logger.logkv('train_actor/Q', utils.to_np(actor_Q.mean()))
+        logger.logkv('train_actor/mean', utils.to_np(dist.loc.mean()))
+        logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
@@ -249,10 +252,10 @@ class SACAgent:
         reward = batch.reward.unsqueeze(1)
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done.unsqueeze(1)
-        obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)  # TODO:!!
-        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 10
-        next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)  # TODO:!!
-        next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 10
+        obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
+        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 3
+        next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
+        next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 3
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
