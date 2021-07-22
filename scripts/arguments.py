@@ -44,8 +44,6 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="beta1 for Adam (default: 0.9)")
         self.add_argument("--beta2", type=float, default=0.999,
                           help="beta2 for Adam (default: 0.999)")
-        self.add_argument("--recurrence", type=int, default=20,
-                          help="number of timesteps gradient is backpropagated (default: 20)")
         self.add_argument("--optim-eps", type=float, default=1e-5,
                           help="Adam and RMSprop optimizer epsilon (default: 1e-5)")
         self.add_argument("--optim-alpha", type=float, default=0.99,

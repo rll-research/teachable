@@ -9,7 +9,7 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, policy, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, parallel,
+                 value_loss_coef, max_grad_norm, preprocess_obss, reshape_reward, parallel,
                  rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False):
         """
         Initializes a `BaseAlgo` instance.
@@ -35,8 +35,6 @@ class BaseAlgo(ABC):
             the weight of the value loss in the final objective
         max_grad_norm : float
             gradient will be clipped to be at most this value
-        recurrence : int
-            the number of steps the gradient is propagated back in time
         preprocess_obss : function
             a function that takes observations returned by the environment
             and converts them into the format that the model can handle
@@ -60,7 +58,6 @@ class BaseAlgo(ABC):
         self.entropy_coef = entropy_coef
         self.value_loss_coef = value_loss_coef
         self.max_grad_norm = max_grad_norm
-        self.recurrence = recurrence
         self.preprocess_obss = preprocess_obss
         self.reshape_reward = reshape_reward
         self.rollouts_per_meta_task = rollouts_per_meta_task
@@ -72,8 +69,6 @@ class BaseAlgo(ABC):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_procs = len(envs)
         self.num_frames = self.num_frames_per_proc * self.num_procs
-
-        assert self.num_frames_per_proc % self.recurrence == 0
 
         # Initialize experience values
 
