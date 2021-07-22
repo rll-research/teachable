@@ -193,7 +193,7 @@ class SACAgent:
         }
         return action, agent_info
 
-    def update_critic(self, obs, action, reward, next_obs, not_done):
+    def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
         next_action = dist.rsample()
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
@@ -207,12 +207,22 @@ class SACAgent:
         current_Q1, current_Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
-        logger.logkv('train_critic/loss', utils.to_np(critic_loss))
 
-        # Optimize the critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+        if train:
+            logger.logkv('train_critic/loss', utils.to_np(critic_loss))
+
+            # Optimize the critic
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic_optimizer.step()
+        else:
+            logger.logkv('val/critic_loss', utils.to_np(critic_loss))
+            logger.logkv('val/Q_mean', utils.to_np(current_Q1.mean()))
+            logger.logkv('val/Q_std', utils.to_np(current_Q1.std()))
+            logger.logkv('val/entropy', utils.to_np(-log_prob.mean()))
+            logger.logkv('val/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
+            logger.logkv('val/mean_std', utils.to_np(dist.loc.std()))
+            logger.logkv('val/std', utils.to_np(dist.scale.mean()))
 
     def update_actor_and_alpha(self, obs):
         dist = self.actor(obs)
@@ -227,7 +237,7 @@ class SACAgent:
         logger.logkv('train_actor/target_entropy', self.target_entropy)
         logger.logkv('train_actor/entropy', utils.to_np(-log_prob.mean()))
         logger.logkv('train_actor/Q', utils.to_np(actor_Q.mean()))
-        logger.logkv('train_actor/mean', utils.to_np(dist.loc.mean()))
+        logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
         logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
 
         # optimize the actor
@@ -245,6 +255,21 @@ class SACAgent:
             logger.logkv('train_alpha/value', utils.to_np(self.alpha))
             alpha_loss.backward()
             self.log_alpha_optimizer.step()
+
+    def log_rl(self, val_batch):
+        self.train(False)
+        with torch.no_grad():
+            obs = val_batch.obs
+            action = val_batch.action
+            reward = val_batch.reward.unsqueeze(1)
+            next_obs = val_batch.next_obs
+            not_done = 1 - val_batch.full_done.unsqueeze(1)
+            obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
+            obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 3
+            next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
+            next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 3
+            self.update_critic(obs, action, reward, next_obs, not_done, train=False)
+
 
     def optimize_policy(self, batch, step):
         obs = batch.obs
