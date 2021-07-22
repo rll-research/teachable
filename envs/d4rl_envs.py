@@ -247,6 +247,7 @@ class D4RLEnv:
         info['gave_reward'] = gave_reward
         info['teacher_action'] = np.array(-1)
         info['episode_length'] = self._wrapped_env._elapsed_steps
+        info['next_obs'] = obs_dict
 
         if hasattr(self, 'teacher') and self.teacher is not None:
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
