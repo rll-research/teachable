@@ -1,5 +1,8 @@
+# Code found here: https://github.com/denisyarats/pytorch_sac
+
 import math
 from torch import distributions as pyd
+from torch import distributions
 
 import numpy as np
 import torch
@@ -60,34 +63,38 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
 class DiagGaussianActor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
 
-    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, log_std_bounds=(-5, 2)):
+    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, log_std_bounds=(-5, 2), discrete=False):
         super().__init__()
 
+        self.discrete = discrete
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(obs_dim, hidden_dim, 2 * action_dim,
+        if not discrete:
+            action_dim *= 2
+        self.trunk = utils.mlp(obs_dim, hidden_dim, action_dim,
                                hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
     def forward(self, obs):
-        try:
+        if self.discrete:
+            logits = self.trunk(obs)
+            dist = GumbelSoftmax(temperature=1e-3, logits=logits)
+        else:
             mu, log_std = self.trunk(obs).chunk(2, dim=-1)
-        except:
-            print("?")
 
-        # constrain log_std inside [log_std_min, log_std_max]
-        log_std = torch.tanh(log_std)
-        log_std_min, log_std_max = self.log_std_bounds
-        log_std = log_std_min + 0.5 * (log_std_max - log_std_min) * (log_std +
-                                                                     1)
+            # constrain log_std inside [log_std_min, log_std_max]
+            log_std = torch.tanh(log_std)
+            log_std_min, log_std_max = self.log_std_bounds
+            log_std = log_std_min + 0.5 * (log_std_max - log_std_min) * (log_std +
+                                                                         1)
 
-        std = log_std.exp()
+            std = log_std.exp()
 
-        self.outputs['mu'] = mu
-        self.outputs['std'] = std
+            self.outputs['mu'] = mu
+            self.outputs['std'] = std
 
-        dist = SquashedNormal(mu, std)
+            dist = SquashedNormal(mu, std)
         return dist
 
 
@@ -127,10 +134,13 @@ class SACAgent:
                  batch_size=1024, learnable_temperature=True):
         super().__init__()
         obs = env.reset()
-        obs_dim = len(obs['obs']) + len(obs[teacher])
-        action_dim = env.action_space.shape[0]
-        action_range = (env.action_space.low, env.action_space.high)
-        self.action_range = action_range
+        obs_dim = len(obs['obs'].flatten()) + len(obs[teacher])
+        if args.discrete:
+            action_dim = env.action_space.n
+        else:
+            action_dim = env.action_space.shape[0]
+            self.action_range = (env.action_space.low, env.action_space.high)
+        self.action_dim = action_dim
         self.args = args
         self.obs_preprocessor = obs_preprocessor
         self.teacher = teacher
@@ -148,7 +158,7 @@ class SACAgent:
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor = DiagGaussianActor(obs_dim, action_dim).to(self.device)
+        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete).to(self.device)
 
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
@@ -181,21 +191,26 @@ class SACAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 10
+        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device) / 10
         dist = self.actor(obs)
-        action = dist.sample() if sample else dist.mean
-        min_val, max_val = self.action_range
-        action = torch.maximum(action, torch.FloatTensor(min_val).unsqueeze(0).to(self.device))
-        action = torch.minimum(action, torch.FloatTensor(max_val).unsqueeze(0).to(self.device))
+        if self.args.discrete:
+            argmax_action = dist.probs.argmax(dim=1)
+            action = dist.sample() if sample else argmax_action
+        else:
+            action = dist.sample() if sample else dist.mean
+            min_val, max_val = self.action_range
+            action = torch.maximum(action, torch.FloatTensor(min_val).unsqueeze(0).to(self.device))
+            action = torch.minimum(action, torch.FloatTensor(max_val).unsqueeze(0).to(self.device))
+            argmax_action = dist.mean
         agent_info = {
-            'argmax_action': dist.mean,
+            'argmax_action': argmax_action,
             'dist': dist,
         }
         return action, agent_info
 
     def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
-        next_action = dist.rsample()
+        next_action = dist.rsample(one_hot=True)
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
         target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
         target_V = torch.min(target_Q1,
@@ -204,6 +219,8 @@ class SACAgent:
         target_Q = target_Q.detach()
 
         # get current Q estimates
+        if self.args.discrete:
+            action = F.one_hot(action[:, 0].long(), self.action_dim).float()
         current_Q1, current_Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
@@ -274,13 +291,15 @@ class SACAgent:
     def optimize_policy(self, batch, step):
         obs = batch.obs
         action = batch.action
+        if len(action.shape) == 1:
+            action = action.unsqueeze(1)
         reward = batch.reward.unsqueeze(1)
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-        obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 3
+        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device) / 3
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-        next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 3
+        next_obs = torch.cat([next_obs.obs.flatten(1), next_obs.advice], dim=1).to(self.device) / 3
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
@@ -385,3 +404,34 @@ class SACAgent:
             loss.backward()
             self.actor_optimizer.step()
         return log
+
+
+# https://medium.com/@kengz/soft-actor-critic-for-continuous-and-discrete-actions-eeff6f651954
+class GumbelSoftmax(distributions.RelaxedOneHotCategorical):
+    '''
+    A differentiable Categorical distribution using reparametrization trick with Gumbel-Softmax
+    Explanation http://amid.fish/assets/gumbel.html
+    NOTE: use this in place PyTorch's RelaxedOneHotCategorical distribution since its log_prob is not working right (returns positive values)
+    Papers:
+    [1] The Concrete Distribution: A Continuous Relaxation of Discrete Random Variables (Maddison et al, 2017)
+    [2] Categorical Reparametrization with Gumbel-Softmax (Jang et al, 2017)
+    '''
+
+    def sample(self, sample_shape=torch.Size(), one_hot=False):
+        '''Gumbel-softmax sampling. Note rsample is inherited from RelaxedOneHotCategorical'''
+        u = torch.empty(self.logits.size(), device=self.logits.device, dtype=self.logits.dtype).uniform_(0, 1)
+        noisy_logits = self.logits - torch.log(-torch.log(u))
+        argmax = torch.argmax(noisy_logits, dim=-1, keepdim=True)
+        if one_hot:
+            argmax = F.one_hot(argmax[:, 0].long(), self.logits.shape[-1]).float()
+        return argmax
+
+    def rsample(self, sample_shape=torch.Size(), one_hot=False):
+        return self.sample(sample_shape, one_hot)
+
+    def log_prob(self, value):
+        '''value is one-hot or relaxed'''
+        if value.shape != self.logits.shape:
+            value = F.one_hot(value[:, 0].long(), self.logits.shape[-1]).float()
+            assert value.shape == self.logits.shape
+        return - torch.sum(- value * F.log_softmax(self.logits, -1), -1)

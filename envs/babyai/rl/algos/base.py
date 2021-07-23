@@ -84,7 +84,7 @@ class BaseAlgo(ABC):
         except:  # continuous
             action_shape = envs[0].action_space.shape[0]
         if self.discrete:
-            self.actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
+            self.actions = torch.zeros(*shape, 1, device=self.device, dtype=torch.int)
             self.teacher_actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
             self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         else:
@@ -176,7 +176,7 @@ class BaseAlgo(ABC):
             self.mask = 1 - done_meta.to(torch.int32)
             self.actions[i] = action
             if self.discrete:
-                probs = agent_dict['probs']
+                probs = agent_dict['dist'].probs
                 self.action_probs[i] = probs
             else:
                 self.argmax_action[i] = agent_dict['argmax_action']

@@ -26,7 +26,7 @@ class Teacher:
         self.action_space = env.action_space
         self.botclass = botclass
         self.last_action = -1
-        self.next_action, self.next_subgoal = oracle.get_action(-1)
+        self.next_action, self.next_subgoal = None, None
         # This first one is going to be wrong
         self.next_state = env.gen_obs()['obs']
         self.feedback_type = feedback_type
@@ -68,12 +68,12 @@ class Teacher:
         drop_off = len(oracle.stack) > 0 and env.carrying and oracle.stack[-1].reason == 'DropOff' and \
                    (not last_action == env.actions.toggle)
         if drop_off or self.next_action == last_action:
-            replan_output = oracle.get_action(last_action)
+            replan_output = oracle.replan(last_action)
         else:
             new_oracle = self.botclass(env, rng=copy.deepcopy(oracle.rng), fully_observed=self.fully_observed)
             new_oracle.vis_mask = oracle.vis_mask.copy()
             new_oracle.step = oracle.step
-            replan_output = new_oracle.get_action(-1)
+            replan_output = new_oracle.replan(-1)
             oracle = new_oracle
         return oracle, replan_output
 
@@ -151,7 +151,7 @@ class Teacher:
 
     def reset(self, oracle):
         oracle = self.botclass(oracle.mission, rng=copy.deepcopy(oracle.rng), fully_observed=self.fully_observed)
-        self.next_action, self.next_subgoal = oracle.get_action()
+        oracle, (self.next_action, self.next_subgoal) = self.replan(oracle, -1)
         self.last_action = -1
         self.steps_since_lastfeedback = 0
         self.last_feedback = self.empty_feedback()

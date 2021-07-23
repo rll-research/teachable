@@ -213,11 +213,10 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             o = obs_preprocessor([o], agent.teacher, show_instrs=instrs)
             a, agent_info = agent.get_actions(o)
             stoch_a = a
+            det_a = agent_info['argmax_action']
             if discrete:
-                det_a = np.argmax(agent_info['probs'])
                 correct = int(a.item() == env.teacher_action.item())
             else:
-                det_a = agent_info['argmax_action']
                 correct = True
             if not stochastic:
                 a = det_a
