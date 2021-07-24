@@ -202,7 +202,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rew_norm', action='store_true')
         self.add_argument('--act_norm', action='store_true')
         self.add_argument('--loss_type', type=str, default='log_prob')
-        self.add_argument('--hidden_size', type=int, default=64)
+        self.add_argument('--hidden_size', type=int, default=1024)
         self.add_argument('--early_stop', type=int, default=float('inf'))
         self.add_argument('--early_stop_metric', type=str, default=None)
         self.add_argument('--show_pos', type=str, choices=['ours', 'default', 'none'], default='none')

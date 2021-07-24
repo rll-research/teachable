@@ -43,7 +43,8 @@ def load_experiment(args):
 
 def create_policy(path, teacher, env, args, obs_preprocessor):
     agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env,
-                    init_temperature=args.entropy_coef)
+                    init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
+                     control_penalty=args.control_penalty)
     if path is not None:
         agent.load(path)
     return agent

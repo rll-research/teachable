@@ -131,7 +131,7 @@ class SACAgent:
                  init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999), critic_tau=0.005, critic_target_update_frequency=2,
-                 batch_size=1024, learnable_temperature=True):
+                 batch_size=1024, learnable_temperature=True, control_penalty=0):
         super().__init__()
         obs = env.reset()
         obs_dim = len(obs['obs'].flatten()) + len(obs[teacher])
@@ -152,13 +152,15 @@ class SACAgent:
         self.critic_target_update_frequency = critic_target_update_frequency
         self.batch_size = batch_size
         self.learnable_temperature = learnable_temperature
+        self.control_penalty = control_penalty
 
-        self.critic = DoubleQCritic(obs_dim, action_dim).to(self.device)
-        self.critic_target = DoubleQCritic(obs_dim, action_dim).to(
+        self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
+        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete).to(self.device)
+        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
+            self.device)
 
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
@@ -210,7 +212,10 @@ class SACAgent:
 
     def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
-        next_action = dist.rsample(one_hot=True)
+        if self.args.discrete:
+            next_action = dist.rsample(one_hot=True)
+        else:
+            next_action = dist.rsample()
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
         target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
         target_V = torch.min(target_Q1,
@@ -248,7 +253,7 @@ class SACAgent:
         actor_Q1, actor_Q2 = self.critic(obs, action)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
-        actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
+        actor_loss = (self.alpha.detach() * log_prob - actor_Q + self.control_penalty * action.norm(2)).mean()
 
         logger.logkv('train_actor/loss', utils.to_np(actor_loss))
         logger.logkv('train_actor/target_entropy', self.target_entropy)
@@ -256,6 +261,7 @@ class SACAgent:
         logger.logkv('train_actor/Q', utils.to_np(actor_Q.mean()))
         logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
         logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
+        logger.logkv('train_actor/act_norm', utils.to_np(action.norm(2).mean()))
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
