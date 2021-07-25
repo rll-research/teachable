@@ -253,7 +253,7 @@ class SACAgent:
         actor_Q1, actor_Q2 = self.critic(obs, action)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
-        actor_loss = (self.alpha.detach() * log_prob - actor_Q + self.control_penalty * action.norm(2)).mean()
+        actor_loss = (self.alpha.detach() * log_prob - actor_Q + self.control_penalty * action.norm(2, dim=-1)).mean()
 
         logger.logkv('train_actor/loss', utils.to_np(actor_loss))
         logger.logkv('train_actor/target_entropy', self.target_entropy)
@@ -261,7 +261,7 @@ class SACAgent:
         logger.logkv('train_actor/Q', utils.to_np(actor_Q.mean()))
         logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
         logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
-        logger.logkv('train_actor/act_norm', utils.to_np(action.norm(2).mean()))
+        logger.logkv('train_actor/act_norm', utils.to_np(action.norm(2, dim=-1).mean()))
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
