@@ -193,7 +193,7 @@ class SACAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device) / 10
+        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device)
         dist = self.actor(obs)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
@@ -245,6 +245,8 @@ class SACAgent:
             logger.logkv('val/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
             logger.logkv('val/mean_std', utils.to_np(dist.loc.std()))
             logger.logkv('val/std', utils.to_np(dist.scale.mean()))
+            logger.logkv('val/obs_min', utils.to_np(obs.min()))
+            logger.logkv('val/obs_max', utils.to_np(obs.max()))
 
     def update_actor_and_alpha(self, obs):
         dist = self.actor(obs)
@@ -288,9 +290,9 @@ class SACAgent:
             next_obs = val_batch.next_obs
             not_done = 1 - val_batch.full_done.unsqueeze(1)
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-            obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device) / 3
+            obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device)
             next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-            next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device) / 3
+            next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device)
             self.update_critic(obs, action, reward, next_obs, not_done, train=False)
 
 
@@ -303,9 +305,9 @@ class SACAgent:
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device) / 3
+        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device)
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-        next_obs = torch.cat([next_obs.obs.flatten(1), next_obs.advice], dim=1).to(self.device) / 3
+        next_obs = torch.cat([next_obs.obs.flatten(1), next_obs.advice], dim=1).to(self.device)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
