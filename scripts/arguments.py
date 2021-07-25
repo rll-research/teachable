@@ -64,8 +64,6 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="don't use instructions in the model")
         self.add_argument("--instr-arch", default="gru",
                           help="arch to encode instructions, possible values: gru, bigru, conv, bow (default: gru)")
-        self.add_argument("--no-mem", action="store_true", default=False,
-                          help="don't use memory in the model")
         self.add_argument("--arch", default='bow_endpool_res',
                           help="image embedding architecture")
 
@@ -189,8 +187,6 @@ class ArgumentParser(argparse.ArgumentParser):
         # Arguments mostly used with finetuning
         self.add_argument('--no_distill', action='store_true')
         self.add_argument('--yes_distill', action='store_true')
-        self.add_argument('--no_rollouts', action='store_true')
-        self.add_argument('--yes_rollouts', action='store_true')
         self.add_argument('--leave_out_object', action='store_true')
 
         # Miscellaneous
