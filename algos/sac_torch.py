@@ -101,11 +101,12 @@ class DiagGaussianActor(nn.Module):
 class DoubleQCritic(nn.Module):
     """Critic network, employes double Q-learning."""
 
-    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2):
+    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, repeat_action=5):
         super().__init__()
+        self.repeat_action = repeat_action
 
-        self.Q1 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
-        self.Q2 = utils.mlp(obs_dim + action_dim, hidden_dim, 1, hidden_depth)
+        self.Q1 = utils.mlp(obs_dim + action_dim * repeat_action, hidden_dim, 1, hidden_depth)
+        self.Q2 = utils.mlp(obs_dim + action_dim * repeat_action, hidden_dim, 1, hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
@@ -113,7 +114,7 @@ class DoubleQCritic(nn.Module):
     def forward(self, obs, action):
         assert obs.size(0) == action.size(0)
 
-        obs_action = torch.cat([obs, action], dim=-1)
+        obs_action = torch.cat([obs] + [action] * self.repeat_action, dim=-1)
         q1 = self.Q1(obs_action)
         q2 = self.Q2(obs_action)
 
@@ -131,10 +132,10 @@ class SACAgent:
                  init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999), critic_tau=0.005, critic_target_update_frequency=2,
-                 batch_size=1024, learnable_temperature=True, control_penalty=0):
+                 batch_size=1024, learnable_temperature=True, control_penalty=0, repeat_advice=5):
         super().__init__()
         obs = env.reset()
-        obs_dim = len(obs['obs'].flatten()) + len(obs[teacher])
+        obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
         if args.discrete:
             action_dim = env.action_space.n
         else:
@@ -153,10 +154,10 @@ class SACAgent:
         self.batch_size = batch_size
         self.learnable_temperature = learnable_temperature
         self.control_penalty = control_penalty
+        self.repeat_advice = repeat_advice
 
         self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
-        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(
-            self.device)
+        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
@@ -193,7 +194,7 @@ class SACAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device)
+        obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
         dist = self.actor(obs)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
@@ -290,9 +291,9 @@ class SACAgent:
             next_obs = val_batch.next_obs
             not_done = 1 - val_batch.full_done.unsqueeze(1)
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-            obs = torch.cat([obs.obs, obs.advice], dim=1).to(self.device)
+            obs = torch.cat([obs.obs] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
             next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-            next_obs = torch.cat([next_obs.obs, next_obs.advice], dim=1).to(self.device)
+            next_obs = torch.cat([next_obs.obs] + [next_obs.advice] * self.repeat_advice, dim=1).to(self.device)
             self.update_critic(obs, action, reward, next_obs, not_done, train=False)
 
 
@@ -305,9 +306,9 @@ class SACAgent:
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-        obs = torch.cat([obs.obs.flatten(1), obs.advice], dim=1).to(self.device)
+        obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-        next_obs = torch.cat([next_obs.obs.flatten(1), next_obs.advice], dim=1).to(self.device)
+        next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(self.device)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 

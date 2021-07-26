@@ -130,6 +130,7 @@ class D4RLEnv:
         self.past_positions.append(self.get_pos())
         prev_pos = self.get_pos().copy()
         obs, rew, done, info = self._wrapped_env.step(action)
+        obs = self.scale_obs(obs)
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         # Distance to goal
         start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
@@ -273,10 +274,14 @@ class D4RLEnv:
     def set_task(self, *args, **kwargs):
         pass  # for compatibility with babyai, which does set tasks
 
+    def scale_obs(self, obs):
+        return obs
+
     def reset(self):
         self._wrapped_env = gym.envs.make(self.env_name, reset_target=self.reset_target, reset_start=self.reset_start,
                                           reward_type=self.reward_type)
         obs = self._wrapped_env.reset()
+        obs = self.scale_obs(obs)
         obs_dict = {'obs': obs}
         self.steps_since_recompute = 0
         self.waypoint_controller.set_maze(self.get_maze())
@@ -400,19 +405,21 @@ class AntEnv(D4RLEnv):
     
     def reset(self):
         obs_dict = super().reset()
-        pos = self.get_pos() / self.scale_factor
-        target = self.get_target() / self.scale_factor
-        #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
         return obs_dict
 
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
-        pos = self.get_pos() / self.scale_factor
-        target = self.get_target() / self.scale_factor
-        #obs_dict['obs'] = np.concatenate([obs_dict['obs']] + [target] * self.repeat_input + [pos] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 100 + .1
         return obs_dict, rew, done, info
+
+    def scale_obs(self, obs):
+        scale = 5
+        obs[22] /= scale
+        obs[24] /= scale
+        obs[26] /= scale
+        obs[28] /= scale
+        return obs
 
 class AntSACEnv(AntEnv):
     def step(self, action):
