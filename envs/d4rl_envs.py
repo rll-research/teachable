@@ -16,7 +16,7 @@ class D4RLEnv:
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None,
                  max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
-        self.max_grid_size = max_grid_size
+        self.max_grid_size = 0#max_grid_size
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
         self.args = args
@@ -37,7 +37,7 @@ class D4RLEnv:
             om = np.array([0, 0])
         self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=om)
         self.scale_factor = 5
-        self.repeat_input = 5
+        self.repeat_input = 1
         teachers = {}
         for ft in feedback_type:
             if ft == 'none': teachers[ft] = DummyAdvice()
@@ -94,7 +94,7 @@ class D4RLEnv:
         if False:#self.args.show_agent_in_grid:
             x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
             state[int(x), int(y)] = 2
-        max_grid[:h, :w] = state
+        # max_grid[:h, :w] = state
         # max_grid = self.max_grid
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs']# / self.scale_factor
@@ -113,7 +113,7 @@ class D4RLEnv:
             elif self.args.show_goal == 'none':
                 goal = np.array([0, 0])
             state_obs = np.concatenate([state_obs, goal])
-        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])  # TODO: /5 is a hacky way of trying to make the max grid less useful
+        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input)  # TODO: /5 is a hacky way of trying to make the max grid less useful
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)

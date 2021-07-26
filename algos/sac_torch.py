@@ -101,7 +101,7 @@ class DiagGaussianActor(nn.Module):
 class DoubleQCritic(nn.Module):
     """Critic network, employes double Q-learning."""
 
-    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, repeat_action=5):
+    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, repeat_action=1):
         super().__init__()
         self.repeat_action = repeat_action
 
@@ -132,7 +132,7 @@ class SACAgent:
                  init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999), critic_tau=0.005, critic_target_update_frequency=2,
-                 batch_size=1024, learnable_temperature=True, control_penalty=0, repeat_advice=5):
+                 batch_size=1024, learnable_temperature=True, control_penalty=0, repeat_advice=1):
         super().__init__()
         obs = env.reset()
         obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
