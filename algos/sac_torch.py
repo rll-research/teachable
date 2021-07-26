@@ -133,7 +133,7 @@ class DiagGaussianActor(nn.Module):
     def forward(self, obs):
         if self.discrete:
             logits = self.trunk(obs)
-            dist = GumbelSoftmax(temperature=1e-3, logits=logits)
+            dist = GumbelSoftmax(temperature=1, logits=logits)
         else:
             mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
