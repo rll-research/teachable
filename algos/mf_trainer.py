@@ -307,7 +307,7 @@ class Trainer(object):
             should_terminate = self.stop_or_advance(advance_curriculum)
             if should_terminate:
                 break
-
+        self.log_rollouts()
         logger.log("Training finished")
 
     def stop_or_advance(self, advance_curriculum):

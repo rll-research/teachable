@@ -1,5 +1,6 @@
 # Code found here: https://github.com/denisyarats/pytorch_sac
 
+import copy
 import math
 from torch import distributions as pyd
 from torch import distributions
@@ -424,6 +425,7 @@ class SACAgent:
             next_obs = val_batch.next_obs
             not_done = 1 - val_batch.full_done.unsqueeze(1)
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
+            next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
             if self.image_encoder is not None:
                 obs = self.image_encoder(obs)
                 next_obs = self.image_encoder(next_obs)
@@ -431,7 +433,6 @@ class SACAgent:
                 obs = self.instr_encoder(obs)
                 next_obs = self.instr_encoder(next_obs)
             obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
-            next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
             next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(
                 self.device)
             self.update_critic(obs, action, reward, next_obs, not_done, train=False)
@@ -445,6 +446,8 @@ class SACAgent:
         next_obs = batch.next_obs
         not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
+        preprocessed_obs = copy.deepcopy(obs)
+        next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
         if self.image_encoder is not None:
             obs = self.image_encoder(obs)
             next_obs = self.image_encoder(next_obs)
@@ -452,7 +455,6 @@ class SACAgent:
             obs = self.instr_encoder(obs)
             next_obs = self.instr_encoder(next_obs)
         obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
-        next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
         next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(self.device)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
@@ -460,6 +462,11 @@ class SACAgent:
         self.update_critic(obs, action, reward, next_obs, not_done)
 
         if step % self.actor_update_frequency == 0:
+            if self.image_encoder is not None:
+                obs = self.image_encoder(preprocessed_obs)
+            if self.instr_encoder is not None:
+                obs = self.instr_encoder(obs)
+            obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
             self.update_actor_and_alpha(obs)
 
         if step % self.critic_target_update_frequency == 0:
