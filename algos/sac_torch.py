@@ -243,15 +243,19 @@ class SACAgent:
             logger.logkv('val/Q_mean', utils.to_np(current_Q1.mean()))
             logger.logkv('val/Q_std', utils.to_np(current_Q1.std()))
             logger.logkv('val/entropy', utils.to_np(-log_prob.mean()))
-            logger.logkv('val/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
-            logger.logkv('val/mean_std', utils.to_np(dist.loc.std()))
-            logger.logkv('val/std', utils.to_np(dist.scale.mean()))
+            if not self.args.discrete:
+                logger.logkv('val/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
+                logger.logkv('val/mean_std', utils.to_np(dist.loc.std()))
+                logger.logkv('val/std', utils.to_np(dist.scale.mean()))
             logger.logkv('val/obs_min', utils.to_np(obs.min()))
             logger.logkv('val/obs_max', utils.to_np(obs.max()))
 
     def update_actor_and_alpha(self, obs):
         dist = self.actor(obs)
-        action = dist.rsample()
+        if self.args.discrete:
+            action = dist.rsample(one_hot=True)
+        else:
+            action = dist.rsample()
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
         actor_Q1, actor_Q2 = self.critic(obs, action)
 
@@ -262,8 +266,9 @@ class SACAgent:
         logger.logkv('train_actor/target_entropy', self.target_entropy)
         logger.logkv('train_actor/entropy', utils.to_np(-log_prob.mean()))
         logger.logkv('train_actor/Q', utils.to_np(actor_Q.mean()))
-        logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
-        logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
+        if not self.args.discrete:
+            logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
+            logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
         logger.logkv('train_actor/act_norm', utils.to_np(action.norm(2, dim=-1).mean()))
 
         # optimize the actor
@@ -287,13 +292,16 @@ class SACAgent:
         with torch.no_grad():
             obs = val_batch.obs
             action = val_batch.action
+            if self.args.discrete:
+                action = F.one_hot(action.long(), self.action_dim).float()
             reward = val_batch.reward.unsqueeze(1)
             next_obs = val_batch.next_obs
             not_done = 1 - val_batch.full_done.unsqueeze(1)
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-            obs = torch.cat([obs.obs] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
+            obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
             next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
-            next_obs = torch.cat([next_obs.obs] + [next_obs.advice] * self.repeat_advice, dim=1).to(self.device)
+            next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(
+                self.device)
             self.update_critic(obs, action, reward, next_obs, not_done, train=False)
 
 
