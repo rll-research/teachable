@@ -41,7 +41,7 @@ class Level_TeachableRobot(RoomGridLevel):
     def __init__(self, start_loc='all',
                  include_holdout_obj=True, num_meta_tasks=2,
                  persist_agent=True, persist_goal=True, persist_objs=True,
-                 feedback_type=None, feedback_always=False, feedback_freq=False, intermediate_reward=False,
+                 feedback_type=None, feedback_always=False, feedback_freq=False,
                  cartesian_steps=[1], fully_observed=False, padding=False, args=None, static_env=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
@@ -56,7 +56,6 @@ class Level_TeachableRobot(RoomGridLevel):
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
         self.static_env = static_env
-        self.intermediate_reward = intermediate_reward
         self.include_holdout_obj = include_holdout_obj
         self.persist_agent = persist_agent
         self.persist_goal = persist_goal
@@ -67,6 +66,7 @@ class Level_TeachableRobot(RoomGridLevel):
         self.feedback_type = feedback_type
         self.fully_observed = fully_observed
         self.padding = padding
+        self.args = args
         super().__init__(**kwargs)
         if feedback_type is not None:
             rng = np.random.RandomState()
@@ -583,13 +583,21 @@ class Level_TeachableRobot(RoomGridLevel):
         obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action)
         info['next_obs'] = obs
         # Reward at the end scaled by 1000
-        reward_total = rew * 1000
-        if self.intermediate_reward:
+        if self.args.reward_type == 'dense':
             provided_reward = True
-            reward_total += int(give_reward) * 100
-        else:
+            rew += int(give_reward) * .1
+        elif self.args.reward_type == 'dense_pos_neg':
+            provided_reward = True
+            rew += .1 if give_reward else -.1
+        elif self.args.reward_type == 'dense_success':
+            provided_reward = True
+            rew += int(give_reward) * .1
+            if done:
+                rew += 2
+        elif self.args.reward_type == 'sparse':
             provided_reward = done
-        rew = reward_total / 1000
+        else:
+            raise NotImplementedError(f"unrecognized reward type {self.args.reward_type}")
         info['gave_reward'] = int(provided_reward)
         self.done = done
         return obs, rew, done, info

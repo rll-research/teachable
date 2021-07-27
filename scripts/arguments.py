@@ -144,7 +144,8 @@ class ArgumentParser(argparse.ArgumentParser):
                                                               'vector_dir', 'vector_dir2', 'vector_dir_final',
                                                               'vector_dir_waypoint', 'vector_dir_both',
                                                               'vector_dir_waypoint_negative', 'waypoint',
-                                                              'vector_next_waypoint', 'wall_penalty'],
+                                                              'vector_next_waypoint', 'wall_penalty', 'dense_pos_neg',
+                                                              'dense_success'],
                           default='oracle_dist')
         self.add_argument('--ceil_reward', action='store_true')
         self.add_argument('--reward_when_necessary', action='store_true')

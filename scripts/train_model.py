@@ -42,7 +42,7 @@ def load_experiment(args):
 
 
 def create_policy(path, teacher, env, args, obs_preprocessor):
-    agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env,
+    agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
                     init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
                      control_penalty=args.control_penalty)
     if path is not None:
@@ -96,7 +96,6 @@ def make_env(args, feedback_list):
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
         "num_meta_tasks": args.rollouts_per_meta_task,
-        "intermediate_reward": args.reward_type == 'dense',
         "reward_type": args.reward_type,
         "fully_observed": args.fully_observed,
         "padding": args.padding,
