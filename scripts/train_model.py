@@ -78,6 +78,10 @@ def make_env(args, feedback_list):
     elif args.env in ['babyai']:
         args.discrete = True
         args.image_obs = True
+    elif args.env in ['dummy_discrete']:
+        args.discrete = True
+        args.image_obs = False
+        args.no_instr = True
     else:
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = args.discrete

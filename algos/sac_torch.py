@@ -338,8 +338,8 @@ class SACAgent:
     def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
         if self.args.discrete:
-            next_action_soft, next_action = dist.rsample(one_hot=True) # should require grad
-            log_prob = dist.log_prob(next_action_soft).sum(-1, keepdim=True)
+            next_action, _ = dist.rsample(one_hot=True)
+            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
         else:
             next_action = dist.rsample()
             log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
@@ -378,8 +378,8 @@ class SACAgent:
     def update_actor_and_alpha(self, obs):
         dist = self.actor(obs)
         if self.args.discrete:
-            action_soft, action = dist.rsample(one_hot=True)
-            log_prob = dist.log_prob(action_soft).sum(-1, keepdim=True)
+            action, _ = dist.rsample(one_hot=True)
+            log_prob = dist.log_prob(action).sum(-1, keepdim=True)
         else:
             action = dist.rsample()
             log_prob = dist.log_prob(action).sum(-1, keepdim=True)
@@ -417,9 +417,7 @@ class SACAgent:
         self.train(False)
         with torch.no_grad():
             obs = val_batch.obs
-            action = val_batch.action
-            if self.args.discrete:
-                action = F.one_hot(action.long(), self.action_dim).float()
+            action = val_batch.action.unsqueeze(1)
             reward = val_batch.reward.unsqueeze(1)
             next_obs = val_batch.next_obs
             not_done = 1 - val_batch.full_done.unsqueeze(1)

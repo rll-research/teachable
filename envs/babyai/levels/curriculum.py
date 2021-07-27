@@ -1,7 +1,7 @@
 from envs.babyai.levels.iclr19_levels import *
 from utils.serializable import Serializable
 from envs.d4rl_envs import PointMassEnv, AntEnv
-from envs.dummy_d4rl import PointMassEnvSimple
+from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 import copy
 NULL_SEED = 1000
 
@@ -22,6 +22,8 @@ class Curriculum(Serializable):
         self.reward_type = reward_type
         self.reward_env_name = reward_env_name
         if env == 'dummy':
+            self.levels_list = {0: NULL_SEED}
+        if env == 'dummy_discrete':
             self.levels_list = {0: NULL_SEED}
         if env == 'point_mass':
             self.levels_list = {k: NULL_SEED for k in range(15)}
@@ -67,6 +69,8 @@ class Curriculum(Serializable):
         seed = self.levels_list[index]
         if self.env == 'dummy':
             level = PointMassEnvSimple(**kwargs)
+        elif self.env == 'dummy_discrete':
+            level = DummyDiscrete(**kwargs)
         elif self.env == 'point_mass':
             if index == 0:
                 level = PointMassEnv(f'maze2d-open{reward_env_name}-v0', reward_type=reward_type, **kwargs)  # 0
