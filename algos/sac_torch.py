@@ -338,7 +338,7 @@ class SACAgent:
     def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
         if self.args.discrete:
-            next_action, _ = dist.rsample(one_hot=True)
+            next_action, next_action_hard = dist.rsample(one_hot=True)
             log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
         else:
             next_action = dist.rsample()
@@ -368,7 +368,13 @@ class SACAgent:
             logger.logkv('val/Q_mean', utils.to_np(current_Q1.mean()))
             logger.logkv('val/Q_std', utils.to_np(current_Q1.std()))
             logger.logkv('val/entropy', utils.to_np(-log_prob.mean()))
-            if not self.args.discrete:
+            if self.args.discrete:
+                action = torch.argmax(next_action_hard, dim=1)
+                act_dim = next_action_hard.shape[-1]
+                for i in range(act_dim):
+                    prop_i = (action == i).float().mean()
+                    logger.logkv(f'val/sampled_{i}', utils.to_np(prop_i))
+            else:
                 logger.logkv('val/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
                 logger.logkv('val/mean_std', utils.to_np(dist.loc.std()))
                 logger.logkv('val/std', utils.to_np(dist.scale.mean()))

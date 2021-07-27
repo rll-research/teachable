@@ -224,7 +224,7 @@ class Trainer(object):
 
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
-            if self.should_train_rl and itr > 20:
+            if self.should_train_rl and itr > self.args.min_itr_steps:
                 for _ in range(self.args.epochs):
                     sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     summary_logs = self.rl_policy.optimize_policy(sampled_batch, itr)
@@ -332,7 +332,7 @@ class Trainer(object):
         if self.args.end_on_full_buffer:
             advance_curriculum = self.buffer.counts_train[self.curriculum_step] == self.buffer.train_buffer_capacity
 
-        advance_curriculum = advance_curriculum and not self.args.single_level and self.itrs_on_level > self.args.min_itr_steps
+        advance_curriculum = advance_curriculum and not self.args.single_level
         if advance_curriculum:
             self.advancement_count += 1
         else:
