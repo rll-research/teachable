@@ -179,7 +179,7 @@ def run_experiment():
     configure_logger(args, exp_dir, start_itr, is_debug)
 
     buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
-    num_rollouts = 1 #if is_debug else 10
+    num_rollouts = 1 if is_debug else 10
     log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),
