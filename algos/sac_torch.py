@@ -314,13 +314,10 @@ class SACAgent:
         return self.log_alpha.exp()
 
     def act(self, obs, sample=False):
-        obs0 = obs
         if self.image_encoder is not None:
             obs = self.image_encoder(obs)
-            obs1 = obs
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
-            obs2 = obs
         obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
         dist = self.actor(obs)
         if self.args.discrete:
@@ -341,10 +338,11 @@ class SACAgent:
     def update_critic(self, obs, action, reward, next_obs, not_done, train=True):
         dist = self.actor(next_obs)
         if self.args.discrete:
-            next_action = dist.rsample(one_hot=True)
+            next_action_soft, next_action = dist.rsample(one_hot=True) # should require grad
+            log_prob = dist.log_prob(next_action_soft).sum(-1, keepdim=True)
         else:
             next_action = dist.rsample()
-        log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
+            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
         target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
         target_V = torch.min(target_Q1,
                              target_Q2) - self.alpha.detach() * log_prob
@@ -380,10 +378,11 @@ class SACAgent:
     def update_actor_and_alpha(self, obs):
         dist = self.actor(obs)
         if self.args.discrete:
-            action = dist.rsample(one_hot=True)
+            action_soft, action = dist.rsample(one_hot=True)
+            log_prob = dist.log_prob(action_soft).sum(-1, keepdim=True)
         else:
             action = dist.rsample()
-        log_prob = dist.log_prob(action).sum(-1, keepdim=True)
+            log_prob = dist.log_prob(action).sum(-1, keepdim=True)
         actor_Q1, actor_Q2 = self.critic(obs, action)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
@@ -463,10 +462,10 @@ class SACAgent:
 
         if step % self.actor_update_frequency == 0:
             if self.image_encoder is not None:
-                obs = self.image_encoder(preprocessed_obs)
+                preprocessed_obs = self.image_encoder(preprocessed_obs)
             if self.instr_encoder is not None:
-                obs = self.instr_encoder(obs)
-            obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
+                preprocessed_obs = self.instr_encoder(preprocessed_obs)
+            obs = torch.cat([preprocessed_obs.obs.flatten(1)] + [preprocessed_obs.advice] * self.repeat_advice, dim=1).to(self.device)
             self.update_actor_and_alpha(obs)
 
         if step % self.critic_target_update_frequency == 0:
@@ -588,7 +587,11 @@ class GumbelSoftmax(distributions.RelaxedOneHotCategorical):
         return argmax
 
     def rsample(self, sample_shape=torch.Size(), one_hot=False):
-        return self.sample(sample_shape, one_hot)
+        soft_sample = super().rsample(sample_shape)
+        hard_sample = torch.argmax(soft_sample, dim=-1, keepdim=True)
+        if one_hot:
+            hard_sample = F.one_hot(hard_sample[:, 0].long(), self.logits.shape[-1]).float()
+        return soft_sample, hard_sample
 
     def log_prob(self, value):
         '''value is one-hot or relaxed'''
