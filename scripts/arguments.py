@@ -163,7 +163,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Distillations
         self.add_argument('--distillation_steps', type=int, default=15)
-        self.add_argument('--buffer_capacity', type=int, default=500)
+        self.add_argument('--buffer_capacity', type=int, default=1000000)
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
@@ -211,6 +211,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--save_untrained', action='store_true')
         self.add_argument('--reload_exp_path', type=str, default=None)
         self.add_argument('--continue_train', action='store_true')
+        self.add_argument('--num_rollouts', type=int, default=10)
+        self.add_argument('--eval_envs', nargs='+', type=int, default=None)
+        self.add_argument('--hide_instrs', action='store_true')
 
     def parse_args(self, arg=None):
         """

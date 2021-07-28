@@ -4,6 +4,7 @@ from scripts.arguments import ArgumentParser
 from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
 from scripts.test_generalization import make_log_fn
 from algos.data_collector import DataCollector
+from utils.rollout import rollout
 
 import shutil
 from logger import logger
@@ -124,6 +125,46 @@ def configure_logger(args, exp_dir, start_itr, is_debug):
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed))
 
 
+def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
+    save_dir = pathlib.Path(exp_dir)
+    with open(save_dir.joinpath('results.csv'), 'w') as f:
+        f.write('policy_env,policy,env,success_rate,stoch_accuracy,det_accuracy,reward\n')
+    if not save_dir.exists():
+        save_dir.mkdir()
+    for env_index in args.eval_envs:
+        print(f"Rolling out with env {env_index}")
+        env.set_level_distribution(env_index)
+        env.seed(args.seed)
+        env.reset()
+        policy.train(False)
+        video_name = f'vids_env_{env_index}'
+        paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
+                                                                        instrs=not args.hide_instrs,
+                                                                        reset_every=1,
+                                                                        stochastic=True,
+                                                                        record_teacher=True,
+                                                                        video_directory=save_dir,
+                                                                        video_name=video_name,
+                                                                        num_rollouts=args.num_rollouts,
+                                                                        save_wandb=False,
+                                                                        save_locally=True,
+                                                                        num_save=args.num_rollouts,
+                                                                        obs_preprocessor=obs_preprocessor,
+                                                                        rollout_oracle=False)
+        success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
+        try:
+            success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
+        except:
+            print("doesn't have timestep_success")
+
+        print(
+            f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}, reward: {reward}")
+        with open(save_dir.joinpath('results.csv'), 'a') as f:
+            f.write(
+                f'{args.prefix}-{env_index},{args.prefix},{env_index},{success_rate},{stoch_accuracy},{det_accuracy},{reward} \n')
+    temp = 3
+
+
 def run_experiment():
     parser = ArgumentParser()
     args = parser.parse_args()
@@ -169,6 +210,15 @@ def run_experiment():
     else:
         collect_policy = None
 
+    exp_dir = os.getcwd() + '/logs/data/' + exp_name + "_" + str(args.seed)
+    args.exp_dir = exp_dir
+    is_debug = args.prefix == 'DEBUG'
+    configure_logger(args, exp_dir, start_itr, is_debug)
+
+    if args.eval_envs is not None:
+        eval_policy(log_policy, env, args, exp_dir, obs_preprocessor)
+        return
+
     envs = [env.copy() for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
         new_env.seed(i)
@@ -176,13 +226,8 @@ def run_experiment():
         new_env.reset()
     sampler = DataCollector(collect_policy, envs, args, obs_preprocessor)
 
-    exp_dir = os.getcwd() + '/logs/data/' + exp_name + "_" + str(args.seed)
-    args.exp_dir = exp_dir
-    is_debug = args.prefix == 'DEBUG'
-    configure_logger(args, exp_dir, start_itr, is_debug)
-
     buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
-    num_rollouts = 1 if is_debug else 10
+    num_rollouts = 1 if is_debug else args.num_rollouts
     log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),
