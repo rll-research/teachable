@@ -185,7 +185,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
-    correct, stoch_correct, det_correct, count, total_reward = 0, 0, 0, 0, 0
+    correct, stoch_correct, det_correct, count, total_reward, success = 0, 0, 0, 0, 0, 0
     num_feedback = 0
     num_steps = 0
     for i in range(num_rollouts):
@@ -260,6 +260,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
             # End trajectory on 'done'
             if d:
+                if env_info['success']:
+                    success += 1
                 # print("timestep success", env_info['timestep_success'])
                 print("Done on timestep", path_length, env_info['success'])
                 break
@@ -290,5 +292,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
-    print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
+    # print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
+    print(f"Finished rollouts, acc = {stoch_correct / count}, success = {success / num_rollouts}",)
     return paths, correct / count, stoch_correct / count, det_correct / count, total_reward / count
