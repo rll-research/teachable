@@ -545,7 +545,7 @@ class SACAgent:
         obss, action_true, action_teacher = self.preprocess_distill(batch, source)
         # Dropout instructions with probability instr_dropout_prob,
         # unless we have no teachers present in which case we keep the instr.
-        instr_dropout_prob = 0 if self.teacher == 'none' else self.args.instr_dropout_prob
+        instr_dropout_prob = 0 if self.teacher == 'none' else self.args.distill_dropout_prob
         obss = self.obs_preprocessor(obss, self.teacher, show_instrs=np.random.uniform() > instr_dropout_prob)
 
         ### RUN MODEL, COMPUTE LOSS ###
@@ -553,6 +553,8 @@ class SACAgent:
         dist = info['dist']
         if len(action_true.shape) == 3:  # Has an extra dimension
             action_true = action_true.squeeze(1)
+        if len(action_true.shape) == 1: # not enough idmensions
+            action_true = action_true.unsqueeze(1)
         policy_loss = -dist.log_prob(action_true).mean()
         # entropy = dist.entropy().mean()
         entropy = 0

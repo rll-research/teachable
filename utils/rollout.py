@@ -165,6 +165,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             save_wandb=False, obs_preprocessor=None, teacher_name="", rollout_oracle=False):
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
+    save_locally = False
+    num_save = 0
     if num_save is None:
         num_save = num_rollouts
 
@@ -184,7 +186,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
     correct, stoch_correct, det_correct, count, total_reward = 0, 0, 0, 0, 0
-    full_obs_list = []
     num_feedback = 0
     num_steps = 0
     for i in range(num_rollouts):
@@ -208,7 +209,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                     num_feedback += 1
             num_steps += 1
             past_o = o
-            full_obs_list.append(copy.deepcopy(o))
             # Choose action
             o = obs_preprocessor([o], agent.teacher, show_instrs=instrs)
             a, agent_info = agent.get_actions(o)
@@ -231,7 +231,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
 
             # Store data for logging
             success = env_info['success']
-            teacher_actions.append(env_info['teacher_action'])
+            #teacher_actions.append(env_info['teacher_action'])
             if discrete:
                 if env_info['teacher_action'] == a:
                     correct += 1
@@ -241,7 +241,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                     det_correct += 1
             count += 1
             total_reward += r
-            agent_actions.append(a)
+            #agent_actions.append(a)
             observations.append(o)
             rewards.append(r)
             actions.append(a)
@@ -277,10 +277,10 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 failure_videos += curr_images + [sample_img + 255] * 3
 
         paths.append(dict(
-            observations=observations,
+           #observations=observations,
             actions=actions,
             rewards=rewards,
-            agent_infos=agent_infos,
+            #agent_infos=agent_infos,
             env_infos=env_infos
         ))
 
