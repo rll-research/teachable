@@ -568,7 +568,7 @@ class Level_TeachableRobot(RoomGridLevel):
             # Even if we use multiple teachers, presumably they all relate to one underlying path.
             # We can log what action is the next one on this path (currently in teacher.next_action).
             first_teacher = list(self.teacher.teachers.values())[0]
-            info['teacher_action'] = np.array(first_teacher.next_action, dtype=np.int32)
+            info['teacher_action'] = np.array([first_teacher.next_action], dtype=np.int32)
             if hasattr(first_teacher, 'num_steps'):
                 info['num_steps'] = first_teacher.num_steps
             original_oracle = pkl.loads(pkl.dumps(self.oracle))
