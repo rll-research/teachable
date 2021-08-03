@@ -233,11 +233,11 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             success = env_info['success']
             #teacher_actions.append(env_info['teacher_action'])
             if discrete:
-                if env_info['teacher_action'] == a:
+                if env_info['teacher_action'].item() == a.item():
                     correct += 1
-                if env_info['teacher_action'] == stoch_a:
+                if env_info['teacher_action'].item() == stoch_a.item():
                     stoch_correct += 1
-                if env_info['teacher_action'] == det_a:
+                if env_info['teacher_action'].item() == det_a.item():
                     det_correct += 1
             count += 1
             total_reward += r
