@@ -231,7 +231,7 @@ def run_experiment():
     log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),
-                         log_every=10)
+                         log_every=args.log_interval)
 
     trainer = Trainer(
         args=args,
