@@ -10,7 +10,8 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, policy, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, preprocess_obss, reshape_reward, parallel,
-                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False,
+                 on_policy=False):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -63,6 +64,7 @@ class BaseAlgo(ABC):
         self.rollouts_per_meta_task = rollouts_per_meta_task
         self.instr_dropout_prob = instr_dropout_prob
         self.reset_each_batch = reset_each_batch
+        self.on_policy = on_policy
 
         # Store helpers values
 
@@ -92,6 +94,9 @@ class BaseAlgo(ABC):
             self.teacher_actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
             self.argmax_action = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         self.rewards = torch.zeros(*shape, device=self.device)
+        if on_policy:
+            self.values = torch.zeros(*shape, device=self.device)
+            self.log_probs = torch.zeros(*shape, device=self.device)
         self.dones = torch.zeros(*shape, device=self.device)
         self.done_index = torch.zeros(self.num_procs, device=self.device)
         self.env_infos = [None] * len(self.dones)
@@ -180,6 +185,9 @@ class BaseAlgo(ABC):
                 self.action_probs[i] = probs
             else:
                 self.argmax_action[i] = agent_dict['argmax_action']
+            if self.on_policy:
+                self.values[i] = agent_dict['value']
+                self.log_probs[i] = agent_dict['dist'].log_prob(action)
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
                     self.reshape_reward(obs_, action_, reward_, done_)
@@ -240,6 +248,7 @@ class BaseAlgo(ABC):
         exps.action = self.actions.transpose(0, 1).reshape(-1)
         if self.discrete:
             exps.action_probs = self.action_probs.transpose(0, 1)
+            exps.action_probs = self.action_probs.transpose(0, 1)
             exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
             exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
         else:
@@ -256,6 +265,29 @@ class BaseAlgo(ABC):
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1
         exps.full_done = full_done.reshape(-1)
+
+        if self.on_policy:
+            self.advantages = torch.zeros(self.num_frames_per_proc, self.num_procs, device=self.device)
+            # Add advantage and return to experiences
+
+            preprocessed_obs = self.preprocess_obss(self.obs, policy.teacher,
+                                                     show_instrs=np.random.uniform() > self.instr_dropout_prob)
+            with torch.no_grad():
+                action, agent_dict = policy.act(preprocessed_obs, sample=True)
+                next_value = agent_dict['value']
+
+            for i in reversed(range(self.num_frames_per_proc)):
+                next_mask = self.masks[i + 1] if i < self.num_frames_per_proc - 1 else self.mask
+                next_value = self.values[i + 1] if i < self.num_frames_per_proc - 1 else next_value
+                next_advantage = self.advantages[i + 1] if i < self.num_frames_per_proc - 1 else 0
+
+                delta = self.rewards[i] + self.discount * next_value * next_mask - self.values[i]
+                self.advantages[i] = delta + self.discount * self.gae_lambda * next_advantage * next_mask
+
+            exps.value = self.values.transpose(0, 1).reshape(-1)
+            exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
+            exps.returnn = exps.value + exps.advantage
+            exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
 
         # Log some values
 

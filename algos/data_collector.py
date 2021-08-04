@@ -10,7 +10,8 @@ class DataCollector(BaseAlgo):
         super().__init__(envs, collect_policy, args.frames_per_proc, args.discount, args.lr, args.gae_lambda, args.entropy_coef,
                          args.value_loss_coef, args.max_grad_norm, obs_preprocessor, None,
                          not args.sequential, args.rollouts_per_meta_task, instr_dropout_prob=args.collect_dropout_prob,
-                         repeated_seed=repeated_seed, reset_each_batch=args.reset_each_batch)
+                         repeated_seed=repeated_seed, reset_each_batch=args.reset_each_batch,
+                         on_policy=args.algo == 'ppo')
 
     def update_parameters(self):
         raise NotImplementedError

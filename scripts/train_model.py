@@ -1,3 +1,4 @@
+from algos.ppo_torch import PPOAgent
 from algos.sac_torch import SACAgent
 from algos.mf_trainer import Trainer
 from scripts.arguments import ArgumentParser
@@ -43,9 +44,15 @@ def load_experiment(args):
 
 
 def create_policy(path, teacher, env, args, obs_preprocessor):
-    agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                    init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
-                     control_penalty=args.control_penalty)
+    if args.algo == 'sac':
+        agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
+                         init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
+                         control_penalty=args.control_penalty)
+    elif args.algo == 'ppo':
+        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
+                         actor_lr=args.lr, critic_lr=args.lr, control_penalty=args.control_penalty)
+    else:
+        raise NotImplementedError(args.algo)
     if path is not None:
         agent.load(path)
     return agent
