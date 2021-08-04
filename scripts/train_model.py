@@ -247,6 +247,7 @@ def run_experiment():
         log_dict=log_dict,
         log_fn=log_fn,
         feedback_list=feedback_list,
+        log_every=args.log_interval,
     )
     trainer.train()
 
