@@ -143,22 +143,6 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
     return background
 
 
-def check_followed_cc3(obs_list):
-    if not 'CartesianCorrections' in obs_list[0]:
-        return 0
-    gave_cc3 = 0
-    followed_cc3 = 0
-    for i in range(len(obs_list) - 3):
-        obs = obs_list[i]
-        if obs['gave_CartesianCorrections']:
-            gave_cc3 += 1
-            if np.array_equal(obs_list[i + 3]['obs'], obs_list[i]['CartesianCorrections']):
-                followed_cc3 += 1
-    if gave_cc3 == 0:
-        return 0
-    return followed_cc3 / gave_cc3
-
-
 def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
@@ -228,7 +212,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 next_o, r, d, env_info = env.step(a)
 
             # Store data for logging
-            success = env_info['success']
             #teacher_actions.append(env_info['teacher_action'])
             if discrete:
                 if env_info['teacher_action'].item() == a.item():
@@ -240,10 +223,10 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             count += 1
             total_reward += r
             #agent_actions.append(a)
-            observations.append(o)
+            #observations.append(o)
             rewards.append(r)
             actions.append(a)
-            agent_infos.append(agent_info)
+            #agent_infos.append(agent_info)
             env_infos.append(env_info)
             path_length += 1
 

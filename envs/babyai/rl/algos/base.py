@@ -104,11 +104,11 @@ class BaseAlgo(ABC):
         self.log_episode_num_frames = torch.zeros(self.num_procs, device=self.device)
 
         self.log_done_counter = 0
-        self.log_return = [0] * self.num_procs
-        self.log_reshaped_return = [0] * self.num_procs
-        self.log_num_frames = [0] * self.num_procs
-        self.log_success = [0] * self.num_procs
-        self.log_dist_to_goal = [0] * self.num_procs
+        self.log_return = []
+        self.log_reshaped_return = []
+        self.log_num_frames = []
+        self.log_success = []
+        self.log_dist_to_goal = []
 
     def collect_experiences(self, collect_with_oracle=False, collect_reward=True, train=True):
         """Collects rollouts and computes advantages.
@@ -259,24 +259,24 @@ class BaseAlgo(ABC):
 
         # Log some values
 
-        keep = max(self.log_done_counter, self.num_procs)
+        keep = 25
 
         log = {
-            "return_per_episode": self.log_return[-keep:],
-            "success_per_episode": self.log_success[-keep:],
-            "dist_to_goal_per_episode": self.log_dist_to_goal[-keep:],
-            "reshaped_return_per_episode": self.log_reshaped_return[-keep:],
-            "num_frames_per_episode": self.log_num_frames[-keep:],
+            "return_per_episode": [] if len(self.log_return) == 0 else self.log_return[-keep:],
+            "success_per_episode": [] if len(self.log_success) == 0 else self.log_success[-keep:],
+            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) == 0 else self.log_dist_to_goal[-keep:],
+            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) == 0 else self.log_reshaped_return[-keep:],
+            "num_frames_per_episode": [] if len(self.log_num_frames) == 0 else self.log_num_frames[-keep:],
             "num_frames": self.num_frames,
             "episodes_done": self.log_done_counter,
         }
 
         self.log_done_counter = 0
-        self.log_return = self.log_return[-self.num_procs:]
-        self.log_success = self.log_success[-self.num_procs:]
-        self.log_dist_to_goal = self.log_dist_to_goal[-self.num_procs:]
-        self.log_reshaped_return = self.log_reshaped_return[-self.num_procs:]
-        self.log_num_frames = self.log_num_frames[-self.num_procs:]
+        self.log_return = self.log_return[-keep:]
+        self.log_success = self.log_success[-keep:]
+        self.log_dist_to_goal = self.log_dist_to_goal[-keep:]
+        self.log_reshaped_return = self.log_reshaped_return[-keep:]
+        self.log_num_frames = self.log_num_frames[-keep:]
 
         num_feedback_advice = 0
         for key in exps.obs[0].keys():
