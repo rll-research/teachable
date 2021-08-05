@@ -274,7 +274,7 @@ class BaseAlgo(ABC):
                                                      show_instrs=np.random.uniform() > self.instr_dropout_prob)
             with torch.no_grad():
                 action, agent_dict = policy.act(preprocessed_obs, sample=True)
-                next_value = agent_dict['value']
+                next_value = agent_dict['value'].squeeze(1)
 
             for i in reversed(range(self.num_frames_per_proc)):
                 next_mask = self.masks[i + 1] if i < self.num_frames_per_proc - 1 else self.mask
