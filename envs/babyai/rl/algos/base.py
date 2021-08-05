@@ -187,7 +187,7 @@ class BaseAlgo(ABC):
                 self.argmax_action[i] = agent_dict['argmax_action']
             if self.on_policy:
                 self.values[i] = agent_dict['value']
-                self.log_probs[i] = agent_dict['dist'].log_prob(action).mean()
+                self.log_probs[i] = agent_dict['dist'].log_prob(action).sum(-1)
             if self.reshape_reward is not None:
                 self.rewards[i] = torch.tensor([
                     self.reshape_reward(obs_, action_, reward_, done_)
