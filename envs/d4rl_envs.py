@@ -62,6 +62,23 @@ class D4RLEnv:
     def get_maze(self):
         raise NotImplementedError
 
+    # @staticmethod
+    # def state_to_waypoint_controller(self, state):
+    #     maze_str = '3'
+    #     pos = 3
+    #     target = 4
+    #     if 'ant' in self.env_name:
+    #         om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+    #                                                                    self._wrapped_env.env.wrapped_env._init_torso_y]))
+    #     else:
+    #         om = np.array([0, 0])
+    #     self.waypoint_controller.offset_mapping = om
+    #
+    #
+    #     self.waypoint_controller.new_target(pos, target)
+    #     self.min_waypoints = len(self.waypoint_controller.waypoints)
+    #
+
     def wall_distance(self):
         agent_pos = self.get_pos() + np.array(self.waypoint_controller.offset_mapping)
         agent_coord = np.round(agent_pos)
@@ -290,6 +307,7 @@ class D4RLEnv:
                                                                        self._wrapped_env.env.wrapped_env._init_torso_y]))
         else:
             om = np.array([0, 0])
+        print("om", om)
         self.waypoint_controller.offset_mapping = om
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         self.min_waypoints = len(self.waypoint_controller.waypoints)
