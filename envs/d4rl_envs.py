@@ -81,8 +81,6 @@ class D4RLEnv:
             om = np.array([0, 0])
         waypoint_controller = WaypointController(grid, offset_mapping=om)
         waypoint_controller.new_target(pos, target)
-        x = waypoint_controller.waypoints
-        temp = 3
 
     def wall_distance(self):
         agent_pos = self.get_pos() + np.array(self.waypoint_controller.offset_mapping)
@@ -113,12 +111,8 @@ class D4RLEnv:
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
-        # if False:#self.args.show_agent_in_grid:
-        #     x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
-        #     state[int(x), int(y)] = 2
         max_grid[:h, :w] = state
-        # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
-        state_obs = obs_dict['obs']# / self.scale_factor
+        state_obs = obs_dict['obs']
         if self.args.env == 'ant':
             if self.args.show_pos == 'ours':
                 state_obs[:2] = self.get_pos() / self.scale_factor
@@ -310,7 +304,6 @@ class D4RLEnv:
                                                                        self._wrapped_env.env.wrapped_env._init_torso_y]))
         else:
             om = np.array([0, 0])
-        print("om", om)
         self.waypoint_controller.offset_mapping = om
         self.waypoint_controller.new_target(self.get_pos(), self.get_target())
         self.min_waypoints = len(self.waypoint_controller.waypoints)
