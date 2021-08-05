@@ -391,10 +391,18 @@ class Agent:
     def save(self, model_dir):
         torch.save(self.actor.state_dict(), f'{model_dir}_actor.pt')
         torch.save(self.critic.state_dict(), f'{model_dir}_critic.pt')
+        if self.image_encoder is not None:
+            torch.save(self.image_encoder.state_dict(), f'{model_dir}_image_encoder.pt')
+        if self.instr_encoder is not None:
+            torch.save(self.instr_encoder.state_dict(), f'{model_dir}_instr_encoder.pt')
 
     def load(self, model_dir):
         self.actor.load_state_dict(torch.load(f'{model_dir}_actor.pt'))
         self.critic.load_state_dict(torch.load(f'{model_dir}_critic.pt'))
+        if self.image_encoder is not None:
+            self.image_encoder.load_state_dict(torch.load(f'{model_dir}_image_encoder.pt'))
+        if self.instr_encoder is not None:
+            self.instr_encoder.load_state_dict(torch.load(f'{model_dir}_instr_encoder.pt'))
 
     def reset(self, *args, **kwargs):
         pass
