@@ -2,7 +2,7 @@ import numpy as np
 from d4rl_content.pointmaze import q_iteration
 from d4rl_content.pointmaze.gridcraft import grid_env
 from d4rl_content.pointmaze.gridcraft import grid_spec
-from d4rl_content.pointmaze.gridcraft.grid_spec import WALL
+from d4rl_content.pointmaze.gridcraft.grid_spec import WALL, IDENTITY_MAP
 
 ZEROS = np.zeros((2,), dtype=np.float32)
 ONES = np.zeros((2,), dtype=np.float32)
@@ -28,6 +28,8 @@ class WaypointController(object):
             self.env = grid_env.GridEnv(grid_spec.spec_from_string(maze_str))
         elif type(maze_str) is list:
             self.env = grid_env.GridEnv(grid_spec.spec_from_array(maze_str))
+        elif type(maze_str) is np.ndarray:
+            self.env = grid_env.GridEnv(grid_spec.spec_from_array(maze_str, valmap=IDENTITY_MAP))
         else:
             raise NotImplementedError(f'Unexpected maze str type {type(maze_str)}')
 

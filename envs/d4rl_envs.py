@@ -16,7 +16,7 @@ class D4RLEnv:
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None,
                  max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
-        self.max_grid_size = 0#max_grid_size
+        self.max_grid_size = max_grid_size
         self.reward_type = reward_type
         self.offset_mapping = offset_mapping
         self.args = args
@@ -62,22 +62,27 @@ class D4RLEnv:
     def get_maze(self):
         raise NotImplementedError
 
-    # @staticmethod
-    # def state_to_waypoint_controller(self, state):
-    #     maze_str = '3'
-    #     pos = 3
-    #     target = 4
-    #     if 'ant' in self.env_name:
-    #         om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
-    #                                                                    self._wrapped_env.env.wrapped_env._init_torso_y]))
-    #     else:
-    #         om = np.array([0, 0])
-    #     self.waypoint_controller.offset_mapping = om
-    #
-    #
-    #     self.waypoint_controller.new_target(pos, target)
-    #     self.min_waypoints = len(self.waypoint_controller.waypoints)
-    #
+    def state_to_waypoint_controller(self, state):
+        grid = state['obs']
+        state_len = int(len(grid) - (self.max_grid_size ** 2) / self.repeat_input)
+        state = grid[:state_len]
+        grid = grid[- (self.max_grid_size ** 2):]
+        grid = grid.reshape(self.max_grid_size, self.max_grid_size)
+        # Assume the current d4rl_env is the same size as the new maze
+        h, w = self.waypoint_controller.env.gs.spec_no_start.shape
+        grid = grid[: h, :w]
+        pos = state[:2] * self.scale_factor
+        target = state[-2:] * self.scale_factor
+        # Assume om is the same (should be true for static envs, not necessarily for point_mass or for randommaze)
+        if 'ant' in self.env_name:
+            om = self._wrapped_env.env.wrapped_env._xy_to_rowcol(np.array([self._wrapped_env.env.wrapped_env._init_torso_x,
+                                                                       self._wrapped_env.env.wrapped_env._init_torso_y]))
+        else:
+            om = np.array([0, 0])
+        waypoint_controller = WaypointController(grid, offset_mapping=om)
+        waypoint_controller.new_target(pos, target)
+        x = waypoint_controller.waypoints
+        temp = 3
 
     def wall_distance(self):
         agent_pos = self.get_pos() + np.array(self.waypoint_controller.offset_mapping)
@@ -108,14 +113,12 @@ class D4RLEnv:
         state = self.waypoint_controller.env.gs.spec_no_start
         max_grid = np.zeros((self.max_grid_size, self.max_grid_size))
         h, w = state.shape
-        if False:#self.args.show_agent_in_grid:
-            x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
-            state[int(x), int(y)] = 2
-        # max_grid[:h, :w] = state
-        # max_grid = self.max_grid
+        # if False:#self.args.show_agent_in_grid:
+        #     x, y = (self.get_pos() + np.array(self.waypoint_controller.offset_mapping)).round()
+        #     state[int(x), int(y)] = 2
+        max_grid[:h, :w] = state
         # obs_dict['obs'] = np.concatenate([obs_dict['obs'], self.wall_distance()])
         state_obs = obs_dict['obs']# / self.scale_factor
-        # state_obs[:2] = np.random.randint(low=1, high=4, size=2)
         if self.args.env == 'ant':
             if self.args.show_pos == 'ours':
                 state_obs[:2] = self.get_pos() / self.scale_factor
@@ -130,7 +133,7 @@ class D4RLEnv:
             elif self.args.show_goal == 'none':
                 goal = np.array([0, 0])
             state_obs = np.concatenate([state_obs, goal])
-        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input)  # TODO: /5 is a hacky way of trying to make the max grid less useful
+        obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
         if self.teacher is not None and not 'None' in self.teacher.teachers:
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)

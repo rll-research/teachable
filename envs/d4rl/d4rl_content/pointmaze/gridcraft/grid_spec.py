@@ -33,6 +33,12 @@ ARR_MAP = {
     'g': GOAL,
 }
 
+IDENTITY_MAP = {
+    EMPTY: EMPTY,
+    WALL: WALL,
+    GOAL: GOAL,
+}
+
 RENDER_DICT = {v:k for k, v in STR_MAP.items()}
 RENDER_DICT[EMPTY] = ' '
 RENDER_DICT[START] = ' '
@@ -45,7 +51,7 @@ def spec_from_string(s, valmap=STR_MAP):
     rows = s.split('\\')
     rowlens = np.array([len(row) for row in rows])
     assert np.all(rowlens == rowlens[0])
-    w, h = len(rows), len(rows[0])#len(rows[0]), len(rows)
+    w, h = len(rows), len(rows[0])
 
     gs = GridSpec(w, h)
     for i in range(w):
@@ -57,13 +63,12 @@ def spec_from_string(s, valmap=STR_MAP):
 def spec_from_array(rows, valmap=ARR_MAP):
     rowlens = np.array([len(row) for row in rows])
     assert np.all(rowlens == rowlens[0])
-    w, h = len(rows), len(rows[0])#len(rows[0]), len(rows)
+    w, h = len(rows), len(rows[0])
     gs = GridSpec(w, h)
     for i in range(w):
         for j in range(h):
             gs[i,j] = valmap[rows[i][j]]
     return gs
-
 
 
 
