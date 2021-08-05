@@ -83,7 +83,7 @@ class PPOAgent(Agent):
         action = batch.action
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
-        new_log_prob = dist.log_prob(action)
+        new_log_prob = dist.log_prob(action).mean(1)
         ratio = torch.exp(new_log_prob - batch.log_prob)
         surrr1 = ratio * batch.advantage
         surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * batch.advantage
