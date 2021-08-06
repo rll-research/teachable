@@ -320,6 +320,7 @@ class Agent:
             next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(
                 self.device)
             self.update_critic(obs, next_obs, val_batch, train=False)
+            logger.dumpkvs()
 
     def optimize_policy(self, batch, step):
         obs = batch.obs
@@ -343,6 +344,7 @@ class Agent:
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
         self.update_critic(obs, next_obs, batch, step)
+        logger.dumpkvs()
 
         if step % self.actor_update_frequency == 0:
             if self.image_encoder is not None:
@@ -351,6 +353,7 @@ class Agent:
                 preprocessed_obs = self.instr_encoder(preprocessed_obs)
             obs = torch.cat([preprocessed_obs.obs.flatten(1)] + [preprocessed_obs.advice] * self.repeat_advice, dim=1).to(self.device)
             self.update_actor(obs, batch)
+            logger.dumpkvs()
 
     def update_critic(self, obs, next_obs, batch, step):
         raise NotImplementedError
@@ -400,9 +403,10 @@ class Agent:
         logger.logkv(f"Distill/Entropy_{train_str}", float(entropy))
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
         logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))
-        logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
+        logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).mean()))
         logger.logkv(f"Distill/Mean_Dist_{train_str}", float(avg_mean_dist))
         logger.logkv(f"Distill/Std_{train_str}", float(avg_std))
+        logger.dumpkvs()
         return log
 
     def preprocess_distill(self, batch, source):

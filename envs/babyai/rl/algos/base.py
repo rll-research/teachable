@@ -9,7 +9,7 @@ class BaseAlgo(ABC):
     """The base class for RL algorithms."""
 
     def __init__(self, envs, policy, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
-                 value_loss_coef, max_grad_norm, preprocess_obss, reshape_reward, parallel,
+                 value_loss_coef, max_grad_norm, preprocess_obss, parallel,
                  rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False,
                  on_policy=False):
         """
@@ -39,9 +39,6 @@ class BaseAlgo(ABC):
         preprocess_obss : function
             a function that takes observations returned by the environment
             and converts them into the format that the model can handle
-        reshape_reward : function
-            a function that shapes the reward, takes an
-            (observation, action, reward, done) tuple as an input
 
         """
         # Store parameters
@@ -60,7 +57,6 @@ class BaseAlgo(ABC):
         self.value_loss_coef = value_loss_coef
         self.max_grad_norm = max_grad_norm
         self.preprocess_obss = preprocess_obss
-        self.reshape_reward = reshape_reward
         self.rollouts_per_meta_task = rollouts_per_meta_task
         self.instr_dropout_prob = instr_dropout_prob
         self.reset_each_batch = reset_each_batch
@@ -188,13 +184,7 @@ class BaseAlgo(ABC):
             if self.on_policy:
                 self.values[i] = agent_dict['value'].squeeze(1)
                 self.log_probs[i] = agent_dict['dist'].log_prob(action).sum(-1)
-            if self.reshape_reward is not None:
-                self.rewards[i] = torch.tensor([
-                    self.reshape_reward(obs_, action_, reward_, done_)
-                    for obs_, action_, reward_, done_ in zip(obs, action, reward, done)
-                ], device=self.device)
-            else:
-                self.rewards[i] = torch.tensor(reward, device=self.device)
+            self.rewards[i] = torch.tensor(reward, device=self.device)
 
             # Update log values
 
