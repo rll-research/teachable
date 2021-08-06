@@ -69,7 +69,7 @@ class PPOAgent(Agent):
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
             for n, p in self.critic.named_parameters():
                 param_norm = p.grad.detach().data.norm(2)
-                logger.logkv((f'grads/{n}', param_norm))
+                logger.logkv(f'grads/{n}', param_norm)
             self.critic_optimizer.step()
         else:
             logger.logkv('val/critic_loss', utils.to_np(critic_loss))
@@ -113,7 +113,7 @@ class PPOAgent(Agent):
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         for n, p in self.actor.named_parameters():
             param_norm = p.grad.detach().data.norm(2)
-            logger.logkv((f'grads/{n}', param_norm))
+            logger.logkv(f'grads/{n}', param_norm)
         self.actor_optimizer.step()
 
     def act(self, obs, sample=False):
