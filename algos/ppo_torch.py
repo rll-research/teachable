@@ -50,7 +50,6 @@ class PPOAgent(Agent):
                                                  betas=critic_betas)
 
         self.train()
-        self.critic_target.train()
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
         collected_value = batch.value
@@ -79,7 +78,7 @@ class PPOAgent(Agent):
 
         # control penalty
         dist = self.actor(obs)
-        entropy = -dist.log_prob(dist.rsample()[0]).mean()
+        entropy = -dist.log_prob(dist.rsample()).sum(-1).mean()
         action = batch.action
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
@@ -87,7 +86,7 @@ class PPOAgent(Agent):
         ratio = torch.exp(new_log_prob - batch.log_prob)
         surrr1 = ratio * batch.advantage
         surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * batch.advantage
-        control_penalty = action.float().norm(2, dim=-1).mean()
+        control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
         actor_loss = policy_loss \
                      - self.args.entropy_coef * entropy \
@@ -97,6 +96,8 @@ class PPOAgent(Agent):
         logger.logkv('train_actor/target_entropy', self.target_entropy)
         logger.logkv('train_actor/entropy', utils.to_np(entropy))
         logger.logkv('train_actor/V', utils.to_np(batch.value.mean()))
+        logger.logkv('train_actor/policy_loss', utils.to_np(policy_loss))
+        logger.logkv('train_actor/control_penalty', utils.to_np(control_penalty))
         if not self.args.discrete:
             logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
             logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))

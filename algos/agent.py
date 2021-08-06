@@ -263,43 +263,14 @@ class Agent:
 
         if args.image_obs:
             self.image_encoder = ImageEmbedding().to(self.device)
-            obs_dim = args.image_dim + len(obs[teacher]) * repeat_advice
         else:
             self.image_encoder = None
-            obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
 
         if not args.no_instr:
             self.instr_encoder = InstrEmbedding(args, env).to(self.device)
-            obs_dim = args.image_dim + len(obs[teacher]) * repeat_advice
         else:
             self.instr_encoder = None
-        self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
-        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
-        self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
-            self.device)
-
-        self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
-        self.log_alpha.requires_grad = True
-        # set target entropy to -|A|
-        self.target_entropy = -action_dim
-
-        # optimizers
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
-                                                lr=actor_lr,
-                                                betas=actor_betas)
-
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
-                                                 lr=critic_lr,
-                                                 betas=critic_betas)
-
-        self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha],
-                                                    lr=alpha_lr,
-                                                    betas=alpha_betas)
-
-        self.train()
-        self.critic_target.train()
 
     def train(self, training=True):
         self.training = training
@@ -349,15 +320,11 @@ class Agent:
 
     def optimize_policy(self, batch, step):
         obs = batch.obs
-        action = batch.action
-        if len(action.shape) == 1:
-            action = action.unsqueeze(1)
         reward = batch.reward.unsqueeze(1)
         try:
             next_obs = batch.next_obs
         except AttributeError:
             next_obs = batch.env_infos.next_obs
-        not_done = 1 - batch.full_done.unsqueeze(1)
         obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
         preprocessed_obs = copy.deepcopy(obs)
         next_obs = self.obs_preprocessor(next_obs, self.teacher, show_instrs=True)
