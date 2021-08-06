@@ -432,12 +432,6 @@ class Agent:
             action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
-    def relabel_batch(self, batch):
-        ## NOTE: function ONLY relabels the action, not the reward, log_prob, or any other relevant values
-        action, agent_dict = self.act(batch.obs, sample=True)
-        batch.action = action
-        return batch
-
     def distill(self, batch, is_training=False, source='agent'):
         ### SETUP ###
         self.train(is_training)

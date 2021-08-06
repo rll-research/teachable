@@ -199,9 +199,9 @@ class Trainer(object):
         assert argmax_action.dtype == batch.argmax_action.dtype
         assert argmax_action.shape == batch.argmax_action.shape
 
-        batch.action = action.to(batch.action.dtype)
-        batch.log_prob = agent_dict['dist'].log_prob(action).sum(-1).to(batch.log_prob.dtype)
-        batch.argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype)
+        batch.action = action.to(batch.action.dtype).detach()
+        batch.log_prob = agent_dict['dist'].log_prob(action).sum(-1).to(batch.log_prob.dtype).detach()
+        batch.argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype).detach()
         return batch
 
     def train(self):
