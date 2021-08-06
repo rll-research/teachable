@@ -252,12 +252,12 @@ class Trainer(object):
             if self.should_train_rl and itr > self.args.min_itr_steps:
                 logger.log("RL Training...")
                 for _ in range(self.args.epochs):
-                    if self.args.algo == 'ppo':
+                    if self.args.on_policy:
                         sampled_batch = samples_data
                     else:
                         sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     summary_logs = self.rl_policy.optimize_policy(sampled_batch, itr)
-                if self.args.algo == 'sac':
+                if not self.args.on_policy:
                     val_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='val')
                     self.rl_policy.log_rl(val_batch)
             else:

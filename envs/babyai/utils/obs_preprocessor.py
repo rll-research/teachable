@@ -14,8 +14,7 @@ def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cud
             # We might consider changing this if we process diff advice types differently (e.g. cartesian with a conv net)
             if not k in feedback_list:
                 obs_output[k] = []
-        if teacher is not 'none':
-            obs_output['advice'] = []
+        obs_output['advice'] = []
 
         instr_mask = int(show_instrs)
         feedback_mask = int((not show_instrs) or np.random.uniform() < show_feedback)

@@ -84,7 +84,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                                                                 'agent_probs'])
         self.add_argument('--single_level', action='store_true')
         self.add_argument('--end_on_full_buffer', action='store_true')
-        self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo'])
+        self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo', 'hppo'])
 
         # Saving/loading/finetuning
         self.add_argument('--prefix', type=str, default='DEBUG')

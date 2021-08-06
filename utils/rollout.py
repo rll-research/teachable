@@ -146,7 +146,7 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
 def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
-            save_wandb=False, obs_preprocessor=None, teacher_name="", rollout_oracle=False):
+            save_wandb=False, obs_preprocessor=None, teacher_name="", rollout_oracle=False, hierarchical_rollout=False):
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
@@ -183,17 +183,17 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
         o = env.reset()
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
-            if 'gave_SubgoalCorrections' in o:
-                if o['gave_SubgoalCorrections']:
-                    num_feedback += 1
-            elif 'gave_PreActionAdvice' in o:
-                if o['gave_PreActionAdvice']:
-                    num_feedback += 1
+            if hierarchical_rollout:
+                del o['OffsetWaypoint']
+                del o['gave_OffsetWaypoint']
             num_steps += 1
             past_o = o
             # Choose action
-            o = obs_preprocessor([o], agent.teacher, show_instrs=instrs)
-            a, agent_info = agent.get_actions(o)
+            if hierarchical_rollout:
+                a, agent_info = agent.get_hierarchical_actions([o])
+            else:
+                o = obs_preprocessor([o], agent.teacher, show_instrs=instrs)
+                a, agent_info = agent.get_actions(o)
             stoch_a = a
             det_a = agent_info['argmax_action']
             if discrete:

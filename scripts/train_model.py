@@ -1,3 +1,4 @@
+from algos.hierarchical_ppo_torch import HierarchicalPPOAgent
 from algos.ppo_torch import PPOAgent
 from algos.sac_torch import SACAgent
 from algos.mf_trainer import Trainer
@@ -45,11 +46,17 @@ def load_experiment(args):
 
 def create_policy(path, teacher, env, args, obs_preprocessor):
     if args.algo == 'sac':
+        args.on_policy = False
         agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
                          init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
                          control_penalty=args.control_penalty)
     elif args.algo == 'ppo':
+        args.on_policy = True
         agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
+                         actor_lr=args.lr, critic_lr=args.lr, control_penalty=args.control_penalty)
+    elif args.algo == 'hppo':
+        args.on_policy = True
+        agent = HierarchicalPPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
                          actor_lr=args.lr, critic_lr=args.lr, control_penalty=args.control_penalty)
     else:
         raise NotImplementedError(args.algo)

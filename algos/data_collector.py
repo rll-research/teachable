@@ -11,7 +11,7 @@ class DataCollector(BaseAlgo):
                          args.value_loss_coef, args.max_grad_norm, obs_preprocessor,
                          not args.sequential, args.rollouts_per_meta_task, instr_dropout_prob=args.collect_dropout_prob,
                          repeated_seed=repeated_seed, reset_each_batch=args.reset_each_batch,
-                         on_policy=args.algo == 'ppo')
+                         on_policy=args.on_policy)
 
     def update_parameters(self):
         raise NotImplementedError

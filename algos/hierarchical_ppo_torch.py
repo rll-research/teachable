@@ -6,13 +6,14 @@ import numpy as np
 import torch
 
 from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
+from algos.ppo_torch import PPOAgent
 from logger import logger
 
 from algos import utils
 
 
-class PPOAgent(Agent):
-    """PPO algorithm."""
+class HierarchicalPPOAgent(PPOAgent):
+    """PPO algorithm, hard-coded to work with OffsetWaypoint subgoals."""
 
     def __init__(self, args, obs_preprocessor, teacher, env,
                  device='cuda', discount=0.99,
@@ -20,35 +21,19 @@ class PPOAgent(Agent):
                  critic_betas=(0.9, 0.999),
                  batch_size=1024, control_penalty=0, repeat_advice=1):
         super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
-                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency)
+                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency, actor_lr=actor_lr,
+                         actor_betas=actor_betas, critic_lr=critic_lr, critic_betas=critic_betas)
 
         obs = env.reset()
-        if args.discrete:
-            action_dim = env.action_space.n
-        else:
-            action_dim = env.action_space.shape[0]
-
         if args.image_obs:
-            obs_dim = args.image_dim + len(obs[teacher]) * repeat_advice
+            no_advice_obs_dim = args.image_dim
         else:
-            obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
-        self.critic = utils.mlp(obs_dim, args.hidden_size, 1, 2).to(self.device)
+            no_advice_obs_dim = len(obs['obs'].flatten())
+        self.high_level = utils.mlp(no_advice_obs_dim, args.hidden_size, 2, 2).to(self.device)
 
-        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
-            self.device)
-
-        # set target entropy to -|A|
-        self.target_entropy = -action_dim
-
-        # optimizers
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
-                                                lr=actor_lr,
-                                                betas=actor_betas)
-
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
-                                                 lr=critic_lr,
-                                                 betas=critic_betas)
-
+        self.high_level_optimizer = torch.optim.Adam(self.high_level.parameters(),
+                                                 lr=actor_lr,
+                                                 betas=actor_betas)
         self.train()
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
@@ -69,7 +54,7 @@ class PPOAgent(Agent):
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
             for n, p in self.critic.named_parameters():
                 param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-                logger.logkv(f'grads/critic{n}', param_norm)
+                logger.logkv(f'grads/{n}', param_norm)
             self.critic_optimizer.step()
         else:
             logger.logkv('val/critic_loss', utils.to_np(critic_loss))
@@ -131,14 +116,55 @@ class PPOAgent(Agent):
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         for n, p in self.actor.named_parameters():
             param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-            logger.logkv(f'grads/actor{n}', param_norm)
+            logger.logkv(f'grads/{n}', param_norm)
         for n, p in self.actor.named_parameters():
             if p.isnan().sum() > 0:
                 print("NAN in actor after backprop!")
         self.actor_optimizer.step()
 
-    def act(self, obs, sample=False):
-        if not 'advice' in obs:  # unpreprocessed
+    def get_high_level(self, obs, preprocessed=False):
+        if not preprocessed:
+            no_advice_obs = self.obs_preprocessor(obs, 'none', show_instrs=True)
+        else:
+            no_advice_obs = obs
+        if self.image_encoder is not None:
+            no_advice_obs = self.image_encoder(no_advice_obs)
+        if self.instr_encoder is not None:
+            no_advice_obs = self.instr_encoder(no_advice_obs)
+        no_advice_obs = no_advice_obs.obs.flatten(1).to(self.device)
+        return self.high_level(no_advice_obs)
+
+    def update_high_level(self, obs):
+        ground_truth = torch.FloatTensor(np.stack([o['OffsetWaypoint'] for o in obs])).to(self.device)
+        assert len(ground_truth.shape) == 2 and ground_truth.shape[-1] == 2
+        pred_advice = self.get_high_level(obs)
+        assert ground_truth.shape == pred_advice.shape
+        assert ground_truth.dtype == pred_advice.dtype
+        assert ground_truth.requires_grad == False
+        assert pred_advice.requires_grad == True
+        loss = torch.abs(ground_truth - pred_advice).norm(2)
+        self.high_level_optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.high_level.parameters(), .5)
+        for n, p in self.high_level.named_parameters():
+            param_norm = p.grad.detach().data.norm(2).cpu().numpy()
+            logger.logkv(f'grads/high_level{n}', param_norm)
+        self.high_level_optimizer.step()
+        logger.logkv('train_high_level/loss', utils.to_np(loss))
+        logger.logkv('train_high_level/gt_max_abs', utils.to_np(torch.abs(ground_truth).max()))
+        logger.logkv('train_high_level/x_diff', utils.to_np(torch.abs(ground_truth - pred_advice)[:, 0].mean()))
+        logger.logkv('train_high_level/y_diff', utils.to_np(torch.abs(ground_truth - pred_advice)[:, 1].mean()))
+
+    def get_hierarchical_actions(self, obs):
+        offset_waypoint = self.get_high_level(obs)
+        obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
+        obs.advice = offset_waypoint
+        action, agent_dict = self.act(obs, sample=True)
+        return utils.to_np(action[0]), agent_dict
+
+
+    def act(self, obs, sample=False, ):
+        if (not 'advice' in obs):  # unpreprocessed
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
         action, agent_dict = super().act(obs, sample)  # TODO: do we need deepcopy?
         if self.image_encoder is not None:
@@ -149,3 +175,7 @@ class PPOAgent(Agent):
         value = self.critic(obs)
         agent_dict['value'] = value
         return action, agent_dict
+
+    def optimize_policy(self, batch, step):
+        self.update_high_level(batch.obs)
+        super().optimize_policy(batch, step)
