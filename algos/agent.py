@@ -403,7 +403,7 @@ class Agent:
         logger.logkv(f"Distill/Entropy_{train_str}", float(entropy))
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
         logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))
-        logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).mean()))
+        logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
         logger.logkv(f"Distill/Mean_Dist_{train_str}", float(avg_mean_dist))
         logger.logkv(f"Distill/Std_{train_str}", float(avg_std))
         logger.dumpkvs()
