@@ -142,7 +142,7 @@ class HierarchicalPPOAgent(PPOAgent):
         assert ground_truth.dtype == pred_advice.dtype
         assert ground_truth.requires_grad == False
         assert pred_advice.requires_grad == True
-        loss = torch.abs(ground_truth - pred_advice).norm(2)
+        loss = torch.abs(ground_truth - pred_advice).norm(2, dim=1).mean()
         self.high_level_optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.high_level.parameters(), .5)
