@@ -114,6 +114,12 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
             mu = tr(mu)
         return mu
 
+    def log_prob(self, value):
+        eps = 1e-3
+        value = torch.clamp(value, -1 + eps, 1 - eps)
+        return super().log_prob(value)
+
+
 
 class DiagGaussianActor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
@@ -320,7 +326,6 @@ class Agent:
             next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(
                 self.device)
             self.update_critic(obs, next_obs, val_batch, train=False)
-            logger.dumpkvs()
 
     def optimize_policy(self, batch, step):
         obs = batch.obs
@@ -344,7 +349,6 @@ class Agent:
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
         self.update_critic(obs, next_obs, batch, step)
-        logger.dumpkvs()
 
         if step % self.actor_update_frequency == 0:
             if self.image_encoder is not None:
@@ -353,7 +357,6 @@ class Agent:
                 preprocessed_obs = self.instr_encoder(preprocessed_obs)
             obs = torch.cat([preprocessed_obs.obs.flatten(1)] + [preprocessed_obs.advice] * self.repeat_advice, dim=1).to(self.device)
             self.update_actor(obs, batch)
-            logger.dumpkvs()
 
     def update_critic(self, obs, next_obs, batch, step):
         raise NotImplementedError
@@ -406,7 +409,6 @@ class Agent:
         logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
         logger.logkv(f"Distill/Mean_Dist_{train_str}", float(avg_mean_dist))
         logger.logkv(f"Distill/Std_{train_str}", float(avg_std))
-        logger.dumpkvs()
         return log
 
     def preprocess_distill(self, batch, source):

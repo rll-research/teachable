@@ -87,11 +87,26 @@ class PPOAgent(Agent):
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
         new_log_prob = dist.log_prob(action).sum(-1)
+        if new_log_prob.isnan().sum() > 0:
+            print("DIST")
+            print(dist.scale.min(), dist.scale.max(), dist.scale.isnan().sum())
+            print(dist.loc.min(), dist.loc.max(), dist.loc.isnan().sum())
         ratio = torch.exp(new_log_prob - batch.log_prob)
         surrr1 = ratio * batch.advantage
         surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * batch.advantage
         control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
+        if policy_loss.isnan():
+            print("DIST")
+            print(dist.scale.min(), dist.scale.max(), dist.scale.isnan().sum())
+            print(dist.loc.min(), dist.loc.max(), dist.loc.isnan().sum())
+
+            print("bad policy loss!")
+        if entropy.isnan():
+            print("bad entropy!")
+        if control_penalty.isnan():
+            print("bad control_penalty!")
+
         actor_loss = policy_loss \
                      - self.args.entropy_coef * entropy \
                      + self.control_penalty * control_penalty
@@ -109,11 +124,17 @@ class PPOAgent(Agent):
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
+        for n, p in self.actor.named_parameters():
+            if p.isnan().sum() > 0:
+                print("NAN in actor before backprop!")
         actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         for n, p in self.actor.named_parameters():
             param_norm = p.grad.detach().data.norm(2).cpu().numpy()
             logger.logkv(f'grads/{n}', param_norm)
+        for n, p in self.actor.named_parameters():
+            if p.isnan().sum() > 0:
+                print("NAN in actor after backprop!")
         self.actor_optimizer.step()
 
     def act(self, obs, sample=False):
