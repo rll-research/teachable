@@ -66,6 +66,7 @@ class PPOAgent(Agent):
             # Optimize the critic
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
             self.critic_optimizer.step()
         else:
             logger.logkv('val/critic_loss', utils.to_np(critic_loss))
@@ -107,10 +108,11 @@ class PPOAgent(Agent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
         self.actor_optimizer.step()
 
     def act(self, obs, sample=False):
+        if not 'advice' in obs:  # unpreprocessed
+            obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
         action, agent_dict = super().act(copy.deepcopy(obs), sample)
         if self.image_encoder is not None:
             obs = self.image_encoder(obs)

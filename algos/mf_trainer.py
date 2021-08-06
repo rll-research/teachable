@@ -28,6 +28,7 @@ class Trainer(object):
         collect_policy=None,
         rl_policy=None,
         il_policy=None,
+        relabel_policy=None,
         sampler=None,
         env=None,
         start_itr=0,
@@ -48,6 +49,7 @@ class Trainer(object):
         self.collect_policy = collect_policy
         self.rl_policy = rl_policy
         self.il_policy = il_policy
+        self.relabel_policy = relabel_policy
         self.sampler = sampler
         self.env = copy.deepcopy(env)
         self.itr = start_itr
@@ -179,6 +181,29 @@ class Trainer(object):
             self.buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
                                  successful_only=self.args.distill_successful_only)
 
+    def relabel(self, batch):
+        action, agent_dict = self.relabel_policy.act(batch.obs, sample=True)
+
+        action = action.to(batch.action.dtype)
+        assert type(action) == type(batch.action)
+        assert action.dtype == batch.action.dtype, (action.dtype, batch.action.dtype)
+        assert action.shape == batch.action.shape
+
+        log_prob = agent_dict['dist'].log_prob(action).sum(-1).to(batch.log_prob.dtype)
+        assert type(log_prob) == type(batch.log_prob)
+        assert log_prob.dtype == batch.log_prob.dtype
+        assert log_prob.shape == batch.log_prob.shape
+
+        argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype)
+        assert type(argmax_action) == type(batch.argmax_action)
+        assert argmax_action.dtype == batch.argmax_action.dtype
+        assert argmax_action.shape == batch.argmax_action.shape
+
+        batch.action = action.to(batch.action.dtype)
+        batch.log_prob = agent_dict['dist'].log_prob(action).sum(-1).to(batch.log_prob.dtype)
+        batch.argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype)
+        return batch
+
     def train(self):
         self.init_logs()
         self.make_buffer()
@@ -211,6 +236,8 @@ class Trainer(object):
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=self.should_train_rl,
                                                                            train=self.should_train_rl)
+                if self.relabel_policy is not None:
+                    samples_data = self.relabel(samples_data)
                 self.buffer.add_batch(samples_data, self.curriculum_step)
             else:
                 print("Not collecting")

@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+
 from logger import logger
 
 from algos import utils
@@ -279,6 +280,8 @@ class Agent:
 
 
     def act(self, obs, sample=False):
+        if not 'advice' in obs:  # unpreprocessed
+            obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
         if self.image_encoder is not None:
             obs = self.image_encoder(obs)
         if self.instr_encoder is not None:

@@ -76,6 +76,8 @@ def get_feedback_list(args):
         feedback_list.append(args.rl_teacher)
     if args.distill_teacher is not None:
         feedback_list.append(args.distill_teacher)
+    if args.relabel_teacher is not None:
+        feedback_list.append(args.relabel_teacher)
     return feedback_list
 
 def make_env(args, feedback_list):
@@ -203,6 +205,10 @@ def run_experiment():
         log_policy = il_policy
     else:
         il_policy = None
+    if args.relabel_teacher is not None:
+        relabel_policy = create_policy(args.distill_policy, args.relabel_teacher, env, args, obs_preprocessor)
+    else:
+        relabel_policy = None
 
     if args.collect_with_rl_policy:
         collect_policy = rl_policy
@@ -245,6 +251,7 @@ def run_experiment():
         collect_policy=collect_policy,
         rl_policy=rl_policy,
         il_policy=il_policy,
+        relabel_policy=relabel_policy,
         sampler=sampler,
         env=deepcopy(env),
         start_itr=start_itr,
