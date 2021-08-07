@@ -683,7 +683,7 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             self.agent_pos,
             self.agent_dir,
             highlight_mask=highlight_mask if highlight else None,
-            vis_mask=full_vis_mask,
+            #vis_mask=full_vis_mask,
         )
 
         if mode == 'human':

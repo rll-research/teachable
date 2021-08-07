@@ -296,16 +296,15 @@ class ImitationLearning(object):
         assert len(active_teachers) <= 2
         teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
         assert source == 'agent'
-        self.set_mode(False)
         obss, action_true, action_teacher = batch
         instr_dropout_prob = 0 if np.sum(list(relabel_dict.values())) == 0 else self.instr_dropout_prob
         obss_processed = self.preprocess_obs(obss, relabel_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
         acmodel = self.policy_dict[teacher_name]
+        self.set_mode(False, acmodel, None)
         dist, info = acmodel(obss_processed)
         a = dist.sample()
         assert a.shape == action_true.shape
         assert a.dtype == action_true.dtype
-        print("relabeling!!")
         return obss, a, action_teacher
 
 
