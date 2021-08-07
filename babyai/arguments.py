@@ -222,6 +222,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--no_buffer', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--hierarchical', action='store_true')
+        self.add_argument('--half_relabel', action='store_true')
 
     def parse_args(self, arg=None):
         """
