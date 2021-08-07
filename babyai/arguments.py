@@ -223,6 +223,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--hierarchical', action='store_true')
         self.add_argument('--half_relabel', action='store_true')
+        self.add_argument('--noise_level', type=float, default=.1)
+        self.add_argument('--noise_duration', type=int, default=10)
 
     def parse_args(self, arg=None):
         """
