@@ -77,7 +77,7 @@ class Buffer:
         train_dict = {}
         val_dict = {}
         # for key in ['obs', 'action', 'action_probs', 'teacher_action', 'followed_teacher', 'advice_count']:
-        for key in ['obs', 'action', 'advice_count']:
+        for key in ['obs', 'action', 'advice_count', 'teacher_action']:
             # if not hasattr(batch, key):
             #     continue
             try:
