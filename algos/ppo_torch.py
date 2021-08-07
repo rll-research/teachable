@@ -62,7 +62,7 @@ class PPOAgent(Agent):
         critic_loss = torch.max(surr1, surr2).mean()
 
         if train:
-            logger.logkv('train_critic/loss', utils.to_np(critic_loss))
+            tag = 'train_critic'
 
             # Optimize the critic
             self.critic_optimizer.zero_grad()
@@ -73,11 +73,14 @@ class PPOAgent(Agent):
                 logger.logkv(f'grads/critic{n}', param_norm)
             self.critic_optimizer.step()
         else:
-            logger.logkv('val/critic_loss', utils.to_np(critic_loss))
-            logger.logkv('val/V_mean', utils.to_np(value.mean()))
-            logger.logkv('val/V_std', utils.to_np(value.std()))
-            logger.logkv('val/obs_min', utils.to_np(obs.min()))
-            logger.logkv('val/obs_max', utils.to_np(obs.max()))
+            tag = 'val'
+        logger.logkv(f'{tag}/critic_loss', utils.to_np(critic_loss))
+        logger.logkv(f'{tag}/V_mean', utils.to_np(value.mean()))
+        logger.logkv(f'{tag}/Return', utils.to_np(collected_return.mean()))
+        logger.logkv(f'{tag}/Collected_vaue', utils.to_np(collected_value.mean()))
+        logger.logkv(f'{tag}/V_std', utils.to_np(value.std()))
+        logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
+        logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
 
     def update_actor(self, obs, batch):
 
