@@ -292,55 +292,22 @@ class ImitationLearning(object):
         return log
 
     def relabel(self, batch, relabel_dict, source):
-        if source == 'teacher':
-            return batch
+        active_teachers = [k for k, v in relabel_dict.items() if v]
+        assert len(active_teachers) <= 2
+        teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
+        assert source == 'agent'
         self.set_mode(False)
-        obss_list_original, action_true, action_teacher, done, inds_original, mask = batch
-        inds = inds_original.copy()
+        obss, action_true, action_teacher = batch
+        instr_dropout_prob = 0 if np.sum(list(relabel_dict.values())) == 0 else self.instr_dropout_prob
+        obss_processed = self.preprocess_obs(obss, relabel_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
+        acmodel = self.policy_dict[teacher_name]
+        dist, info = acmodel(obss_processed)
+        a = dist.sample()
+        assert a.shape == action_true.shape
+        assert a.dtype == action_true.dtype
+        print("relabeling!!")
+        return obss, a, action_teacher
 
-        # All the batch demos are in a single flat vector.
-        # Inds holds the start of each demo
-        obss_list = [self.preprocess_obs(o, relabel_dict, show_instrs=True) for o in obss_list_original]
-        obss = {}
-        keys = obss_list[0].keys()
-        for k in keys:
-            obss[k] = torch.cat([getattr(o, k) for o in obss_list])
-        obss = DictList(obss)
-        dtype = torch.long if self.args.discrete and not (source == 'agent_probs') else torch.float32
-        actions = torch.zeros_like(action_true, device=self.device,
-                                   dtype=dtype)
-        memory = torch.zeros([len(inds), self.acmodel.memory_size], device=self.device)
-
-        # We're going to loop through each trajectory together.
-        # inds holds the current index of each trajectory (initialized to the start of each trajectory)
-        while True:
-            # taking observations and done located at inds
-            num_demos = len(inds)
-            obs = obss[inds]
-            done_step = done[inds]
-
-            with torch.no_grad():
-                # Taking memory up until num_demos, as demos after that have finished
-                dist, info = self.acmodel(obs, memory[:num_demos])
-                if source == 'agent':
-                    action = dist.sample().to(dtype)
-                elif source == 'agent_argmax':
-                    action = dist.probs.max(1, keepdim=False)[1].to(dtype)
-                elif source == 'agent_probs':
-                    action = dist.probs.float()
-                new_memory = info['memory']
-            actions[inds] = action[:num_demos]
-            memory[:num_demos] = new_memory
-
-            # Updating inds, by removing those indices corresponding to which the demonstrations have finished
-            num_trajs_finished = sum(done_step)
-            inds = inds[:int(num_demos - num_trajs_finished)]
-            if len(inds) == 0:
-                break
-
-            # Incrementing the remaining indices
-            inds = [index + 1 for index in inds]
-        return obss_list_original, actions, action_teacher, done, inds_original, mask
 
     def distill(self, demo_batch, is_training=True, source='agent', teachers_dict={}, distill_target='distill_powerset',
                 relabel=False, relabel_dict={}, distill_to_none=True):

@@ -243,7 +243,8 @@ class Trainer(object):
             #should_collect = should_collect and ((not self.curriculum_step in self.buffer.counts_train) or self.buffer.counts_train[self.curriculum_step] < self.buffer.train_buffer_capacity)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
-                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
+                input_dict = teacher_distill_dict if self.args.relabel else teacher_train_dict
+                samples_data, episode_logs = self.algo.collect_experiences(input_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
