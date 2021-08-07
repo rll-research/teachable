@@ -38,6 +38,7 @@ class PPOAlgo(BaseAlgo):
         self.mi_coef = args.mi_coef
         self.control_penalty = args.control_penalty
         self.reconstructor_dict = reconstructor_dict
+        self.args = args
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_frames = self.num_frames_per_proc * self.num_procs
@@ -153,6 +154,7 @@ class PPOAlgo(BaseAlgo):
             log_reconstruction_losses = []
             log_feedback_reconstruction = []
             log_grad_norms = []
+            log_high_level = []
             try:
                 num_actions = self.single_env.action_space.n
                 discrete = True
@@ -206,6 +208,7 @@ class PPOAlgo(BaseAlgo):
                 batch_ratio = 0
                 batch_log_prob = 0
                 batch_sb_value = 0
+                batch_high_level = 0
 
                 # Initialize memory
 
@@ -268,6 +271,16 @@ class PPOAlgo(BaseAlgo):
                            self.kl_coef * kl_loss + \
                            self.control_penalty * control_penalty
 
+                    if self.args.hierarchical:
+                        pred_high_level = agent_info['high_level']
+                        ground_truth_high_level = sb.obs.advice
+                        high_level_loss = (pred_high_level - ground_truth_high_level).norm(2, dim=1).mean()
+                        loss += high_level_loss
+                    else:
+                        high_level_loss = torch.tensor(0)
+
+
+
                     # self.mi_coef * reconstruction_loss + \
 
 
@@ -289,6 +302,7 @@ class PPOAlgo(BaseAlgo):
                     batch_ratio += ratio.mean().item()
                     batch_log_prob += sb.log_prob.mean().item()
                     batch_sb_value += sb.value.mean().item()
+                    batch_high_level += high_level_loss.item()
 
 
 
@@ -316,6 +330,7 @@ class PPOAlgo(BaseAlgo):
                 batch_ratio /= self.recurrence
                 batch_log_prob /= self.recurrence
                 batch_sb_value /= self.recurrence
+                batch_high_level /= self.recurrence
 
                 # Update actor-critic
 
@@ -359,6 +374,7 @@ class PPOAlgo(BaseAlgo):
                 log_ratio.append(batch_ratio)
                 log_log_prob.append(batch_log_prob)
                 log_sb_value.append(batch_sb_value)
+                log_high_level.append(batch_high_level)
 
                 log_losses.append(batch_loss.item())
                 d = dist.sample().detach().cpu().numpy()
@@ -389,6 +405,7 @@ class PPOAlgo(BaseAlgo):
 
             logs['ValueClip'] = numpy.mean(log_value_clip)
             logs['Returnn'] = numpy.mean(log_returnn)
+            logs['High_Level'] = numpy.mean(log_high_level)
 
             logs['LogProb'] = numpy.mean(log_log_prob)
             # logs['Returnn'] = numpy.mean(log_sb_value)

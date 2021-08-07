@@ -163,7 +163,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
             save_wandb=False, obs_preprocessor=None, teacher_dict={}, teacher_name="", rollout_oracle=False,
-            temperature=1):
+            temperature=1, hierarchical=False):
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
@@ -210,9 +210,12 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             num_steps += 1
             past_o = o
             full_obs_list.append(copy.deepcopy(o))
-            # Choose action
             o = obs_preprocessor([o], teacher_dict, show_instrs=instrs)
-            a, agent_info = agent.get_actions_t(o, temp=temperature)
+            # Choose action
+            if hierarchical:
+                a, agent_info = agent.get_actions_hierarchical(o)
+            else:
+                a, agent_info = agent.get_actions_t(o, temp=temperature)
             stoch_a = a
             if discrete:
                 det_a = np.argmax(agent_info[0]['probs'])

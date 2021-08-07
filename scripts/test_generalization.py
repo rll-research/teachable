@@ -78,7 +78,8 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
                                                                     save_locally=num_save > 0,
                                                                     num_save=num_save,
                                                                     obs_preprocessor=obs_preprocessor,
-                                                                    rollout_oracle=False)
+                                                                    rollout_oracle=False,
+                                                                    hierarchical=args.hierarchical)
     success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
     try:
         success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
@@ -99,8 +100,9 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 
 def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, seed=1, stochastic=True,
-                num_rollouts=10, policy_name='policy', env_name='env', log_every=10):
+                num_rollouts=1, policy_name='policy', env_name='env', log_every=10):
     start = time.time()
+    args.hierarchical = False  # TODO
     save_dir = pathlib.Path(save_dir)
 
     def log_fn_vidrollout(policy, itr, num_save):
@@ -426,6 +428,9 @@ def main():
     parser.add_argument('--early_stop', type=int, default=None)
     parser.add_argument('--early_stop_metric', type=str, default=None)
     parser.add_argument('--distill_dropout_prob', type=float, default=.5)
+    parser.add_argument('--relabel', action='store_true')
+    parser.add_argument('--half_relabel', action='store_true')
+    parser.add_argument('--hierarchical', action='store_true')
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -547,6 +552,9 @@ def main():
     additional_args['early_stop'] = args.early_stop
     additional_args['early_stop_metric'] = args.early_stop_metric
     additional_args['distill_dropout_prob'] = args.distill_dropout_prob
+    additional_args['relabel'] = args.relabel
+    additional_args['half_relabel'] = args.half_relabel
+    additional_args['hierarchical'] = args.hierarchical
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:

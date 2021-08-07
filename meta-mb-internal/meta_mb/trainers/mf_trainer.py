@@ -243,7 +243,8 @@ class Trainer(object):
             #should_collect = should_collect and ((not self.curriculum_step in self.buffer.counts_train) or self.buffer.counts_train[self.curriculum_step] < self.buffer.train_buffer_capacity)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
-                samples_data, episode_logs = self.algo.collect_experiences(teacher_train_dict,
+                input_dict = teacher_distill_dict if (self.args.relabel or (self.args.half_relabel and itr % 2 == 0)) else teacher_train_dict
+                samples_data, episode_logs = self.algo.collect_experiences(input_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
@@ -347,7 +348,7 @@ class Trainer(object):
                     distill_log = self.distill(sampled_batch,
                                                is_training=True,
                                                teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel,
+                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
                                                relabel_dict=teacher_train_dict, distill_to_none=True)  # dist_i < 5)
                     time_train_distill += (time.time() - sample_start)
                     if self.args.use_dagger:
@@ -358,7 +359,7 @@ class Trainer(object):
                                                           is_training=True,
                                                           source='teacher',
                                                           teachers_dict=teacher_distill_dict,
-                                                          relabel=self.args.relabel,
+                                                          relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
                                                           relabel_dict=teacher_train_dict)
                         distill_log = dagger_distill_log
                         for key_set, log_dict in dagger_distill_log.items():
@@ -379,7 +380,7 @@ class Trainer(object):
                                                is_training=False,
                                                #source='teacher',
                                                teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel,
+                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
                                                relabel_dict=teacher_train_dict)
 
                 time_val_distill += (time.time() - sample_start)

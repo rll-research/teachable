@@ -101,6 +101,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         super().__init__()
 
         self.args = args
+        args.hierarchical = False
         endpool = 'endpool' in args.arch
         use_bow = 'bow' in args.arch
         pixel = 'pixel' in args.arch
@@ -289,6 +290,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.extra_heads = None
             self.add_heads()
 
+        if self.args.hierarchical:
+            self.high_level = nn.Sequential(
+                nn.Linear(self.embedding_size, layer_1_size),
+                nn.Tanh(),
+                nn.Linear(layer_1_size, layer_2_size),
+                nn.Tanh(),
+                nn.Linear(layer_2_size, 2)
+            )
+
     def add_heads(self):
         '''
         When using auxiliary tasks, the environment yields at each step some binary, continous, or multiclass
@@ -392,7 +402,24 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             info_list.append(info_dict)
         return actions, info_list
 
+    def get_actions_hierarchical(self, obs):
+        img_vector = obs.obs
+        instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
+        embedding = torch.cat([img_vector, instr_embedding], dim=1)
+        pred_high_level = self.high_level(embedding)
+        assert pred_high_level.shape == obs.advice.shape
+        obs.advice = pred_high_level
+        dist, info = self.forward(obs)
+        if self.discrete:
+            info['probs'] = dist.probs.detach().cpu().numpy()
+        else:
+            info['argmax_action'] = dist.mean.detach().cpu().numpy()
+        a = dist.sample().detach().cpu().numpy()
+        return a, [info]
+
+
     def forward(self, obs, memory=None, instr_embedding=None):
+        self.args.hierarchical = False
         if self.advice_size > 0:
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
@@ -448,6 +475,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
         reconstruction_embedding = embedding
+        high_level_embedding = embedding
 
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
@@ -494,6 +522,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         if self.reconstruction:
             info['advice'] = self.reconstructor(embedding)
+
+        if self.args.hierarchical:
+            pred_high_level = self.high_level(high_level_embedding)
+            info['high_level'] = pred_high_level
 
         return dist, info
 
