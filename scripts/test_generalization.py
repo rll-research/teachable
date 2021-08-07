@@ -100,8 +100,9 @@ def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stoc
 
 
 def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, seed=1, stochastic=True,
-                num_rollouts=10, policy_name='policy', env_name='env', log_every=10):
+                num_rollouts=1, policy_name='policy', env_name='env', log_every=10):
     start = time.time()
+    args.hierarchical = False  # TODO
     save_dir = pathlib.Path(save_dir)
 
     def log_fn_vidrollout(policy, itr, num_save):

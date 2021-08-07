@@ -39,6 +39,7 @@ def args_type(default):
 
 def load_model(args):
     original_config = args
+    args.static_model = False
     saved_model = joblib.load(args.saved_path)
     if 'args' in saved_model:
         if not args.override_old_config:
@@ -68,6 +69,7 @@ def run_experiment(**config):
     parser = ArgumentParser()
     args = parser.parse_args()
     exp_name = args.prefix
+    args.static_model = False
     for k, v in config.items():
         setattr(args, k, v)
 
@@ -89,6 +91,9 @@ def run_experiment(**config):
         raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = args.discrete
 
+    args.static_env = False
+    args.reset_each_batch = False
+    args.early_stop_metric = None
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": not args.leave_out_object,
@@ -254,7 +259,7 @@ def run_experiment(**config):
         log_teacher = 'none'
     else:
         log_teacher = teachers_list[last_teacher_index]  # Second to last (last is none)
-    num_rollouts = 1 if is_debug else 10
+    num_rollouts = 1 #if is_debug else 10
     log_fn = make_log_fn(env, args, 0, exp_dir, log_teacher, True, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),  # TODO: fix this for babyai!

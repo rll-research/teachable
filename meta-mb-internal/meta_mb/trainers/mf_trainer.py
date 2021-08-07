@@ -333,7 +333,6 @@ class Trainer(object):
                 should_distill = False
             if buffer is not None and sum(list(buffer.counts_train.values())) == 0:
                 should_distill = False
-
             if should_distill:
                 logger.log("Distilling ...")
                 time_distill_start = time.time()
