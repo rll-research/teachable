@@ -18,9 +18,10 @@ class PPOAgent(Agent):
                  device='cuda', discount=0.99,
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999),
-                 batch_size=1024, control_penalty=0, repeat_advice=1):
+                 batch_size=1024, control_penalty=0, repeat_advice=50):
         super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
-                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency)
+                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency,
+                         repeat_advice=repeat_advice)
 
         obs = env.reset()
         if args.discrete:

@@ -245,13 +245,9 @@ class Agent:
     """SAC algorithm."""
 
     def __init__(self, args, obs_preprocessor, teacher, env,
-                 device='cuda', discount=0.99,
-                 init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
-                 actor_lr=1e-4, actor_betas=(0.9, 0.999), critic_lr=1e-4,
-                 critic_betas=(0.9, 0.999), batch_size=1024, control_penalty=0, repeat_advice=1,
+                 device='cuda', discount=0.99, batch_size=1024, control_penalty=0, repeat_advice=1,
                  actor_update_frequency=1):
         super().__init__()
-        obs = env.reset()
         if args.discrete:
             action_dim = env.action_space.n
         else:
@@ -293,8 +289,8 @@ class Agent:
             obs = self.image_encoder(obs)
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
-        obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
-        dist = self.actor(obs)
+        o = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
+        dist = self.actor(o)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
             action = dist.sample() if sample else argmax_action
