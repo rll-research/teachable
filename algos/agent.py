@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.distributions import Normal
 
 from logger import logger
 
@@ -154,7 +155,7 @@ class DiagGaussianActor(nn.Module):
             self.outputs['mu'] = mu
             self.outputs['std'] = std
 
-            dist = SquashedNormal(mu, std)
+            dist = Normal(mu, std)
         return dist
 
 
