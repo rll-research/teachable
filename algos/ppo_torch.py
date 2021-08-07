@@ -122,6 +122,7 @@ class PPOAgent(Agent):
         logger.logkv('train_actor/loss', utils.to_np(actor_loss))
         logger.logkv('train_actor/target_entropy', self.target_entropy)
         logger.logkv('train_actor/entropy', utils.to_np(entropy))
+        logger.logkv('Train/Entropy', utils.to_np(dist.entropy().mean()))
         logger.logkv('train_actor/V', utils.to_np(batch.value.mean()))
         logger.logkv('train_actor/policy_loss', utils.to_np(policy_loss))
         logger.logkv('train_actor/control_penalty', utils.to_np(control_penalty))
