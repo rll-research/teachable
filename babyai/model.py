@@ -289,6 +289,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.extra_heads = None
             self.add_heads()
 
+        if self.args.hierarchical:
+            self.high_level = nn.Sequential(
+                nn.Linear(self.embedding_size, layer_1_size),
+                nn.Tanh(),
+                nn.Linear(layer_1_size, layer_2_size),
+                nn.Tanh(),
+                nn.Linear(layer_2_size, 2)
+            )
+
     def add_heads(self):
         '''
         When using auxiliary tasks, the environment yields at each step some binary, continous, or multiclass
@@ -448,6 +457,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         else:
             embedding = x
         reconstruction_embedding = embedding
+        high_level_embedding = embedding
 
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
@@ -494,6 +504,10 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         if self.reconstruction:
             info['advice'] = self.reconstructor(embedding)
+
+        if self.args.hierarchical:
+            pred_high_level = self.high_level(high_level_embedding)
+            info['high_level'] = pred_high_level
 
         return dist, info
 
