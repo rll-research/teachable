@@ -409,8 +409,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         assert pred_high_level.shape == obs.advice.shape
         obs.advice = pred_high_level
         dist, info = self.forward(obs)
-        a = dist.sample()
-        return a, info
+        if self.discrete:
+            info['probs'] = dist.probs.detach().cpu().numpy()
+        else:
+            info['argmax_action'] = dist.mean.detach().cpu().numpy()
+        a = dist.sample().detach().cpu().numpy()
+        return a, [info]
 
 
     def forward(self, obs, memory=None, instr_embedding=None):
