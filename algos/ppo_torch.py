@@ -77,7 +77,7 @@ class PPOAgent(Agent):
         logger.logkv(f'{tag}/critic_loss', utils.to_np(critic_loss))
         logger.logkv(f'{tag}/V_mean', utils.to_np(value.mean()))
         logger.logkv(f'{tag}/Return', utils.to_np(collected_return.mean()))
-        logger.logkv(f'{tag}/Collected_vaue', utils.to_np(collected_value.mean()))
+        logger.logkv(f'{tag}/Collected_value', utils.to_np(collected_value.mean()))
         logger.logkv(f'{tag}/V_std', utils.to_np(value.std()))
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
@@ -85,6 +85,9 @@ class PPOAgent(Agent):
     def update_actor(self, obs, batch):
 
         # control penalty
+        for n, p in self.actor.named_parameters():
+            if p.isnan().sum() > 0:
+                print("NAN in actor before anything else!")
         dist = self.actor(obs)
         entropy = -dist.log_prob(dist.rsample()).sum(-1).mean()
         entropy = torch.clamp(entropy, -10, 10) # Prevent this from blowing up
@@ -137,10 +140,10 @@ class PPOAgent(Agent):
         for n, p in self.actor.named_parameters():
             param_norm = p.grad.detach().data.norm(2).cpu().numpy()
             logger.logkv(f'grads/actor{n}', param_norm)
+        self.actor_optimizer.step()
         for n, p in self.actor.named_parameters():
             if p.isnan().sum() > 0:
                 print("NAN in actor after backprop!")
-        self.actor_optimizer.step()
 
     def act(self, obs, sample=False):
         if not 'advice' in obs:  # unpreprocessed
