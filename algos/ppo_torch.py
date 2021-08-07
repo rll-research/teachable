@@ -83,6 +83,7 @@ class PPOAgent(Agent):
         # control penalty
         dist = self.actor(obs)
         entropy = -dist.log_prob(dist.rsample()).sum(-1).mean()
+        entropy = torch.clamp(entropy, -10, 10) # Prevent this from blowing up
         action = batch.action
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
