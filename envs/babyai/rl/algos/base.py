@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 import torch
 import numpy as np
+
+from algos.utils import to_np
 from envs.babyai.rl.utils.dictlist import DictList, merge_dictlists
 from envs.babyai.rl.utils.penv import ParallelEnv, SequentialEnv
+from logger import logger
 
 
 class BaseAlgo(ABC):
@@ -276,8 +279,11 @@ class BaseAlgo(ABC):
 
             exps.value = self.values.transpose(0, 1).reshape(-1)
             exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
-            exps.returnn = exps.value + exps.advantage
+            exps.returnn = exps.value + exps.advantage # TODO: much bigger in OG!
             exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
+            logger.log("Train/Value", to_np(exps.value.mean()))
+            logger.log("Train/Advantage", to_np(exps.advantage.mean()))
+            logger.log("Train/Returnn", to_np(exps.returnn.mean()))
 
         # Log some values
 
