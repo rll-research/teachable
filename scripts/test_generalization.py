@@ -428,6 +428,7 @@ def main():
     parser.add_argument('--early_stop_metric', type=str, default=None)
     parser.add_argument('--distill_dropout_prob', type=float, default=.5)
     parser.add_argument('--relabel', action='store_true')
+    parser.add_argument('--half_relabel', action='store_true')
     parser.add_argument('--hierarchical', action='store_true')
     args = parser.parse_args()
     set_seed(args.seeds[0])
@@ -551,6 +552,7 @@ def main():
     additional_args['early_stop_metric'] = args.early_stop_metric
     additional_args['distill_dropout_prob'] = args.distill_dropout_prob
     additional_args['relabel'] = args.relabel
+    additional_args['half_relabel'] = args.half_relabel
     additional_args['hierarchical'] = args.hierarchical
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'

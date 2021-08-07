@@ -305,7 +305,6 @@ class ImitationLearning(object):
         a = dist.sample()
         assert a.shape == action_true.shape
         assert a.dtype == action_true.dtype
-        print("relabeling!!")
         return obss, a, action_teacher
 
 
