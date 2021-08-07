@@ -132,7 +132,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--lr', type=float, default=1e-4)
         self.add_argument('--discount', type=float, default=.25)
         self.add_argument('--num_modules', type=int, default=2)
-        self.add_argument('--value_loss_coef', type=float, default=.05)  # .5 is default
+        self.add_argument('--value_loss_coef', type=float, default=.5)
         self.add_argument('--max_grad_norm', type=float, default=.5)
         self.add_argument('--clip_eps', type=float, default=.2)
         self.add_argument('--advice_dim', type=int, default=128)
@@ -184,7 +184,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--meta_batch_size', type=int, default=200)
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--max_path_length', type=float, default=float('inf'))
-        self.add_argument('--gae_lambda', type=float, default=.99)
+        self.add_argument('--gae_lambda', type=float, default=.95)
         self.add_argument('--num_envs', type=int, default=20)
         self.add_argument('--zero_all_thresholds', action='store_true')
 
