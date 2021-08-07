@@ -273,7 +273,7 @@ class PPOAlgo(BaseAlgo):
 
                     if self.args.hierarchical:
                         pred_high_level = agent_info['high_level']
-                        ground_truth_high_level = sb.obs['OffsetWaypoint']
+                        ground_truth_high_level = sb.obs.advice
                         high_level_loss = (pred_high_level - ground_truth_high_level).norm(2, dim=1).mean()
                         loss += high_level_loss
                     else:
