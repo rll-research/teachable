@@ -401,6 +401,18 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             info_list.append(info_dict)
         return actions, info_list
 
+    def get_actions_hierarchical(self, obs):
+        img_vector = obs.obs
+        instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
+        embedding = torch.cat([img_vector, instr_embedding], dim=1)
+        pred_high_level = self.high_level(embedding)
+        assert pred_high_level.shape == obs.advice.shape
+        obs.advice = pred_high_level
+        dist, info = self.forward(obs)
+        a = dist.sample()
+        return a, info
+
+
     def forward(self, obs, memory=None, instr_embedding=None):
         if self.advice_size > 0:
             advice_vector = obs.advice
