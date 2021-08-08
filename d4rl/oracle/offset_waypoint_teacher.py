@@ -29,7 +29,6 @@ class OffsetWaypointCorrections(Teacher):
         """
         Return the expert action from the previous timestep.
         """
-        print("Giving feedback", self.noise_level, self.noise_duration, self.waypoint_offset)
         if self.noise_count >= self.noise_duration:
             self.noise_count = 0
             # Decide if we want noise
