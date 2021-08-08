@@ -202,8 +202,7 @@ class D4RLEnv:
                 teachers[ft] = WaypointCorrections(self, feedback_frequency=ff, cartesian_steps=cs,
                                                    controller=self.waypoint_controller)
             elif ft == 'OffsetWaypoint':
-                teachers[ft] = OffsetWaypointCorrections(self, noise_level=args.noise_level,
-                                                              noise_duration=args.noise_duration,
+                teachers[ft] = OffsetWaypointCorrections(self, args.noise_level, args.noise_duration,
                                                          feedback_frequency=ff, cartesian_steps=cs,
                                                    controller=self.waypoint_controller)
             elif ft == 'Direction':
