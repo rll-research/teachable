@@ -31,6 +31,7 @@ class OffsetWaypointCorrections(Teacher):
         """
         print("Giving feedback", self.noise_level, self.noise_duration, self.waypoint_offset)
         if self.noise_count >= self.noise_duration:
+            self.noise_count = 0
             # Decide if we want noise
             if np.random.uniform() < self.noise_level:
                 self.waypoint_offset = random.choice([np.array([1, 0]), np.array([0, 1]), np.array([-1, 0]), np.array([0, -1])])
