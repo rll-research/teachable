@@ -5,7 +5,7 @@ from oracle.teacher import Teacher
 
 
 class OffsetWaypointCorrections(Teacher):
-    def __init__(self, noise_level, noise_duration, *args, **kwargs):
+    def __init__(self, noise_level=0, noise_duration=1, *args, **kwargs):
         self.noise_level = noise_level
         self.noise_duration = noise_duration
         self.noise_count = 0
@@ -29,6 +29,7 @@ class OffsetWaypointCorrections(Teacher):
         """
         Return the expert action from the previous timestep.
         """
+        print("Giving feedback", self.noise_level, self.noise_duration, self.waypoint_offset)
         if self.noise_count >= self.noise_duration:
             # Decide if we want noise
             if np.random.uniform() < self.noise_level:
