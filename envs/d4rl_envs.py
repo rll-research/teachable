@@ -15,12 +15,6 @@ from oracle.dummy_advice import DummyAdvice
 
 
 class PointMassEnvSimple:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
     def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
                  cartesian_steps=[1], **kwargs):
         self.timesteps = 0
@@ -76,12 +70,6 @@ class PointMassEnvSimple:
 
 
 class PointMassEnvSimpleDiscrete:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
     def __init__(self, env_name, feedback_type=None, feedback_freq=False, intermediate_reward=False,
                  cartesian_steps=[1], **kwargs):
         self.timesteps = 0
@@ -146,12 +134,6 @@ class PointMassEnvSimpleDiscrete:
 
 
 class D4RLEnv:
-    """
-    Parent class to all of the BabyAI envs (TODO: except the most complex levelgen ones currently)
-    Provides functions to use with meta-learning, including sampling a task and resetting the same task
-    multiple times for multiple runs within the same meta-task.
-    """
-
     def __init__(self, env_name, offset_mapping=np.array([0, 0]), reward_type='dense', feedback_type=None, feedback_freq=False,
                  cartesian_steps=[1], max_grid_size=15, args=None, reset_target=True, reset_start=True, **kwargs):
         self.env_name = env_name
