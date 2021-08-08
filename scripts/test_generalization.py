@@ -440,8 +440,8 @@ def main():
     policy_path = pathlib.Path(args.policy)
 
     _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
-    default_args['noise_level'] = args.noise_level
-    default_args['noise_duration'] = args.noise_duration
+    default_args.noise_level = args.noise_level
+    default_args.noise_duration = args.noise_duration
     default_env.reset()
 
     # Get the levels of the policies to load
