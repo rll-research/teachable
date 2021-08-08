@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from meta_mb.logger import logger
 from meta_mb.samplers.utils import rollout
+
+from babyai.rl.utils.dictlist import merge_dictlists
 from babyai.utils.buffer import Buffer, trim_batch
 # from scripts.test_generalization import eval_policy, test_success
 import os.path as osp
@@ -12,6 +14,8 @@ import os
 import copy
 import random
 import pathlib
+
+from envs.d4rl_envs import AntEnv, PointMassEnv
 
 
 class Trainer(object):
@@ -243,12 +247,18 @@ class Trainer(object):
             #should_collect = should_collect and ((not self.curriculum_step in self.buffer.counts_train) or self.buffer.counts_train[self.curriculum_step] < self.buffer.train_buffer_capacity)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
-                input_dict = teacher_distill_dict if (self.args.relabel or (self.args.half_relabel and itr % 2 == 0)) else teacher_train_dict
+                input_dict = teacher_distill_dict if (self.args.relabel_goal
+                                                      or self.args.relabel
+                                                      or (self.args.half_relabel and itr % 2 == 0)
+                                                      ) else teacher_train_dict
                 samples_data, episode_logs = self.algo.collect_experiences(input_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
                                                                            collection_dict=collection_dict)
+                if self.args.relabel_goal:
+                    print("relabeling!")
+                    samples_data = self.relabel_goal(samples_data)
                 raw_samples_data = copy.deepcopy(samples_data)
                 try:
                     counts_train = buffer.counts_train[self.curriculum_step]
@@ -731,6 +741,48 @@ class Trainer(object):
                                           teachers_dict=teacher_subset_dict, distill_target='all')
             log_dict = list(log.values())[0]
             logger.logkv(f"CheckTeachers/NoInstr_{teacher}_Accuracy", log_dict['Accuracy'])
+
+    def relabel_goal(self, batch):
+        # only works for ant and pm
+        # Split into batches
+        trajs = []
+        end_idxs = torch.where(batch.full_done == 1)[0].detach().cpu().numpy() + 1
+        start_idxs = np.concatenate([[0], end_idxs[:-1]])
+        for start, end in zip(start_idxs, end_idxs):
+            traj = batch[start: end]
+            last_obs = traj.obs[-1]['obs']
+            final_agent_pos = last_obs[:2]  # Note, it is scaled by a scaling factor
+            if self.args.env == 'ant':
+                assert self.args.show_pos == 'ours'
+                goal_index = 29
+                repeat_len = goal_index + 2
+                goal_start_indices = np.arange(self.env.repeat_input) * repeat_len + goal_index
+            elif self.args.env == 'point_mass':
+                goal_index = 245
+                repeat_len = 2
+                goal_start_indices = np.arange(self.env.repeat_input) * repeat_len + goal_index
+            else:
+                raise NotImplementedError(type(self.env))
+
+            # Relabel goal
+            for obs_dict in traj.obs:
+                o = obs_dict['obs']
+                if self.args.env == 'point_mass':
+                    goal = final_agent_pos / self.env.scale_factor
+                elif self.env.args.show_goal == 'ours':
+                    goal = final_agent_pos
+                elif self.env.args.show_goal == 'offset':
+                    curr_agent_pos = o[:2]
+                    goal = final_agent_pos - curr_agent_pos
+                else:
+                    raise NotImplementedError
+                for index in goal_start_indices:
+                    o[index: index + 2] = goal
+                obs_dict['obs'] = o
+            trajs.append(traj)
+        relabeled_batch = merge_dictlists(trajs)
+        assert torch.all(torch.eq(relabeled_batch.action, batch.action))
+        return relabeled_batch
 
     def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={},
                 distill_to_none=True):

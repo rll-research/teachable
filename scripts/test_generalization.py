@@ -431,6 +431,7 @@ def main():
     parser.add_argument('--relabel', action='store_true')
     parser.add_argument('--half_relabel', action='store_true')
     parser.add_argument('--hierarchical', action='store_true')
+    parser.add_argument('--goal_relabel', action='store_true')
     parser.add_argument('--noise_level', type=float, default=0.0)
     parser.add_argument('--noise_duration', type=int, default=1)
     args = parser.parse_args()
@@ -559,6 +560,7 @@ def main():
     additional_args['relabel'] = args.relabel
     additional_args['half_relabel'] = args.half_relabel
     additional_args['hierarchical'] = args.hierarchical
+    additional_args['goal_relabel'] = args.goal_relabel
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:
