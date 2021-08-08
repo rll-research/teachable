@@ -5,12 +5,12 @@ from oracle.teacher import Teacher
 
 
 class OffsetWaypointCorrections(Teacher):
-    def __init__(self, noise_level=0, noise_duration=1, *args, **kwargs):
+    def __init__(self, env, noise_level=0, noise_duration=1, *args, **kwargs):
         self.noise_level = noise_level
         self.noise_duration = noise_duration
         self.noise_count = 0
         self.waypoint_offset = np.array([0, 0])
-        super().__init__(*args, **kwargs)
+        super().__init__(env, *args, **kwargs)
         self.next_state_coords = self.empty_feedback()
 
     def empty_feedback(self):
