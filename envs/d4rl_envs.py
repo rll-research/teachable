@@ -188,6 +188,9 @@ class D4RLEnv:
             cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
         if len(feedback_freq) == 1:
             feedback_freq = [feedback_freq[0]] * len(feedback_type)
+        if not hasattr(args, 'noise_level'):
+            args.noise_level = 0.0
+            args.noise_duration = 1
         for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
             if ft == 'none':
                 teachers[ft] = DummyAdvice(self, feedback_frequency=ff, cartesian_steps=cs,
