@@ -74,7 +74,7 @@ class ImitationLearning(object):
     def preprocess_batch(self, batch, source):
         obss = batch.obs
         if source == 'teacher':
-            action_true = batch.teacher_action
+            action_true = batch.teacher_action.copy()
             if len(action_true.shape) == 2 and action_true.shape[1] == 1:
                 action_true = action_true[:, 0]
         elif source == 'agent':
@@ -88,6 +88,10 @@ class ImitationLearning(object):
             action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
         if hasattr(batch, 'teacher_action'):
             action_teacher = batch.teacher_action
+            if self.args.discrete:
+                action_teacher = torch.IntTensor(action_teacher).to(self.device)
+            else:
+                action_teacher = torch.FloatTensor(action_teacher).to(self.device)
         else:
             action_teacher = torch.zeros_like(action_true)
         if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
