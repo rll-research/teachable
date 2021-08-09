@@ -180,6 +180,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rollout_without_instrs', action='store_true')
         self.add_argument('--modify_cc3', action='store_true')
         self.add_argument('--relabel', action='store_true')
+        self.add_argument('--relabel_goal', action='store_true')
         self.add_argument('--collect_before_threshold', action='store_true')
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0)
@@ -225,6 +226,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--half_relabel', action='store_true')
         self.add_argument('--noise_level', type=float, default=0.0)
         self.add_argument('--noise_duration', type=int, default=1)
+        self.add_argument('--scale_pm', action='store_true')
 
     def parse_args(self, arg=None):
         """
