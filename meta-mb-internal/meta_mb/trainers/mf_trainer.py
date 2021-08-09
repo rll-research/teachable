@@ -838,7 +838,8 @@ class Trainer(object):
                                                                               rollout_oracle=rollout_oracle,
                                                                               instrs=show_instrs,
                                                                               temperature=self.args.rollout_temperature,
-                                                                              speedup=speedup)
+                                                                              speedup=speedup,
+                                                                              hierarchical=self.args.hierarchical)
         if log_prefix is not None:
             logger.logkv(log_prefix + "Acc", accuracy)
             logger.logkv(log_prefix + "Stoch_Acc", stoch_accuracy)
