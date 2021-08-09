@@ -434,7 +434,7 @@ def main():
     parser.add_argument('--relabel_goal', action='store_true')
     parser.add_argument('--noise_level', type=float, default=0.0)
     parser.add_argument('--noise_duration', type=int, default=1)
-    parser.add_argument('--obs_scale', action='store_true')
+    parser.add_argument('--scale_pm', action='store_true')
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -444,7 +444,7 @@ def main():
     _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_args.noise_level = args.noise_level
     default_args.noise_duration = args.noise_duration
-    default_args.obs_scale = args.obs_scale
+    default_args.scale_pm = args.scale_pm
     default_env.reset()
 
     # Get the levels of the policies to load
