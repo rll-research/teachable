@@ -101,7 +101,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         super().__init__()
 
         self.args = args
-        args.hierarchical = False
         endpool = 'endpool' in args.arch
         use_bow = 'bow' in args.arch
         pixel = 'pixel' in args.arch
@@ -419,7 +418,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
 
     def forward(self, obs, memory=None, instr_embedding=None):
-        self.args.hierarchical = False
         if self.advice_size > 0:
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
