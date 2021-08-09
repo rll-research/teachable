@@ -402,6 +402,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return actions, info_list
 
     def get_actions_hierarchical(self, obs):
+        print("hierarchical action!")
         img_vector = obs.obs
         instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
         embedding = torch.cat([img_vector, instr_embedding], dim=1)
