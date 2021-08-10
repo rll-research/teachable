@@ -292,9 +292,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.args.hierarchical:
             self.high_level = nn.Sequential(
                 nn.Linear(self.embedding_size, layer_1_size),
-                nn.Tanh(),
+                nn.ReLU(),
                 nn.Linear(layer_1_size, layer_2_size),
-                nn.Tanh(),
+                nn.ReLU(),
                 nn.Linear(layer_2_size, 2)
             )
 
@@ -418,10 +418,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
 
     def forward(self, obs, memory=None, instr_embedding=None):
+        #self.args.hierarchical = False
         if self.advice_size > 0:
             advice_vector = obs.advice
+            #agent_pos = obs.obs[:, :2] / 3
+            #advice_vector = advice_vector - agent_pos
             advice_embedding = self._get_advice_embedding(advice_vector)
         img_vector = obs.obs
+        
         if self.use_instr:
             instruction_vector = obs.instr.long()
             if instr_embedding is None:
