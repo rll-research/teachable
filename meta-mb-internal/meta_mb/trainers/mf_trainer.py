@@ -746,6 +746,8 @@ class Trainer(object):
         # only works for ant and pm
         # Split into batches
         trajs = []
+        goals_before = []
+        goals_after = []
         end_idxs = torch.where(batch.full_done == 1)[0].detach().cpu().numpy() + 1
         start_idxs = np.concatenate([[0], end_idxs[:-1]])
         for start, end in zip(start_idxs, end_idxs):
@@ -779,11 +781,17 @@ class Trainer(object):
                 else:
                     raise NotImplementedError
                 for index in goal_start_indices:
+                    goals_before.append(o[index: index + 2])
+                    goals_after.append(goal)
                     o[index: index + 2] = goal
                 obs_dict['obs'] = o
             trajs.append(traj)
         relabeled_batch = merge_dictlists(trajs)
         assert torch.all(torch.eq(relabeled_batch.action, batch.action))
+        import pickle as pkl
+        with open('relabel.pkl', 'wb') as f:
+            pkl.dump((goals_before, goals_after), f)
+        assert False
         return relabeled_batch
 
     def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={},
