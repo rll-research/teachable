@@ -274,7 +274,11 @@ class PPOAlgo(BaseAlgo):
                     if self.args.hierarchical:
                         pred_high_level = agent_info['high_level']
                         ground_truth_high_level = sb.obs.advice
-                        high_level_loss = (pred_high_level - ground_truth_high_level).norm(2, dim=1).mean()
+                        assert pred_high_level.shape == ground_truth_high_level.shape
+                        assert len(pred_high_level.shape) == 2
+                        agent_pos_x = sb.obs.obs[:, 0] * 5
+                        good_indices = torch.where(agent_pos_x < 4)
+                        high_level_loss = (pred_high_level - ground_truth_high_level)[good_indices].norm(2, dim=1).mean()
                         loss += high_level_loss
                     else:
                         high_level_loss = torch.tensor(0)
