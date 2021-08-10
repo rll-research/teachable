@@ -768,6 +768,7 @@ class Trainer(object):
             # Relabel goal
             for i, obs_dict in enumerate(traj.obs):
                 relabel_index = np.random.randint(i, final_index)
+                print("relabel index", relabel_index)
                 last_obs = traj.obs[relabel_index]['obs']
                 final_agent_pos = last_obs[:2]  # Note, it is scaled by a scaling factor
                 o = obs_dict['obs']
@@ -780,9 +781,9 @@ class Trainer(object):
                     goal = final_agent_pos - curr_agent_pos
                 else:
                     raise NotImplementedError
+                goals_before.append(o[goal_start_indices[0]: goal_start_indices[0] + 2].copy())
+                goals_after.append(goal.copy())
                 for index in goal_start_indices:
-                    goals_before.append(o[index: index + 2])
-                    goals_after.append(goal)
                     o[index: index + 2] = goal
                 obs_dict['obs'] = o
             trajs.append(traj)
