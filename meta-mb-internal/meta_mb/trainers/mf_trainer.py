@@ -750,8 +750,7 @@ class Trainer(object):
         start_idxs = np.concatenate([[0], end_idxs[:-1]])
         for start, end in zip(start_idxs, end_idxs):
             traj = batch[start: end]
-            last_obs = traj.obs[-1]['obs']
-            final_agent_pos = last_obs[:2]  # Note, it is scaled by a scaling factor
+            final_index = len(traj)
             if self.args.env == 'ant':
                 assert self.args.show_pos == 'ours'
                 goal_index = 29
@@ -765,10 +764,13 @@ class Trainer(object):
                 raise NotImplementedError(type(self.env))
 
             # Relabel goal
-            for obs_dict in traj.obs:
+            for i, obs_dict in enumerate(traj.obs):
+                relabel_index = np.random.randint(i, final_index)
+                last_obs = traj.obs[relabel_index]['obs']
+                final_agent_pos = last_obs[:2]  # Note, it is scaled by a scaling factor
                 o = obs_dict['obs']
                 if self.args.env == 'point_mass':
-                    goal = final_agent_pos / self.env.scale_factor
+                    goal = final_agent_pos
                 elif self.env.args.show_goal == 'ours':
                     goal = final_agent_pos
                 elif self.env.args.show_goal == 'offset':
