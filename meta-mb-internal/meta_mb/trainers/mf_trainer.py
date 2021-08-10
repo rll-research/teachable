@@ -746,7 +746,7 @@ class Trainer(object):
         # only works for ant and pm
         # Split into batches
         trajs = []
-        goals_before = []
+        agent_pos = []
         goals_after = []
         end_idxs = torch.where(batch.full_done == 1)[0].detach().cpu().numpy() + 1
         start_idxs = np.concatenate([[0], end_idxs[:-1]])
@@ -781,7 +781,7 @@ class Trainer(object):
                     goal = final_agent_pos - curr_agent_pos
                 else:
                     raise NotImplementedError
-                goals_before.append(o[goal_start_indices[0]: goal_start_indices[0] + 2].copy())
+                agent_pos.append(o[:2])
                 goals_after.append(goal.copy())
                 for index in goal_start_indices:
                     o[index: index + 2] = goal
@@ -791,7 +791,7 @@ class Trainer(object):
         assert torch.all(torch.eq(relabeled_batch.action, batch.action))
         import pickle as pkl
         with open(f'relabel_{self.args.prefix}.pkl', 'wb') as f:
-            pkl.dump((goals_before, goals_after), f)
+            pkl.dump((agent_pos, goals_after), f)
         assert False
         return relabeled_batch
 
