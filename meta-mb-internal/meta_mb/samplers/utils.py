@@ -188,9 +188,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     full_obs_list = []
     num_feedback = 0
     num_steps = 0
-    pos_list = []
-    og_advice_list = []
-    learned_advice_list = []
     for i in range(num_rollouts):
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
@@ -217,9 +214,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             # Choose action
             if hierarchical:
                 a, agent_info = agent.get_actions_hierarchical(o)
-                pos_list.append(env.get_pos())
-                og_advice_list.append(full_obs_list[-1]['OffsetWaypoint'])
-                learned_advice_list.append(o.advice)
             else:
                 a, agent_info = agent.get_actions_t(o, temp=temperature)
             stoch_a = a
@@ -300,9 +294,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
         finalize_videos_local(video_filename, all_writer, success_writer, failure_writer)
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
-    import pickle as pkl
-    with open('bad_run.pkl', 'wb') as f:
-        pkl.dump((pos_list, og_advice_list, learned_advice_list), f)
 
     print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
     return paths, correct / count, stoch_correct / count, det_correct / count, total_reward / count
