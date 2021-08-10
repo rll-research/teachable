@@ -789,7 +789,7 @@ class Trainer(object):
         relabeled_batch = merge_dictlists(trajs)
         assert torch.all(torch.eq(relabeled_batch.action, batch.action))
         import pickle as pkl
-        with open('relabel.pkl', 'wb') as f:
+        with open(f'relabel_{self.args.prefix}.pkl', 'wb') as f:
             pkl.dump((goals_before, goals_after), f)
         assert False
         return relabeled_batch
