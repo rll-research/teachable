@@ -227,6 +227,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--noise_level', type=float, default=0.0)
         self.add_argument('--noise_duration', type=int, default=1)
         self.add_argument('--scale_pm', action='store_true')
+        self.add_argument('--distill_self', action='store_true')
+        self.add_argument('--high_level_only', action='store_true')
 
     def parse_args(self, arg=None):
         """

@@ -568,8 +568,8 @@ def main():
     additional_args['hierarchical'] = args.hierarchical
     additional_args['relabel_goal'] = args.relabel_goal
     additional_args['distill_self'] = args.distill_self
+    additional_args['high_level_only'] = args.high_level_only
     if args.high_level_only:
-        additional_args['high_level_only'] = args.high_level_only
         additional_args['distill_self'] = True
         assert args.target_policy is None
         additional_args['hierarchical'] = True
