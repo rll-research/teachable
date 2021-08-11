@@ -766,7 +766,6 @@ class Trainer(object):
             # Relabel goal
             for i, obs_dict in enumerate(traj.obs):
                 relabel_index = np.random.randint(i, final_index)
-                print("relabel index", relabel_index)
                 last_obs = traj.obs[relabel_index]['obs']
                 final_agent_pos = last_obs[:2]  # Note, it is scaled by a scaling factor
                 o = obs_dict['obs']
