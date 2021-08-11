@@ -277,6 +277,9 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
         n_itr = args.n_itr
     else:
         n_itr = 0
+    if args.distill_self:
+        target_key = teacher_key
+        args.target_key = teacher_key
     policy_env_name = f'Policy{policy_name}-{env_name}'
     print("EVALUATING", policy_env_name)
     full_save_dir = save_dir.joinpath(policy_env_name)
@@ -434,6 +437,8 @@ def main():
     parser.add_argument('--noise_level', type=float, default=0.0)
     parser.add_argument('--noise_duration', type=int, default=1)
     parser.add_argument('--scale_pm', action='store_true')
+    parser.add_argument('--high_level_only', action='store_true')
+    parser.add_argument('--distill_self', action='store_true')
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -562,6 +567,12 @@ def main():
     additional_args['half_relabel'] = args.half_relabel
     additional_args['hierarchical'] = args.hierarchical
     additional_args['relabel_goal'] = args.relabel_goal
+    additional_args['distill_self'] = args.distill_self
+    if args.high_level_only:
+        additional_args['high_level_only'] = args.high_level_only
+        additional_args['distill_self'] = True
+        assert args.target_policy is None
+        additional_args['hierarchical'] = True
     if args.collect_with_oracle:
         additional_args['source'] = 'teacher'
     if args.buffer_name is not None:

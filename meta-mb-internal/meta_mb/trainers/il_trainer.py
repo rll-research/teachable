@@ -152,7 +152,20 @@ class ImitationLearning(object):
         else:
             reconstruction_loss = torch.FloatTensor([0]).to(self.device)
 
-        loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + self.args.kl_coef * kl_loss
+        if self.args.hierarchical:
+            pred_high_level = info['high_level']
+            ground_truth_high_level = obss.advice
+            assert pred_high_level.shape == ground_truth_high_level.shape
+            assert len(pred_high_level.shape) == 2
+            high_level_loss = (pred_high_level - ground_truth_high_level).norm(2, dim=1).mean()
+        else:
+            high_level_loss = torch.tensor(0).to(self.device)
+
+        if self.args.high_level_only:
+            loss = high_level_loss
+        else:
+            loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + \
+               self.args.kl_coef * kl_loss + high_level_loss
         if self.args.discrete:
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             avg_mean_dist = -1
