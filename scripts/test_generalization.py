@@ -289,6 +289,10 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
         finetune_path = full_save_dir.joinpath(f'finetuned_policy{seed}')
         if not finetune_path.exists():
             finetune_path.mkdir()
+        else:
+            # We must have already had a runs which died. Let's restart that checkpoint.
+            print(f"Reloading distillation policy for target {target_key}")
+            policy[target_key] = load_policy(finetune_path.joinpath('latest.pkl'))[0][args.target_policy_key]
         args.seed = seed
         # num_feedback = 0
         if not args.finetune_teacher_first in [0, '0']:
@@ -324,8 +328,13 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
                     finetune_teacher_path.mkdir()
                     if not finetune_teacher_path.exists():
                         finetune_teacher_path.mkdir()
-                    with open(finetune_teacher_path.joinpath('results.csv'), 'w') as f:
-                        f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
+                        with open(finetune_teacher_path.joinpath('results.csv'), 'w') as f:
+                            f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback\n')
+                else:
+                    # We must have already had a runs which died. Let's restart that checkpoint.
+                    print("Reloading teacher finetune policy")
+                    policy[distill_to] = load_policy(finetune_teacher_path.joinpath('latest.pkl'))[0][
+                        args.target_policy_key]
                 finetune_teacher_args.seed = seed
             print("=" * 20, "Finetuning Teacher", "=" * 20)
             print("All feedback forms:", finetune_teacher_args.feedback_type)
@@ -338,8 +347,6 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
                                       num_rollouts=num_rollouts, model_data=model_data, seed=seed,
                                       collect_with=collect_with, distill_to=distill_to)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
-            if args.target_policy is not None:
-                policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
         collect_with = teacher_key
@@ -583,8 +590,8 @@ def main():
     # Test every policy with every level
     if not save_dir.exists():
         save_dir.mkdir()
-    with open(save_dir.joinpath('results.csv'), 'w') as f:
-        f.write('policy_env,policy,env,success_rate,stoch_accuracy,det_accuracy,reward \n')
+        with open(save_dir.joinpath('results.csv'), 'w') as f:
+            f.write('policy_env,policy,env,success_rate,stoch_accuracy,det_accuracy,reward \n')
     for policy_name in policy_level_names:
         for env, env_index in envs:
             inner_env = env
