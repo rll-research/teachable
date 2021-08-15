@@ -234,6 +234,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     logger.configure(dir=save_name, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=0, name=args.prefix + str(args.seed), config={})
+    print(f"Starting on itr {args.start_itr}")
     trainer = Trainer(
         args,
         algo=algo,
@@ -242,6 +243,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         env=env.copy(),
         sampler=sampler,
         sample_processor=sample_processor,
+        start_itr=args.start_itr,
         buffer_name=args.buffer_name if args.buffer_name is not None else save_name,
         exp_name=save_name,
         curriculum_step=env_index,
@@ -289,10 +291,15 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
         finetune_path = full_save_dir.joinpath(f'finetuned_policy{seed}')
         if not finetune_path.exists():
             finetune_path.mkdir()
+            args.start_itr = 0
         else:
             # We must have already had a runs which died. Let's restart that checkpoint.
             print(f"Reloading distillation policy for target {target_key}")
-            policy[target_key] = load_policy(finetune_path.joinpath('latest.pkl'))[0][args.target_policy_key]
+            distill_policy_list = load_policy(finetune_path.joinpath('latest.pkl'))
+            policy[target_key] = distill_policy_list[0][args.target_policy_key]
+            start_itr = distill_policy_list[3]['itr']
+            args.start_itr = start_itr
+
         args.seed = seed
         # num_feedback = 0
         if not args.finetune_teacher_first in [0, '0']:
