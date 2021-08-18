@@ -295,7 +295,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 nn.ReLU(),
                 nn.Linear(layer_1_size, layer_2_size),
                 nn.ReLU(),
-                nn.Linear(layer_2_size, 2)
+                nn.Linear(layer_2_size, self.advice_size)
             )
 
     def add_heads(self):
