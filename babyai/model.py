@@ -525,6 +525,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             info['advice'] = self.reconstructor(embedding)
 
         if hasattr(self.args, 'hierarchical') and self.args.hierarchical:
+            if not hasattr(self, 'high_level'):  # Adding a high-level to a pretrained policy w/o one  # TODO: revert this!
+                self.high_level = nn.Sequential(
+                    nn.Linear(self.embedding_size, self.args.hidden_size),
+                    nn.ReLU(),
+                    nn.Linear(self.args.hidden_size, self.args.hidden_size),
+                    nn.ReLU(),
+                    nn.Linear(self.args.hidden_size, self.advice_size)
+                )
+
             pred_high_level = self.high_level(high_level_embedding)
             info['high_level'] = pred_high_level
 
