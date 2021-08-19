@@ -15,6 +15,7 @@ def trim_batch(batch):
         "action": batch.action,
         "full_done": batch.full_done.int(),
         "success": batch.env_infos.success,
+        "log_prob": batch.log_prob,
     }
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
@@ -30,7 +31,7 @@ def trim_batch(batch):
 # TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
 class Buffer:
     def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer', augmenter=None,
-                 successful_only=False):
+                 successful_only=False, sample_frac=1, sample_strategy='uniform_traj'):
         self.train_buffer_capacity = buffer_capacity
         self.augmenter = augmenter
         # We don't need that many val samples
@@ -54,6 +55,8 @@ class Buffer:
         self.val_prob = val_prob
         self.added_count = 0
         self.total_count = 0
+        self.sample_frac = sample_frac
+        self.sample_strategy = sample_strategy
 
     def load_buffer(self):
         train_path = self.buffer_path.joinpath(f'train_buffer.pkl')
@@ -146,6 +149,41 @@ class Buffer:
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
             pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
 
+    def filter_trajs(self, trajs):
+        print("Diagnostics!!")
+        print("starting length: ", len(trajs), [len(t) for t in trajs])
+        if self.sample_strategy == 'uniform_traj':  # choose a certain percentage of trajectories
+            split = max(1, int(self.sample_frac * len(trajs)))
+            print(f"uniform_traj sampling, chose {split} (also {len(trajs[:split])}) trajs of {len(trajs)}" )
+            return trajs[:split]
+        elif self.sample_strategy == 'uniform':
+            full_traj = merge_dictlists(trajs)
+            count = max(1, int(self.sample_frac * len(full_traj)))
+            indices = np.random.randint(0, len(full_traj), size=count)
+            filtered_trajs = merge_dictlists([full_traj[i:i+1] for i in indices])
+            print(f"Uniform sampling; collected {count} / {len(full_traj)}; indices: {indices} (also {len(filtered_trajs)})")
+            return filtered_trajs
+        elif self.sample_strategy == 'success_traj':
+            split = max(1, int(self.sample_frac * len(trajs)))
+            trajs = sorted(trajs, key=lambda traj: -traj.success[-1].item())
+            trajs = trajs[:split]
+            print(f"success sampling, chose {split} (also {len(trajs[:split])}) trajs of {len(trajs)}; successes "
+                  f"{[t.success[-1].item() for t in trajs[:5]]}" )
+            return trajs
+        elif self.sample_strategy == 'entropy':
+            full_traj = merge_dictlists(trajs)
+            high_entopy_tuples = sorted(enumerate(full_traj.log_prob), key=lambda tup: -tup[1])
+            count = max(1, int(self.sample_frac * len(full_traj)))
+            high_entopy_tuples = high_entopy_tuples[:count]
+            high_entropy_indices = np.concatenate([tup[0] for tup in high_entopy_tuples])
+            filtered_traj = [merge_dictlists([full_traj[i:i+1] for i in high_entropy_indices])]
+            print(f"Entropy sampling; collected {count} / {len(full_traj)} (also {len(high_entropy_indices)});"
+                  f" indices: {high_entropy_indices[:5]}; entropy goes down: {filtered_traj.log_prob[:5]} ")
+            return
+        else:
+            raise NotImplementedError
+
+
     def add_trajs(self, batch, level, trim=True, only_val=False):
         if trim:
             batch = trim_batch(batch)
@@ -161,7 +199,8 @@ class Buffer:
             self.save_traj(traj, level, self.index_val[level], 'val')
             self.index_val[level] = (self.index_val[level] + len(traj)) % self.val_buffer_capacity
             self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + len(traj))
-        for traj in trajs[split:]:
+        train_trajs = self.filter_trajs(trajs[split:])
+        for traj in train_trajs:
             self.save_traj(traj, level, self.index_train[level], 'train')
             self.index_train[level] = (self.index_train[level] + len(traj)) % self.train_buffer_capacity
             self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + len(traj))

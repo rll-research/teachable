@@ -453,6 +453,10 @@ def main():
     parser.add_argument('--scale_pm', action='store_true')
     parser.add_argument('--high_level_only', action='store_true')
     parser.add_argument('--distill_self', action='store_true')
+    parser.add_argument('--sample_frac', type=float, default=1.0)
+    parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
+                                                                                        'success_traj',
+                                                                                   'ensemble', 'uniform_traj'])
     args = parser.parse_args()
     set_seed(args.seeds[0])
 
@@ -583,6 +587,8 @@ def main():
     additional_args['relabel_goal'] = args.relabel_goal
     additional_args['distill_self'] = args.distill_self
     additional_args['high_level_only'] = args.high_level_only
+    additional_args['sample_frac'] = args.sample_frac
+    additional_args['sample_strategy'] = args.sample_strategy
     if args.high_level_only:
         additional_args['distill_self'] = True
         assert args.target_policy is None

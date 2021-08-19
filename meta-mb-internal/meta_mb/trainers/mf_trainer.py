@@ -167,7 +167,8 @@ class Trainer(object):
 
         if not getattr(self.args, 'no_buffer', False):
             buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
-                            augmenter=self.augmenter, successful_only=self.args.distill_successful_only)
+                            augmenter=self.augmenter, successful_only=self.args.distill_successful_only,
+                            sample_frac=self.args.sample_frac, sample_strategy=self.args.sample_strategy)
             self.buffer = buffer
             if self.args.use_dagger:
                 dagger_buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
