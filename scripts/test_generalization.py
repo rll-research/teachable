@@ -635,7 +635,7 @@ if __name__ == '__main__':
         import os
 
         error_content = [
-            f'Run Name: {args.prefix}',
+            f'Run Name: {args.save_dir}',
             f'Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
             f'GPU: {os.environ["CUDA_VISIBLE_DEVICES"]}',
             f'Error: {traceback.format_exc()}',
