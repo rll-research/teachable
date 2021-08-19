@@ -59,6 +59,7 @@ class Buffer:
         self.sample_strategy = sample_strategy
 
     def load_buffer(self):
+        print("LOADING BUFFER", self.buffer_path)
         train_path = self.buffer_path.joinpath(f'train_buffer.pkl')
         if train_path.exists():
             with open(train_path, 'rb') as f:
