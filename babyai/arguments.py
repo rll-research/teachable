@@ -233,6 +233,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform',
                                                                                           'entropy',
                                                                                           'success_traj',
+                                                                                          'failure_traj',
                                                                                           'ensemble',
                                                                                           'uniform_traj',
                                                                                           'mismatch'])

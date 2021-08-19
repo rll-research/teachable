@@ -168,6 +168,11 @@ class Buffer:
             trajs = sorted(trajs, key=lambda traj: -traj.success[-1].item())
             trajs = trajs[:split]
             return trajs
+        elif self.sample_strategy == 'failure_traj':
+            split = max(1, round(self.sample_frac * len(trajs)))
+            trajs = sorted(trajs, key=lambda traj: traj.success[-1].item())
+            trajs = trajs[:split]
+            return trajs
         elif self.sample_strategy == 'entropy':
             full_traj = merge_dictlists(trajs)
             high_entropy_tuples = sorted(enumerate(full_traj.log_prob), key=lambda tup: tup[1])

@@ -312,7 +312,7 @@ if __name__ == '__main__':
             '=======================================================================================================\n',
         ]
 
-        for error_line in error_content[:-1]:
+        for error_line in error_content[:-2]:
             print(error_line)
 
         file = pathlib.Path('/home/olivia/failed_runs.txt')

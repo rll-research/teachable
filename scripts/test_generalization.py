@@ -625,6 +625,7 @@ if __name__ == '__main__':
         parser.add_argument('--sample_frac', type=float, default=1.0)
         parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
                                                                                             'success_traj',
+                                                                                            'failure_traj',
                                                                                             'ensemble', 'uniform_traj',
                                                                                             'mismatch'])
         args = parser.parse_args()
@@ -642,7 +643,7 @@ if __name__ == '__main__':
             '=======================================================================================================\n',
         ]
 
-        for error_line in error_content[:-1]:
+        for error_line in error_content[:-2]:
             print(error_line)
 
         file = pathlib.Path('/home/olivia/failed_runs.txt')
