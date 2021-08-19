@@ -397,68 +397,8 @@ def test_success_checkpoint(env, save_dir, num_rollouts, teachers, policy=None,
     return success_rate, stoch_accuracy, det_accuracy, reward
 
 
-def main():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--policy", required=True)
-    parser.add_argument('--target_policy', type=str, default=None)
-    parser.add_argument('--distill_teacher_policy', type=str, default=None)
-    parser.add_argument('--teacher_policy_key', type=str, default=None)
-    parser.add_argument('--target_policy_key', type=str, default='none')
-    parser.add_argument('--distill_teacher_policy_key', type=str, default=None)
-    parser.add_argument('--envs', nargs='+', required=True, type=str)
-    parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
-    parser.add_argument("--finetune_itrs", default=0, type=int)
-    parser.add_argument("--min_itr_steps_distill", default=0, type=int)
-    parser.add_argument("--num_rollouts", default=50, type=int)
-    parser.add_argument("--no_train_rl", action='store_true')
-    parser.add_argument("--save_dir", default=".")
-    parser.add_argument("--hide_instrs", action='store_true')
-    parser.add_argument("--deterministic", action='store_true')
-    parser.add_argument('--teacher_schedule', type=str, default='last_teacher')
-    parser.add_argument('--distillation_strategy', type=str, choices=[
-        'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
-    ], default='single_teachers_none')
-    parser.add_argument('--no_distill', action='store_true')
-    parser.add_argument('--yes_distill', action='store_true')
-    parser.add_argument('--rollout_temperature', type=float, default=1)
-    parser.add_argument('--finetune_il', action='store_true')
-    parser.add_argument('--log_every', type=int, default=1)
-    parser.add_argument('--finetune_teacher_first', type=str, default=0)
-    parser.add_argument('--repeated_seed', action='store_true')
-    parser.add_argument('--distillation_steps', type=int, default=None)
-    parser.add_argument('--seeds', nargs='+', default=[0], type=int)
-    parser.add_argument('--distill_successful_only', action='store_true')
-    parser.add_argument('--buffer_name', default=None)
-    parser.add_argument('--collect_with_oracle', action='store_true')
-    parser.add_argument('--frames_per_proc', type=int, default=None)
-    parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--lr', type=float, default=None)
-    parser.add_argument('--buffer_capacity', type=int, default=10000)
-    parser.add_argument('--num_envs', type=int, default=None)
-    parser.add_argument('--recurrence', type=int, default=None)
-    parser.add_argument('--advance_curriculum_func', type=str, default=None)
-    parser.add_argument('--cartesian_steps', type=int, default=None)
-    parser.add_argument('--feedback_freq', type=int, default=None)
-    parser.add_argument('--start_num_feedback', type=int, default=0)
-    parser.add_argument('--static_env', action='store_true')
-    parser.add_argument('--early_stop', type=int, default=None)
-    parser.add_argument('--early_stop_metric', type=str, default=None)
-    parser.add_argument('--distill_dropout_prob', type=float, default=.5)
-    parser.add_argument('--relabel', action='store_true')
-    parser.add_argument('--half_relabel', action='store_true')
-    parser.add_argument('--hierarchical', action='store_true')
-    parser.add_argument('--relabel_goal', action='store_true')
-    parser.add_argument('--noise_level', type=float, default=0.0)
-    parser.add_argument('--noise_duration', type=int, default=1)
-    parser.add_argument('--scale_pm', action='store_true')
-    parser.add_argument('--high_level_only', action='store_true')
-    parser.add_argument('--distill_self', action='store_true')
-    parser.add_argument('--sample_frac', type=float, default=1.0)
-    parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
-                                                                                        'success_traj',
-                                                                                   'ensemble', 'uniform_traj',
-                                                                                        'mismatch'])
-    args = parser.parse_args()
+def main(args):
+
     set_seed(args.seeds[0])
 
     save_dir = pathlib.Path(args.save_dir)
@@ -626,4 +566,89 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("--policy", required=True)
+        parser.add_argument('--target_policy', type=str, default=None)
+        parser.add_argument('--distill_teacher_policy', type=str, default=None)
+        parser.add_argument('--teacher_policy_key', type=str, default=None)
+        parser.add_argument('--target_policy_key', type=str, default='none')
+        parser.add_argument('--distill_teacher_policy_key', type=str, default=None)
+        parser.add_argument('--envs', nargs='+', required=True, type=str)
+        parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
+        parser.add_argument("--finetune_itrs", default=0, type=int)
+        parser.add_argument("--min_itr_steps_distill", default=0, type=int)
+        parser.add_argument("--num_rollouts", default=50, type=int)
+        parser.add_argument("--no_train_rl", action='store_true')
+        parser.add_argument("--save_dir", default=".")
+        parser.add_argument("--hide_instrs", action='store_true')
+        parser.add_argument("--deterministic", action='store_true')
+        parser.add_argument('--teacher_schedule', type=str, default='last_teacher')
+        parser.add_argument('--distillation_strategy', type=str, choices=[
+            'all_teachers', 'no_teachers', 'all_but_none', 'powerset', 'single_teachers', 'single_teachers_none'
+        ], default='single_teachers_none')
+        parser.add_argument('--no_distill', action='store_true')
+        parser.add_argument('--yes_distill', action='store_true')
+        parser.add_argument('--rollout_temperature', type=float, default=1)
+        parser.add_argument('--finetune_il', action='store_true')
+        parser.add_argument('--log_every', type=int, default=1)
+        parser.add_argument('--finetune_teacher_first', type=str, default=0)
+        parser.add_argument('--repeated_seed', action='store_true')
+        parser.add_argument('--distillation_steps', type=int, default=None)
+        parser.add_argument('--seeds', nargs='+', default=[0], type=int)
+        parser.add_argument('--distill_successful_only', action='store_true')
+        parser.add_argument('--buffer_name', default=None)
+        parser.add_argument('--collect_with_oracle', action='store_true')
+        parser.add_argument('--frames_per_proc', type=int, default=None)
+        parser.add_argument('--batch_size', type=int, default=1024)
+        parser.add_argument('--lr', type=float, default=None)
+        parser.add_argument('--buffer_capacity', type=int, default=10000)
+        parser.add_argument('--num_envs', type=int, default=None)
+        parser.add_argument('--recurrence', type=int, default=None)
+        parser.add_argument('--advance_curriculum_func', type=str, default=None)
+        parser.add_argument('--cartesian_steps', type=int, default=None)
+        parser.add_argument('--feedback_freq', type=int, default=None)
+        parser.add_argument('--start_num_feedback', type=int, default=0)
+        parser.add_argument('--static_env', action='store_true')
+        parser.add_argument('--early_stop', type=int, default=None)
+        parser.add_argument('--early_stop_metric', type=str, default=None)
+        parser.add_argument('--distill_dropout_prob', type=float, default=.5)
+        parser.add_argument('--relabel', action='store_true')
+        parser.add_argument('--half_relabel', action='store_true')
+        parser.add_argument('--hierarchical', action='store_true')
+        parser.add_argument('--relabel_goal', action='store_true')
+        parser.add_argument('--noise_level', type=float, default=0.0)
+        parser.add_argument('--noise_duration', type=int, default=1)
+        parser.add_argument('--scale_pm', action='store_true')
+        parser.add_argument('--high_level_only', action='store_true')
+        parser.add_argument('--distill_self', action='store_true')
+        parser.add_argument('--sample_frac', type=float, default=1.0)
+        parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
+                                                                                            'success_traj',
+                                                                                            'ensemble', 'uniform_traj',
+                                                                                            'mismatch'])
+        args = parser.parse_args()
+        main(args)
+    except Exception as e:
+        import traceback
+        from datetime import datetime
+        import os
+
+        error_content = [
+            f'Run Name: {args.prefix}',
+            f'Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+            f'GPU: {os.environ["CUDA_VISIBLE_DEVICES"]}',
+            f'Error: {traceback.format_exc()}',
+            '=======================================================================================================\n',
+        ]
+
+        for error_line in error_content[:-1]:
+            print(error_line)
+
+        file = pathlib.Path('/home/olivia/failed_runs.txt')
+        if file.exists():
+            with open(file, 'a') as f:
+                f.writelines(error_content)
+        else:
+            print("Not logging anywhere b/c we can't find the file")
+        raise
