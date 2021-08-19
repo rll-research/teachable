@@ -135,7 +135,10 @@ class Buffer:
         # We can fit the entire traj in
         for k in value:
             arr = getattr(value, k)
-            arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            try:
+                arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            except:
+                print("eww")
 
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = min(len(traj) - max_val, len(arr))
@@ -151,36 +154,37 @@ class Buffer:
             pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
 
     def filter_trajs(self, trajs):
-        print("Diagnostics!!")
-        print("starting length: ", len(trajs), [len(t) for t in trajs])
         if self.sample_strategy == 'uniform_traj':  # choose a certain percentage of trajectories
-            split = max(1, int(self.sample_frac * len(trajs)))
-            print(f"uniform_traj sampling, chose {split} (also {len(trajs[:split])}) trajs of {len(trajs)}" )
+            split = max(1, round(self.sample_frac * len(trajs)))
             return trajs[:split]
         elif self.sample_strategy == 'uniform':
             full_traj = merge_dictlists(trajs)
-            count = max(1, int(self.sample_frac * len(full_traj)))
-            indices = np.random.randint(0, len(full_traj), size=count)
-            filtered_trajs = merge_dictlists([full_traj[i:i+1] for i in indices])
-            print(f"Uniform sampling; collected {count} / {len(full_traj)}; indices: {indices} (also {len(filtered_trajs)})")
-            return filtered_trajs
+            count = max(1, round(self.sample_frac * len(full_traj)))
+            indices = np.random.choice(len(full_traj), size=count, replace=False)
+            filtered_traj = merge_dictlists([full_traj[i:i+1] for i in indices])
+            return [filtered_traj]
         elif self.sample_strategy == 'success_traj':
-            split = max(1, int(self.sample_frac * len(trajs)))
+            split = max(1, round(self.sample_frac * len(trajs)))
             trajs = sorted(trajs, key=lambda traj: -traj.success[-1].item())
             trajs = trajs[:split]
-            print(f"success sampling, chose {split} (also {len(trajs[:split])}) trajs of {len(trajs)}; successes "
-                  f"{[t.success[-1].item() for t in trajs[:5]]}" )
             return trajs
         elif self.sample_strategy == 'entropy':
             full_traj = merge_dictlists(trajs)
-            high_entopy_tuples = sorted(enumerate(full_traj.log_prob), key=lambda tup: -tup[1])
-            count = max(1, int(self.sample_frac * len(full_traj)))
-            high_entopy_tuples = high_entopy_tuples[:count]
-            high_entropy_indices = np.concatenate([tup[0] for tup in high_entopy_tuples])
-            filtered_traj = [merge_dictlists([full_traj[i:i+1] for i in high_entropy_indices])]
-            print(f"Entropy sampling; collected {count} / {len(full_traj)} (also {len(high_entropy_indices)});"
-                  f" indices: {high_entropy_indices[:5]}; entropy goes down: {filtered_traj.log_prob[:5]} ")
-            return
+            high_entropy_tuples = sorted(enumerate(full_traj.log_prob), key=lambda tup: tup[1])
+            count = max(1, round(self.sample_frac * len(full_traj)))
+            high_entropy_tuples = high_entropy_tuples[:count]
+            high_entropy_indices = [tup[0] for tup in high_entropy_tuples]
+            filtered_traj = merge_dictlists([full_traj[i:i+1] for i in high_entropy_indices])
+            return [filtered_traj]
+        elif self.sample_strategy == 'mismatch':
+            full_traj = merge_dictlists(trajs)
+            mismatched_tuples = sorted(enumerate(zip(full_traj.teacher_action, full_traj.action)),
+                                      key=lambda tup: int(tup[1][0] == tup[1][1]))
+            count = max(1, round(self.sample_frac * len(full_traj)))
+            mismatched_tuples = mismatched_tuples[:count]
+            mismatched_indices = [tup[0] for tup in mismatched_tuples]
+            filtered_traj = merge_dictlists([full_traj[i:i + 1] for i in mismatched_indices])
+            return [filtered_traj]
         else:
             raise NotImplementedError
 

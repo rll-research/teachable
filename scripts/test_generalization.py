@@ -456,7 +456,8 @@ def main():
     parser.add_argument('--sample_frac', type=float, default=1.0)
     parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
                                                                                         'success_traj',
-                                                                                   'ensemble', 'uniform_traj'])
+                                                                                   'ensemble', 'uniform_traj',
+                                                                                        'mismatch'])
     args = parser.parse_args()
     set_seed(args.seeds[0])
 

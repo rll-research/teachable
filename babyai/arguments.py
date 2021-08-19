@@ -229,6 +229,13 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--scale_pm', action='store_true')
         self.add_argument('--distill_self', action='store_true')
         self.add_argument('--high_level_only', action='store_true')
+        self.add_argument('--sample_frac', type=float, default=1.0)
+        self.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform',
+                                                                                          'entropy',
+                                                                                          'success_traj',
+                                                                                          'ensemble',
+                                                                                          'uniform_traj',
+                                                                                          'mismatch'])
 
     def parse_args(self, arg=None):
         """
