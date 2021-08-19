@@ -235,7 +235,7 @@ def run_experiment(**config):
         for k, v in optimizer.items():
             algo.optimizer_dict[k].load_state_dict(v.state_dict())
 
-    exp_dir = os.getcwd() + '/data/' + exp_name + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/data/' + exp_name
     if original_saved_path is None and not args.continue_train:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
@@ -247,7 +247,7 @@ def run_experiment(**config):
         # log_formats.append('wandb')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
-                     snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed), config=config)
+                     snapshot_gap=50, step=start_itr, name=args.prefix, config=config)
 
     buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
 
@@ -290,11 +290,36 @@ def run_experiment(**config):
 
 
 if __name__ == '__main__':
-    base_path = 'data/'
-    # if we want to sweep over any additional params, we can add them in
-    sweep_params = {
-    }
-    DEFAULT = 'DEFAULT'
-    parser = ArgumentParser()
-    args = parser.parse_args()
-    run_sweep(run_experiment, sweep_params, args.prefix, parser, 'c4.xlarge')
+    try:
+        base_path = 'data/'
+        # if we want to sweep over any additional params, we can add them in
+        sweep_params = {
+        }
+        DEFAULT = 'DEFAULT'
+        parser = ArgumentParser()
+        args = parser.parse_args()
+        run_sweep(run_experiment, sweep_params, args.prefix, parser, 'c4.xlarge')
+    except Exception as e:
+        import traceback
+        from datetime import datetime
+        import os
+
+        error_content = [
+            f'Run Name: {args.prefix}',
+            f'Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+            f'GPU: {os.environ["CUDA_VISIBLE_DEVICES"]}',
+            f'Error: {traceback.format_exc()}',
+            '=======================================================================================================\n',
+        ]
+
+        for error_line in error_content[:-1]:
+            print(error_line)
+
+        file = pathlib.Path('/home/olivia/failed_runs.txt')
+        if file.exists():
+            with open(file, 'a') as f:
+                f.writelines(error_content)
+        else:
+            print("Not logging anywhere b/c we can't find the file")
+        raise
+
