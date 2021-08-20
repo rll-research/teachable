@@ -402,11 +402,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return actions, info_list
 
     def get_actions_hierarchical(self, obs):
-        if np.random.uniform() < .02:
+        if np.random.uniform() < .01:
             print("hierarchical action!")
-        img_vector = obs.obs
-        instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
-        embedding = torch.cat([img_vector, instr_embedding], dim=1)
+        embedding = self.embed_input(obs)
         pred_high_level = self.high_level(embedding)
         assert pred_high_level.shape == obs.advice.shape
         obs.advice = pred_high_level
@@ -419,12 +417,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return a, [info]
 
 
-    def forward(self, obs, memory=None, instr_embedding=None):
-        if self.advice_size > 0:
-            advice_vector = obs.advice
-            advice_embedding = self._get_advice_embedding(advice_vector)
+    def embed_input(self, obs, memory=None, instr_embedding=None):
         img_vector = obs.obs
-        
+
         if self.use_instr:
             instruction_vector = obs.instr.long()
             if instr_embedding is None:
@@ -467,6 +462,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             x = x.reshape(x.shape[0], -1)
         else:
             x = torch.cat([img_vector, instr_embedding], dim=1)
+        return x
+
+    def forward(self, obs, memory=None, instr_embedding=None):
+        if self.advice_size > 0:
+            advice_vector = obs.advice
+            advice_embedding = self._get_advice_embedding(advice_vector)
+        x = self.embed_input(obs, memory, instr_embedding)
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
