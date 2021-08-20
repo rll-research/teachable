@@ -47,6 +47,13 @@ class ImitationLearning(object):
             else:
                 self.optimizer_dict[teacher] = torch.optim.Adam(self.policy_dict[teacher].parameters(),
                                                                 self.args.lr, eps=self.args.optim_eps)
+        if hasattr(self.args, 'ensemble'):
+            self.ensemble_optimizers = []
+            for model in self.args.ensemble:
+                self.ensemble_optimizers.append(torch.optim.Adam(model.parameters(),
+                                                                self.args.lr, eps=self.args.optim_eps))
+
+
         self.scheduler_dict = {
             k: torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.99) for k, optimizer in self.optimizer_dict.items()
         }
@@ -109,12 +116,16 @@ class ImitationLearning(object):
             else:
                 reconstructor.eval()
 
-    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}, backprop=True):
+    def run_epoch_recurrence_one_batch(self, batch, is_training=False, source='agent', teacher_dict={}, backprop=True, model_index=None):
         active_teachers = [k for k, v in teacher_dict.items() if v]
         assert len(active_teachers) <= 2
         teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
-        acmodel = self.policy_dict[teacher_name]
-        optimizer = self.optimizer_dict[teacher_name]
+        if model_index is None:
+            acmodel = self.policy_dict[teacher_name]
+            optimizer = self.optimizer_dict[teacher_name]
+        else:
+            acmodel = self.args.ensemble[model_index]
+            optimizer = self.ensemble_optimizers[model_index]
         if self.reconstructor_dict is not None:
             reconstructor = self.reconstructor_dict[teacher_name]
             reconstructor_optimizer = self.reconstructor_optimizer_dict[teacher_name]
@@ -413,6 +424,10 @@ class ImitationLearning(object):
                 teacher_subset_dict[k] = False
             log, _ = self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
                                                       teacher_dict=teacher_subset_dict)
+            if is_training and hasattr(self.args, 'ensemble'):
+                for i in range(len(self.args.ensemble)):
+                    self.run_epoch_recurrence_one_batch(preprocessed_batch, is_training=is_training, source=source,
+                                                    teacher_dict=teacher_subset_dict, model_index=i)
             logs[key_set] = log
 
         if is_training:

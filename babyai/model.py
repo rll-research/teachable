@@ -428,13 +428,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
     def embed_input(self, obs, memory=None, instr_embedding=None):
         img_vector = obs.obs
-
-        if self.use_instr:
-            instruction_vector = obs.instr.long()
-            if instr_embedding is None:
-                instr_embedding = self._get_instr_embedding(instruction_vector)
-        else:
-            instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
+        if instr_embedding is None:
+            if self.use_instr:
+                instruction_vector = obs.instr.long()
+                if instr_embedding is None:
+                    instr_embedding = self._get_instr_embedding(instruction_vector)
+            else:
+                instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
             # memory: B x M

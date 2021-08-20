@@ -236,7 +236,9 @@ class ArgumentParser(argparse.ArgumentParser):
                                                                                           'failure_traj',
                                                                                           'ensemble',
                                                                                           'uniform_traj',
-                                                                                          'mismatch'])
+                                                                                          'mismatch',
+                                                                                          'disagreement',])
+        self.add_argument('--ensemble_size', type=int, default=3)
 
     def parse_args(self, arg=None):
         """

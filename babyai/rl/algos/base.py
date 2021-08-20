@@ -15,7 +15,7 @@ class BaseAlgo(ABC):
 
     def __init__(self, envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                  value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward, aux_info, parallel,
-                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False):
+                 rollouts_per_meta_task=1, instr_dropout_prob=.5, repeated_seed=None, reset_each_batch=False, args=None):
         """
         Initializes a `BaseAlgo` instance.
 
@@ -118,6 +118,7 @@ class BaseAlgo(ABC):
         self.dones = torch.zeros(*shape, device=self.device)
         self.done_index = torch.zeros(self.num_procs, device=self.device)
         self.env_infos = [None] * len(self.dones)
+        self.disagreement = torch.zeros(*shape, device=self.device)
 
         if self.aux_info:
             self.aux_info_collector = ExtraInfoCollector(self.aux_info, shape, self.device)
@@ -202,6 +203,20 @@ class BaseAlgo(ABC):
                                                                      self.dagger_memory * self.mask.unsqueeze(1))
                     self.dagger_memory = dagger_model_results['memory']
                     action_to_take = dagger_dist.sample().cpu().numpy()
+
+            if hasattr(self.args, 'ensemble'):
+                from scipy.stats import entropy
+                preds = [action]
+                for model in self.args.ensemble:
+                    d, _ = model(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
+                    preds.append(d.sample())
+                if self.args.discrete:
+                    preds = torch.cat(preds).detach().cpu().numpy()
+                    _, counts = np.unique(preds, return_counts=True)
+                    disagreement = entropy(counts)
+                else:
+                    disagreement = torch.var(torch.cat(preds)).item()
+                self.disagreement[i] = disagreement
 
             obs, reward, done, env_info = self.env.step(action_to_take)
             if not collect_reward:
@@ -333,6 +348,7 @@ class BaseAlgo(ABC):
             exps.teacher_action = exps.teacher_action.reshape(self.teacher_actions.shape[0] * self.actions.shape[1], -1)
 
         exps.value = self.values.transpose(0, 1).reshape(-1)
+        exps.disagreement = self.disagreement.transpose(0, 1).reshape(-1)
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
         exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
         exps.returnn = exps.value + exps.advantage

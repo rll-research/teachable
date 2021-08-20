@@ -25,6 +25,8 @@ def trim_batch(batch):
         batch_info['followed_teacher'] = batch.env_infos.followed_teacher
     if 'advice_count' in batch.env_infos:
         batch_info['advice_count'] = batch.env_infos.advice_count
+    if 'disagreement' in batch:
+        batch_info['disagreement'] = batch.disagreement
     return DictList(batch_info)
 
 
@@ -173,6 +175,14 @@ class Buffer:
             trajs = sorted(trajs, key=lambda traj: traj.success[-1].item())
             trajs = trajs[:split]
             return trajs
+        elif self.sample_strategy == 'disagreement':
+            full_traj = merge_dictlists(trajs)
+            high_disagreement_tuples = sorted(enumerate(full_traj.disagreement), key=lambda tup: -tup[1])
+            count = max(1, round(self.sample_frac * len(full_traj)))
+            high_disagreement_tuples = high_disagreement_tuples[:count]
+            high_disagreement_indices = [tup[0] for tup in high_disagreement_tuples]
+            filtered_traj = merge_dictlists([full_traj[i:i + 1] for i in high_disagreement_indices])
+            return [filtered_traj]
         elif self.sample_strategy == 'entropy':
             full_traj = merge_dictlists(trajs)
             high_entropy_tuples = sorted(enumerate(full_traj.log_prob), key=lambda tup: tup[1])

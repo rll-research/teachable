@@ -356,6 +356,11 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
         if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
+        if len(additional_args['ensemble_list']) > 0:
+            ensemble = []
+            for path in additional_args['ensemble_list']:
+                ensemble.append(load_policy(path)[0][args.target_policy_key])
+            args.ensemble = ensemble
         collect_with = teacher_key
         distill_to = target_key
 
@@ -530,6 +535,7 @@ def main(args):
     additional_args['high_level_only'] = args.high_level_only
     additional_args['sample_frac'] = args.sample_frac
     additional_args['sample_strategy'] = args.sample_strategy
+    additional_args['ensemble_list'] = args.ensemble_list
     if args.high_level_only:
         additional_args['distill_self'] = True
         assert args.target_policy is None
@@ -627,7 +633,9 @@ if __name__ == '__main__':
                                                                                             'success_traj',
                                                                                             'failure_traj',
                                                                                             'ensemble', 'uniform_traj',
-                                                                                            'mismatch'])
+                                                                                            'mismatch',
+                                                                                            'disagreement'])
+        parser.add_argument('--ensemble_list', nargs='+', type=str)
         args = parser.parse_args()
         main(args)
     except Exception as e:
