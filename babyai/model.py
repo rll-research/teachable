@@ -409,7 +409,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 nn.Linear(self.args.hidden_size, self.args.hidden_size),
                 nn.ReLU(),
                 nn.Linear(self.args.hidden_size, self.advice_size)
-            )
+            ).to(self.device)
 
         if np.random.uniform() < .01:
             print("hierarchical action!")
