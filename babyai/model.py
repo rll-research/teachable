@@ -417,7 +417,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         pred_high_level = self.high_level(embedding)
         assert pred_high_level.shape == obs.advice.shape
         obs.advice = pred_high_level
-        dist, info = self.forward(obs)
+        dist, info = self.forward(obs, input_embedding=embedding)
         if self.discrete:
             info['probs'] = dist.probs.detach().cpu().numpy()
         else:
@@ -473,11 +473,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             x = torch.cat([img_vector, instr_embedding], dim=1)
         return x
 
-    def forward(self, obs, memory=None, instr_embedding=None):
+    def forward(self, obs, memory=None, instr_embedding=None, input_embedding=None):
         if self.advice_size > 0:
             advice_vector = obs.advice
             advice_embedding = self._get_advice_embedding(advice_vector)
-        x = self.embed_input(obs, memory, instr_embedding)
+        if input_embedding is None:
+            x = self.embed_input(obs, memory, instr_embedding)
+        else:
+            x = input_embedding
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
