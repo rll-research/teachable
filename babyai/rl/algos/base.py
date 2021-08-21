@@ -213,7 +213,7 @@ class BaseAlgo(ABC):
             self.obss[i] = self.obs
             self.obs = obs
             try:
-                self.teacher_actions[i] = torch.FloatTensor([ei['teacher_action'] for ei in env_info]).to(self.device)
+                self.teacher_actions[i] = torch.FloatTensor(np.array([ei['teacher_action'] for ei in env_info])).to(self.device)
             except:
                 self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1  # TODO: compute teacher action for new envs
 
