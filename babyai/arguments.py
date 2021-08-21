@@ -38,7 +38,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--epochs", type=int, default=4)
         self.add_argument("--epoch-length", type=int, default=0,
                           help="number of examples per epoch; the whole dataset is used by if 0")
-        self.add_argument("--frames-per-proc", type=int, default=40,
+        self.add_argument("--frames-per-proc", type=int, default=200,
                           help="number of frames per process before update (default: 40)")
         self.add_argument("--beta1", type=float, default=0.9,
                           help="beta1 for Adam (default: 0.9)")
@@ -52,7 +52,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=2048,
                           help="batch size for distillation")
-        self.add_argument("--entropy-coef", type=float, default=0.0001,
+        self.add_argument("--entropy-coef", type=float, default=0.01,
                           help="entropy term coefficient (default: 0.01; 'optimal' for non-distill .001)")
 
         # Model parameters
@@ -141,7 +141,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Model/Optimization
         self.add_argument('--lr', type=float, default=1e-4)
-        self.add_argument('--discount', type=float, default=.25)
+        self.add_argument('--discount', type=float, default=.99)
         self.add_argument('--num_modules', type=int, default=2)
         self.add_argument('--value_loss_coef', type=float, default=.05)  # .5 is default
         self.add_argument('--max_grad_norm', type=float, default=.5)
