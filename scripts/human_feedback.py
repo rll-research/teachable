@@ -592,7 +592,8 @@ class HumanFeedback:
                 # 'action_probs': self.action_probs,
                 'teacher_action': torch.FloatTensor(self.teacher_action),
                 'full_done': torch.FloatTensor(self.full_done),
-                'env_infos': DictList(env_infos)
+                'env_infos': DictList(env_infos),
+                'log_prob': torch.zeros_like(torch.FloatTensor(self.full_done))
             }
             assert len(traj_dict['teacher_action'].shape) == len(traj_dict['full_done'].shape) == 1
             traj = DictList(traj_dict)
