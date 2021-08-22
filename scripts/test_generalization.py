@@ -407,7 +407,6 @@ def main(args):
     _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_args.noise_level = args.noise_level
     default_args.noise_duration = args.noise_duration
-    default_args.scale_pm = args.scale_pm
     default_env.reset()
 
     # Get the levels of the policies to load
@@ -619,7 +618,6 @@ if __name__ == '__main__':
         parser.add_argument('--relabel_goal', action='store_true')
         parser.add_argument('--noise_level', type=float, default=0.0)
         parser.add_argument('--noise_duration', type=int, default=1)
-        parser.add_argument('--scale_pm', action='store_true')
         parser.add_argument('--high_level_only', action='store_true')
         parser.add_argument('--distill_self', action='store_true')
         parser.add_argument('--sample_frac', type=float, default=1.0)

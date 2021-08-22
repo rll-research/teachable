@@ -496,7 +496,7 @@ class PointMassEnv(D4RLEnv):
     def step(self, action):
         obs_dict, rew, done, info = super().step(action)
         target = self.get_target() / self.scale_factor
-        obs_scale = self.scale_factor if self.args.scale_pm else 1
+        obs_scale = self.scale_factor
         obs_dict['obs'] = np.concatenate([obs_dict['obs'] / obs_scale]  + [target] * self.repeat_input)
         if self.reward_type == 'dense':
             rew = rew / 10 - .01
