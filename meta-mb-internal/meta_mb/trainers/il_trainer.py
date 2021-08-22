@@ -175,7 +175,7 @@ class ImitationLearning(object):
             avg_std = dist.scale.mean()
             avg_mean_dist = torch.abs(action_pred - action_true).mean()
         self.log_t(action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
-                   kl_loss, avg_mean_dist, avg_std, loss)
+                   kl_loss, avg_mean_dist, avg_std, loss, high_level_loss)
         if is_training and backprop:
             optimizer.zero_grad()
             loss.backward(retain_graph=self.reconstructor_dict is not None)
@@ -212,9 +212,10 @@ class ImitationLearning(object):
         self.final_mean_dist = 0
         self.final_std = 0
         self.final_loss = 0
+        self.final_high_level_loss = 0
 
     def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
-              kl_loss, avg_mean_dist, avg_std, loss):
+              kl_loss, avg_mean_dist, avg_std, loss, high_level_loss):
         self.accuracy_list.append(float((action_pred == action_true).sum()))
         self.accuracy += float((action_pred == action_true).sum()) / self.total_frames
         if action_true.shape == action_teacher.shape:
@@ -224,6 +225,7 @@ class ImitationLearning(object):
         self.final_policy_loss += policy_loss
         self.final_reconstruction_loss += reconstruction_loss
         self.final_kl_loss += kl_loss
+        self.final_high_level_loss += high_level_loss
         self.final_mean_dist += avg_mean_dist
         self.final_std += avg_std
         self.final_loss += loss
@@ -266,10 +268,11 @@ class ImitationLearning(object):
         log = {}
         log["Entropy_Loss"] = float(self.final_entropy * self.args.entropy_coef)
         log["Entropy"] = float(self.final_entropy)
-        log["Loss"] = float(self.final_policy_loss)
+        log["Policy_Loss"] = float(self.final_policy_loss)
         log["TotalLoss"] = float(self.final_loss)
         log["Reconstruction_Loss"] = float(self.final_reconstruction_loss * self.args.mi_coef)
         log["KL_Loss"] = float(self.final_kl_loss * self.args.kl_coef)
+        log["High_Level_Loss"] = float(self.final_high_level_loss)
         log["Accuracy"] = float(self.accuracy)
         log["Mean_Dist"] = float(self.final_mean_dist)
         log["Std"] = float(self.final_std)
