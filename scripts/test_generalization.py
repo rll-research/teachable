@@ -407,7 +407,6 @@ def main(args):
     _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_args.noise_level = args.noise_level
     default_args.noise_duration = args.noise_duration
-    default_args.scale_pm = args.scale_pm
     default_env.reset()
 
     # Get the levels of the policies to load
@@ -578,7 +577,7 @@ if __name__ == '__main__':
         parser.add_argument('--levels', nargs='+', default=['latest'], type=str)
         parser.add_argument("--finetune_itrs", default=0, type=int)
         parser.add_argument("--min_itr_steps_distill", default=0, type=int)
-        parser.add_argument("--num_rollouts", default=50, type=int)
+        parser.add_argument("--num_rollouts", default=10, type=int)
         parser.add_argument("--no_train_rl", action='store_true')
         parser.add_argument("--save_dir", default=".")
         parser.add_argument("--hide_instrs", action='store_true')
@@ -591,7 +590,7 @@ if __name__ == '__main__':
         parser.add_argument('--yes_distill', action='store_true')
         parser.add_argument('--rollout_temperature', type=float, default=1)
         parser.add_argument('--finetune_il', action='store_true')
-        parser.add_argument('--log_every', type=int, default=1)
+        parser.add_argument('--log_every', type=int, default=10)
         parser.add_argument('--finetune_teacher_first', type=str, default=0)
         parser.add_argument('--repeated_seed', action='store_true')
         parser.add_argument('--distillation_steps', type=int, default=None)
@@ -599,11 +598,11 @@ if __name__ == '__main__':
         parser.add_argument('--distill_successful_only', action='store_true')
         parser.add_argument('--buffer_name', default=None)
         parser.add_argument('--collect_with_oracle', action='store_true')
-        parser.add_argument('--frames_per_proc', type=int, default=None)
+        parser.add_argument('--frames_per_proc', type=int, default=200)
         parser.add_argument('--batch_size', type=int, default=1024)
-        parser.add_argument('--lr', type=float, default=None)
-        parser.add_argument('--buffer_capacity', type=int, default=10000)
-        parser.add_argument('--num_envs', type=int, default=None)
+        parser.add_argument('--lr', type=float, default=1e-3)
+        parser.add_argument('--buffer_capacity', type=int, default=1000000)
+        parser.add_argument('--num_envs', type=int, default=20)
         parser.add_argument('--recurrence', type=int, default=None)
         parser.add_argument('--advance_curriculum_func', type=str, default=None)
         parser.add_argument('--cartesian_steps', type=int, default=None)
@@ -619,7 +618,6 @@ if __name__ == '__main__':
         parser.add_argument('--relabel_goal', action='store_true')
         parser.add_argument('--noise_level', type=float, default=0.0)
         parser.add_argument('--noise_duration', type=int, default=1)
-        parser.add_argument('--scale_pm', action='store_true')
         parser.add_argument('--high_level_only', action='store_true')
         parser.add_argument('--distill_self', action='store_true')
         parser.add_argument('--sample_frac', type=float, default=1.0)

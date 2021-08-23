@@ -66,7 +66,7 @@ class Reconstructor(nn.Module):
         super().__init__()
         args = args
         use_instr = not args.no_instr
-        use_memory = not args.no_mem
+        use_memory = False
         obs = env.reset()
         # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
         obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
@@ -108,7 +108,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         # Decide which components are enabled
         self.use_instr = not args.no_instr
-        self.use_memory = not args.no_mem
+        self.use_memory = False
         self.arch = args.arch
         self.lang_model = args.instr_arch
         self.aux_info = None

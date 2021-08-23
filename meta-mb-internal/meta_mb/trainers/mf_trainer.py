@@ -266,7 +266,7 @@ class Trainer(object):
                 except:
                     counts_train = 0
                 logger.logkv("BufferSize", counts_train)
-                if self.args.single_level and self.args.end_on_full_buffer and \
+                if self.args.end_on_full_buffer and \
                         (buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity):
                     print("ALL DONE!")
                     return
@@ -427,8 +427,8 @@ class Trainer(object):
                 distill_time = 0
 
             """ ------------------ Policy rollouts ---------------------"""
-            should_policy_rollout = ((itr % self.eval_every == 0) or (
-                    itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum))
+            should_policy_rollout = (itr % self.eval_every == 0) or (
+                    itr == self.args.n_itr - 1)
             if self.args.yes_rollouts:
                 should_policy_rollout = True
             if self.args.no_rollouts:
@@ -542,7 +542,7 @@ class Trainer(object):
             """ ------------------ Video Saving ---------------------"""
 
             should_save_video = (itr % self.save_videos_every == 0) or (
-                    itr == self.args.n_itr - 1) or (not self.args.single_level and advance_curriculum)
+                    itr == self.args.n_itr - 1)
             # If we're just collecting, don't log
             if self.args.no_train_rl and self.args.self_distill:
                 should_save_video = False
@@ -580,8 +580,7 @@ class Trainer(object):
 
 
             if self.log_and_save:
-                if early_stopping or (itr % self.save_every == 0) or (itr == self.args.n_itr - 1) or \
-                        (not self.args.single_level and advance_curriculum):
+                if early_stopping or (itr % self.save_every == 0) or (itr == self.args.n_itr - 1):
                     saving_time_start = time.time()
                     logger.log("Saving snapshot...")
                     logger.save_itr_params(itr, step, params)
@@ -594,7 +593,7 @@ class Trainer(object):
             if self.args.end_on_full_buffer:
                 advance_curriculum = buffer.counts_train[self.curriculum_step] == buffer.train_buffer_capacity
 
-            advance_curriculum = advance_curriculum and not self.args.single_level and self.itrs_on_level > self.args.min_itr_steps
+            advance_curriculum = False
             if advance_curriculum:
                 self.advancement_count += 1
             else:

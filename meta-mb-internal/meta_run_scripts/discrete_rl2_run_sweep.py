@@ -116,15 +116,16 @@ def run_experiment(**config):
                                              args.success_intervention_cutoff,
                                              args.accuracy_intervention_cutoff)
     teacher_train_dict, _ = teacher_schedule(0, 0, 0)
-    if args.zero_all_thresholds:
-        args.success_threshold_rl = 0
-        args.success_threshold_rollout_teacher = 0
-        args.success_threshold_rollout_no_teacher = 0
-        args.accuracy_threshold_rl = 0
-        args.accuracy_threshold_distill_teacher = 0
-        args.accuracy_threshold_distill_no_teacher = 0
-        args.accuracy_threshold_rollout_teacher = 0
-        args.accuracy_threshold_rollout_no_teacher = 0
+    # TODO: just remove these options
+    # if args.zero_all_thresholds:
+    args.success_threshold_rl = 0
+    args.success_threshold_rollout_teacher = 0
+    args.success_threshold_rollout_no_teacher = 0
+    args.accuracy_threshold_rl = 0
+    args.accuracy_threshold_distill_teacher = 0
+    args.accuracy_threshold_distill_no_teacher = 0
+    args.accuracy_threshold_rollout_teacher = 0
+    args.accuracy_threshold_rollout_no_teacher = 0
     if original_saved_path is not None:
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=curriculum_step,
                                           curriculum_type=args.curriculum_type, **arguments),
