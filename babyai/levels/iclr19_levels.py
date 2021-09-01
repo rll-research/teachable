@@ -1053,6 +1053,9 @@ class Level_UnlockTopLeft(Level_TeachableRobot):
 
     Competencies: Maze, Open, Unlock. No unblocking.
     """
+    def __init__(self, *args, **kwargs):
+        room_size = 8
+        super().__init__(*args, **kwargs, max_steps=room_size**2,)
 
     def make_mission(self):
         _, obj_color = self.sample_object()
