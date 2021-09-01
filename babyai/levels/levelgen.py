@@ -27,6 +27,7 @@ class RoomGridLevel(RoomGrid):
         room_size=8,
         **kwargs
     ):
+        self.max_steps = getattr(kwargs, 'max_steps', None)
         super().__init__(
             room_size=room_size,
             **kwargs
@@ -40,12 +41,13 @@ class RoomGridLevel(RoomGrid):
         # Recreate the verifier
         self.instrs.reset_verifier(self)
 
-        # Compute the time step limit based on the maze size and instructions
-        nav_time_room = min(self.room_size ** 2, self.room_size * 8)
+        if self.max_steps is None:
+            # Compute the time step limit based on the maze size and instructions
+            nav_time_room = min(self.room_size ** 2, self.room_size * 8)
 
-        nav_time_maze = nav_time_room * self.num_rows * self.num_cols
-        num_navs = self.num_navs_needed(self.instrs)
-        self.max_steps = num_navs * nav_time_maze
+            nav_time_maze = nav_time_room * self.num_rows * self.num_cols
+            num_navs = self.num_navs_needed(self.instrs)
+            self.max_steps = num_navs * nav_time_maze
 
         return obs
 
