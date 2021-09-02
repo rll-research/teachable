@@ -230,7 +230,7 @@ class ImitationLearning(object):
         self.final_mean_dist += avg_mean_dist
         self.final_std += avg_std
         self.final_loss += loss
-        self.final_correctness += torch.mean(torch.eq(action_true, action_teacher).int())
+        self.final_correctness += torch.mean(torch.eq(action_true, action_teacher).float())
 
         action_true = action_true.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
