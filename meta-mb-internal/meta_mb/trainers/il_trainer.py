@@ -213,6 +213,7 @@ class ImitationLearning(object):
         self.final_std = 0
         self.final_loss = 0
         self.final_high_level_loss = 0
+        self.final_correctness = 0
 
     def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
               kl_loss, avg_mean_dist, avg_std, loss, high_level_loss):
@@ -228,7 +229,8 @@ class ImitationLearning(object):
         self.final_high_level_loss += high_level_loss
         self.final_mean_dist += avg_mean_dist
         self.final_std += avg_std
-        self.final_loss += loss
+        self.final_loss += loss.
+        self.final_correctness += torch.mean(torch.eq(action_true, action_teacher))
 
         action_true = action_true.detach().cpu().numpy()  # ground truth action
         action_pred = action_pred.detach().cpu().numpy()  # action we took
@@ -276,6 +278,7 @@ class ImitationLearning(object):
         log["Accuracy"] = float(self.accuracy)
         log["Mean_Dist"] = float(self.final_mean_dist)
         log["Std"] = float(self.final_std)
+        log['Correctness'] = float(self.final_correctness)
 
         if self.args.discrete:
             log["Label_A"] = float(self.label_accuracy)
