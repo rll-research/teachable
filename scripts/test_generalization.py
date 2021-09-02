@@ -511,7 +511,7 @@ def main(args):
     additional_args['num_envs'] = args.num_envs
     additional_args['buffer_name'] = args.buffer_name
     additional_args['collect_with_oracle'] = args.collect_with_oracle
-    additional_args['source'] = 'agent'
+    additional_args['source'] = args.source
     additional_args['frames_per_proc'] = args.frames_per_proc
     additional_args['batch_size'] = args.batch_size
     additional_args['lr'] = args.lr
@@ -621,6 +621,7 @@ if __name__ == '__main__':
         parser.add_argument('--high_level_only', action='store_true')
         parser.add_argument('--distill_self', action='store_true')
         parser.add_argument('--sample_frac', type=float, default=1.0)
+        parser.add_argument('--source', type='str', default='agent')
         parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
                                                                                             'success_traj',
                                                                                             'failure_traj',
