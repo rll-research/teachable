@@ -621,7 +621,7 @@ if __name__ == '__main__':
         parser.add_argument('--high_level_only', action='store_true')
         parser.add_argument('--distill_self', action='store_true')
         parser.add_argument('--sample_frac', type=float, default=1.0)
-        parser.add_argument('--source', type='str', default='agent')
+        parser.add_argument('--source', type=str, default='agent')
         parser.add_argument('--sample_strategy', type=str, default='uniform_traj', choices=['uniform', 'entropy',
                                                                                             'success_traj',
                                                                                             'failure_traj',
