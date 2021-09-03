@@ -15,6 +15,7 @@ from meta_mb.meta_envs.rl2_env import rl2env
 from meta_mb.envs.normalized_env import normalize
 import matplotlib
 from meta_mb.utils.utils import set_seed
+from meta_mb.trainers.gail_trainer import GailTrainer
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -138,7 +139,7 @@ def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, s
 def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), policy_name="", env_name="",
                     hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0,
-                    start_num_feedback=0, collect_with=None, distill_to=None):
+                    start_num_feedback=0, collect_with=None, distill_to=None, use_gail=False):
     # Normally we would put the imports up top, but we also import this file in Trainer
     # Importing here prevents us from getting stuck in infinite loops
     from meta_mb.algos.ppo_torch import PPOAlgo
@@ -195,6 +196,16 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         normalize_adv=True,
         positive_adv=False,
     )
+    if use_gail:
+        # GAIL MODEL, possibly trainer
+        obs = env.reset()
+        # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
+        obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape  # TODO: think through how to handle instrs, advice, etc.
+        gail = GailTrainer(args, obs_shape)
+    else:
+        gail = None
+
+
     envs = [env.copy() for _ in range(args.num_envs)]
     offset = seed
     for i, new_env in enumerate(envs):
@@ -258,6 +269,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         eval_heldout=False,
         log_fn=log_fn,
         log_every=1,
+        gail=gail,
     )
     print("TRAINING!!!")
     trainer.train()
@@ -352,7 +364,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
                                       save_dir=save_dir, policy_name=policy_name, env_name=env_name,
                                       hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                                       num_rollouts=num_rollouts, model_data=model_data, seed=seed,
-                                      collect_with=collect_with, distill_to=distill_to)
+                                      collect_with=collect_with, distill_to=distill_to, use_gail=False)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
         if additional_args['target_policy'] is not None:
             policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
@@ -370,7 +382,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
                         save_dir=save_dir, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
                         num_rollouts=num_rollouts, model_data=model_data, seed=seed, start_num_feedback=num_feedback,
-                        collect_with=collect_with, distill_to=distill_to)
+                        collect_with=collect_with, distill_to=distill_to, use_gail=args.gail_collect_itrs is not None)
     teacher_policy = policy[target_key]
     success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, teacher_policy, full_save_dir,
                                                                            num_rollouts,
@@ -528,6 +540,7 @@ def main(args):
     additional_args['high_level_only'] = args.high_level_only
     additional_args['sample_frac'] = args.sample_frac
     additional_args['sample_strategy'] = args.sample_strategy
+    additional_args['gail_collect_itrs'] = args.gail_collect_itrs
     if args.high_level_only:
         additional_args['distill_self'] = True
         assert args.target_policy is None
@@ -628,6 +641,7 @@ if __name__ == '__main__':
         parser.add_argument('--advance_curriculum_func', type=str, default='one_hot',
                           choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
                                    'goto_levels', 'easy_goto'])
+        parser.add_argument('--gail_collect_itrs', type=int, default=None)
         args = parser.parse_args()
         main(args)
     except Exception as e:

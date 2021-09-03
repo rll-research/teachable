@@ -135,7 +135,7 @@ class BaseAlgo(ABC):
         self.log_dist_to_goal = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True, train=True, collection_dict={}):
+                            collect_reward=True, train=True, collection_dict={}, gail_discrim=None):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
@@ -202,6 +202,12 @@ class BaseAlgo(ABC):
                     action_to_take = dagger_dist.sample().cpu().numpy()
 
             obs, reward, done, env_info = self.env.step(action_to_take)
+
+            if not gail_discrim is None:
+                state_action = torch.stack([self.obs['obs'], action], dim=1)  # TODO: think through advice
+                with torch.no_grad():
+                    reward = - torch.log(gail_discrim(state_action)).detach().cpu().numpy()
+
             if not collect_reward:
                 reward = [np.nan for _ in reward]
 

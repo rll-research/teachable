@@ -232,6 +232,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                                                                           'ensemble',
                                                                                           'uniform_traj',
                                                                                           'mismatch'])
+        self.add_argument('--gail_collect_itrs', type=int, default=None)
 
     def parse_args(self, arg=None):
         """

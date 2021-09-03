@@ -62,6 +62,7 @@ class Trainer(object):
             eval_heldout=True,
             augmenter=None,
             log_fn=lambda w, x, y, z: None,
+            gail=None,
     ):
         self.args = args
         self.algo = algo
@@ -107,6 +108,7 @@ class Trainer(object):
         self.success_dict['none'] = 0
         self.best_train_perf = (0, 0, float('inf'))  # success, accuracy, loss
         self.itrs_since_best = 0
+        self.gail = gail
 
     def check_advance_curriculum_train(self, episode_logs, data):
         if False:  # data.obs[0]['gave_PreActionAdvice']:
@@ -244,22 +246,31 @@ class Trainer(object):
             time_env_sampling_start = time.time()
             should_collect = (not self.args.no_collect) and (
                     (not skip_training_rl) or self.args.self_distill)
-            should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl)
+            use_gail = not self.args.gail_collect_itrs is None
+            gail_advice_collect = use_gail and itr < self.args.gail_collect_itrs
+            gail_policy_collect = use_gail and not gail_advice_collect
+            should_train_rl = not (self.args.no_collect or self.args.no_train_rl or skip_training_rl or use_gail)
             #should_collect = should_collect and ((not self.curriculum_step in self.buffer.counts_train) or self.buffer.counts_train[self.curriculum_step] < self.buffer.train_buffer_capacity)
             if should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 input_dict = teacher_distill_dict if (self.args.relabel_goal
                                                       or self.args.relabel
                                                       or (self.args.half_relabel and itr % 2 == 0)
+                                                      or gail_policy_collect,
                                                       ) else teacher_train_dict
                 samples_data, episode_logs = self.algo.collect_experiences(input_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
-                                                                           collection_dict=collection_dict)
+                                                                           collection_dict=collection_dict,
+                                                                           gail_discrim=self.gail if gail_advice_collect else None
+                                                                           )
                 if self.args.relabel_goal:
                     print("relabeling!")
                     samples_data = self.relabel_goal(samples_data)
+                if self.args.gail_collect_itrs is not None:
+                    print("relabeling with GAIL reward")
+                    samples_data = self.relabel_gail(samples_data)
                 raw_samples_data = copy.deepcopy(samples_data)
                 try:
                     counts_train = buffer.counts_train[self.curriculum_step]
@@ -303,6 +314,8 @@ class Trainer(object):
                     self.num_train_skip_itrs = 5
             should_store_data = raw_samples_data is not None and (
                     self.args.collect_before_threshold or advance_curriculum) and not getattr(self.args, 'no_buffer', False)
+            if use_gail:
+                should_store_data = gail_advice_collect
             if self.args.yes_distill:
                 should_store_data = raw_samples_data is not None
             if should_store_data:
@@ -334,6 +347,10 @@ class Trainer(object):
             time_rp_train_start = time.time()
             # self.train_rp(samples_data)
             time_rp_train = time.time() - time_rp_train_start
+
+            """ ------------------ GAIL ---------------------"""
+            if gail_policy_collect:
+                self.update_gail(sampled_batch)
 
             """ ------------------ Distillation ---------------------"""
             should_distill = self.args.self_distill and advance_curriculum and \
@@ -621,6 +638,17 @@ class Trainer(object):
                 self.num_train_skip_itrs = 5
 
         logger.log("Training finished")
+
+    def update_gail(self, policy_batch):
+        for _ in range(1):  # TODO: flag for this?
+            expert_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
+            log_dict = self.gail.update(expert_batch, policy_batch, train=True)
+        logger.logkv('Gail/Loss_Train', log_dict['loss'])
+
+        # Validation set
+        expert_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='val')
+        log_dict = self.gail.update(expert_batch, policy_batch, train=False)
+        logger.logkv('Gail/Loss_Val', log_dict['loss'])
 
     def evaluate_heldout(self, policy, teachers):
         num_rollouts = 1  # 50
