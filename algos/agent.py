@@ -295,7 +295,7 @@ class Agent:
             advice = self.advice_embedding(obs.advice)
         else:
             advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-        o = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
+        o = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         dist = self.actor(o)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
@@ -331,8 +331,8 @@ class Agent:
             else:
                 advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
                 next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
-            obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
-            next_obs = torch.cat([next_obs.obs.flatten(1)] + next_advice, dim=1).to(self.device)
+            obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            next_obs = torch.cat([next_obs.obs.flatten(1), next_advice], dim=1).to(self.device)
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def optimize_policy(self, batch, step):
@@ -357,8 +357,8 @@ class Agent:
         else:
             advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
             next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
-        obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
-        next_obs = torch.cat([next_obs.obs.flatten(1)] + next_advice, dim=1).to(self.device)
+        obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+        next_obs = torch.cat([next_obs.obs.flatten(1), next_advice], dim=1).to(self.device)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
@@ -373,7 +373,7 @@ class Agent:
                 advice = self.advice_embedding(preprocessed_obs.advice)
             else:
                 advice = [preprocessed_obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-            obs = torch.cat([preprocessed_obs.obs.flatten(1)] + advice, dim=1).to(self.device)
+            obs = torch.cat([preprocessed_obs.obs.flatten(1), advice], dim=1).to(self.device)
             self.update_actor(obs, batch)
 
     def update_critic(self, obs, next_obs, batch, step):

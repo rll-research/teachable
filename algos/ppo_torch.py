@@ -35,7 +35,7 @@ class PPOAgent(Agent, nn.Module):
         else:
             obs_dim = len(obs['obs'].flatten()) + args.advice_dim  # TODO: what if there's no advice?
         self.critic = utils.mlp(obs_dim, args.hidden_size, 1, 2).to(self.device)
-        self.advice_embedding = nn.Sequential(
+        self.advice_embedding = nn.Sequential(  # TODO: move to parent class
             nn.Linear(len(obs[teacher]), args.advice_dim),
             nn.Sigmoid(),
         ).to(self.device)
@@ -65,7 +65,7 @@ class PPOAgent(Agent, nn.Module):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
         print("Total parameters:", params)
-        
+
         # self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
         #                                         lr=actor_lr,
         #                                         betas=actor_betas)
@@ -183,7 +183,7 @@ class PPOAgent(Agent, nn.Module):
             advice = self.advice_embedding(obs.advice)
         else:
             advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-        obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
+        obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         value = self.critic(obs)
         agent_dict['value'] = value
         return action, agent_dict
