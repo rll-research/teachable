@@ -229,7 +229,7 @@ def run_experiment():
     else:
         collect_policy = None
 
-    exp_dir = os.getcwd() + '/logs/data/' + exp_name + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/DEBUG/' + exp_name + "_" + str(args.seed)
     args.exp_dir = exp_dir
     is_debug = args.prefix == 'DEBUG'
     configure_logger(args, exp_dir, start_itr, is_debug)
