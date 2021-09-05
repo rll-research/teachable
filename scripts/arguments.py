@@ -35,10 +35,10 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="number of frames of training (default: 9e10)")
         self.add_argument("--patience", type=int, default=100,
                           help="patience for early stopping (default: 100)")
-        self.add_argument("--epochs", type=int, default=4)
+        self.add_argument("--epochs", type=int, default=20)
         self.add_argument("--epoch-length", type=int, default=0,
                           help="number of examples per epoch; the whole dataset is used by if 0")
-        self.add_argument("--frames-per-proc", type=int, default=40,
+        self.add_argument("--frames-per-proc", type=int, default=20,
                           help="number of frames per process before update (default: 40)")
         self.add_argument("--beta1", type=float, default=0.9,
                           help="beta1 for Adam (default: 0.9)")
@@ -50,7 +50,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch-size", type=int, default=2048,
                           help="batch size for distillation")
-        self.add_argument("--entropy-coef", type=float, default=0.1,
+        self.add_argument("--entropy-coef", type=float, default=0.01,
                           help="entropy term coefficient")
 
         # Model parameters
@@ -82,7 +82,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--n_itr', type=int, default=100000)
         self.add_argument('--source', type=str, default='agent_probs', choices=['agent', 'teacher', 'agent_argmax',
                                                                                 'agent_probs'])
-        self.add_argument('--single_level', action='store_true')
         self.add_argument('--end_on_full_buffer', action='store_true')
         self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo', 'hppo'])
 
@@ -129,7 +128,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--advancement_count', type=int, default=1)
 
         # Model/Optimization
-        self.add_argument('--lr', type=float, default=1e-4)
+        self.add_argument('--lr', type=float, default=1e-3)
         self.add_argument('--discount', type=float, default=.25)
         self.add_argument('--num_modules', type=int, default=2)
         self.add_argument('--value_loss_coef', type=float, default=.5)
@@ -166,7 +165,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # Distillations
         self.add_argument('--distillation_steps', type=int, default=15)
-        self.add_argument('--buffer_capacity', type=int, default=1000000)
+        self.add_argument('--buffer_capacity', type=int, default=1)
         self.add_argument('--prob_current', type=float, default=.5)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
@@ -176,7 +175,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0)
         self.add_argument('--control_penalty', type=float, default=0)
-        self.add_argument('--mi_coef', type=float, default=0.01)
+        self.add_argument('--mi_coef', type=float, default=0.003)
         self.add_argument('--z_dim', type=int, default=32)
         self.add_argument('--info_bot', action='store_true')
 
@@ -186,7 +185,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--max_path_length', type=float, default=float('inf'))
         self.add_argument('--gae_lambda', type=float, default=.95)
         self.add_argument('--num_envs', type=int, default=20)
-        self.add_argument('--zero_all_thresholds', action='store_true')
 
         # Arguments mostly used with finetuning
         self.add_argument('--no_distill', action='store_true')
@@ -202,11 +200,11 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--rew_norm', action='store_true')
         self.add_argument('--act_norm', action='store_true')
         self.add_argument('--loss_type', type=str, default='log_prob')
-        self.add_argument('--hidden_size', type=int, default=1024)
+        self.add_argument('--hidden_size', type=int, default=128)
         self.add_argument('--early_stop', type=int, default=float('inf'))
         self.add_argument('--early_stop_metric', type=str, default=None)
-        self.add_argument('--show_pos', type=str, choices=['ours', 'default', 'none'], default='none')
-        self.add_argument('--show_goal', type=str, choices=['ours', 'offset', 'none'], default='none')
+        self.add_argument('--show_pos', type=str, choices=['ours', 'default', 'none'], default='ours')
+        self.add_argument('--show_goal', type=str, choices=['ours', 'offset', 'none'], default='offset')
         self.add_argument('--show_agent_in_grid', action='store_true')
         self.add_argument('--reset_each_batch', action='store_true')
         self.add_argument('--no_buffer', action='store_true')
