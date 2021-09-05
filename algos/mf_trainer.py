@@ -349,8 +349,7 @@ class Trainer(object):
             logger.logkv('Train/BestAccuracy', best_accuracy)
             logger.logkv('Train/BestLoss', best_loss)
             logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
-            if early_stopping or (self.itr % self.save_every == 0) or (self.itr == self.args.n_itr - 1) or \
-                (not self.args.single_level and advance_curriculum):
+            if early_stopping or (self.itr % self.save_every == 0) or (self.itr == self.args.n_itr - 1):
                 saving_time_start = time.time()
                 logger.log("Saving snapshot...")
                 self.save_model()
@@ -362,7 +361,7 @@ class Trainer(object):
         if self.args.end_on_full_buffer:
             advance_curriculum = self.buffer.counts_train[self.curriculum_step] == self.buffer.train_buffer_capacity
 
-        advance_curriculum = advance_curriculum and not self.args.single_level
+        advance_curriculum = False
         if advance_curriculum:
             self.advancement_count += 1
         else:

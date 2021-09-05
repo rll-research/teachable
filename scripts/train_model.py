@@ -120,8 +120,7 @@ def make_env(args, feedback_list):
         "seed": args.seed,
         "static_env": args.static_env,
     }
-    if args.zero_all_thresholds:
-        zero_thresholds(args)
+    zero_thresholds(args)  # TODO: remove these thresholds!
 
     env = Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
                                curriculum_type=args.curriculum_type, **arguments)
