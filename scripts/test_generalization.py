@@ -474,8 +474,7 @@ def main(args):
             "seed": default_args.seed,
             "static_env": args.static_env
         }
-        advance_curriculum_func = 'one_hot'
-        env = rl2env(normalize(Curriculum(advance_curriculum_func, env=default_args.env, start_index=env_index,
+        env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=default_args.env, start_index=env_index,
                                           curriculum_type=default_args.curriculum_type, **arguments),
                                normalize_actions=default_args.act_norm, normalize_reward=default_args.rew_norm,
                                ), ceil_reward=default_args.ceil_reward)
@@ -604,7 +603,6 @@ if __name__ == '__main__':
         parser.add_argument('--buffer_capacity', type=int, default=1000000)
         parser.add_argument('--num_envs', type=int, default=20)
         parser.add_argument('--recurrence', type=int, default=None)
-        parser.add_argument('--advance_curriculum_func', type=str, default=None)
         parser.add_argument('--cartesian_steps', type=int, default=None)
         parser.add_argument('--feedback_freq', type=int, default=None)
         parser.add_argument('--start_num_feedback', type=int, default=0)
@@ -627,6 +625,9 @@ if __name__ == '__main__':
                                                                                             'failure_traj',
                                                                                             'ensemble', 'uniform_traj',
                                                                                             'mismatch'])
+        parser.add_argument('--advance_curriculum_func', type=str, default='one_hot',
+                          choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
+                                   'goto_levels', 'easy_goto'])
         args = parser.parse_args()
         main(args)
     except Exception as e:
