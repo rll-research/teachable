@@ -236,7 +236,7 @@ def run_experiment(**config):
         for k, v in optimizer.items():
             algo.optimizer_dict[k].load_state_dict(v.state_dict())
 
-    exp_dir = os.getcwd() + '/data/' + exp_name
+    exp_dir = os.getcwd() + '/../DEBUG/' + exp_name
     if original_saved_path is None and not args.continue_train:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
