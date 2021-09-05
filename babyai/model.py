@@ -226,8 +226,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if not self.img_obs:
             if self.use_instr:
                 self.embedding_size += self.instr_dim
-            else:
-                self.embedding_size += 1
+            # else:
+            #     self.embedding_size += 1
         if self.use_memory:
             self.memory_rnn = nn.LSTMCell(self.embedding_size, self.memory_dim)
             self.embedding_size = self.semi_memory_size
@@ -434,7 +434,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             if instr_embedding is None:
                 instr_embedding = self._get_instr_embedding(instruction_vector)
         else:
-            instr_embedding = torch.zeros(len(img_vector), 1).to(img_vector.device)
+            instr_embedding = torch.zeros(len(img_vector), 0).to(img_vector.device)
         if self.use_instr and self.lang_model == "attgru":
             # outputs: B x L x D
             # memory: B x M
