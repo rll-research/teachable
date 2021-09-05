@@ -1,3 +1,4 @@
+logs/
 *.DS_Store
 *.png
 old_data/
@@ -6,7 +7,11 @@ wandb/
 model/glove50.txt
 trained_models
 meta-mb-internal/data
-
+meta-mb-internal/old_data
+meta-mb-internal/eval_runs
+meta-mb-internal/old_eval_runs
+meta-mb-internal/filetransfer
+meta-mb-internal/human_data
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
