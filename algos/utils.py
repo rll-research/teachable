@@ -31,9 +31,13 @@ def make_dir(*path_parts):
 def weight_init(m):
     """Custom weight init for Conv2D and Linear layers."""
     if isinstance(m, nn.Linear):
-        nn.init.orthogonal_(m.weight.data)
-        if hasattr(m.bias, 'data'):
-            m.bias.data.fill_(0.0)
+        m.weight.data.normal_(0, 1)
+        m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
+        if m.bias is not None:
+            m.bias.data.fill_(0)
+        # nn.init.orthogonal_(m.weight.data)
+        # if hasattr(m.bias, 'data'):
+        #     m.bias.data.fill_(0.0)
 
 
 class MLP(nn.Module):

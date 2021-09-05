@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
+from algos.agent import Agent, DoubleQCritic, DiagGaussianActor, initialize_parameters
 from logger import logger
 
 from algos import utils
@@ -62,6 +62,7 @@ class SACAgent(Agent):
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha],
                                                     lr=alpha_lr,
                                                     betas=alpha_betas)
+        self.apply(initialize_parameters)
 
         self.train()
         self.critic_target.train()

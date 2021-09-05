@@ -4,8 +4,9 @@ import copy
 
 import numpy as np
 import torch
+import torch.nn as nn
 
-from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
+from algos.agent import Agent, DoubleQCritic, DiagGaussianActor, initialize_parameters
 from logger import logger
 
 from algos import utils
@@ -30,10 +31,14 @@ class PPOAgent(Agent):
             action_dim = env.action_space.shape[0]
 
         if args.image_obs:
-            obs_dim = args.image_dim + len(obs[teacher]) * repeat_advice
+            obs_dim = args.image_dim + args.advice_dim  # TODO: what if there's no advice?
         else:
-            obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
+            obs_dim = len(obs['obs'].flatten()) + args.advice_dim  # TODO: what if there's no advice?
         self.critic = utils.mlp(obs_dim, args.hidden_size, 1, 2).to(self.device)
+        self.advice_embedding = nn.Sequential(
+            nn.Linear(len(obs[teacher]), args.advice_dim),
+            nn.Sigmoid(),
+        )
 
         self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
             self.device)
@@ -42,13 +47,33 @@ class PPOAgent(Agent):
         self.target_entropy = -action_dim
 
         # optimizers
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+        params = list(self.actor.parameters()) + list(self.critic.parameters()) + list(self.advice_embedding.parameters())
+        self.optimizer = torch.optim.Adam(params,
                                                 lr=actor_lr,
                                                 betas=actor_betas)
+        self.actor_optimizer = self.optimizer
+        self.critic_optimizer = self.optimizer
 
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
-                                                 lr=critic_lr,
-                                                 betas=critic_betas)
+        model_parameters = filter(lambda p: p.requires_grad, self.actor.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Actor parameters:", params)
+
+        model_parameters = filter(lambda p: p.requires_grad, self.critic.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Critic parameters:", params)
+
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Total parameters:", params)
+        
+        # self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+        #                                         lr=actor_lr,
+        #                                         betas=actor_betas)
+        #
+        # self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
+        #                                          lr=critic_lr,
+        #                                          betas=critic_betas)
+        self.apply(initialize_parameters)
 
         self.train()
 
@@ -154,7 +179,11 @@ class PPOAgent(Agent):
             obs = self.image_encoder(obs)
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
-        obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
+        if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+            advice = self.advice_embedding(obs.advice)
+        else:
+            advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+        obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
         value = self.critic(obs)
         agent_dict['value'] = value
         return action, agent_dict

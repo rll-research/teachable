@@ -125,7 +125,7 @@ class SquashedNormal(pyd.transformed_distribution.TransformedDistribution):
 class DiagGaussianActor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
 
-    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, log_std_bounds=(-5, 2), discrete=False):
+    def __init__(self, obs_dim, action_dim, hidden_dim=1024, hidden_depth=2, log_std_bounds=(-20, 2), discrete=False):
         super().__init__()
 
         self.discrete = discrete
@@ -275,6 +275,7 @@ class Agent:
             self.instr_encoder = InstrEmbedding(args, env).to(self.device)
         else:
             self.instr_encoder = None
+        self.apply(initialize_parameters)
 
 
     def train(self, training=True):
@@ -290,7 +291,11 @@ class Agent:
             obs = self.image_encoder(obs)
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
-        o = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
+        if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+            advice = self.advice_embedding(obs.advice)
+        else:
+            advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+        o = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
         dist = self.actor(o)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
@@ -320,9 +325,14 @@ class Agent:
             if self.instr_encoder is not None:
                 obs = self.instr_encoder(obs)
                 next_obs = self.instr_encoder(next_obs)
-            obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
-            next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(
-                self.device)
+            if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+                advice = self.advice_embedding(obs.advice)
+                next_advice = self.advice_embedding(next_obs.advice)
+            else:
+                advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+                next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
+            obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
+            next_obs = torch.cat([next_obs.obs.flatten(1)] + next_advice, dim=1).to(self.device)
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def optimize_policy(self, batch, step):
@@ -341,8 +351,14 @@ class Agent:
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
             next_obs = self.instr_encoder(next_obs)
-        obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
-        next_obs = torch.cat([next_obs.obs.flatten(1)] + [next_obs.advice] * self.repeat_advice, dim=1).to(self.device)
+        if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+            advice = self.advice_embedding(obs.advice)
+            next_advice = self.advice_embedding(next_obs.advice)
+        else:
+            advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+            next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
+        obs = torch.cat([obs.obs.flatten(1)] + advice, dim=1).to(self.device)
+        next_obs = torch.cat([next_obs.obs.flatten(1)] + next_advice, dim=1).to(self.device)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
@@ -353,7 +369,11 @@ class Agent:
                 preprocessed_obs = self.image_encoder(preprocessed_obs)
             if self.instr_encoder is not None:
                 preprocessed_obs = self.instr_encoder(preprocessed_obs)
-            obs = torch.cat([preprocessed_obs.obs.flatten(1)] + [preprocessed_obs.advice] * self.repeat_advice, dim=1).to(self.device)
+            if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+                advice = self.advice_embedding(preprocessed_obs.advice)
+            else:
+                advice = [preprocessed_obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+            obs = torch.cat([preprocessed_obs.obs.flatten(1)] + advice, dim=1).to(self.device)
             self.update_actor(obs, batch)
 
     def update_critic(self, obs, next_obs, batch, step):
