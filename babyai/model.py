@@ -297,6 +297,17 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 nn.ReLU(),
                 nn.Linear(layer_2_size, self.advice_size)
             )
+        model_parameters = filter(lambda p: p.requires_grad, self.actor.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Actor parameters:", params)
+
+        model_parameters = filter(lambda p: p.requires_grad, self.critic.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Critic parameters:", params)
+
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Total parameters:", params)
 
     def add_heads(self):
         '''
