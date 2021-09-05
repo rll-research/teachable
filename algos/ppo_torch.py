@@ -12,7 +12,7 @@ from logger import logger
 from algos import utils
 
 
-class PPOAgent(Agent):
+class PPOAgent(Agent, nn.Module):
     """PPO algorithm."""
 
     def __init__(self, args, obs_preprocessor, teacher, env,
@@ -38,7 +38,7 @@ class PPOAgent(Agent):
         self.advice_embedding = nn.Sequential(
             nn.Linear(len(obs[teacher]), args.advice_dim),
             nn.Sigmoid(),
-        )
+        ).to(self.device)
 
         self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
             self.device)
