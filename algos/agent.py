@@ -364,17 +364,17 @@ class Agent:
 
         self.update_critic(obs, next_obs, batch, step)
 
-        if step % self.actor_update_frequency == 0:
-            if self.image_encoder is not None:
-                preprocessed_obs = self.image_encoder(preprocessed_obs)
-            if self.instr_encoder is not None:
-                preprocessed_obs = self.instr_encoder(preprocessed_obs)
-            if self.advice_embedding is not None:  # TODO: should it be None if no advice?
-                advice = self.advice_embedding(preprocessed_obs.advice)
-            else:
-                advice = [preprocessed_obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-            obs = torch.cat([preprocessed_obs.obs.flatten(1), advice], dim=1).to(self.device)
-            self.update_actor(obs, batch)
+        # if step % self.actor_update_frequency == 0:
+        #     if self.image_encoder is not None:
+        #         preprocessed_obs = self.image_encoder(preprocessed_obs)
+        #     if self.instr_encoder is not None:
+        #         preprocessed_obs = self.instr_encoder(preprocessed_obs)
+        #     if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+        #         advice = self.advice_embedding(preprocessed_obs.advice)
+        #     else:
+        #         advice = [preprocessed_obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
+        #     obs = torch.cat([preprocessed_obs.obs.flatten(1), advice], dim=1).to(self.device)
+        #     self.update_actor(obs, batch)
 
     def update_critic(self, obs, next_obs, batch, step):
         raise NotImplementedError

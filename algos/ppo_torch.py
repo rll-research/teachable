@@ -50,7 +50,7 @@ class PPOAgent(Agent, nn.Module):
         params = list(self.actor.parameters()) + list(self.critic.parameters()) + list(self.advice_embedding.parameters())
         self.optimizer = torch.optim.Adam(params,
                                                 lr=actor_lr,
-                                                betas=actor_betas)
+                                                betas=actor_betas, eps=self.args.optim_eps)
         self.actor_optimizer = self.optimizer
         self.critic_optimizer = self.optimizer
 
@@ -88,15 +88,6 @@ class PPOAgent(Agent, nn.Module):
 
         if train:
             tag = 'train_critic'
-
-            # Optimize the critic
-            self.critic_optimizer.zero_grad()
-            critic_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
-            for n, p in self.critic.named_parameters():
-                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-                logger.logkv(f'grads/critic{n}', param_norm)
-            self.critic_optimizer.step()
         else:
             tag = 'val'
         logger.logkv(f'{tag}/critic_loss', utils.to_np(critic_loss))
@@ -107,15 +98,16 @@ class PPOAgent(Agent, nn.Module):
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
 
-    def update_actor(self, obs, batch):
+    # def update_actor(self, obs, batch):
 
         # control penalty
         for n, p in self.actor.named_parameters():
             if p.isnan().sum() > 0:
                 print("NAN in actor before anything else!")
         dist = self.actor(obs)
-        entropy = -dist.log_prob(dist.rsample()).sum(-1).mean()
-        entropy = torch.clamp(entropy, -10, 10) # Prevent this from blowing up
+        # entropy = -dist.log_prob(dist.rsample()).sum(-1).mean()
+        # entropy = torch.clamp(entropy, -10, 10) # Prevent this from blowing up
+        entropy = dist.entropy().mean()
         action = batch.action
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
@@ -157,19 +149,26 @@ class PPOAgent(Agent, nn.Module):
         logger.logkv('train_actor/act_norm', utils.to_np(action.float().norm(2, dim=-1).mean()))
 
         # optimize the actor
-        self.actor_optimizer.zero_grad()
-        for n, p in self.actor.named_parameters():
-            if p.isnan().sum() > 0:
-                print("NAN in actor before backprop!")
-        actor_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
-        for n, p in self.actor.named_parameters():
-            param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-            logger.logkv(f'grads/actor{n}', param_norm)
-        self.actor_optimizer.step()
-        for n, p in self.actor.named_parameters():
-            if p.isnan().sum() > 0:
-                print("NAN in actor after backprop!")
+        if train:
+            loss = actor_loss + 0.5 * critic_loss
+            # Optimize the critic
+            self.optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
+            for n, p in self.critic.named_parameters():
+                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
+                logger.logkv(f'grads/critic{n}', param_norm)
+            for n, p in self.actor.named_parameters():
+                if p.isnan().sum() > 0:
+                    print("NAN in actor before backprop!")
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
+            for n, p in self.actor.named_parameters():
+                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
+                logger.logkv(f'grads/actor{n}', param_norm)
+            self.optimizer.step()
+            for n, p in self.actor.named_parameters():
+                if p.isnan().sum() > 0:
+                    print("NAN in actor after backprop!")
 
     def act(self, obs, sample=False):
         if not 'advice' in obs:  # unpreprocessed
