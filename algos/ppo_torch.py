@@ -66,13 +66,13 @@ class PPOAgent(Agent, nn.Module):
         params = sum([np.prod(p.size()) for p in model_parameters])
         print("Total parameters:", params)
 
-        # self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
-        #                                         lr=actor_lr,
-        #                                         betas=actor_betas)
-        #
-        # self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
-        #                                          lr=critic_lr,
-        #                                          betas=critic_betas)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+                                                lr=actor_lr,
+                                                betas=actor_betas)
+
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
+                                                 lr=critic_lr,
+                                                 betas=critic_betas)
         self.apply(initialize_parameters)
 
         self.train()
@@ -88,6 +88,17 @@ class PPOAgent(Agent, nn.Module):
 
         if train:
             tag = 'train_critic'
+            # Optimize the critic
+            self.optimizer.zero_grad()
+            critic_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
+            for n, p in self.critic.named_parameters():
+                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
+                logger.logkv(f'grads/critic{n}', param_norm)
+            self.critic_optimizer.step()
+            for n, p in self.actor.named_parameters():
+                if p.isnan().sum() > 0:
+                    print("NAN in actor after backprop!")
         else:
             tag = 'val'
         logger.logkv(f'{tag}/critic_loss', utils.to_np(critic_loss))
@@ -98,7 +109,7 @@ class PPOAgent(Agent, nn.Module):
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
 
-    # def update_actor(self, obs, batch):
+    def update_actor(self, obs, batch):
 
         # control penalty
         for n, p in self.actor.named_parameters():
@@ -149,30 +160,20 @@ class PPOAgent(Agent, nn.Module):
         logger.logkv('train_actor/act_norm', utils.to_np(action.float().norm(2, dim=-1).mean()))
 
         # optimize the actor
-        if train:
-            loss = actor_loss + 0.5 * critic_loss
-            if loss.isnan() or loss.isinf():
-                print("uh oh")
-                import IPython
-                IPython.embed()
-            # Optimize the critic
-            self.optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
-            for n, p in self.critic.named_parameters():
-                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-                logger.logkv(f'grads/critic{n}', param_norm)
-            for n, p in self.actor.named_parameters():
-                if p.isnan().sum() > 0:
-                    print("NAN in actor before backprop!")
-            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
-            for n, p in self.actor.named_parameters():
-                param_norm = p.grad.detach().data.norm(2).cpu().numpy()
-                logger.logkv(f'grads/actor{n}', param_norm)
-            self.optimizer.step()
-            for n, p in self.actor.named_parameters():
-                if p.isnan().sum() > 0:
-                    print("NAN in actor after backprop!")
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+
+        for n, p in self.actor.named_parameters():
+            if p.isnan().sum() > 0:
+                print("NAN in actor before backprop!")
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
+        for n, p in self.actor.named_parameters():
+            param_norm = p.grad.detach().data.norm(2).cpu().numpy()
+            logger.logkv(f'grads/actor{n}', param_norm)
+        self.actor_optimizer.step()
+        for n, p in self.actor.named_parameters():
+            if p.isnan().sum() > 0:
+                print("NAN in actor after backprop!")
 
     def act(self, obs, sample=False):
         if not 'advice' in obs:  # unpreprocessed
