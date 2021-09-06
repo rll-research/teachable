@@ -302,9 +302,6 @@ class Agent:
             action = dist.sample() if sample else argmax_action
         else:
             action = dist.sample() if sample else dist.mean
-            min_val, max_val = self.action_range
-            action = torch.maximum(action, torch.FloatTensor(min_val).unsqueeze(0).to(self.device))
-            action = torch.minimum(action, torch.FloatTensor(max_val).unsqueeze(0).to(self.device))
             argmax_action = dist.mean
         agent_info = {
             'argmax_action': argmax_action,

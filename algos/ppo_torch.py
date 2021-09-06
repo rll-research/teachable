@@ -121,16 +121,16 @@ class PPOAgent(Agent, nn.Module):
         surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * batch.advantage
         control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
-        if policy_loss.isnan():
+        if policy_loss.isnan() or policy_loss.isinf():
             print("DIST")
             print(dist.scale.min(), dist.scale.max(), dist.scale.isnan().sum())
             print(dist.loc.min(), dist.loc.max(), dist.loc.isnan().sum())
 
-            print("bad policy loss!")
-        if entropy.isnan():
-            print("bad entropy!")
-        if control_penalty.isnan():
-            print("bad control_penalty!")
+            print("bad policy loss!", policy_loss)
+        if entropy.isnan() or entropy.isinf():
+            print("bad entropy!", entropy)
+        if control_penalty.isnan() or control_penalty.isinf():
+            print("bad control_penalty!", control_penalty)
 
         actor_loss = policy_loss \
                      - self.args.entropy_coef * entropy \
@@ -151,6 +151,10 @@ class PPOAgent(Agent, nn.Module):
         # optimize the actor
         if train:
             loss = actor_loss + 0.5 * critic_loss
+            if loss.isnan() or loss.isinf():
+                print("uh oh")
+                import IPython
+                IPython.embed()
             # Optimize the critic
             self.optimizer.zero_grad()
             loss.backward()
