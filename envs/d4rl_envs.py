@@ -37,7 +37,7 @@ class D4RLEnv:
             om = np.array([0, 0])
         self.waypoint_controller = WaypointController(self.get_maze(), offset_mapping=om)
         self.scale_factor = 5
-        self.repeat_input = 1
+        self.repeat_input = 5
         teachers = {}
         for ft in feedback_type:
             if ft == 'none': teachers[ft] = DummyAdvice()
