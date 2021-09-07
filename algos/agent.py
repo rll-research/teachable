@@ -15,17 +15,6 @@ from logger import logger
 
 from algos import utils
 
-
-# From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
-def initialize_parameters(m):
-    classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        m.weight.data.normal_(0, 1)
-        m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
-        if m.bias is not None:
-            m.bias.data.fill_(0)
-
-
 # Inspired by FiLMedBlock from https://arxiv.org/abs/1709.07871
 class FiLM(nn.Module):
     def __init__(self, in_features, out_features, in_channels, imm_channels):
@@ -42,17 +31,15 @@ class FiLM(nn.Module):
         self.weight = nn.Linear(in_features, out_features)
         self.bias = nn.Linear(in_features, out_features)
 
-        self.apply(initialize_parameters)
+        self.apply(utils.weight_init)
 
     def forward(self, x, y):
         x = F.relu(self.bn1(self.conv1(x)))
-        # x = F.relu(self.conv1(x))
         x = self.conv2(x)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
         return F.relu(self.bn2(out))
-        # return F.relu(out)
 
 
 class ImageBOWEmbedding(nn.Module):
@@ -61,7 +48,7 @@ class ImageBOWEmbedding(nn.Module):
         self.max_value = max_value
         self.embedding_dim = embedding_dim
         self.embedding = nn.Embedding(3 * max_value, embedding_dim)
-        self.apply(initialize_parameters)
+        self.apply(utils.weight_init)
 
     def forward(self, inputs):
         offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inputs.device)
@@ -146,9 +133,7 @@ class DiagGaussianActor(nn.Module):
             mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
             # constrain log_std inside [log_std_min, log_std_max]
-            # log_std = torch.tanh(log_std)
             log_std_min, log_std_max = self.log_std_bounds
-            # log_std = log_std_min + 0.5 * (log_std_max - log_std_min) * (log_std + 1)
             log_std = torch.clamp(log_std, log_std_min, log_std_max)
 
             std = log_std.exp()
@@ -201,6 +186,7 @@ class InstrEmbedding(nn.Module):
                 in_channels=128, imm_channels=128)
             self.controllers.append(mod)
             self.add_module('FiLM_' + str(i), mod)
+        self.apply(utils.weight_init)
 
     def forward(self, obs):
         instruction_vector = obs.instr.long()
@@ -234,20 +220,24 @@ class ImageEmbedding(nn.Module):
         self.film_pool = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
 
         # Initialize parameters correctly
-        self.apply(initialize_parameters)
+        self.apply(utils.weight_init)
 
     def forward(self, obs):
-        inputs = torch.transpose(torch.transpose(obs.obs, 1, 3), 2, 3)
+        try:
+            print("this line", obs.obs.shape)
+            inputs = torch.transpose(torch.transpose(obs.obs, 1, 3), 2, 3)
+        except:
+            print("?")
         obs.obs = self.image_conv(inputs).flatten(1)
         return obs
 
 
-class Agent:
+class Agent(nn.Module):
     """SAC algorithm."""
 
     def __init__(self, args, obs_preprocessor, teacher, env,
                  device='cuda', discount=0.99, batch_size=1024, control_penalty=0, repeat_advice=1,
-                 actor_update_frequency=1):
+                 actor_update_frequency=1, advice_size=0):
         super().__init__()
         if args.discrete:
             action_dim = env.action_space.n
@@ -275,14 +265,24 @@ class Agent:
             self.instr_encoder = InstrEmbedding(args, env).to(self.device)
         else:
             self.instr_encoder = None
-        self.apply(initialize_parameters)
-
+        if teacher is 'none':
+            self.advice_embedding = None
+        else:
+            self.advice_embedding = nn.Sequential(
+                nn.Linear(advice_size, args.advice_dim),
+                nn.Sigmoid(),
+            ).to(self.device)
+        self.apply(utils.weight_init)
 
     def train(self, training=True):
-        self.training = training
         self.actor.train(training)
         self.critic.train(training)
-
+        if self.image_encoder is not None:
+            self.image_encoder.train(training)
+        if self.instr_encoder is not None:
+            self.instr_encoder.train(training)
+        if self.advice_embedding is not None:
+            self.advice_embedding.train(training)
 
     def act(self, obs, sample=False):
         if not 'advice' in obs:  # unpreprocessed
@@ -291,11 +291,11 @@ class Agent:
             obs = self.image_encoder(obs)
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
-        if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+        if self.advice_embedding is not None:
             advice = self.advice_embedding(obs.advice)
+            o = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         else:
-            advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-        o = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            o = obs.obs.flatten(1)
         dist = self.actor(o)
         if self.args.discrete:
             argmax_action = dist.probs.argmax(dim=1)
@@ -322,12 +322,9 @@ class Agent:
             if self.instr_encoder is not None:
                 obs = self.instr_encoder(obs)
                 next_obs = self.instr_encoder(next_obs)
-            if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+            if self.advice_embedding is not None:
                 advice = self.advice_embedding(obs.advice)
                 next_advice = self.advice_embedding(next_obs.advice)
-            else:
-                advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-                next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
             obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
             next_obs = torch.cat([next_obs.obs.flatten(1), next_advice], dim=1).to(self.device)
             self.update_critic(obs, next_obs, val_batch, train=False)
@@ -348,30 +345,30 @@ class Agent:
         if self.instr_encoder is not None:
             obs = self.instr_encoder(obs)
             next_obs = self.instr_encoder(next_obs)
-        if self.advice_embedding is not None:  # TODO: should it be None if no advice?
+        if self.advice_embedding is not None:
             advice = self.advice_embedding(obs.advice)
             next_advice = self.advice_embedding(next_obs.advice)
+            obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            next_obs = torch.cat([next_obs.obs.flatten(1), next_advice], dim=1).to(self.device)
         else:
-            advice = [obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-            next_advice = [obs.next_advice] * self.repeat_advice  # TODO: when do we hit this case?
-        obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
-        next_obs = torch.cat([next_obs.obs.flatten(1), next_advice], dim=1).to(self.device)
+            obs = obs.obs.flatten(1)
+            next_obs = next_obs.obs.flatten(1)
 
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
         self.update_critic(obs, next_obs, batch, step)
 
-        # if step % self.actor_update_frequency == 0:
-        #     if self.image_encoder is not None:
-        #         preprocessed_obs = self.image_encoder(preprocessed_obs)
-        #     if self.instr_encoder is not None:
-        #         preprocessed_obs = self.instr_encoder(preprocessed_obs)
-        #     if self.advice_embedding is not None:  # TODO: should it be None if no advice?
-        #         advice = self.advice_embedding(preprocessed_obs.advice)
-        #     else:
-        #         advice = [preprocessed_obs.advice] * self.repeat_advice  # TODO: when do we hit this case?
-        #     obs = torch.cat([preprocessed_obs.obs.flatten(1), advice], dim=1).to(self.device)
-        #     self.update_actor(obs, batch)
+        if step % self.actor_update_frequency == 0:
+            if self.image_encoder is not None:
+                preprocessed_obs = self.image_encoder(preprocessed_obs)
+            if self.instr_encoder is not None:
+                preprocessed_obs = self.instr_encoder(preprocessed_obs)
+            if self.advice_embedding is not None:
+                advice = self.advice_embedding(preprocessed_obs.advice)
+                obs = torch.cat([preprocessed_obs.obs.flatten(1), advice], dim=1).to(self.device)
+            else:
+                obs = preprocessed_obs.obs.flatten(1)
+            self.update_actor(obs, batch)
 
     def update_critic(self, obs, next_obs, batch, step):
         raise NotImplementedError
@@ -386,6 +383,8 @@ class Agent:
             torch.save(self.image_encoder.state_dict(), f'{model_dir}_image_encoder.pt')
         if self.instr_encoder is not None:
             torch.save(self.instr_encoder.state_dict(), f'{model_dir}_instr_encoder.pt')
+        if self.advice_embedding is not None:
+            torch.save(self.advice_embedding.state_dict(), f'{model_dir}_advice_embedding.pt')
 
     def load(self, model_dir):
         self.actor.load_state_dict(torch.load(f'{model_dir}_actor.pt'))
@@ -394,6 +393,8 @@ class Agent:
             self.image_encoder.load_state_dict(torch.load(f'{model_dir}_image_encoder.pt'))
         if self.instr_encoder is not None:
             self.instr_encoder.load_state_dict(torch.load(f'{model_dir}_instr_encoder.pt'))
+        if self.advice_embedding is not None:
+            self.advice_embedding.load_state_dict(torch.load(f'{model_dir}_advice_embedding.pt'))
 
     def reset(self, *args, **kwargs):
         pass
@@ -403,7 +404,7 @@ class Agent:
         action, agent_dict = self.act(obs, sample=True)
         return utils.to_np(action[0]), agent_dict
 
-    def log_distill(self, action_true, action_teacher, entropy, policy_loss, loss, dist, train):
+    def log_distill(self, action_true, action_teacher, policy_loss, loss, dist, train):
         if self.args.discrete:
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             avg_mean_dist = -1
@@ -417,8 +418,6 @@ class Agent:
             'Accuracy': float((action_pred == action_true).sum()) / len(action_pred),
         }
         train_str = 'Train' if train else 'Val'
-        logger.logkv(f"Distill/Entropy_Loss_{train_str}", float(entropy * self.args.entropy_coef))
-        logger.logkv(f"Distill/Entropy_{train_str}", float(entropy))
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
         logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))
         logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
@@ -468,13 +467,11 @@ class Agent:
         if len(action_true.shape) == 1: # not enough idmensions
             action_true = action_true.unsqueeze(1)
         policy_loss = -dist.log_prob(action_true).mean()
-        # entropy = dist.entropy().mean()
-        entropy = 0
         # TODO: consider re-adding recon loss
-        loss = policy_loss  # - self.args.entropy_coef * entropy
+        loss = policy_loss
 
         ### LOGGING ###
-        log = self.log_distill(action_true, action_teacher, entropy, policy_loss, loss, dist, is_training)
+        log = self.log_distill(action_true, action_teacher, policy_loss, loss, dist, is_training)
 
         ### UPDATE ###
         if is_training:

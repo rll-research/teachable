@@ -17,12 +17,12 @@ class HierarchicalPPOAgent(PPOAgent):
 
     def __init__(self, args, obs_preprocessor, teacher, env,
                  device='cuda', discount=0.99,
-                 actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
+                 lr=1e-4, betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999),
                  batch_size=1024, control_penalty=0, repeat_advice=1):
         super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
-                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency, actor_lr=actor_lr,
-                         actor_betas=actor_betas, critic_lr=critic_lr, critic_betas=critic_betas)
+                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency, lr=lr,
+                         betas=betas, critic_lr=critic_lr, critic_betas=critic_betas)
 
         obs = env.reset()
         if args.image_obs:
@@ -32,8 +32,8 @@ class HierarchicalPPOAgent(PPOAgent):
         self.high_level = utils.mlp(no_advice_obs_dim, args.hidden_size, 2, 2).to(self.device)
 
         self.high_level_optimizer = torch.optim.Adam(self.high_level.parameters(),
-                                                 lr=actor_lr,
-                                                 betas=actor_betas)
+                                                     lr=lr,
+                                                     betas=betas)
         self.train()
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):

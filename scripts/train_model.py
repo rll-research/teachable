@@ -53,11 +53,11 @@ def create_policy(path, teacher, env, args, obs_preprocessor):
     elif args.algo == 'ppo':
         args.on_policy = True
         agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                         actor_lr=args.lr, critic_lr=args.lr, control_penalty=args.control_penalty)
+                         lr=args.lr, control_penalty=args.control_penalty)
     elif args.algo == 'hppo':
         args.on_policy = True
         agent = HierarchicalPPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                         actor_lr=args.lr, critic_lr=args.lr, control_penalty=args.control_penalty)
+                                     lr=args.lr, control_penalty=args.control_penalty)
     else:
         raise NotImplementedError(args.algo)
     if path is not None:
@@ -177,7 +177,6 @@ def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
         with open(save_dir.joinpath('results.csv'), 'a') as f:
             f.write(
                 f'{args.prefix}-{env_index},{args.prefix},{env_index},{success_rate},{stoch_accuracy},{det_accuracy},{reward} \n')
-    temp = 3
 
 
 def run_experiment():

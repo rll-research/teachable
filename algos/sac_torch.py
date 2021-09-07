@@ -1,18 +1,17 @@
 # Code found here: https://github.com/denisyarats/pytorch_sac
 
-import copy
-
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 
-from algos.agent import Agent, DoubleQCritic, DiagGaussianActor, initialize_parameters
+from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
 from logger import logger
 
 from algos import utils
 
 
-class SACAgent(Agent):
+class SACAgent(Agent, nn.Module):
     """SAC algorithm."""
 
     def __init__(self, args, obs_preprocessor, teacher, env,
@@ -20,24 +19,25 @@ class SACAgent(Agent):
                  init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999), critic_tau=0.005, critic_target_update_frequency=2,
-                 batch_size=1024, learnable_temperature=True, control_penalty=0, repeat_advice=1):
-        super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
-                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency)
-
+                 batch_size=1024, learnable_temperature=True, control_penalty=0):
         obs = env.reset()
         if args.discrete:
             action_dim = env.action_space.n
         else:
             action_dim = env.action_space.shape[0]
-
+        advice_size = 0 if teacher is 'none' else len(obs[teacher])
+        advice_dim = 0 if advice_size == 0 else args.advice_dim
+        super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
+                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency,
+                         advice_size=advice_size)
         self.critic_tau = critic_tau
         self.critic_target_update_frequency = critic_target_update_frequency
         self.learnable_temperature = learnable_temperature
 
         if args.image_obs:
-            obs_dim = args.image_dim + len(obs[teacher]) * repeat_advice
+            obs_dim = args.image_dim + advice_dim
         else:
-            obs_dim = len(obs['obs'].flatten()) + len(obs[teacher]) * repeat_advice
+            obs_dim = len(obs['obs'].flatten()) + advice_dim
         self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
         self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
@@ -51,19 +51,25 @@ class SACAgent(Agent):
         self.target_entropy = -action_dim
 
         # optimizers
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+        embedding_params = []
+        if self.image_encoder is not None:
+            embedding_params += list(self.image_encoder.parameters())
+        if self.instr_encoder is not None:
+            embedding_params += list(self.instr_encoder.parameters())
+        if self.advice_embedding is not None:
+            embedding_params += list(self.advice_embedding.parameters())
+
+        self.actor_optimizer = torch.optim.Adam(list(self.actor.parameters()) + embedding_params,
                                                 lr=actor_lr,
                                                 betas=actor_betas)
 
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
+        self.critic_optimizer = torch.optim.Adam(list(self.critic.parameters()) + embedding_params,
                                                  lr=critic_lr,
                                                  betas=critic_betas)
 
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha],
                                                     lr=alpha_lr,
                                                     betas=alpha_betas)
-        self.apply(initialize_parameters)
-
         self.train()
         self.critic_target.train()
 
@@ -72,7 +78,7 @@ class SACAgent(Agent):
         return self.log_alpha.exp()
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
-        action = batch.action.unsqueeze(1)
+        action = batch.action
         reward = batch.reward.unsqueeze(1)
         not_done = 1 - batch.full_done.unsqueeze(1)
         dist = self.actor(next_obs)
@@ -90,6 +96,7 @@ class SACAgent(Agent):
 
         # get current Q estimates
         if self.args.discrete:
+            action = action.unsqueeze(1)
             action = F.one_hot(action[:, 0].long(), self.action_dim).float()
         current_Q1, current_Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
