@@ -585,14 +585,13 @@ class Level_TeachableRobot(RoomGridLevel, MetaEnv):
             info['teacher_action'] = np.array(self.action_space.n, dtype=np.int32)
         obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action)
         # Reward at the end scaled by 1000
-        reward_total = rew * 1000
+        reward_total = rew
         if self.intermediate_reward:
             provided_reward = True
-            reward_total = int(give_reward)
-            #reward_total += int(give_reward) * 100
+            reward_total = int(give_reward) * .1
         else:
             provided_reward = done
-        #rew = reward_total / 1000
+        rew = reward_total
         info['gave_reward'] = int(provided_reward)
         self.done = done
         return obs, rew, done, info

@@ -10,7 +10,7 @@ from gym.spaces import Discrete
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
                  label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3,
-                 reconstructor_dict=None, distill_reward=True):
+                 reconstructor_dict=None, distill_reward=False):
         self.args = copy.deepcopy(args)
         if distill_reward:
             self.args.entropy_coef = 0
@@ -77,7 +77,7 @@ class ImitationLearning(object):
     def preprocess_batch(self, batch, source):
         obss = batch.obs
         if self.distill_reward:
-            action_true = batch.reward
+            action_true = torch.round(batch.reward * 10)
             action_teacher = batch.teacher_action.copy() if source =='teacher' else batch.action
         else:
             if source == 'teacher':
