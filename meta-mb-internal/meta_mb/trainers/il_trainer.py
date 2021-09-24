@@ -237,8 +237,6 @@ class ImitationLearning(object):
     def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
               kl_loss, avg_mean_dist, avg_std, loss, high_level_loss):
         if self.distill_reward:
-            print("pred", action_pred[:20])
-            print("true", action_true[:20])
             self.accuracy = (torch.round(action_pred) == action_true).float().mean()
             self.final_policy_loss += policy_loss
             return
