@@ -165,6 +165,7 @@ def run_experiment(**config):
         obs_preprocessor = make_obs_preprocessor(teacher_null_dict, include_zeros=include_zeros)
 
         policy_dict = {}
+        rew_dict = {}
         teachers_list = list(teacher_null_dict.keys())
         args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
         if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
@@ -178,11 +179,17 @@ def run_experiment(**config):
                 args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
             if args.same_model and not teacher == teachers_list[0]:
                 policy = policy_dict[teachers_list[0]]
+                rew = rew_dict[teachers_list[0]]
             else:
                 policy = ACModel(action_space=env.action_space,
                                  env=env,
                                  args=args)
+                rew = ACModel(action_space=env.action_space,
+                              env=env,
+                              args=args,
+                              output_reward=True)
             policy_dict[teacher] = policy
+            rew_dict[teacher] = rew
 
         start_itr = 0
         curriculum_step = env.index
@@ -196,6 +203,10 @@ def run_experiment(**config):
                                    preprocess_obs=obs_preprocessor,
                                    instr_dropout_prob=args.distill_dropout_prob,
                                    reconstructor_dict=reconstructor_dict)
+    il_trainer_rew = ImitationLearning(rew_dict, env, args, distill_with_teacher=False,
+                                   preprocess_obs=obs_preprocessor,
+                                   instr_dropout_prob=args.distill_dropout_prob,
+                                   reconstructor_dict=reconstructor_dict, distill_reward=True)
     if il_optimizer is not None:  # TODO: modify for same model
         for k, v in il_optimizer.items():
             il_trainer.optimizer_dict[k].load_state_dict(v.state_dict())
@@ -272,6 +283,7 @@ def run_experiment(**config):
         algo=algo,
         algo_dagger=algo_dagger,
         policy=policy_dict,
+        reward=rew_dict,
         env=deepcopy(env),
         sampler=sampler,
         sample_processor=sample_processor,
@@ -280,6 +292,7 @@ def run_experiment(**config):
         exp_name=exp_dir,
         curriculum_step=curriculum_step,
         il_trainer=il_trainer,
+        il_trainer_rew=il_trainer_rew,
         is_debug=is_debug,
         teacher_schedule=teacher_schedule,
         obs_preprocessor=obs_preprocessor,

@@ -40,6 +40,7 @@ class Trainer(object):
             algo,
             algo_dagger,
             policy,
+            reward,
             env,
             sampler,
             sample_processor,
@@ -67,6 +68,7 @@ class Trainer(object):
         self.algo = algo
         self.algo_dagger = algo_dagger
         self.policy_dict = policy
+        self.reward_dict = reward
         self.env = copy.deepcopy(env)
         self.sampler = sampler
         self.sample_processor = sample_processor
@@ -334,6 +336,36 @@ class Trainer(object):
             time_rp_train_start = time.time()
             # self.train_rp(samples_data)
             time_rp_train = time.time() - time_rp_train_start
+
+            """ ------------------ Reward Training ---------------------"""
+            should_train_rew = True  # TODO: make this an arg!
+            if should_train_rew:
+                logger.log("Training reward ...")
+                for dist_i in range(self.args.distillation_steps):
+                    sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
+                    rew_log = self.distill(sampled_batch,
+                                               is_training=True,
+                                               teachers_dict=teacher_distill_dict,
+                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
+                                               relabel_dict=teacher_train_dict, distill_to_none=True, train_reward=True)
+                for key_set, log_dict in rew_log.items():
+                    key_set = '_'.join(key_set)
+                    for k, v in log_dict.items():
+                        logger.logkv(f"Reward/{key_set}{k}_Train", v)
+                sampled_val_batch = buffer.sample(total_num_samples=self.args.batch_size,
+                                                  split='val')
+                rew_log_val = self.distill(sampled_val_batch,
+                                               is_training=False,
+                                               #source='teacher',
+                                               teachers_dict=teacher_distill_dict,
+                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
+                                               relabel_dict=teacher_train_dict,
+                                               train_reward=True)
+
+                for key_set, log_dict in rew_log_val.items():
+                    key_set = '_'.join(key_set)
+                    for k, v in log_dict.items():
+                        logger.logkv(f"Reward/{key_set}{k}_Val", v)
 
             """ ------------------ Distillation ---------------------"""
             should_distill = self.args.self_distill and advance_curriculum and \
@@ -787,9 +819,13 @@ class Trainer(object):
         return relabeled_batch
 
     def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={},
-                distill_to_none=True):
+                distill_to_none=True, train_reward=False):
         if source is None:
             source = self.args.source
+        if train_reward:
+            return self.il_trainer_rew.distill(samples, source=source, is_training=is_training,
+                                           teachers_dict=teachers_dict, distill_target=self.args.distillation_strategy,
+                                           relabel=relabel, relabel_dict=relabel_dict, distill_to_none=distill_to_none)
         log = self.il_trainer.distill(samples, source=source, is_training=is_training,
                                       teachers_dict=teachers_dict, distill_target=self.args.distillation_strategy,
                                       relabel=relabel, relabel_dict=relabel_dict, distill_to_none=distill_to_none)
@@ -860,6 +896,7 @@ class Trainer(object):
         il_optimizer = self.il_trainer.optimizer_dict
         d = dict(itr=itr,
                  policy=self.policy_dict,
+                 reward=self.rew_dict,
                  env=self.env,
                  args=self.args,
                  optimizer=self.algo.optimizer_dict,

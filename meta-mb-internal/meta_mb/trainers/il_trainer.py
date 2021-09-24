@@ -10,8 +10,10 @@ from gym.spaces import Discrete
 class ImitationLearning(object):
     def __init__(self, model, env, args, distill_with_teacher, reward_predictor=False, preprocess_obs=lambda x: x,
                  label_weightings=False, instr_dropout_prob=.5, obs_dropout_prob=.3,
-                 reconstructor_dict=None):
-        self.args = args
+                 reconstructor_dict=None, distill_reward=True):
+        self.args = copy.deepcopy(args)
+        if distill_reward:
+            self.args.entropy_coef = 0
         self.distill_with_teacher = distill_with_teacher
         self.reward_predictor = reward_predictor
         self.preprocess_obs = preprocess_obs
@@ -19,6 +21,7 @@ class ImitationLearning(object):
         self.instr_dropout_prob = instr_dropout_prob
         self.obs_dropout_prob = obs_dropout_prob
         self.reconstructor_dict = reconstructor_dict
+        self.distill_reward = distill_reward
 
         utils.seed(self.args.seed)
         self.env = env
@@ -73,29 +76,34 @@ class ImitationLearning(object):
 
     def preprocess_batch(self, batch, source):
         obss = batch.obs
-        if source == 'teacher':
-            action_true = batch.teacher_action.copy()
-            if len(action_true.shape) == 2 and action_true.shape[1] == 1:
-                action_true = action_true[:, 0]
-        elif source == 'agent':
-            action_true = batch.action
-        elif source == 'agent_probs':
-            if self.args.discrete == False:
-                raise NotImplementedError('Action probs not implemented for continuous envs.')
-            action_true = batch.argmax_action
-        if not source == 'agent_probs':
-            dtype = torch.long if self.args.discrete else torch.float32
-            action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
-        if hasattr(batch, 'teacher_action'):
-            action_teacher = batch.teacher_action
-            if self.args.discrete:
-                action_teacher = torch.IntTensor(action_teacher).to(self.device)
-            else:
-                action_teacher = torch.FloatTensor(action_teacher).to(self.device)
+        if self.distill_reward:
+            action_true = batch.reward
+            action_teacher = batch.teacher_action.copy() if source =='teacher' else batch.action
+            print("SH", action_teacher.shape, action_true.shape, "expect (B,)")
         else:
-            action_teacher = torch.zeros_like(action_true)
-        if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
-            action_teacher = action_teacher[:, 0]
+            if source == 'teacher':
+                action_true = batch.teacher_action.copy()
+                if len(action_true.shape) == 2 and action_true.shape[1] == 1:
+                    action_true = action_true[:, 0]
+            elif source == 'agent':
+                action_true = batch.action
+            elif source == 'agent_probs':
+                if self.args.discrete == False:
+                    raise NotImplementedError('Action probs not implemented for continuous envs.')
+                action_true = batch.argmax_action
+            if not source == 'agent_probs':
+                dtype = torch.long if self.args.discrete else torch.float32
+                action_true = torch.tensor(action_true, device=self.device, dtype=dtype)
+            if hasattr(batch, 'teacher_action'):
+                action_teacher = batch.teacher_action
+                if self.args.discrete:
+                    action_teacher = torch.IntTensor(action_teacher).to(self.device)
+                else:
+                    action_teacher = torch.FloatTensor(action_teacher).to(self.device)
+            else:
+                action_teacher = torch.zeros_like(action_true)
+            if len(action_teacher.shape) == 2 and action_teacher.shape[1] == 1:
+                action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
     def set_mode(self, is_training, acmodel, reconstructor):
@@ -124,19 +132,27 @@ class ImitationLearning(object):
 
         # All the batch demos are in a single flat vector.
         # Inds holds the start of each demo
-        obss, action_true, action_teacher = batch
+        obss, action_true, action_teacher = batch  # For reward, action_true is the label, action_teacher is the action taken
         self.initialize_logs(len(action_true))
         # Dropout instructions with probability instr_dropout_prob,
         # unless we have no teachers present in which case we keep the instr.
         instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
         obss = self.preprocess_obs(obss, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
+        obss.advice = torch.cat([obss.advice, action_teacher], dim=1)
 
-        dist, info = acmodel(obss)
-        kl_loss = info['kl']
-        if len(action_true.shape) == 3:  # Has an extra dimension
-            action_true = action_true.squeeze(1)
-        policy_loss = -dist.log_prob(action_true).mean()
-        entropy = dist.entropy().mean()
+
+        if self.distill_reward:
+            rew, logits = acmodel(obss)
+            policy_loss = torch.nn.BCEWithLogitsLoss()(logits, action_true)
+            entropy = kl_loss = torch.tensor(0).to(self.device)
+        else:
+            dist, info = acmodel(obss)
+            kl_loss = info['kl']
+            if len(action_true.shape) == 3:  # Has an extra dimension
+                action_true = action_true.squeeze(1)
+
+            policy_loss = -dist.log_prob(action_true).mean()
+            entropy = dist.entropy().mean()
 
         # Optional loss for reconstructing the feedback (currently, all models all teachers)
         if self.reconstructor_dict is not None and 'advice' in obss:
@@ -166,7 +182,9 @@ class ImitationLearning(object):
         else:
             loss = policy_loss - self.args.entropy_coef * entropy + self.args.mi_coef * reconstruction_loss + \
                self.args.kl_coef * kl_loss + high_level_loss
-        if self.args.discrete:
+        if self.distill_reward:
+            action_pred = rew
+        elif self.args.discrete:
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             avg_mean_dist = -1
             avg_std = -1
@@ -217,6 +235,10 @@ class ImitationLearning(object):
 
     def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
               kl_loss, avg_mean_dist, avg_std, loss, high_level_loss):
+        if self.distill_reward:
+            self.accuracy = (torch.round(action_pred) == action_true).mean()
+            self.final_policy_loss += policy_loss
+            return
         self.accuracy_list.append(float((action_pred == action_true).sum()))
         self.accuracy += float((action_pred == action_true).sum()) / self.total_frames
         if action_true.shape == action_teacher.shape:
@@ -268,17 +290,21 @@ class ImitationLearning(object):
 
     def log_final(self):
         log = {}
-        log["Entropy_Loss"] = float(self.final_entropy * self.args.entropy_coef)
-        log["Entropy"] = float(self.final_entropy)
-        log["Policy_Loss"] = float(self.final_policy_loss)
-        log["TotalLoss"] = float(self.final_loss)
-        log["Reconstruction_Loss"] = float(self.final_reconstruction_loss * self.args.mi_coef)
-        log["KL_Loss"] = float(self.final_kl_loss * self.args.kl_coef)
-        log["High_Level_Loss"] = float(self.final_high_level_loss)
-        log["Accuracy"] = float(self.accuracy)
-        log["Mean_Dist"] = float(self.final_mean_dist)
-        log["Std"] = float(self.final_std)
-        log['Correctness'] = float(self.final_correctness)
+        if self.distill_reward:
+            log["Policy_Loss"] = float(self.final_policy_loss)
+            log["Accuracy"] = float(self.accuracy)
+        else:
+            log["Entropy_Loss"] = float(self.final_entropy * self.args.entropy_coef)
+            log["Entropy"] = float(self.final_entropy)
+            log["Policy_Loss"] = float(self.final_policy_loss)
+            log["TotalLoss"] = float(self.final_loss)
+            log["Reconstruction_Loss"] = float(self.final_reconstruction_loss * self.args.mi_coef)
+            log["KL_Loss"] = float(self.final_kl_loss * self.args.kl_coef)
+            log["High_Level_Loss"] = float(self.final_high_level_loss)
+            log["Accuracy"] = float(self.accuracy)
+            log["Mean_Dist"] = float(self.final_mean_dist)
+            log["Std"] = float(self.final_std)
+            log['Correctness'] = float(self.final_correctness)
 
         if self.args.discrete:
             log["Label_A"] = float(self.label_accuracy)

@@ -97,7 +97,7 @@ class Reconstructor(nn.Module):
 
 
 class ACModel(nn.Module, babyai.rl.RecurrentACModel):
-    def __init__(self, action_space, env, args):
+    def __init__(self, action_space, env, args, output_reward=False):
         super().__init__()
 
         self.args = args
@@ -129,6 +129,14 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.reconstruction = args.reconstruction
         self.reconstruct_advice_size = args.reconstruct_advice_size
         self.discrete = args.discrete
+        self.output_reward = output_reward
+        try:
+            action_shape = action_space.n
+        except:  # continuous
+            action_shape = action_space.shape[0]
+        self.action_shape = action_shape
+        if self.output_reward:
+            self.advice_size += self.action_shape
         obs = env.reset()
         # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
         obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
@@ -236,33 +244,29 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         # discrete
         layer_1_size = args.hidden_size
         layer_2_size = args.hidden_size
-        try:
-            action_shape = action_space.n
-        except:  # continuous
-            action_shape = action_space.shape[0]
-        self.action_shape = action_shape
 
-        if self.info_bot:
-            self.actor_encoder = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, 64),
-                nn.ReLU(),
-                nn.Linear(64, 64),
-                nn.Tanh(),
-                nn.Linear(64, self.z_dim * 2)
-            )
-            self.actor_decoder = nn.Sequential(
-                nn.Linear(self.z_dim + self.advice_dim, 64),
-                nn.Tanh(),
-                nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
-            )
-        else:
-            self.actor = nn.Sequential(
-                nn.Linear(self.embedding_size + self.advice_dim, layer_1_size),
-                nn.Tanh(),
-                nn.Linear(layer_1_size, layer_2_size),
-                nn.Tanh(),
-                nn.Linear(layer_2_size, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
-            )
+        if not self.output_reward:
+            if self.info_bot:
+                self.actor_encoder = nn.Sequential(
+                    nn.Linear(self.embedding_size + self.advice_dim, 64),
+                    nn.ReLU(),
+                    nn.Linear(64, 64),
+                    nn.Tanh(),
+                    nn.Linear(64, self.z_dim * 2)
+                )
+                self.actor_decoder = nn.Sequential(
+                    nn.Linear(self.z_dim + self.advice_dim, 64),
+                    nn.Tanh(),
+                    nn.Linear(64, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
+                )
+            else:
+                self.actor = nn.Sequential(
+                    nn.Linear(self.embedding_size + self.advice_dim, layer_1_size),
+                    nn.Tanh(),
+                    nn.Linear(layer_1_size, layer_2_size),
+                    nn.Tanh(),
+                    nn.Linear(layer_2_size, action_shape if args.discrete else action_shape * 2) # x2 for mean and std of gaussian
+                )
 
         # Define critic's model
         self.critic = nn.Sequential(
@@ -506,54 +510,58 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.advice_size > 0:
             embedding = torch.cat([embedding, advice_embedding], dim=1)
 
-        if self.info_bot:
-            z = self.actor_encoder(embedding)
-            z_mu = z[:, :self.z_dim]
-            z_log_sigma = z[:, self.z_dim:]
-            z_sigma = torch.exp(z_log_sigma)
-            z_noise = torch.randn(z_mu.shape).to(z_mu.device)
-            z = z_mu + torch.exp(z_log_sigma) * z_noise
-
-            if self.advice_size > 0:
-                z = torch.cat([z, advice_embedding], dim=1)
-
-            x = self.actor_decoder(z)
-            kl_loss = torch.mean(torch.sum(-z_log_sigma + 0.5 * (z_mu ** 2 + z_sigma ** 2) - 0.5, dim=1))
-        else:
-            x = self.actor(embedding)
-            kl_loss = torch.zeros(1).to(self.device)
-        if self.discrete:
-            dist = Categorical(logits=F.log_softmax(x, dim=1))
-        else:
-            mean = x[:, :self.action_shape]
-            LOG_STD_MIN = -20
-            LOG_STD_MAX = 2
-            log_std = torch.clamp(x[:, self.action_shape:], LOG_STD_MIN, LOG_STD_MAX)
-            if self.args.loss_type == 'mean':
-                std = .5
-            else:
-                std = torch.exp(log_std)
-            dist = Normal(mean, std)
-
-        reconstruction_embedding = torch.cat([reconstruction_embedding, x], dim=1)
         x = self.critic(embedding)
         value = x.squeeze(1)
+        if not self.output_reward:
+            if self.info_bot:
+                z = self.actor_encoder(embedding)
+                z_mu = z[:, :self.z_dim]
+                z_log_sigma = z[:, self.z_dim:]
+                z_sigma = torch.exp(z_log_sigma)
+                z_noise = torch.randn(z_mu.shape).to(z_mu.device)
+                z = z_mu + torch.exp(z_log_sigma) * z_noise
 
-        info = {
-            "value": value,
-            "memory": memory,
-            "kl": kl_loss,
-            "reconstruction_embedding": reconstruction_embedding,
-        }
+                if self.advice_size > 0:
+                    z = torch.cat([z, advice_embedding], dim=1)
 
-        if self.reconstruction:
-            info['advice'] = self.reconstructor(embedding)
+                x = self.actor_decoder(z)
+                kl_loss = torch.mean(torch.sum(-z_log_sigma + 0.5 * (z_mu ** 2 + z_sigma ** 2) - 0.5, dim=1))
+            else:
+                x = self.actor(embedding)
+                kl_loss = torch.zeros(1).to(self.device)
+            if self.discrete:
+                dist = Categorical(logits=F.log_softmax(x, dim=1))
+            else:
+                mean = x[:, :self.action_shape]
+                LOG_STD_MIN = -20
+                LOG_STD_MAX = 2
+                log_std = torch.clamp(x[:, self.action_shape:], LOG_STD_MIN, LOG_STD_MAX)
+                if self.args.loss_type == 'mean':
+                    std = .5
+                else:
+                    std = torch.exp(log_std)
+                dist = Normal(mean, std)
+            reconstruction_embedding = torch.cat([reconstruction_embedding, x], dim=1)
 
-        if hasattr(self.args, 'hierarchical') and self.args.hierarchical:
-            pred_high_level = self.high_level(high_level_embedding)
-            info['high_level'] = pred_high_level
+            info = {
+                "value": value,
+                "memory": memory,
+                "kl": kl_loss,
+                "reconstruction_embedding": reconstruction_embedding,
+            }
 
-        return dist, info
+            if self.reconstruction:
+                info['advice'] = self.reconstructor(embedding)
+
+            if hasattr(self.args, 'hierarchical') and self.args.hierarchical:
+                pred_high_level = self.high_level(high_level_embedding)
+                info['high_level'] = pred_high_level
+
+            return dist, info
+        else:
+            logits = value
+            rew = torch.Sigmoid()(value)
+            return rew, logits
 
     def _get_instr_embedding(self, instr):
         lengths = (instr != 0).sum(1).long()

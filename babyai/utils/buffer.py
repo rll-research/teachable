@@ -16,6 +16,7 @@ def trim_batch(batch):
         "full_done": batch.full_done.int(),
         "success": batch.env_infos.success,
         "log_prob": batch.log_prob,
+        "reward": batch.reward,
     }
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
