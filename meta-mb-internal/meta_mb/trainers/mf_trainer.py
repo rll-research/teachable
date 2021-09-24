@@ -49,6 +49,7 @@ class Trainer(object):
             exp_name="",
             curriculum_step=0,
             il_trainer=None,
+            il_trainer_rew=None,
             reward_predictor=None,
             rp_trainer=None,
             is_debug=False,
@@ -68,7 +69,7 @@ class Trainer(object):
         self.algo = algo
         self.algo_dagger = algo_dagger
         self.policy_dict = policy
-        self.reward_dict = reward
+        self.rew_dict = reward
         self.env = copy.deepcopy(env)
         self.sampler = sampler
         self.sample_processor = sample_processor
@@ -77,6 +78,7 @@ class Trainer(object):
         self.exp_name = exp_name
         self.curriculum_step = curriculum_step
         self.il_trainer = il_trainer
+        self.il_trainer_rew = il_trainer_rew
         self.reward_predictor = reward_predictor
         self.rp_trainer = rp_trainer
         self.is_debug = is_debug

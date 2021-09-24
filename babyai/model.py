@@ -136,7 +136,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             action_shape = action_space.shape[0]
         self.action_shape = action_shape
         if self.output_reward:
-            self.advice_size += self.action_shape
+            self.advice_size += 1 # TODO: should be self.action_shape
         obs = env.reset()
         # Obs is either an array or a tuple, where the first element is the obs. In either case, get its shape.
         obs_shape = obs['obs'][0].shape if type(obs['obs']) is tuple else obs['obs'].shape
@@ -301,9 +301,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                 nn.ReLU(),
                 nn.Linear(layer_2_size, self.advice_size)
             )
-        model_parameters = filter(lambda p: p.requires_grad, self.actor.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
-        print("Actor parameters:", params)
+        try:
+            model_parameters = filter(lambda p: p.requires_grad, self.actor.parameters())
+            params = sum([np.prod(p.size()) for p in model_parameters])
+            print("Actor parameters:", params)
+        except:
+            print("no actor")
 
         model_parameters = filter(lambda p: p.requires_grad, self.critic.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
@@ -560,7 +563,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             return dist, info
         else:
             logits = value
-            rew = torch.Sigmoid()(value)
+            rew = torch.nn.Sigmoid()(value)
             return rew, logits
 
     def _get_instr_embedding(self, instr):

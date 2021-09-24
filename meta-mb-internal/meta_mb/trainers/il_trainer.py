@@ -79,7 +79,6 @@ class ImitationLearning(object):
         if self.distill_reward:
             action_true = batch.reward
             action_teacher = batch.teacher_action.copy() if source =='teacher' else batch.action
-            print("SH", action_teacher.shape, action_true.shape, "expect (B,)")
         else:
             if source == 'teacher':
                 action_true = batch.teacher_action.copy()
@@ -138,7 +137,7 @@ class ImitationLearning(object):
         # unless we have no teachers present in which case we keep the instr.
         instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
         obss = self.preprocess_obs(obss, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
-        obss.advice = torch.cat([obss.advice, action_teacher], dim=1)
+        obss.advice = torch.cat([obss.advice, action_teacher.unsqueeze(1)], dim=1)
 
 
         if self.distill_reward:
@@ -184,6 +183,8 @@ class ImitationLearning(object):
                self.args.kl_coef * kl_loss + high_level_loss
         if self.distill_reward:
             action_pred = rew
+            avg_mean_dist = -1
+            avg_std = -1
         elif self.args.discrete:
             action_pred = dist.probs.max(1, keepdim=False)[1]  # argmax action
             avg_mean_dist = -1
@@ -236,7 +237,9 @@ class ImitationLearning(object):
     def log_t(self, action_pred, action_true, action_teacher, entropy, policy_loss, reconstruction_loss,
               kl_loss, avg_mean_dist, avg_std, loss, high_level_loss):
         if self.distill_reward:
-            self.accuracy = (torch.round(action_pred) == action_true).mean()
+            print("pred", action_pred[:20])
+            print("true", action_true[:20])
+            self.accuracy = (torch.round(action_pred) == action_true).float().mean()
             self.final_policy_loss += policy_loss
             return
         self.accuracy_list.append(float((action_pred == action_true).sum()))
@@ -293,6 +296,7 @@ class ImitationLearning(object):
         if self.distill_reward:
             log["Policy_Loss"] = float(self.final_policy_loss)
             log["Accuracy"] = float(self.accuracy)
+            return log
         else:
             log["Entropy_Loss"] = float(self.final_entropy * self.args.entropy_coef)
             log["Entropy"] = float(self.final_entropy)
