@@ -149,6 +149,31 @@ def run_experiment(**config):
             last_teacher_index = -1
         obs = env.reset()
         args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
+
+        policy_dict = {}
+        teachers_list = list(teacher_null_dict.keys())
+        args.reconstruct_advice_size = np.prod(obs[teachers_list[0]].shape)
+        if args.self_distill and args.distillation_strategy in ['all_teachers', 'no_teachers', 'powerset',
+                                                                'single_teachers_none']:
+            teachers_list += ['none']
+            last_teacher_index = -2
+        else:
+            last_teacher_index = -1
+        for teacher in teachers_list:
+            if not args.include_zeros and not args.same_model:
+                args.advice_size = 0 if teacher == 'none' else np.prod(obs[teacher].shape)
+            if args.same_model and not teacher == teachers_list[0]:
+                policy = policy_dict[teachers_list[0]]
+            else:
+                policy = ACModel(action_space=env.action_space,
+                                 env=env,
+                                 args=args)
+                rew = ACModel(action_space=env.action_space,
+                              env=env,
+                              args=args,
+                              output_reward=True)
+            policy_dict[teacher] = policy
+
     else:
         optimizer = None
         env = rl2env(normalize(Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
