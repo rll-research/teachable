@@ -137,10 +137,9 @@ class ImitationLearning(object):
         # unless we have no teachers present in which case we keep the instr.
         instr_dropout_prob = 0 if np.sum(list(teacher_dict.values())) == 0 else self.instr_dropout_prob
         obss = self.preprocess_obs(obss, teacher_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
-        obss.advice = torch.cat([obss.advice, action_teacher.unsqueeze(1)], dim=1)
-
 
         if self.distill_reward:
+            obss.advice = torch.cat([obss.advice, action_teacher.unsqueeze(1)], dim=1)
             rew, logits = acmodel(obss)
             policy_loss = torch.nn.BCEWithLogitsLoss()(logits, action_true)
             entropy = kl_loss = torch.tensor(0).to(self.device)
@@ -355,8 +354,11 @@ class ImitationLearning(object):
         obss_processed = self.preprocess_obs(obss, relabel_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
         acmodel = self.policy_dict[teacher_name]
         self.set_mode(False, acmodel, None)
-        dist, info = acmodel(obss_processed)
-        a = dist.sample()
+        a, info = acmodel(obss_processed)
+        if self.distill_reward:
+            a = a * 10
+        else:
+            a = a.sample()
         assert a.shape == action_true.shape
         assert a.dtype == action_true.dtype
         return obss, a, action_teacher

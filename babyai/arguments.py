@@ -232,6 +232,8 @@ class ArgumentParser(argparse.ArgumentParser):
                                                                                           'ensemble',
                                                                                           'uniform_traj',
                                                                                           'mismatch'])
+        self.add_argument('--relabel_rew', action='store_true')
+        self.add_argument('--train_reward', action='store_true')
 
     def parse_args(self, arg=None):
         """

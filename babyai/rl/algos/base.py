@@ -202,6 +202,13 @@ class BaseAlgo(ABC):
                     action_to_take = dagger_dist.sample().cpu().numpy()
 
             obs, reward, done, env_info = self.env.step(action_to_take)
+
+            if relabel_reward:
+                rew_model = rew_model_dict[teacher]
+                rew_model.eval()
+                rew, _ = rew_model(preprocessed_obs)
+                reward = rew / 10  # we predict [0, 1], but give [0, .1]
+
             if not collect_reward:
                 reward = [np.nan for _ in reward]
 

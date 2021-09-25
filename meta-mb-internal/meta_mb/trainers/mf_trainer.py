@@ -340,15 +340,14 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Reward Training ---------------------"""
-            should_train_rew = True  # TODO: make this an arg!
-            if should_train_rew:
+            if self.args.should_train_rew:
                 logger.log("Training reward ...")
                 for dist_i in range(self.args.distillation_steps):
                     sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')
                     rew_log = self.distill(sampled_batch,
                                                is_training=True,
                                                teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
+                                               relabel=False,#self.args.relabel_rew,
                                                relabel_dict=teacher_train_dict, distill_to_none=True, train_reward=True)
                 for key_set, log_dict in rew_log.items():
                     key_set = '_'.join(key_set)
@@ -360,7 +359,7 @@ class Trainer(object):
                                                is_training=False,
                                                #source='teacher',
                                                teachers_dict=teacher_distill_dict,
-                                               relabel=self.args.relabel or (self.args.half_relabel and itr % 2 == 0),
+                                               relabel=False,#self.args.relabel_rew,
                                                relabel_dict=teacher_train_dict,
                                                train_reward=True)
 
@@ -819,6 +818,18 @@ class Trainer(object):
         relabeled_batch = merge_dictlists(trajs)
         assert torch.all(torch.eq(relabeled_batch.action, batch.action))
         return relabeled_batch
+
+    def relabel_reward(self, batch, relabel_dict):
+        active_teachers = [k for k, v in relabel_dict.items() if v]
+        teacher_name = 'none' if len(active_teachers) == 0 else active_teachers[0]
+        obss, action_true, action_teacher = batch
+        instr_dropout_prob = 0  # TODO: consider this!
+        obss_processed = self.il_trainer_rew.preprocess_obs(obss, relabel_dict, show_instrs=np.random.uniform() > instr_dropout_prob)
+        acmodel = self.il_trainer_rew.policy_dict[teacher_name]
+        acmodel.eval()
+        rew, _ = acmodel(obss_processed)
+        rew = rew / 10  # we predict [0, 1], but give [0, .1]
+        batch.reward = rew
 
     def distill(self, samples, is_training=False, teachers_dict=None, source=None, relabel=False, relabel_dict={},
                 distill_to_none=True, train_reward=False):
