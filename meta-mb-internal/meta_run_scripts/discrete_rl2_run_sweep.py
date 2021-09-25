@@ -46,10 +46,13 @@ def load_model(args):
             args = saved_model['args']
     set_seed(args.seed)
     policy_dict = saved_model['policy']
+    rew_dict = saved_model['reward']
     optimizer = saved_model.get('optimizer', None)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for policy in policy_dict.values():
         policy.device = device
+    for rew in rew_dict.values():
+        rew.device = device
     if original_config.continue_train is True:
         start_itr = saved_model['itr']
         curriculum_step = saved_model['curriculum_step']
@@ -61,7 +64,7 @@ def load_model(args):
         log_dict = saved_model.get('log_dict', {})
     else:
         log_dict = {}
-    return policy_dict, optimizer, start_itr, curriculum_step, args, \
+    return policy_dict, rew_dict, optimizer, start_itr, curriculum_step, args, \
         il_optimizer, log_dict
 
 
@@ -76,7 +79,7 @@ def run_experiment(**config):
     set_seed(args.seed)
     original_saved_path = args.saved_path
     if original_saved_path is not None:
-        policy_dict, optimizer, start_itr, curriculum_step, args, \
+        policy_dict, rew_dict, optimizer, start_itr, curriculum_step, args, \
             il_optimizer, log_dict = load_model(args)
     else:
         il_optimizer = None
