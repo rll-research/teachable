@@ -234,6 +234,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                                                                           'mismatch'])
         self.add_argument('--relabel_rew', action='store_true')
         self.add_argument('--train_reward', action='store_true')
+        self.add_argument('--distill_rew', action='store_true')
 
     def parse_args(self, arg=None):
         """

@@ -24,6 +24,7 @@ def load_policy(path):
     saved_model = joblib.load(path)
     env = saved_model['env']
     policy = saved_model['policy']
+    rew = saved_model['policy']
     args = saved_model['args']
     if type(policy) is dict:
         for p_dict in policy.values():
@@ -42,7 +43,7 @@ def load_policy(path):
             print(e, "looks like instrs aren't rnn")
         assert not policy is supervised_model
         is_dict = False
-    return policy, env, args, saved_model
+    return policy, rew, env, args, saved_model
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, teachers, hide_instrs, stochastic, args, seed=0,
@@ -135,7 +136,7 @@ def make_log_fn(env, args, start_num_feedback, save_dir, teacher, hide_instrs, s
     return log_fn
 
 
-def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
+def finetune_policy(env, env_index, policy, rew, save_name, args, teacher_null_dict,
                     save_dir=pathlib.Path("."), policy_name="", env_name="",
                     hide_instrs=False, heldout_env=None, stochastic=True, num_rollouts=1, model_data={}, seed=0,
                     start_num_feedback=0, collect_with=None, distill_to=None):
@@ -170,8 +171,11 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     il_trainer = ImitationLearning(policy, env, args, distill_with_teacher=False,
                                    preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
                                    instr_dropout_prob=args.distill_dropout_prob)
+    il_trainer_rew = ImitationLearning(rew, env, args, distill_with_teacher=False,
+                                   preprocess_obs=obs_preprocessor, label_weightings=args.distill_label_weightings,
+                                   instr_dropout_prob=args.distill_dropout_prob)
     try:
-        if 'il_optimizer' in model_data:
+        if 'il_optimizer' in model_data:  # TODO: reload reward too
             for k, optimizer in model_data['il_optimizer'].items():
                 il_trainer.optimizer_dict[k].load_state_dict(optimizer.state_dict())
     except Exception as e:
@@ -240,6 +244,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         algo=algo,
         algo_dagger=algo,
         policy=policy,
+        reward=rew,
         env=env.copy(),
         sampler=sampler,
         sample_processor=sample_processor,
@@ -248,6 +253,7 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
         exp_name=save_name,
         curriculum_step=env_index,
         il_trainer=il_trainer,
+        il_trainer_rew=il_trainer_rew,
         reward_predictor=None,
         rp_trainer=rp_trainer,
         is_debug=False,
@@ -266,11 +272,11 @@ def finetune_policy(env, env_index, policy, save_name, args, teacher_null_dict,
     return trainer
 
 
-def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, policy_path=None, policy=None,
+def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, policy_path=None, policy=None, rew=None,
                  policy_name="", env_name="", hide_instrs=False, heldout_env=[], stochastic=True, additional_args={},
                  seed=0, teacher_key=None, distill_teacher_key=None, target_key=None, num_feedback=0):
     if policy is None:
-        policy, _, args, model_data = load_policy(policy_path)
+        policy, rew, _, args, model_data = load_policy(policy_path)
         if teacher_key is None:
             teacher_key = list(policy.keys())[0]
         for k, v in additional_args.items():
@@ -355,7 +361,9 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
                                       collect_with=collect_with, distill_to=distill_to)
             num_feedback = trainer.num_feedback_advice + trainer.num_feedback_reward
         if additional_args['target_policy'] is not None:
-            policy[args.target_policy_key] = load_policy(args.target_policy)[0][args.target_policy_key]
+            load_dict = load_policy(args.target_policy)
+            policy[args.target_policy_key] = load_dict[0][args.target_policy_key]
+            rew[args.target_policy_key] = load_dict[0][args.target_policy_key]
         collect_with = teacher_key
         distill_to = target_key
 
@@ -365,7 +373,7 @@ def test_success(env, env_index, save_dir, num_rollouts, teacher_null_dict, poli
         print("collect with", collect_with, "distill to", distill_to, "actually distilling?", args.yes_distill,
               "RL?", not args.no_train_rl)
 
-        finetune_policy(env, env_index, policy,
+        finetune_policy(env, env_index, policy, rew,
                         finetune_path, args, teacher_null_dict,
                         save_dir=save_dir, policy_name=policy_name, env_name=env_name,
                         hide_instrs=hide_instrs, heldout_env=heldout_env, stochastic=stochastic,
@@ -404,7 +412,7 @@ def main(args):
     save_dir = pathlib.Path(args.save_dir)
     policy_path = pathlib.Path(args.policy)
 
-    _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
+    _, _, default_env, default_args, model_data = load_policy(policy_path.joinpath(args.levels[0] + '.pkl'))
     default_args.noise_level = args.noise_level
     default_args.noise_duration = args.noise_duration
     default_env.reset()
@@ -628,6 +636,7 @@ if __name__ == '__main__':
         parser.add_argument('--advance_curriculum_func', type=str, default='one_hot',
                           choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
                                    'goto_levels', 'easy_goto'])
+        parser.add_argument('--distill_rew', action='store_true')
         args = parser.parse_args()
         main(args)
     except Exception as e:
