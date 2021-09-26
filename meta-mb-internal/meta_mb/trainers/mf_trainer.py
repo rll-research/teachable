@@ -260,6 +260,8 @@ class Trainer(object):
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
                                                                            train=should_train_rl,
+                                                                           relabel_reward=self.args.relabel_rew,
+                                                                           rew_model_dict=self.rew_dict,
                                                                            collection_dict=collection_dict)
                 if self.args.relabel_goal:
                     print("relabeling!")
@@ -317,7 +319,7 @@ class Trainer(object):
                         dagger_samples_data, _ = self.algo_dagger.collect_experiences(teacher_train_dict,
                                                                                       use_dagger=True,
                                                                                       relabel_reward=self.args.relabel_rew,
-                                                                                      rew_model_dict=self.args.rew_dict,
+                                                                                      rew_model_dict=self.rew_dict,
                                                                                       dagger_dict={
                                                                                           k: k == 'CartesianCorrections'
                                                                                           for k in

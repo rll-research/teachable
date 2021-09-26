@@ -204,6 +204,7 @@ class BaseAlgo(ABC):
             obs, reward, done, env_info = self.env.step(action_to_take)
 
             if relabel_reward:
+                preprocessed_obs.advice = torch.cat([preprocessed_obs.advice, action.unsqueeze(1)], dim=1)
                 rew_model = rew_model_dict[teacher]
                 rew_model.eval()
                 rew, _ = rew_model(preprocessed_obs)
