@@ -316,6 +316,8 @@ class Trainer(object):
                     for i in range(1):
                         dagger_samples_data, _ = self.algo_dagger.collect_experiences(teacher_train_dict,
                                                                                       use_dagger=True,
+                                                                                      relabel_reward=self.args.relabel_rew,
+                                                                                      rew_model_dict=self.args.rew_dict,
                                                                                       dagger_dict={
                                                                                           k: k == 'CartesianCorrections'
                                                                                           for k in
@@ -340,7 +342,7 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Reward Training ---------------------"""
-            if self.args.should_train_rew:
+            if self.args.train_reward:
                 logger.log("Training reward ...")
                 for dist_i in range(self.args.distillation_steps):
                     sampled_batch = buffer.sample(total_num_samples=self.args.batch_size, split='train')

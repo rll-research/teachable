@@ -135,7 +135,7 @@ class BaseAlgo(ABC):
         self.log_dist_to_goal = [0] * self.num_procs
 
     def collect_experiences(self, teacher_dict, use_dagger=False, dagger_dict={}, collect_with_oracle=False,
-                            collect_reward=True, train=True, collection_dict={}):
+                            collect_reward=True, relabel_reward=False, rew_model_dict={}, train=True, collection_dict={}):
         """Collects rollouts and computes advantages.
 
         Runs several environments concurrently. The next actions are computed
