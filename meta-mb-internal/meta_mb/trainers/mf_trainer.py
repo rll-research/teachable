@@ -256,9 +256,6 @@ class Trainer(object):
                                                       or self.args.relabel
                                                       or (self.args.half_relabel and itr % 2 == 0)
                                                       ) else teacher_train_dict
-                assert self.args.relabel_rew, "should be relabeling reward"
-                assert not should_train_rl, "don't collect reward"
-                print("distilling rew", self.rew_dict)
                 samples_data, episode_logs = self.algo.collect_experiences(input_dict,
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=should_train_rl,
