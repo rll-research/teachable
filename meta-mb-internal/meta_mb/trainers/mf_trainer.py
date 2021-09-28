@@ -290,7 +290,6 @@ class Trainer(object):
             time_collection = time.time() - time_env_sampling_start
             time_training_start = time.time()
             if should_train_rl:
-                assert False, "shouldn't be training"
                 early_entropy_coef = self.args.early_entropy_coef if self.itrs_on_level < 10 else None
                 summary_logs = self.algo.optimize_policy(samples_data, teacher_dict=teacher_train_dict,
                                                          entropy_coef=early_entropy_coef)
@@ -348,8 +347,6 @@ class Trainer(object):
             time_rp_train = time.time() - time_rp_train_start
 
             """ ------------------ Reward Training ---------------------"""
-            if not self.args.train_reward:
-                assert False, "should be training reward"
             if self.args.train_reward:
                 logger.log("Training reward ...")
                 for dist_i in range(self.args.distillation_steps):
@@ -388,7 +385,6 @@ class Trainer(object):
             if buffer is not None and sum(list(buffer.counts_train.values())) == 0:
                 should_distill = False
             if should_distill:
-                assert False, "shouldn't distill"
                 logger.log("Distilling ...")
                 time_distill_start = time.time()
                 time_sampling_from_buffer = 0
