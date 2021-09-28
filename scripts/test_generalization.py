@@ -24,7 +24,7 @@ def load_policy(path):
     saved_model = joblib.load(path)
     env = saved_model['env']
     policy = saved_model['policy']
-    rew = saved_model['policy']
+    rew = saved_model['reward']
     args = saved_model['args']
     if type(policy) is dict:
         for p_dict in policy.values():
@@ -536,6 +536,8 @@ def main(args):
     additional_args['high_level_only'] = args.high_level_only
     additional_args['sample_frac'] = args.sample_frac
     additional_args['sample_strategy'] = args.sample_strategy
+    additional_args['train_reward'] =  args.train_reward
+    additional_args['relabel_rew'] = args.relabel_rew
     if args.high_level_only:
         additional_args['distill_self'] = True
         assert args.target_policy is None
@@ -636,7 +638,8 @@ if __name__ == '__main__':
         parser.add_argument('--advance_curriculum_func', type=str, default='one_hot',
                           choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
                                    'goto_levels', 'easy_goto'])
-        parser.add_argument('--distill_rew', action='store_true')
+        parser.add_argument('--train_reward', action='store_true')
+        parser.add_argument('--relabel_rew', action='store_true')
         args = parser.parse_args()
         main(args)
     except Exception as e:
