@@ -209,13 +209,17 @@ class ImitationLearning(object):
         return log, loss
 
     def initialize_logs(self, total_frames):
-        self.per_token_correct = [0, 0, 0, 0, 0, 0, 0]
-        self.per_token_teacher_correct = [0, 0, 0, 0, 0, 0, 0]
-        self.per_token_count = [0, 0, 0, 0, 0, 0, 0]
-        self.per_token_teacher_count = [0, 0, 0, 0, 0, 0, 0]
-        self.per_token_agent_count = [0, 0, 0, 0, 0, 0, 0]
-        self.precision_correct = [0, 0, 0, 0, 0, 0, 0]
-        self.precision_count = [0, 0, 0, 0, 0, 0, 0]
+        if self.distill_reward:
+            num_tokens = 2
+        else:
+            num_tokens = 7
+        self.per_token_correct = [0] * num_tokens
+        self.per_token_teacher_correct = [0] * num_tokens
+        self.per_token_count = [0] * num_tokens
+        self.per_token_teacher_count = [0] * num_tokens
+        self.per_token_agent_count = [0] * num_tokens
+        self.precision_correct = [0] * num_tokens
+        self.precision_count = [0] * num_tokens
         self.final_entropy = 0
         self.final_policy_loss = 0
         self.final_reconstruction_loss = 0
@@ -238,9 +242,9 @@ class ImitationLearning(object):
         if self.distill_reward:
             self.accuracy = (torch.round(action_pred) == action_true).float().mean()
             self.final_policy_loss += policy_loss
-            return
-        self.accuracy_list.append(float((action_pred == action_true).sum()))
-        self.accuracy += float((action_pred == action_true).sum()) / self.total_frames
+        else:
+            self.accuracy_list.append(float((action_pred == action_true).sum()))
+            self.accuracy += float((action_pred == action_true).sum()) / self.total_frames
         if action_true.shape == action_teacher.shape:
             self.label_accuracy += np.sum(action_teacher == action_true.detach().cpu().numpy()) / self.total_frames
 
