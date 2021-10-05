@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from envs.babyai.rl.utils.dictlist import DictList
+from utils.dictlist import DictList
 
 def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                           pad_size=51):

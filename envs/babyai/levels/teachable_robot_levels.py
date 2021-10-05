@@ -1,18 +1,12 @@
 import copy
 import pickle as pkl
 
-from envs.babyai.levels.levelgen import RoomGridLevel, RejectSampling
+from envs.babyai.levels.levelgen import RoomGridLevel
 from gym_minigrid.minigrid import MiniGridEnv, OBJECT_TO_IDX, COLOR_TO_IDX, TILE_PIXELS
-from gym_minigrid.roomgrid import RoomGrid
 import numpy as np
 from copy import deepcopy
 from envs.babyai.oracle.post_action_advice import PostActionAdvice
 from envs.babyai.oracle.pre_action_advice import PreActionAdvice
-from envs.babyai.oracle.pre_action_advice_bad1 import PreActionAdviceBad1
-from envs.babyai.oracle.pre_action_advice_multiple import PreActionAdviceMultiple
-from envs.babyai.oracle.pre_action_advice_multiple_copy import PreActionAdviceMultipleCopy
-from envs.babyai.oracle.pre_action_advice_repeated import PreActionAdviceMultipleRepeated
-from envs.babyai.oracle.pre_action_advice_repeated_index import PreActionAdviceMultipleRepeatedIndex
 from envs.babyai.oracle.cartesian_corrections import CartesianCorrections
 from envs.babyai.oracle.cartesian_corrections_repeated_index import CartesianCorrectionsRepeatedIndex
 from envs.babyai.oracle.subgoal_corrections import SubgoalCorrections
@@ -39,28 +33,18 @@ class Level_TeachableRobot(RoomGridLevel):
     """
 
     def __init__(self, start_loc='all',
-                 include_holdout_obj=True, num_meta_tasks=2,
-                 persist_agent=True, persist_goal=True, persist_objs=True,
-                 feedback_type=None, feedback_always=False, feedback_freq=False,
-                 cartesian_steps=[1], fully_observed=False, padding=False, args=None, static_env=False, **kwargs):
+                 include_holdout_obj=True, feedback_type=(), feedback_freq=(1,),
+                 fully_observed=False, padding=False, args=None, static_env=False, **kwargs):
         """
         :param start_loc: which part of the grid to start the agent in.  ['top', 'bottom', 'all']
         :param include_holdout_obj: If true, uses all objects. If False, doesn't use grey objects or boxes
-        :param persist_agent: Whether to keep agent position the same across runs within a meta-task
-        :param persist_goal: Whether to keep the goal (i.e. textual mission string) the same across runs in a meta-task
-        :param persist_objs: Whether to keep object positions the same across runs within a meta-task
         :param feedback_type: Type of teacher feedback, string
-        :param feedback_always: Whether to give that feedback type every time (rather than just when the agent needs help)
-        :param kwargs: Additional arguments passed to the parent class
+        :param kwargs: Additional arguments passed to the parent class  # TODO: add more!
         """
         assert start_loc in ['top', 'bottom', 'all']
         self.start_loc = start_loc
         self.static_env = static_env
         self.include_holdout_obj = include_holdout_obj
-        self.persist_agent = persist_agent
-        self.persist_goal = persist_goal
-        self.persist_objs = persist_objs
-        self.num_meta_tasks = num_meta_tasks
         self.task = {}
         self.itr = 0
         self.feedback_type = feedback_type
@@ -72,110 +56,51 @@ class Level_TeachableRobot(RoomGridLevel):
             rng = np.random.RandomState()
             self.oracle = {}
             teachers = {}
-            if type(cartesian_steps) is int:
-                cartesian_steps = [cartesian_steps]
-            assert len(cartesian_steps) == 1 or len(cartesian_steps) == len(feedback_type), \
-                "you must provide either one cartesian_steps value for all teachers or one per teacher"
             assert len(feedback_freq) == 1 or len(feedback_freq) == len(feedback_type), \
                 "you must provide either one feedback_freq value for all teachers or one per teacher"
-            if len(cartesian_steps) == 1:
-                cartesian_steps = [cartesian_steps[0]] * len(feedback_type)
             if len(feedback_freq) == 1:
                 feedback_freq = [feedback_freq[0]] * len(feedback_type)
-            for ft, ff, cs in zip(feedback_type, feedback_freq, cartesian_steps):
+            for ft, ff in zip(feedback_type, feedback_freq):
                 if ft == 'none':
                     teacher = DummyAdvice(Bot, self, fully_observed=fully_observed)
                 elif ft == 'PostActionAdvice':
-                    teacher = PostActionAdvice(Bot, self, feedback_always=feedback_always,
-                                               feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
+                    teacher = PostActionAdvice(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'PreActionAdvice':
-                    teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceBad1':
-                    teacher = PreActionAdviceBad1(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
-                elif ft == 'PreActionAdvice2':
-                    teacher = PreActionAdvice(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceMultiple1':
-                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs,
-                                                      fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceMultipleCopy':
-                    teacher = PreActionAdviceMultipleCopy(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs,
-                                                          fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceMultipleRepeated':
-                    teacher = PreActionAdviceMultipleRepeated(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs,
-                                                              fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceMultipleRepeatedIndex':
-                    teacher = PreActionAdviceMultipleRepeatedIndex(Bot, self, feedback_always=feedback_always,
-                                                              feedback_frequency=ff, cartesian_steps=cs,
-                                                                   fully_observed=fully_observed)
-                elif ft == 'PreActionAdviceMultiple':
-                    teacher = PreActionAdviceMultiple(Bot, self, feedback_always=feedback_always,
-                                                      feedback_frequency=ff, cartesian_steps=cs,
-                                                      fully_observed=fully_observed)
+                    teacher = PreActionAdvice(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'CartesianCorrections':
                     obs_size = self.reset()['obs'].flatten().size
-                    teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cs,
+                    teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_frequency=ff,
                                                    fully_observed=fully_observed)
                 elif ft == 'CCIO':
                     obs_size = self.reset()['obs'].flatten().size
-                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size,
-                                                                feedback_always=feedback_always,
-                                                   feedback_frequency=ff, cartesian_steps=cs,
+                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size, feedback_frequency=ff,
                                                                 fully_observed=fully_observed)
                 elif ft == 'SubgoalCorrections':
-                    teacher = SubgoalCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cs,
-                                                 fully_observed=fully_observed)
+                    teacher = SubgoalCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'SubgoalSimple':
-                    teacher = SubgoalSimpleCorrections(Bot, self, feedback_always=feedback_always,
-                                                 feedback_frequency=ff, cartesian_steps=cs,
-                                                       fully_observed=fully_observed)
+                    teacher = SubgoalSimpleCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OffsetCorrections':
-                    teacher = OffsetCorrections(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs,
-                                                fully_observed=fully_observed)
+                    teacher = OffsetCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OFFIO':
-                    teacher = OFFIO(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs,
-                                    fully_observed=fully_observed)
+                    teacher = OFFIO(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OFFSparse':
-                    teacher = OFFSparse(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs,
-                                        fully_observed=fully_observed)
+                    teacher = OFFSparse(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OFFSparseRandom':
-                    teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
-                                                feedback_frequency=ff, cartesian_steps=cs,
-                                              fully_observed=fully_observed)
+                    teacher = OFFSparseRandom(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OFFSparseRandom2':
-                    teacher = OFFSparseRandom(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs,
-                                              fully_observed=fully_observed)
+                    teacher = OFFSparseRandom(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSREasy':
-                    teacher = OSREasy(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs,
-                                      fully_observed=fully_observed)
+                    teacher = OSREasy(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSREasy2':
-                    teacher = OSREasy(Bot, self, feedback_always=feedback_always,
-                                      feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
+                    teacher = OSREasy(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSRMistaken':
-                    teacher = OSRMistaken(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
-
+                    teacher = OSRMistaken(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSRPeriodicExplicit':
-                    teacher = OSRPeriodicExplicit(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
+                    teacher = OSRPeriodicExplicit(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSRPeriodicImplicit':
-                    teacher = OSRPeriodicImplicit(Bot, self, feedback_always=feedback_always,
-                                              feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
+                    teacher = OSRPeriodicImplicit(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'XYCorrections':
-                    teacher = XYCorrections(Bot, self, feedback_always=feedback_always,
-                                            feedback_frequency=ff, cartesian_steps=cs, fully_observed=fully_observed)
+                    teacher = XYCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 else:
                     raise NotImplementedError(ft)
                 teachers[ft] = teacher
@@ -226,79 +151,6 @@ class Level_TeachableRobot(RoomGridLevel):
         :return: (list of all objects, goal object or tuple if multiple)
         """
         raise NotImplementedError
-
-    def sample_task(self):
-        """
-        Sample a level-specific task
-        :return: Dictionary containing some subset of the keys: [mission (specifies the text instruction),
-                 agent (specifies the agent starting position and directino),
-                 objs (specifies all object locations, types, and colors)]
-        """
-        tries = 0
-        while True:
-            try:
-                tries += 1
-                # Reset the grid first
-                RoomGrid._gen_grid(self, self.width, self.height)
-
-                task = {}
-                if self.persist_goal:
-                    mission = self.make_mission()
-                    task['mission'] = mission
-
-                if self.persist_agent:
-                    self.add_agent()
-                    task['agent'] = {'agent_pos': self.agent_pos, 'agent_dir': self.agent_dir}
-
-                if self.persist_objs:
-                    objs = self.add_objs(mission["task"])
-                    task['objs'] = objs
-
-                # If we have placed all components in place, sanity check that the placement is valid.
-                if self.persist_goal and self.persist_agent and self.persist_objs:
-                    self.validate_instrs(mission['instrs'])
-
-            except RecursionError as error:
-                # self.render(mode="human")
-                # print('Timeout during mission generation:', error)
-                continue
-
-            except RejectSampling as e:
-                if tries > 1000:
-                    print("ISSUE sampling", e, type(self))
-                    raise RejectSampling
-                continue
-            break
-        return task
-
-    # Functions fo RL2
-    def set_task(self, _=None):
-        """
-        Sets task dictionary. The parameter is a dummy passed in for compatibility with the normal RL2 set task function
-        """
-        if not self.static_env:
-            self.task = self.sample_task()
-        self.itr = 0
-
-    def get_task(self):
-        """
-        :return: task of the meta-learning environment. Dictionary.
-        """
-        return self.task
-
-    def get_doors(self):
-        """
-        Get a list of all doors in the environment.
-        :return: List of Door objects
-        """
-        doors = []
-        for i in range(self.num_cols):
-            for j in range(self.num_rows):
-                room = self.get_room(i, j)
-                for door in room.doors:
-                    if door:
-                        doors.append(door)
-        return doors
 
     def get_color_idx(self, color):
         """
@@ -365,7 +217,6 @@ class Level_TeachableRobot(RoomGridLevel):
         """
         The teacher fails in certain situations.  Here we modify the objects in the environment to avoid this.
         Prevent boxes from disappearing. When a box disappears, it is replaced by its contents (or None, if empty.)
-        Prevent doors from closing once open.
         :param objs:
         """
         for obj in objs:
@@ -377,40 +228,14 @@ class Level_TeachableRobot(RoomGridLevel):
         Generate the mission for a single meta-task.  Any environment setup elements in the self.task dictionary
         are loaded from there.  All others are randomly sampled.
         """
-
-        # First load anything provided in the task
-        if 'agent' in self.task:
-            self.agent_pos = self.task['agent']['agent_pos']
-            self.agent_dir = self.task['agent']['agent_dir']
-        if 'mission' in self.task:
-            mission = self.task['mission']
-        if 'objs' in self.task:
-            objs, goal_objs = self.task['objs']
-            self.objs = deepcopy(objs)
-            self.prevent_teacher_errors(self.objs)
-            self.goal_objs = deepcopy(goal_objs)
-            self.place_in_grid(self.objs)
-
-        # Now randomly sample any required information not in the task
-        if not 'agent' in self.task:
-            self.add_agent()
-        if not 'mission' in self.task:
-            mission = self.make_mission()
-        if not 'objs' in self.task:
-            objs, goal_objs = self.add_objs(mission["task"])
-            self.prevent_teacher_errors(objs)
-            self.objs = deepcopy(objs)
-            self.goal_objs = deepcopy(goal_objs)
-
-        # self.compute_obj_infos()
+        self.add_agent()
+        mission = self.make_mission()
+        objs, goal_objs = self.add_objs(mission["task"])
+        self.prevent_teacher_errors(objs)
+        self.objs = deepcopy(objs)
+        self.goal_objs = deepcopy(goal_objs)
         self.instrs = mission['instrs']
-        if goal_objs is not None:
-            # Currently if there are multiple goal objects, we just pick the first one. # TODO: handle multiple goal objs. Some of the teachers need these.
-            if isinstance(goal_objs, tuple):
-                goal_obj = goal_objs[0]
-            else:
-                goal_obj = goal_objs
-            self.obj_pos = goal_obj.cur_pos
+
 
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
         """
@@ -540,12 +365,9 @@ class Level_TeachableRobot(RoomGridLevel):
         :param action: action to take
         :return: results of stepping the env
         """
-        try:
-            action = action[0]
-        except:
-            action = action  # TODO: sketchy
+        assert type(action) is int
 
-        # Off by one error potentially.
+        # Off by one error potentially.  # TODO: double check!
         if hasattr(self, 'teacher') and self.teacher is not None:
             give_reward = self.compute_give_reward(action)
         else:
@@ -602,7 +424,7 @@ class Level_TeachableRobot(RoomGridLevel):
         self.done = done
         return obs, rew, done, info
 
-    def compute_give_reward(self, action):  # TODO: consider computing dense rewards as a dictionary too
+    def compute_give_reward(self, action):
         # Give reward whenever the agent follows the optimal action
         give_reward = action == self.teacher_action
         return give_reward

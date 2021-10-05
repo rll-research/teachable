@@ -9,41 +9,18 @@ import copy
 
 
 class Trainer(object):
-    """
-    Performs steps for MAML
-
-    Args:
-        algo (Algo) :
-        env (Env) :
-        baseline (Baseline) : 
-        policy (Policy) : 
-        n_itr (int) : Number of iterations to train for
-        start_itr (int) : Number of iterations policy has already trained for, if reloading
-        num_inner_grad_steps (int) : Number of inner steps per maml iteration
-    """
-
     def __init__(
         self,
-        args={},
+        args=None,
         collect_policy=None,
         rl_policy=None,
         il_policy=None,
         relabel_policy=None,
         sampler=None,
         env=None,
-        start_itr=0,
-        buffer_name="",
-        curriculum_step=0,
-        eval_every=100,
-        save_every=100,
-        log_every=10,
-        save_videos_every=1000,
-        log_and_save=True,
         obs_preprocessor=None,
         log_dict={},
-        eval_heldout=True,
-        log_fn=lambda w, x, y, z: None,
-        feedback_list=[],
+        log_fn=lambda w, x: None,
     ):
         self.args = args
         self.collect_policy = collect_policy
@@ -51,67 +28,33 @@ class Trainer(object):
         self.il_policy = il_policy
         self.relabel_policy = relabel_policy
         self.sampler = sampler
-        self.env = copy.deepcopy(env)
-        self.itr = start_itr
-        self.buffer_name = buffer_name
-        self.curriculum_step = curriculum_step
-        self.eval_every = eval_every
-        self.save_every = save_every
-        self.log_every = log_every
-        self.save_videos_every = save_videos_every
-        self.log_and_save = log_and_save
-        self.introduced_teachers = log_dict.get('introduced_teachers', set())
+        self.env = env
+        self.itr = args.start_itr
+        self.obs_preprocessor = obs_preprocessor
+        self.log_fn = log_fn
+        self.buffer = None
+
+        # Set run counters, or reinitialize if log_dict isn't empty (i.e. we're continuing a run).
         self.num_feedback_advice = log_dict.get('num_feedback_advice', 0)
         self.num_feedback_reward = log_dict.get('num_feedback_reward', 0)
         self.total_distillation_frames = log_dict.get('total_distillation_frames', 0)
-        self.itrs_on_level = log_dict.get('itrs_on_level', 0)
         # Dict saying which teacher types the agent has access to for training.
-        self.gave_feedback = log_dict.get('gave_feedback', {k: 0 for k in feedback_list})
-        self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in feedback_list})
-        self.obs_preprocessor = obs_preprocessor
-        self.next_train_itr = log_dict.get('next_train_itr', start_itr)
+        self.gave_feedback = log_dict.get('gave_feedback', {k: 0 for k in self.args.feedback_list})
+        self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.args.feedback_list})
+        self.next_train_itr = log_dict.get('next_train_itr', self.itr)
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 5)
-        self.eval_heldout = eval_heldout
-        self.log_fn = log_fn
-        self.advancement_count_threshold = getattr(args, 'advancement_count', 1)
-        self.advancement_count = 0
-        self.success_dict = {k: 0 for k in feedback_list}
-        self.success_dict['none'] = 0
-        self.best_train_perf = (0, 0, float('inf'))  # success, accuracy, loss
-        self.itrs_since_best = 0
-        self.buffer = None
-        self.feedback_list = feedback_list
 
-    def check_advance_curriculum_train(self, episode_logs, data):
-        acc_threshold = self.args.accuracy_threshold_rl
-        if episode_logs is None:
-            return True, -1, -1
-        if self.args.discrete:
-            avg_accuracy = torch.eq(data.action_probs.argmax(dim=1),
-                                    data.teacher_action).float().mean().item()
-        else:
-            avg_accuracy = 0
-        avg_success = np.mean(episode_logs["success_per_episode"])
-        should_advance_curriculum = (avg_success >= self.args.success_threshold_rl) \
-                                    and (avg_accuracy >= acc_threshold)
-        best_success, best_accuracy, best_loss = self.best_train_perf
-        if avg_success > best_success or (avg_success == best_success and avg_accuracy > best_accuracy):
-            if self.args.early_stop_metric == 'success':
-                self.itrs_since_best = 0
-            self.best_train_perf = (avg_success, avg_accuracy, best_loss)
-        else:
-            if self.args.early_stop_metric == 'success':
-                self.itrs_since_best += 1
-        return should_advance_curriculum, avg_success, avg_accuracy
+        # Counters to determine early stopping
+        self.best_val_loss = float('inf')
+        self.itrs_since_best = 0
 
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
-        step = self.curriculum_step
         if self.rl_policy is not None:
             self.rl_policy.save(f"{self.args.exp_dir}/rl")
         if self.il_policy is not None:
             self.il_policy.save(f"{self.args.exp_dir}/il")
-        logger.save_itr_params(self.itr, step, params)
+        logger.save_itr_params(self.itr, self.args.level, params)
 
     def log_rollouts(self):
         if self.args.feedback_from_buffer:
@@ -148,17 +91,11 @@ class Trainer(object):
 
         logger.logkv('Itr', self.itr)
         logger.logkv('Train/SkipTrainRL', int(self.skip_training_rl))
-        logger.logkv("ItrsOnLevel", self.itrs_on_level)
 
         time_total = time.time() - self.start_time
         self.itr_start_time = time.time()
         logger.logkv('Time/Total', time_total)
         logger.logkv('Time/Itr', time_itr)
-
-        try:
-            logger.logkv('Curriculum Percent', self.curriculum_step / len(self.env.train_levels))
-        except:
-            print("no curriculum")
 
         process = psutil.Process(os.getpid())
         memory_use = process.memory_info().rss / float(2 ** 20)
@@ -178,7 +115,7 @@ class Trainer(object):
 
     def make_buffer(self):
         if not self.args.no_buffer:
-            self.buffer = Buffer(self.buffer_name, self.args.buffer_capacity, self.args.prob_current, val_prob=.1,
+            self.buffer = Buffer(self.args.buffer_name, self.args.buffer_capacity, val_prob=.1,
                                  successful_only=self.args.distill_successful_only)
 
     def relabel(self, batch):
@@ -210,13 +147,12 @@ class Trainer(object):
 
         for itr in range(self.itr, self.args.n_itr):
             self.itr = itr
-            self.itrs_on_level += 1
 
             if self.args.save_untrained:
                 self.save_model()
                 return
 
-            if itr % self.log_every == 0:
+            if itr % self.args.log_interval == 0:
                 self.log_rollouts()
 
             # If we're distilling, don't train the first time on the level in case we can zero-shot it
@@ -238,11 +174,9 @@ class Trainer(object):
                                                                            train=self.should_train_rl)
                 if self.relabel_policy is not None:
                     samples_data = self.relabel(samples_data)
-                self.buffer.add_batch(samples_data, self.curriculum_step)
+                self.buffer.add_batch(samples_data)
             else:
-                print("Not collecting")
                 episode_logs = None
-                raw_samples_data = None
                 samples_data = None
 
             """ -------------------- Training --------------------------"""
@@ -264,131 +198,57 @@ class Trainer(object):
                 summary_logs = None
             time_training = time.time() - time_training_start
             self._log(episode_logs, summary_logs, samples_data, tag="Train")
-            advance_curriculum, avg_success, avg_accuracy = self.check_advance_curriculum_train(episode_logs,
-                                                                                                samples_data)
-            if (self.args.rl_teacher is None) or self.skip_training_rl:
-                advance_curriculum = True
-            else:
-                # Decide whether to train RL next itr
-                if advance_curriculum:
-                    self.next_train_itr = itr + self.num_train_skip_itrs
-                    self.num_train_skip_itrs += 5
-                else:
-                    self.next_train_itr = itr + 1
-                    self.num_train_skip_itrs = 5
-
-            logger.logkv('Train/Advance', int(advance_curriculum))
 
             """ ------------------ Distillation ---------------------"""
-            self.should_distill = (self.args.distill_teacher is not None) and advance_curriculum and \
-                                  self.itrs_on_level >= self.args.min_itr_steps_distill
-            if self.args.yes_distill:
-                self.should_distill = self.itrs_on_level >= self.args.min_itr_steps_distill
-            if self.args.no_distill or (self.buffer is not None and sum(list(self.buffer.counts_train.values())) == 0):
+            self.should_distill = self.args.distill_teacher is not None and self.itr >= self.args.min_itr_steps_distill
+            if self.args.no_distill or (self.buffer is not None and self.buffer.counts_train == 0):
                 self.should_distill = False
             if self.should_distill:
                 logger.log("Distilling ...")
                 time_distill_start = time.time()
-                time_sampling_from_buffer = 0
-                time_train_distill = 0
-                time_val_distill = 0
                 for dist_i in range(self.args.distillation_steps):
-                    sample_start = time.time()
                     sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
-                    time_sampling_from_buffer += (time.time() - sample_start)
-                    sample_start = time.time()
                     self.total_distillation_frames += len(sampled_batch)
-                    self.distill_log = self.distill(sampled_batch, is_training=True)
-                    time_train_distill += (time.time() - sample_start)
-                sample_start = time.time()
-                time_sampling_from_buffer += (time.time() - sample_start)
-                sample_start = time.time()
-                sampled_val_batch = self.buffer.sample(total_num_samples=self.args.batch_size,
-                                                       split='val')
+                    self.distill(sampled_batch, is_training=True)
+                sampled_val_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='val')
                 distill_log_val = self.distill(sampled_val_batch, is_training=False)
 
-                time_val_distill += (time.time() - sample_start)
-                best_success, best_accuracy, best_loss = self.best_train_perf
                 val_loss = distill_log_val['Loss']
-                if val_loss < best_loss:
-                    self.best_train_perf = (best_success, best_accuracy, val_loss)
-                    if self.args.early_stop_metric == 'val_loss':
-                        self.itrs_since_best = 0
-                else:
-                    if self.args.early_stop_metric == 'val_loss':
-                        self.itrs_since_best += 1
+                self.itrs_since_best = 0 if val_loss < self.best_val_loss else self.itrs_since_best + 1
+                self.best_val_loss = min(self.best_val_loss, val_loss)
                 distill_time = time.time() - time_distill_start
-                advance_curriculum = True
-                acc = distill_log_val['Accuracy']
-                if self.args.distill_teacher == 'none':
-                    advance_teacher = acc >= self.args.accuracy_threshold_distill_no_teacher
-                else:
-                    advance_teacher = acc >= self.args.accuracy_threshold_distill_teacher
-                logger.logkv(f'Distill/Advance_After_Distillation', int(advance_teacher))
-                advance_curriculum = advance_curriculum and advance_teacher
             else:
                 distill_time = 0
 
-            """ ------------------- Logging Stuff --------------------------"""
+            """ ------------------- Logging and Saving --------------------------"""
             logger.log(self.args.exp_dir)
             self.update_logs(time_training, time_collection, distill_time, self.saving_time)
-
-            """ ------------------- Stop or advance --------------------------"""
-            should_terminate = self.stop_or_advance(advance_curriculum)
+            should_terminate = self.save_and_maybe_early_stop()
             if should_terminate:
                 break
+
+        # All done!
         self.log_rollouts()
         logger.log("Training finished")
 
-    def stop_or_advance(self, advance_curriculum):
-        if self.log_and_save:
-            early_stopping = self.itrs_since_best > self.args.early_stop
-            best_success, best_accuracy, best_loss = self.best_train_perf
-            # early_stopping = early_stopping and best_success > .7
-            logger.logkv('Train/BestSuccess', best_success)
-            logger.logkv('Train/BestAccuracy', best_accuracy)
-            logger.logkv('Train/BestLoss', best_loss)
-            logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
-            if early_stopping or (self.itr % self.save_every == 0) or (self.itr == self.args.n_itr - 1):
-                saving_time_start = time.time()
-                logger.log("Saving snapshot...")
-                self.save_model()
-                logger.log("Saved")
-                self.saving_time = time.time() - saving_time_start
-            if early_stopping:
-                return True  # should_terminate
-
-        if self.args.end_on_full_buffer:
-            advance_curriculum = self.buffer.counts_train[self.curriculum_step] == self.buffer.train_buffer_capacity
-
-        advance_curriculum = False
-        if advance_curriculum:
-            self.advancement_count += 1
-        else:
-            self.advancement_count = 0
-
-        if self.advancement_count >= self.advancement_count_threshold:
-            self.advancement_count = 0
-            self.success_dict = {k: 0 for k in self.success_dict.keys()}
-            self.curriculum_step += 1
-            if self.curriculum_step >= len(self.env.train_levels):
-                return True  # should terminate
-            try:
-                self.algo.advance_curriculum()
-            except NotImplementedError:
-                # If we get a NotImplementedError b/c we ran out of levels, stop training
-                return True  # should terminate
-            self.itrs_on_level = 0
-            self.next_train_itr = self.itr + 1
-            self.num_train_skip_itrs = 5
-        return False  # keep going
+    def save_and_maybe_early_stop(self):
+        early_stopping = self.itrs_since_best > self.args.early_stop
+        best_success, best_accuracy, best_loss = self.best_val_loss
+        logger.logkv('Train/BestSuccess', best_success)
+        logger.logkv('Train/BestAccuracy', best_accuracy)
+        logger.logkv('Train/BestLoss', best_loss)
+        logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
+        if early_stopping or (self.itr % self.args.eval_interval == 0) or (self.itr == self.args.n_itr - 1):
+            saving_time_start = time.time()
+            logger.log("Saving snapshot...")
+            self.save_model()
+            logger.log("Saved")
+            self.saving_time = time.time() - saving_time_start
+        return early_stopping
 
     def _log(self, episode_logs, summary_logs, data, tag=""):
-        logger.logkv('Curriculum Step', self.curriculum_step)
-        try:
-            counts_train = self.buffer.counts_train[self.curriculum_step]
-        except:
-            counts_train = 0
+        logger.logkv('Level', self.args.level)
+        counts_train = 0 if self.buffer is None else self.buffer.counts_train
         logger.logkv("BufferSize", counts_train)
         if episode_logs is not None:
             avg_return = np.mean(episode_logs['return_per_episode'])
@@ -409,7 +269,7 @@ class Trainer(object):
 
             self.num_feedback_advice += episode_logs['num_feedback_advice']
             self.num_feedback_reward += episode_logs['num_feedback_reward']
-            for k in self.feedback_list:
+            for k in self.args.feedback_list:
                 k_gave = f'gave_{k}'
                 if k_gave in episode_logs:
                     self.gave_feedback[k] += episode_logs[k_gave]
@@ -440,22 +300,17 @@ class Trainer(object):
         return log
 
     def get_itr_snapshot(self, itr):
-        """
-        Gets the current policy and env for storage
-        """
+        """ Saves training args (models are saved elsewhere) """
         d = dict(itr=itr,
                  env=self.env,
                  args=self.args,
-                 curriculum_step=self.curriculum_step,
                  log_dict={
                      'num_feedback_advice': self.num_feedback_advice,
                      'num_feedback_reward': self.num_feedback_reward,
                      'total_distillation_frames': self.total_distillation_frames,
-                     'itrs_on_level': self.itrs_on_level,
                      'next_train_itr': self.next_train_itr,
                      'num_train_skip_itrs': self.num_train_skip_itrs,
                      'gave_feedback': self.gave_feedback,
                      'followed_feedback': self.followed_feedback,
-                     'introduced_teachers': self.introduced_teachers,
                  })
         return d

@@ -1,5 +1,5 @@
 import argparse
-from envs.babyai.levels.curriculum import Curriculum
+from envs.babyai.levels.envdist import EnvDist
 import pathlib
 import matplotlib.pyplot as plt
 
@@ -12,7 +12,7 @@ base_path = pathlib.Path(args.save_path)
 if not base_path.exists():
     base_path.mkdir()
 
-curriculum = Curriculum('one_hot', curriculum_type=args.curriculum_type)
+curriculum = EnvDist('one_hot', curriculum_type=args.curriculum_type)
 for i, env in enumerate(curriculum.levels_list):
     env.reset()
     img = env.render('rgb_array')

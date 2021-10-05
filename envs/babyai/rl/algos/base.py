@@ -3,8 +3,8 @@ import torch
 import numpy as np
 
 from algos.utils import to_np
-from envs.babyai.rl.utils.dictlist import DictList, merge_dictlists
-from envs.babyai.rl.utils.penv import ParallelEnv, SequentialEnv
+from utils.dictlist import DictList, merge_dictlists
+from utils.penv import ParallelEnv, SequentialEnv
 from logger import logger
 
 

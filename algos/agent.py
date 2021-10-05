@@ -464,7 +464,7 @@ class Agent(nn.Module):
         dist = info['dist']
         if len(action_true.shape) == 3:  # Has an extra dimension
             action_true = action_true.squeeze(1)
-        if len(action_true.shape) == 1: # not enough idmensions
+        if len(action_true.shape) == 1: # not enough dimensions
             action_true = action_true.unsqueeze(1)
         policy_loss = -dist.log_prob(action_true).mean()
         # TODO: consider re-adding recon loss

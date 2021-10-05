@@ -108,10 +108,8 @@ class PPOAgent(Agent):
         self.actor_optimizer.step()
 
     def act(self, obs, sample=False):
-        o1 = obs
         if not 'advice' in obs:  # unpreprocessed
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
-            o2 = obs
         action, agent_dict = super().act(obs, sample)
         if self.image_encoder is not None:
             obs = self.image_encoder(obs)

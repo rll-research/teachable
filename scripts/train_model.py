@@ -12,7 +12,7 @@ import shutil
 from logger import logger
 from utils.utils import set_seed
 from envs.babyai.levels.iclr19_levels import *
-from envs.babyai.levels.curriculum import Curriculum
+from envs.babyai.levels.envdist import EnvDist
 import pathlib
 import joblib
 
@@ -31,17 +31,15 @@ def args_type(default):
 
 def load_experiment(args):
     if args.reload_exp_path is None:
-        start_itr = 0
-        curriculum_step = args.level
+        args.start_itr = 0
         log_dict = {}
     else:
         saved_model = joblib.load(args.reload_exp_path)
         args = saved_model['args']
-        start_itr = saved_model['itr']
-        curriculum_step = saved_model['curriculum_step']
+        args.start_itr = saved_model['itr']
         log_dict = saved_model.get('log_dict', {})
         set_seed(args.seed)
-    return start_itr, curriculum_step, args, log_dict
+    return args, log_dict
 
 
 def create_policy(path, teacher, env, args, obs_preprocessor):
@@ -64,16 +62,6 @@ def create_policy(path, teacher, env, args, obs_preprocessor):
         agent.load(path)
     return agent
 
-
-def zero_thresholds(args):
-    args.success_threshold_rl = 0
-    args.success_threshold_rollout_teacher = 0
-    args.success_threshold_rollout_no_teacher = 0
-    args.accuracy_threshold_rl = 0
-    args.accuracy_threshold_distill_teacher = 0
-    args.accuracy_threshold_distill_no_teacher = 0
-    args.accuracy_threshold_rollout_teacher = 0
-    args.accuracy_threshold_rollout_no_teacher = 0
 
 def get_feedback_list(args):
     feedback_list = []
@@ -106,13 +94,9 @@ def make_env(args, feedback_list):
     arguments = {
         "start_loc": 'all',
         "include_holdout_obj": not args.leave_out_object,
-        "persist_goal": not args.reset_goal,
-        "persist_objs": not args.reset_objs,
-        "persist_agent": not args.reset_agent,
         "feedback_type": feedback_list,
         "feedback_freq": args.feedback_freq,
         "cartesian_steps": args.cartesian_steps,
-        "num_meta_tasks": args.rollouts_per_meta_task,
         "reward_type": args.reward_type,
         "fully_observed": args.fully_observed,
         "padding": args.padding,
@@ -120,10 +104,8 @@ def make_env(args, feedback_list):
         "seed": args.seed,
         "static_env": args.static_env,
     }
-    zero_thresholds(args)  # TODO: remove these thresholds!
 
-    env = Curriculum(args.advance_curriculum_func, env=args.env, start_index=args.level,
-                               curriculum_type=args.curriculum_type, **arguments)
+    env = EnvDist(args.env_dist, env=args.env, start_index=args.level, **arguments)
     return env
 
 
@@ -185,9 +167,10 @@ def run_experiment():
     exp_name = args.prefix
 
     set_seed(args.seed)
-    start_itr, curriculum_step, args, log_dict = load_experiment(args)
+    args, log_dict = load_experiment(args)
     feedback_list = get_feedback_list(args)
     env = make_env(args, feedback_list)
+    args.feedback_list = feedback_list
     obs_preprocessor = make_obs_preprocessor(feedback_list)
 
     # Either we need an existing dataset, or we need to collect
@@ -228,7 +211,7 @@ def run_experiment():
     else:
         collect_policy = None
 
-    exp_dir = os.getcwd() + '/DEBUG/' + exp_name + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/DEBUG/' + exp_name + "_" + str(args.seed)  # TODO: remove later!
     args.exp_dir = exp_dir
     is_debug = args.prefix == 'DEBUG'
     configure_logger(args, exp_dir, start_itr, is_debug)
@@ -244,7 +227,8 @@ def run_experiment():
         new_env.reset()
     sampler = DataCollector(collect_policy, envs, args, obs_preprocessor)
 
-    buffer_path = exp_dir if args.buffer_path is None else args.buffer_path
+    buffer_name = exp_dir if args.buffer_path is None else args.buffer_path
+    args.buffer_name = buffer_name
     num_rollouts = 1 if is_debug else args.num_rollouts
     log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
@@ -259,14 +243,9 @@ def run_experiment():
         relabel_policy=relabel_policy,
         sampler=sampler,
         env=deepcopy(env),
-        start_itr=start_itr,
-        buffer_name=buffer_path,
-        curriculum_step=curriculum_step,
         obs_preprocessor=obs_preprocessor,
         log_dict=log_dict,
         log_fn=log_fn,
-        feedback_list=feedback_list,
-        log_every=args.log_interval,
     )
     trainer.train()
 

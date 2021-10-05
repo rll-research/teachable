@@ -5,7 +5,8 @@ import pathlib
 import pickle as pkl
 import torch
 
-from envs.babyai.rl.utils.dictlist import merge_dictlists, DictList
+from utils.dictlist import merge_dictlists, DictList
+
 
 def trim_batch(batch):
     # Remove keys which aren't useful for distillation
@@ -30,22 +31,13 @@ def trim_batch(batch):
     return DictList(batch_info)
 
 
-# TODO: Currently we assume each batch comes from a single level. WE may need to change that assumption someday.
 class Buffer:
-    def __init__(self, path, buffer_capacity, prob_current, val_prob, buffer_name='buffer', augmenter=None,
-                 successful_only=False):
+    def __init__(self, path, buffer_capacity, val_prob, buffer_name='buffer', successful_only=False):
         self.train_buffer_capacity = buffer_capacity
-        self.augmenter = augmenter
         # We don't need that many val samples
         self.val_buffer_capacity = max(1, int(buffer_capacity * val_prob))
-        # Probability that we sample from the current level instead of a past level
-        self.prob_current = prob_current
-        self.index_train = {}
-        self.counts_train = {}
-        self.index_val = {}
-        self.counts_val = {}
-        self.trajs_train = {}
-        self.trajs_val = {}
+        self.counts_train, self.index_train, self.counts_val, self.index_val = 0, 0, 0, 0
+        self.trajs_train, self.trajs_val = None, None
         self.buffer_path = pathlib.Path(path).joinpath(buffer_name)
         self.successful_only = successful_only
         self.num_feedback = 0
@@ -59,6 +51,7 @@ class Buffer:
         self.total_count = 0
 
     def load_buffer(self):
+        """ Load buffer from pkl file. """
         train_path = self.buffer_path.joinpath(f'train_buffer.pkl')
         if train_path.exists():
             with open(train_path, 'rb') as f:
@@ -68,15 +61,12 @@ class Buffer:
             with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
                 self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
         # if buffers are too big, trim them
-        for level, count in self.counts_train.items():
-            self.counts_train[level] = min(count, self.train_buffer_capacity)
-        for level, index in self.index_train.items():
-            self.index_train[level] = min(index, self.train_buffer_capacity - 1)
-        for level, arr in self.trajs_train.items():
-            if self.train_buffer_capacity < len(arr):
-                self.trajs_train[level] = arr[:self.train_buffer_capacity]
+        self.counts_train = min(self.counts_train, self.train_buffer_capacity)
+        self.index_train = min(self.index_train, self.train_buffer_capacity - 1)
+        self.trajs_train = self.trajs_train[:self.train_buffer_capacity]
 
-    def create_blank_buffer(self, batch, label):
+    def create_blank_buffer(self, batch):
+        """ Create blank buffer with all keys. (We don't do this at startup b/c we don't know all the batch keys.) """
         train_dict = {}
         val_dict = {}
         for key in list(batch.keys()):
@@ -100,16 +90,17 @@ class Buffer:
                     raise NotImplementedError((key, type(value)))
             except:
                 print("?", key)
-        self.trajs_train[label] = DictList(train_dict)
-        self.trajs_val[label] = DictList(val_dict)
+        self.trajs_train = DictList(train_dict)
+        self.trajs_val = DictList(val_dict)
 
         pass
 
     def to_numpy(self, t):
+        """ Torch tensor -> numpy array """
         return t.detach().cpu().numpy()
 
     def split_batch(self, batch):
-        # The batch is a series of trajectories concatenated. Here, we split it into individual batches.
+        """ The batch is a series of trajectories concatenated. Here, we split it into individual batches. """
         trajs = []
         end_idxs = self.to_numpy(torch.where(batch.full_done == 1)[0]) + 1
         start_idxs = np.concatenate([[0], end_idxs[:-1]])
@@ -119,40 +110,32 @@ class Buffer:
                 trajs.append(traj)
                 self.added_count += 1
         self.total_count += 1
-        print("Buffer Counts", self.added_count, self.total_count, self.added_count/self.total_count)
+        print("Buffer Counts", self.added_count, self.total_count, self.added_count / self.total_count)
         return trajs
 
-    def save_traj(self, traj, level, index, split):
-        if split == 'train':
-            value = self.trajs_train[level]
-        elif split == 'val':
-            value = self.trajs_val[level]
+    def save_traj(self, traj, index, split):
+        """ Insert a trajectory into the buffer """
+        value = self.trajs_train if split == 'train' else self.trajs_val
         max_val = min(len(traj), len(value) - index)
         # We can fit the entire traj in
         for k in value:
             arr = getattr(value, k)
-            try:
-                arr[index:index + max_val] = getattr(traj, k)[:max_val]
-            except Exception as e:
-                print("???")
-
+            arr[index:index + max_val] = getattr(traj, k)[:max_val]
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:
             for k in value:
-                arr = getattr(value, k)
-                try:
-                    arr[:remainder] = getattr(traj, k)[-remainder:]
-                except:
-                    print("???")
+                getattr(value, k)[:remainder] = getattr(traj, k)[-remainder:]
 
     def save_buffer(self):
+        """ Save buffer to pkl files. """
         with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:
             pkl.dump((self.trajs_train, self.index_train, self.counts_train), f)
         with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
             pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
 
-    def add_trajs(self, batch, level, trim=True, only_val=False):
+    def add_trajs(self, batch, trim=True, only_val=False):
+        """ Save a batch of trajectories, passed in as a Dictlist of timesteps of sequential trajs. """
         if trim:
             batch = trim_batch(batch)
         trajs = self.split_batch(batch)
@@ -164,28 +147,26 @@ class Buffer:
         if only_val:
             split = len(trajs)
         for traj in trajs[:split]:
-            self.save_traj(traj, level, self.index_val[level], 'val')
-            self.index_val[level] = (self.index_val[level] + len(traj)) % self.val_buffer_capacity
-            self.counts_val[level] = min(self.val_buffer_capacity, self.counts_val[level] + len(traj))
+            self.save_traj(traj, self.index_val, 'val')
+            self.index_val = (self.index_val + len(traj)) % self.val_buffer_capacity
+            self.counts_val = min(self.val_buffer_capacity, self.counts_val + len(traj))
         for traj in trajs[split:]:
-            self.save_traj(traj, level, self.index_train[level], 'train')
-            self.index_train[level] = (self.index_train[level] + len(traj)) % self.train_buffer_capacity
-            self.counts_train[level] = min(self.train_buffer_capacity, self.counts_train[level] + len(traj))
+            self.save_traj(traj, self.index_train, 'train')
+            self.index_train = (self.index_train + len(traj)) % self.train_buffer_capacity
+            self.counts_train = min(self.train_buffer_capacity, self.counts_train + len(traj))
         self.save_buffer()
-        print("COUNTS", self.counts_train[level], self.counts_val[level], self.index_train[level], self.index_val[level])
+        print("COUNTS", self.counts_train, self.counts_val, self.index_train, self.index_val)
 
-    def add_batch(self, batch, level, trim=True, only_val=False):
-        # Starting a new level
-        if not level in self.index_train:
-            self.index_train[level] = 0
-            self.index_val[level] = 0
-            self.counts_val[level] = 0
-            self.counts_train[level] = 0
-            self.create_blank_buffer(trim_batch(batch), level)
-        self.add_trajs(batch, level, trim, only_val)
+    def add_batch(self, batch, trim=True, only_val=False):
+        """ Save a batch of data and update counters. Data is a Dictlist of timesteps of sequential trajs.
+         This is the function which is called externally. """
+        if self.trajs_train is None:
+            self.create_blank_buffer(batch)
+        self.add_trajs(batch, trim, only_val)
         self.update_stats(batch)
 
     def update_stats(self, batch):
+        """ Save pointers to our current index in the buffer and some counts. """
         for k in batch.obs[0].keys():
             if 'gave' in k:
                 self.num_feedback += np.sum([o[k] for o in batch.obs])
@@ -193,24 +174,15 @@ class Buffer:
         with open(self.buffer_path.joinpath('buffer_stats.pkl'), 'wb') as f:
             pkl.dump(buffer_stats, f)
 
-
     def sample(self, total_num_samples=None, split='train'):
-        if split == 'train':
-            index = self.index_train
+        """ Sample a batch. """
+        if split == 'train' or self.counts_val == 0:  # Early in training we may not have any val trajs yet
             counts = self.counts_train
             trajs = self.trajs_train
         else:
-            index = self.index_val
             counts = self.counts_val
             trajs = self.trajs_val
-            # Early in training we may not have any val trajs yet
-            if sum(counts.values()) == 0:
-                index = self.index_train
-                counts = self.counts_train
-                trajs = self.trajs_train
-        # Half from the latest level, otherwise choose uniformly from other levels  # TODO: later!!!
-        possible_levels = list(index.keys())
-        level = np.random.choice(possible_levels)
-        indices = np.random.randint(0, counts[level], size=total_num_samples)
-        data = merge_dictlists([trajs[level][i:i+1] for i in indices])
+
+        indices = np.random.randint(0, counts, size=total_num_samples)
+        data = merge_dictlists([trajs[i:i + 1] for i in indices])
         return data

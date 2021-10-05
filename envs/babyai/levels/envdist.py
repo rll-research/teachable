@@ -5,18 +5,15 @@ from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 import copy
 NULL_SEED = 1000
 
-class Curriculum(Serializable):
-    def __init__(self, advance_curriculum_func, env, start_index=0, curriculum_type=0, reward_type='dense', **kwargs):
+class EnvDist(Serializable):
+    def __init__(self, env_dist, env, start_index=0, reward_type='dense', **kwargs):
         """
-
-        :param advance_curriculum_func: Either 'one_hot' or 'smooth' depending on whether you want each level of the
-        curriculum to be a single environment or a distribution over past environments
-        :param start_index: what index of the curriculum to start on
+        :param start_index: what env to start on
         :param kwargs: arguments for the environment
         """
         Serializable.quick_init(self, locals())
         reward_env_name = '' if reward_type == 'sparse' else '-dense'
-        self.advance_curriculum_func = advance_curriculum_func
+        self.env_dist = env_dist
         self.env = env
         self.kwargs = kwargs
         self.reward_type = reward_type
@@ -33,23 +30,23 @@ class Curriculum(Serializable):
             self.levels_list = {k: NULL_SEED for k in range(49)}
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
-        if self.advance_curriculum_func == 'four_levels':
+        if self.env_dist == 'four_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24]] = .25
-        elif self.advance_curriculum_func == 'four_big_levels':
+        elif self.env_dist == 'four_big_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[22, 23, 24, 25]] = .25
-        elif self.advance_curriculum_func == 'five_levels':
+        elif self.env_dist == 'five_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[16, 22, 23, 24, 25]] = .2
-        elif self.advance_curriculum_func == 'goto_levels':
+        elif self.env_dist == 'goto_levels':
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[[9, 14, 23]] = 1 / 3.
-        elif self.advance_curriculum_func == 'easy_goto':
+        elif self.env_dist == 'easy_goto':
             self.distribution = np.zeros((len(self.levels_list)))
             indices = [4, 9, 14, 7, 12, 17, 39, 40, 41, 42, 43, 44, 46, 47]
             self.distribution[indices] = 1. / len(indices)
-        elif advance_curriculum_func == 'uniform':
+        elif env_dist == 'uniform':
             prob_mass = 1 / (start_index + 1)
             self.distribution = np.zeros((len(self.levels_list)))
             self.distribution[:start_index + 1] = prob_mass
@@ -294,58 +291,15 @@ class Curriculum(Serializable):
         self.distribution = other.distribution.copy()
         self.index = other.index
 
-    def advance_curriculum(self, index=None):
-        if index is None:
-            index = self.index + 1
-        if index >= len(self.levels_list):
-            print("LEARNED ALL THE LEVELS!!")
-            raise NotImplementedError("Invalid level")
-        if self.advance_curriculum_func == 'one_hot':
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[index] = 1
-        elif self.advance_curriculum_func == 'smooth':
-            # Advance curriculum by assigning 0.9 probability to the new environment and 0.1 to all past environments.
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[index] = 0.9
-            num_past_levels = index
-            prev_env_prob = 0.1 / num_past_levels
-            self.distribution[:index] = prev_env_prob
-        elif self.advance_curriculum_func == 'four_levels':
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[16, 22, 23, 24]] = .25
-        elif self.advance_curriculum_func == 'four_big_levels':
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[22, 23, 24, 25]] = .25
-        elif self.advance_curriculum_func == 'five_levels':
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[16, 22, 23, 24, 25]] = .2
-        elif self.advance_curriculum_func == 'goto_levels':
-            self.distribution = np.zeros((len(self.levels_list)))
-            self.distribution[[9, 14, 23]] = 1 / 3.
-        elif self.advance_curriculum_func == 'easy_goto':
-            self.distribution = np.zeros((len(self.levels_list)))
-            indices = [4, 9, 14, 7, 12, 17, 39, 40, 41, 42, 43, 44, 46, 47]
-            self.distribution[indices] = 1. / len(indices)
-        elif self.advance_curriculum_func == 'uniform':
-            # uniform probability over all envs we've seen so far
-            self.distribution = np.zeros((len(self.levels_list)))
-            prob = 0.1 / (index + 1)
-            self.distribution[:index + 1] = prob
-        else:
-            raise ValueError('invalid curriculum type' + str(self.advance_curriculum_func))
-        self.index = index
-        print("updated curriculum", self.index, type(self.levels_list[self.index]))
-
     def set_level(self, index):
         """
-        Set the curriculum at a certain level
         :param index: Index of the level to use
         """
         self.set_wrapped_env(index)
 
     def set_level_distribution(self, index=None, copy_distribution=None):
         """
-        Set the curriculum at a certain level, and set the distribution to only sample that level.
+        Choose a particular level, and set the distribution to only sample that level.
         :param index: Index of the level to use
         """
         self.set_wrapped_env(index)
@@ -357,7 +311,6 @@ class Curriculum(Serializable):
         self.index = index
 
     def seed(self, i):
-        levels_list = self.levels_list if type(self.levels_list) is list else self.levels_list.values()
         if type(self.levels_list) is list:
             for level in self.levels_list:
                 level.seed(int(i))
