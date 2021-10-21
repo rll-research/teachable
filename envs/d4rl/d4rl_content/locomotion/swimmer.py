@@ -7,9 +7,9 @@ import os
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
-from d4rl_content.locomotion import goal_reaching_env
-from d4rl_content.locomotion import maze_env
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content.locomotion import goal_reaching_env
+from envs.d4rl.d4rl_content.locomotion import maze_env
+from envs.d4rl.d4rl_content import offline_env
 
 GYM_ASSETS_DIR = os.path.join(
     os.path.dirname(mujoco_env.__file__),

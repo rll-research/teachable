@@ -1,10 +1,10 @@
 """Environments using kitchen and Franka robot."""
 import os
 import numpy as np
-from d4rl_content.kitchen.adept_envs.utils.configurable import configurable
-from d4rl_content.kitchen.adept_envs.franka.kitchen_multitask_v0 import KitchenTaskRelaxV1
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.configurable import configurable
+from envs.d4rl.d4rl_content.kitchen.adept_envs.franka.kitchen_multitask_v0 import KitchenTaskRelaxV1
 
-from d4rl_content.offline_env import OfflineEnv
+from envs.d4rl.d4rl_content.offline_env import OfflineEnv
 
 OBS_ELEMENT_INDICES = {
     'bottom burner': np.array([11, 12]),

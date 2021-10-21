@@ -1,12 +1,9 @@
 # Code found here: https://github.com/denisyarats/pytorch_sac
 
-import copy
-
 import numpy as np
 import torch
 
-from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
-from algos.ppo_torch import PPOAgent
+from algos.ppo import PPOAgent
 from logger import logger
 
 from algos import utils
@@ -29,7 +26,7 @@ class HierarchicalPPOAgent(PPOAgent):
             no_advice_obs_dim = args.image_dim
         else:
             no_advice_obs_dim = len(obs['obs'].flatten())
-        self.high_level = utils.mlp(no_advice_obs_dim, args.hidden_size, 2, 2).to(self.device)
+        self.high_level = utils.mlp(no_advice_obs_dim, args.hidden_dim, 2, 2).to(self.device)
 
         self.high_level_optimizer = torch.optim.Adam(self.high_level.parameters(),
                                                      lr=lr,
@@ -127,10 +124,10 @@ class HierarchicalPPOAgent(PPOAgent):
             no_advice_obs = self.obs_preprocessor(obs, 'none', show_instrs=True)
         else:
             no_advice_obs = obs
-        if self.image_encoder is not None:
-            no_advice_obs = self.image_encoder(no_advice_obs)
-        if self.instr_encoder is not None:
-            no_advice_obs = self.instr_encoder(no_advice_obs)
+        if self.state_encoder is not None:
+            no_advice_obs = self.state_encoder(no_advice_obs)
+        if self.task_encoder is not None:
+            no_advice_obs = self.task_encoder(no_advice_obs)
         no_advice_obs = no_advice_obs.obs.flatten(1).to(self.device)
         return self.high_level(no_advice_obs)
 
@@ -167,10 +164,10 @@ class HierarchicalPPOAgent(PPOAgent):
         if (not 'advice' in obs):  # unpreprocessed
             obs = self.obs_preprocessor(obs, self.teacher, show_instrs=True)
         action, agent_dict = super().act(obs, sample)  # TODO: do we need deepcopy?
-        if self.image_encoder is not None:
-            obs = self.image_encoder(obs)
-        if self.instr_encoder is not None:
-            obs = self.instr_encoder(obs)
+        if self.state_encoder is not None:
+            obs = self.state_encoder(obs)
+        if self.task_encoder is not None:
+            obs = self.task_encoder(obs)
         obs = torch.cat([obs.obs.flatten(1)] + [obs.advice] * self.repeat_advice, dim=1).to(self.device)
         value = self.critic(obs)
         agent_dict['value'] = value

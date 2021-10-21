@@ -23,7 +23,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from d4rl_content.kitchen.adept_envs.simulation import module
+from envs.d4rl.d4rl_content.kitchen.adept_envs.simulation import module
 
 # Default window dimensions.
 DEFAULT_WINDOW_WIDTH = 1024

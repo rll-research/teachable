@@ -1,6 +1,6 @@
 from algos.hierarchical_ppo_torch import HierarchicalPPOAgent
-from algos.ppo_torch import PPOAgent
-from algos.sac_torch import SACAgent
+from algos.ppo import PPOAgent
+from algos.sac import SACAgent
 from algos.mf_trainer import Trainer
 from scripts.arguments import ArgumentParser
 from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
@@ -34,9 +34,14 @@ def load_experiment(args):
         args.start_itr = 0
         log_dict = {}
     else:
-        saved_model = joblib.load(args.reload_exp_path)
+        reload_path = args.reload_exp_path
+        saved_model = joblib.load(reload_path + '/latest.pkl')
         args = saved_model['args']
         args.start_itr = saved_model['itr']
+        if args.rl_teacher is not None:
+            args.rl_policy = reload_path
+        if args.distill_teacher is not None:
+            args.distill_policy = reload_path
         log_dict = saved_model.get('log_dict', {})
         set_seed(args.seed)
     return args, log_dict
@@ -50,8 +55,7 @@ def create_policy(path, teacher, env, args, obs_preprocessor):
                          control_penalty=args.control_penalty)
     elif args.algo == 'ppo':
         args.on_policy = True
-        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                         lr=args.lr, control_penalty=args.control_penalty)
+        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
     elif args.algo == 'hppo':
         args.on_policy = True
         agent = HierarchicalPPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
@@ -80,15 +84,33 @@ def make_env(args, feedback_list):
         args.no_instr = True
         args.discrete = False
         args.image_obs = False
-    elif args.env in ['babyai']:
+    if args.env in ['babyai']:
         args.discrete = True
         args.image_obs = True
-    elif args.env in ['dummy_discrete']:
+        args.no_instr = False
+        args.fully_observed = True
+        args.padding = True
+        args.feedback_freq = [20]
+        if args.train_level:
+            args.env_dist = 'five_levels'
+            args.leave_out_object = True
+            args.level = 25
+        if args.reward_type == 'default_reward':
+            args.reward_type = 'dense'
+    if args.env == 'point_mass':
+        if args.train_level:
+            args.level = 4
+        if args.reward_type == 'default_reward':
+            args.reward_type = 'waypoint'
+    if args.env == 'ant':
+        if args.train_level:
+            args.level = 6
+        if args.reward_type == 'default_reward':
+            args.reward_type = 'vector_dir_waypoint'
+    if args.env in ['dummy_discrete']:
         args.discrete = True
         args.image_obs = False
         args.no_instr = True
-    else:
-        raise NotImplementedError(f'Unknown env {args.env}')
     args.discrete = args.discrete
 
     arguments = {
@@ -96,7 +118,6 @@ def make_env(args, feedback_list):
         "include_holdout_obj": not args.leave_out_object,
         "feedback_type": feedback_list,
         "feedback_freq": args.feedback_freq,
-        "cartesian_steps": args.cartesian_steps,
         "reward_type": args.reward_type,
         "fully_observed": args.fully_observed,
         "padding": args.padding,
@@ -110,7 +131,7 @@ def make_env(args, feedback_list):
 
 
 def configure_logger(args, exp_dir, start_itr, is_debug):
-    if not args.continue_train:
+    if not args.reload_exp_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']
@@ -122,7 +143,7 @@ def configure_logger(args, exp_dir, start_itr, is_debug):
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed))
 
 
-def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
+def eval_policy(policy, env, args, exp_dir):
     save_dir = pathlib.Path(exp_dir)
     with open(save_dir.joinpath('results.csv'), 'w') as f:
         f.write('policy_env,policy,env,success_rate,stoch_accuracy,det_accuracy,reward\n')
@@ -137,7 +158,6 @@ def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
         video_name = f'vids_env_{env_index}'
         paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
                                                                         instrs=not args.hide_instrs,
-                                                                        reset_every=1,
                                                                         stochastic=True,
                                                                         record_teacher=True,
                                                                         video_directory=save_dir,
@@ -146,7 +166,6 @@ def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
                                                                         save_wandb=False,
                                                                         save_locally=True,
                                                                         num_save=args.num_rollouts,
-                                                                        obs_preprocessor=obs_preprocessor,
                                                                         rollout_oracle=False)
         success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
         try:
@@ -164,10 +183,9 @@ def eval_policy(policy, env, args, exp_dir, obs_preprocessor):
 def run_experiment():
     parser = ArgumentParser()
     args = parser.parse_args()
-    exp_name = args.prefix
-
-    set_seed(args.seed)
     args, log_dict = load_experiment(args)
+    exp_name = args.prefix
+    set_seed(args.seed)
     feedback_list = get_feedback_list(args)
     env = make_env(args, feedback_list)
     args.feedback_list = feedback_list
@@ -211,13 +229,13 @@ def run_experiment():
     else:
         collect_policy = None
 
-    exp_dir = os.getcwd() + '/DEBUG/' + exp_name + "_" + str(args.seed)  # TODO: remove later!
+    exp_dir = os.getcwd() + '/logs/' + exp_name + "_" + str(args.seed)
     args.exp_dir = exp_dir
     is_debug = args.prefix == 'DEBUG'
-    configure_logger(args, exp_dir, start_itr, is_debug)
+    configure_logger(args, exp_dir, args.start_itr, is_debug)
 
     if args.eval_envs is not None:
-        eval_policy(log_policy, env, args, exp_dir, obs_preprocessor)
+        eval_policy(log_policy, env, args, exp_dir)
         return
 
     envs = [env.copy() for _ in range(args.num_envs)]
@@ -225,7 +243,10 @@ def run_experiment():
         new_env.seed(i)
         new_env.set_task()
         new_env.reset()
-    sampler = DataCollector(collect_policy, envs, args, obs_preprocessor)
+    if collect_policy is None:
+        sampler = None
+    else:
+        sampler = DataCollector(collect_policy, envs, args)
 
     buffer_name = exp_dir if args.buffer_path is None else args.buffer_path
     args.buffer_name = buffer_name

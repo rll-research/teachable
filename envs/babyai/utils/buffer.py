@@ -12,15 +12,15 @@ def trim_batch(batch):
     # Remove keys which aren't useful for distillation
     batch_info = {
         "obs": batch.obs,
-        "next_obs": batch.env_infos.next_obs,
+        "next_obs": batch.next_obs,
         "action": batch.action,
-        "full_done": batch.full_done.int(),
+        "full_done": batch.full_done,
         "success": batch.env_infos.success,
     }
     if 'action_probs' in batch:
         batch_info['action_probs'] = batch.action_probs
     if 'teacher_action' in batch.env_infos:
-        batch_info['teacher_action'] = batch.env_infos.teacher_action
+        batch_info['teacher_action'] = batch.teacher_action
     if 'followed_teacher' in batch.env_infos:
         batch_info['followed_teacher'] = batch.env_infos.followed_teacher
     if 'advice_count' in batch:
@@ -67,6 +67,7 @@ class Buffer:
 
     def create_blank_buffer(self, batch):
         """ Create blank buffer with all keys. (We don't do this at startup b/c we don't know all the batch keys.) """
+        batch = trim_batch(batch)
         train_dict = {}
         val_dict = {}
         for key in list(batch.keys()):

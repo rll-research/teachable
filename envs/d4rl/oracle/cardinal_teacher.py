@@ -1,5 +1,5 @@
 import numpy as np
-from oracle.teacher import Teacher
+from envs.d4rl.oracle.teacher import Teacher
 
 
 class CardinalCorrections(Teacher):

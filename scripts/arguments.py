@@ -26,7 +26,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                                               'vector_dir_waypoint_negative', 'waypoint',
                                                               'vector_next_waypoint', 'wall_penalty', 'dense_pos_neg',
                                                               'dense_success'],
-                          default='oracle_dist')
+                          default='default_reward')
         self.add_argument('--leave_out_object', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--eval_envs', nargs='+', type=int, default=None)
@@ -45,7 +45,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="Adam and RMSprop optimizer epsilon (default: 1e-5)")
         self.add_argument("--optim_alpha", type=float, default=0.99,
                           help="RMSprop optimizer apha (default: 0.99)")
-        self.add_argument("--batch_size", type=int, default=2048,
+        self.add_argument("--batch_size", type=int, default=512,
                           help="batch size for distillation")
         self.add_argument("--entropy_coef", type=float, default=0.01,
                           help="entropy term coefficient")
@@ -56,6 +56,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--min_itr_steps_distill', type=int, default=0)
         self.add_argument('--lr', type=float, default=1e-3)
         self.add_argument('--discount', type=float, default=.25)
+        self.add_argument('--gae_lambda', type=float, default=.95)
         self.add_argument('--num_envs', type=int, default=20)
         self.add_argument('--early_stop', type=int, default=float('inf'))
         self.add_argument('--early_stop_metric', type=str, default=None)
@@ -65,7 +66,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--reconstruction', action='store_true')
         self.add_argument('--padding', action='store_true')
         self.add_argument('--feedback_from_buffer', action='store_true')
-        self.add_argument('--hidden_size', type=int, default=128)
+        self.add_argument('--hidden_dim', type=int, default=128)
+        self.add_argument('--instr_dim', type=int, default=128)
+        self.add_argument('--sequential', action='store_true')
+        self.add_argument('--clip_eps', type=float, default=.2)
 
         # Saving/loading/logging
         self.add_argument('--prefix', type=str, default='DEBUG')
@@ -74,10 +78,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--save_untrained', action='store_true')
         self.add_argument("--log_interval", type=int, default=10)
         self.add_argument("--eval_interval", type=int, default=10)
+        self.add_argument('--no_video', action='store_true')
 
         # Teacher
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
-        self.add_argument('--cartesian_steps', nargs='+', type=int, default=[1])
         self.add_argument('--collect_with_oracle', action='store_true')
         self.add_argument('--reload_exp_path', type=str, default=None)
         self.add_argument('--continue_train', action='store_true')
@@ -85,7 +89,7 @@ class ArgumentParser(argparse.ArgumentParser):
         # Policies
         self.add_argument('--collect_policy', default=None, help='path to collection policy')
         self.add_argument('--collect_teacher', default=None,
-                          help="Teacher to for collection. If None, no collection happens. If no teacher, put 'None'")
+                          help="Teacher to for collection. If None, no collection happens. If no teacher, put 'none'")
         self.add_argument('--rl_policy', default=None, help='path to rl policy')
         self.add_argument('--rl_teacher', default=None)
         self.add_argument('--distill_policy', default=None, help='path to distill policy')
@@ -107,9 +111,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--mi_coef', type=float, default=0.003)
         self.add_argument('--z_dim', type=int, default=32)
         self.add_argument('--info_bot', action='store_true')
-        self.add_argument('--source', type=str, default='agent_probs', choices=['agent', 'teacher', 'agent_argmax',
+        self.add_argument('--source', type=str, default='agent', choices=['agent', 'teacher', 'agent_argmax',
                                                                                 'agent_probs'])
         self.add_argument('--no_distill', action='store_true')
+        self.add_argument('--train_level', action='store_true')
 
     def parse_args(self, arg=None):
         """
@@ -121,8 +126,5 @@ class ArgumentParser(argparse.ArgumentParser):
         # Set seed for all randomness sources
         if args.seed == -1:
             args.seed = np.random.randint(10000)
-        if args.task_id_seed:
-            args.seed = int(os.environ['SLURM_ARRAY_TASK_ID'])
-            print('set seed to {}'.format(args.seed))
 
         return args

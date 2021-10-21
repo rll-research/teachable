@@ -3,8 +3,8 @@ import sys
 import collections
 import numpy as np
 
-import d4rl_content.infos
-from d4rl_content.offline_env import set_dataset_path, get_keys
+import envs.d4rl.d4rl_content.infos
+from envs.d4rl.d4rl_content.offline_env import set_dataset_path, get_keys
 
 SUPPRESS_MESSAGES = bool(os.environ.get('D4RL_SUPPRESS_IMPORT_ERROR', 0))
 

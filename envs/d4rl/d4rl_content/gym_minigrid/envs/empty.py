@@ -1,5 +1,5 @@
-from d4rl_content.gym_minigrid.minigrid import *
-from d4rl_content.gym_minigrid.register import register
+from envs.d4rl.d4rl_content.gym_minigrid.minigrid import *
+from envs.d4rl.d4rl_content.gym_minigrid.register import register
 
 class EmptyEnv(MiniGridEnv):
     """

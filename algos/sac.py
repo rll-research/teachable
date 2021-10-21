@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from algos.agent import Agent, DoubleQCritic, DiagGaussianActor
+from algos.agent import Agent
+from algos.utils import DoubleQCritic, DiagGaussianActor
 from logger import logger
 
 from algos import utils
@@ -38,11 +39,11 @@ class SACAgent(Agent, nn.Module):
             obs_dim = args.image_dim + advice_dim
         else:
             obs_dim = len(obs['obs'].flatten()) + advice_dim
-        self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
-        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_size).to(self.device)
+        self.critic = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_dim).to(self.device)
+        self.critic_target = DoubleQCritic(obs_dim, action_dim, hidden_dim=args.hidden_dim).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_size).to(
+        self.actor = DiagGaussianActor(obs_dim, action_dim, discrete=args.discrete, hidden_dim=args.hidden_dim).to(
             self.device)
 
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
@@ -52,10 +53,10 @@ class SACAgent(Agent, nn.Module):
 
         # optimizers
         embedding_params = []
-        if self.image_encoder is not None:
-            embedding_params += list(self.image_encoder.parameters())
-        if self.instr_encoder is not None:
-            embedding_params += list(self.instr_encoder.parameters())
+        if self.state_encoder is not None:
+            embedding_params += list(self.state_encoder.parameters())
+        if self.task_encoder is not None:
+            embedding_params += list(self.task_encoder.parameters())
         if self.advice_embedding is not None:
             embedding_params += list(self.advice_embedding.parameters())
 

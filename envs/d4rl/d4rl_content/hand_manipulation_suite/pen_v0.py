@@ -2,8 +2,8 @@ import numpy as np
 from gym import utils
 from gym import spaces
 from mjrl.envs import mujoco_env
-from d4rl_content.utils.quatmath import euler2quat
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content.utils.quatmath import euler2quat
+from envs.d4rl.d4rl_content import offline_env
 from mujoco_py import MjViewer
 import os
 

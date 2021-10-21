@@ -19,8 +19,8 @@
 import os
 from typing import Dict, Optional
 
-from d4rl_content.kitchen.adept_envs.simulation import module
-from d4rl_content.kitchen.adept_envs.simulation.renderer import DMRenderer, MjPyRenderer
+from envs.d4rl.d4rl_content.kitchen.adept_envs.simulation import module
+from envs.d4rl.d4rl_content.kitchen.adept_envs.simulation.renderer import DMRenderer, MjPyRenderer
 
 
 class MujocoSimRobot:

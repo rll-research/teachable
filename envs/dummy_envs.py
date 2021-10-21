@@ -51,9 +51,6 @@ class DummyDiscrete:
         info['next_obs'] = obs_dict
         return obs_dict, rew, done, info
 
-    def set_task(self, *args, **kwargs):
-        pass  # for compatibility with babyai, which does set tasks
-
     def reset(self):
         self.index = np.random.randint(2)
         # print("index", self.index)
@@ -118,9 +115,6 @@ class PointMassEnvSimple:
         info['episode_length'] = self.timesteps
         info['next_obs'] = obs_dict
         return obs_dict, rew, done, info
-
-    def set_task(self, *args, **kwargs):
-        pass  # for compatibility with babyai, which does set tasks
 
     def reset(self):
         self.pos = np.array([3], dtype=np.float32)

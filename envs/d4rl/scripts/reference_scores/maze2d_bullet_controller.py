@@ -1,7 +1,7 @@
 import d4rl_content
 import gym
-from d4rl_content.pointmaze import waypoint_controller
-from d4rl_content.pointmaze import maze_model
+from envs.d4rl.d4rl_content.pointmaze import waypoint_controller
+from envs.d4rl.d4rl_content.pointmaze import maze_model
 import numpy as np
 import argparse
 import time

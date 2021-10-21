@@ -17,8 +17,8 @@
 
 import os
 import numpy as np
-from d4rl_content.kitchen.adept_envs import robot_env
-from d4rl_content.kitchen.adept_envs.utils.configurable import configurable
+from envs.d4rl.d4rl_content.kitchen.adept_envs import robot_env
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.configurable import configurable
 from gym import spaces
 from dm_control.mujoco import engine
 

@@ -1,9 +1,9 @@
 from gym.envs.registration import register
-from d4rl_content.hand_manipulation_suite.door_v0 import DoorEnvV0
-from d4rl_content.hand_manipulation_suite.hammer_v0 import HammerEnvV0
-from d4rl_content.hand_manipulation_suite.pen_v0 import PenEnvV0
-from d4rl_content.hand_manipulation_suite.relocate_v0 import RelocateEnvV0
-from d4rl_content import infos
+from envs.d4rl.d4rl_content.hand_manipulation_suite.door_v0 import DoorEnvV0
+from envs.d4rl.d4rl_content.hand_manipulation_suite.hammer_v0 import HammerEnvV0
+from envs.d4rl.d4rl_content.hand_manipulation_suite.pen_v0 import PenEnvV0
+from envs.d4rl.d4rl_content.hand_manipulation_suite.relocate_v0 import RelocateEnvV0
+from envs.d4rl.d4rl_content import infos
 
 # V1 envs
 MAX_STEPS = {'hammer': 200, 'relocate': 200, 'door': 200, 'pen': 100}

@@ -12,7 +12,7 @@ from gym import Env
 import gym.spaces as spaces
 
 #from . import proxy_env
-from d4rl_content.offline_env import OfflineEnv
+from envs.d4rl.d4rl_content.offline_env import OfflineEnv
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (

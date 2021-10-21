@@ -16,4 +16,4 @@
 
 import d4rl_content.kitchen.adept_envs.franka
 
-from d4rl_content.kitchen.adept_envs.utils.configurable import global_config
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.configurable import global_config

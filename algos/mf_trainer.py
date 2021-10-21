@@ -5,7 +5,6 @@ from envs.babyai.utils.buffer import Buffer
 import time
 import psutil
 import os
-import copy
 
 
 class Trainer(object):
@@ -41,7 +40,6 @@ class Trainer(object):
         # Dict saying which teacher types the agent has access to for training.
         self.gave_feedback = log_dict.get('gave_feedback', {k: 0 for k in self.args.feedback_list})
         self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.args.feedback_list})
-        self.next_train_itr = log_dict.get('next_train_itr', self.itr)
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 5)
 
         # Counters to determine early stopping
@@ -50,10 +48,12 @@ class Trainer(object):
 
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
+        if (self.rl_policy is not None) and (self.il_policy is not None):
+            assert not self.rl_policy.teacher == self.il_policy.teacher, "will overwrite if policies have same teacher"
         if self.rl_policy is not None:
-            self.rl_policy.save(f"{self.args.exp_dir}/rl")
+            self.rl_policy.save(self.args.exp_dir)
         if self.il_policy is not None:
-            self.il_policy.save(f"{self.args.exp_dir}/il")
+            self.il_policy.save(self.args.exp_dir)
         logger.save_itr_params(self.itr, self.args.level, params)
 
     def log_rollouts(self):
@@ -90,7 +90,6 @@ class Trainer(object):
         self.all_unaccounted_time += time_unaccounted
 
         logger.logkv('Itr', self.itr)
-        logger.logkv('Train/SkipTrainRL', int(self.skip_training_rl))
 
         time_total = time.time() - self.start_time
         self.itr_start_time = time.time()
@@ -155,17 +154,14 @@ class Trainer(object):
             if itr % self.args.log_interval == 0:
                 self.log_rollouts()
 
-            # If we're distilling, don't train the first time on the level in case we can zero-shot it
-            self.skip_training_rl = self.args.reward_when_necessary and not self.next_train_itr == itr
-
             logger.log("\n ---------------- Iteration %d ----------------" % itr)
 
             """ -------------------- Sampling --------------------------"""
 
             logger.log("Obtaining samples...")
             time_env_sampling_start = time.time()
-            self.should_collect = (self.args.collect_teacher is not None) and ((not self.skip_training_rl) or self.args.self_distill)
-            self.should_train_rl = (self.args.rl_teacher is not None) and (not self.skip_training_rl)
+            self.should_collect = self.args.collect_teacher is not None
+            self.should_train_rl = self.args.rl_teacher is not None
             if self.should_collect:
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.sampler.collect_experiences(
@@ -233,10 +229,7 @@ class Trainer(object):
 
     def save_and_maybe_early_stop(self):
         early_stopping = self.itrs_since_best > self.args.early_stop
-        best_success, best_accuracy, best_loss = self.best_val_loss
-        logger.logkv('Train/BestSuccess', best_success)
-        logger.logkv('Train/BestAccuracy', best_accuracy)
-        logger.logkv('Train/BestLoss', best_loss)
+        logger.logkv('Train/BestLoss', self.best_val_loss)
         logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
         if early_stopping or (self.itr % self.args.eval_interval == 0) or (self.itr == self.args.n_itr - 1):
             saving_time_start = time.time()
@@ -308,9 +301,8 @@ class Trainer(object):
                      'num_feedback_advice': self.num_feedback_advice,
                      'num_feedback_reward': self.num_feedback_reward,
                      'total_distillation_frames': self.total_distillation_frames,
-                     'next_train_itr': self.next_train_itr,
                      'num_train_skip_itrs': self.num_train_skip_itrs,
                      'gave_feedback': self.gave_feedback,
-                     'followed_feedback': self.followed_feedback,
+                      'followed_feedback': self.followed_feedback,
                  })
         return d

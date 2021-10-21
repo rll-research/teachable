@@ -11,16 +11,14 @@ from logger import logger
 class DataCollector(ABC):
     """The collection class."""
 
-    def __init__(self, collect_policy, envs, args, obs_preprocessor, repeated_seed=None):
+    def __init__(self, collect_policy, envs, args, repeated_seed=None):
 
         if not args.sequential:
             self.env = ParallelEnv(envs, repeated_seed=repeated_seed)
         else:
             self.env = SequentialEnv(envs, repeated_seed=repeated_seed)
         self.policy = collect_policy
-        self.policy.train()
         self.args = args
-        self.preprocess_obss = obs_preprocessor
 
 
         # Store helpers values
@@ -70,6 +68,7 @@ class DataCollector(ABC):
         self.log_num_frames = []
         self.log_success = []
         self.log_dist_to_goal = []
+        self.log_keep = 25
 
     def collect_experiences(self, collect_with_oracle=False, collect_reward=True, train=True):
         """Collects rollouts and computes advantages.
@@ -95,20 +94,10 @@ class DataCollector(ABC):
         policy = self.policy
         policy.train(train)
 
-        if self.args.reset_each_batch:
-            self.obs = self.env.reset()
-
-        # TODO: Make this handle the case where the meta_rollout length > 1
         for i in range(self.args.frames_per_proc):
-            # Do one agent-environment interaction
-            instr_dropout_prob = self.args.collect_dropout_prob
-            preprocessed_obs = [self.preprocess_obss([o], policy.teacher,
-                                                     show_instrs=np.random.uniform() > instr_dropout_prob)
-                                for o in self.obs]
-            preprocessed_obs = merge_dictlists(preprocessed_obs)
-
-            with torch.no_grad():
-                action, agent_dict = policy.act(preprocessed_obs, sample=True)
+            with torch.no_grad():  # TODO: what's this for?
+                action, agent_dict = policy.act(self.obs, sample=True,
+                                                instr_dropout_prob=self.args.collect_dropout_prob)
 
             action_to_take = action.cpu().numpy()
             if collect_with_oracle:
@@ -125,16 +114,12 @@ class DataCollector(ABC):
             try:
                 self.teacher_actions[i] = torch.FloatTensor(np.concatenate([ei['teacher_action'] for ei in env_info])).to(self.device)
             except:
-                self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1  # TODO: compute teacher action for new envs
+                self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1
 
             self.masks[i] = self.mask
             done_tensor = torch.FloatTensor(done).to(self.device)
-            self.done_index = done_tensor + self.done_index
-
-            done_meta = self.done_index == 1
-            self.done_index = torch.remainder(self.done_index, 1)  # TODO: remove this!
             self.dones[i] = done_tensor
-            self.mask = 1 - done_meta.to(torch.int32)
+            self.mask = 1 - done_tensor.to(torch.int32)
             self.actions[i] = action
             if self.args.discrete:
                 probs = agent_dict['dist'].probs
@@ -185,45 +170,38 @@ class DataCollector(ABC):
             for b in range(batch):
                 for t in range(timesteps):
                     arr.append(self.env_infos[t][b][k])
-            env_info_dict[k] = np.stack(arr)
+            if k == 'next_obs':
+                exps.next_obs = arr
+            else:
+                env_info_dict[k] = np.stack(arr)
         env_info_dict = DictList(env_info_dict)
         exps.env_infos = env_info_dict
         # In commments below T is self.args.frames_per_proc, P is self.num_procs,
         # D is the dimensionality
 
         # T x P -> P x T -> (P * T) x 1
-        exps.mask = self.masks.transpose(0, 1).reshape(-1).unsqueeze(1)
 
         # for all tensors below, T x P -> P x T -> P * T
-        exps.action = self.actions.transpose(0, 1).reshape(-1)
+        exps.action = self.actions.transpose(0, 1).reshape(self.actions.shape[0] * self.actions.shape[1], -1)
+        exps.teacher_action = self.teacher_actions.transpose(0, 1)
+        exps.teacher_action = exps.teacher_action.reshape(self.teacher_actions.shape[0] * self.actions.shape[1], -1)
         if self.args.discrete:
-            exps.action_probs = self.action_probs.transpose(0, 1)
-            exps.action_probs = self.action_probs.transpose(0, 1)
-            exps.action_probs = exps.action_probs.reshape(self.action_probs.shape[0] * self.action_probs.shape[1], -1)
-            exps.teacher_action = self.teacher_actions.transpose(0, 1).reshape(-1)
+            exps.action_probs = self.action_probs.transpose(0, 1).reshape(
+                self.action_probs.shape[0] * self.action_probs.shape[1], -1)
         else:
             exps.argmax_action = self.argmax_action.transpose(0, 1)
             exps.argmax_action = exps.argmax_action.reshape(self.argmax_action.shape[0] * self.argmax_action.shape[1], -1)
-
-            exps.action = exps.action.reshape(self.actions.shape[0] * self.actions.shape[1], -1)
-
-            exps.teacher_action = self.teacher_actions.transpose(0, 1)
-            exps.teacher_action = exps.teacher_action.reshape(self.teacher_actions.shape[0] * self.actions.shape[1], -1)
-
         exps.reward = self.rewards.transpose(0, 1).reshape(-1)
         exps.done = self.dones.transpose(0, 1).reshape(-1)
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1
-        exps.full_done = full_done.reshape(-1)
+        exps.full_done = full_done.reshape(-1).int()
 
         if self.args.on_policy:
             self.advantages = torch.zeros(self.args.frames_per_proc, self.num_procs, device=self.device)
             # Add advantage and return to experiences
-
-            preprocessed_obs = self.preprocess_obss(self.obs, policy.teacher,
-                                                    show_instrs=np.random.uniform() > self.args.collect_dropout_prob)
             with torch.no_grad():
-                action, agent_dict = policy.act(preprocessed_obs, sample=True)
+                action, agent_dict = policy.act(self.obs, sample=True, instr_dropout_prob=self.args.collect_dropout_prob)
                 next_value = agent_dict['value'].squeeze(1)
 
             for i in reversed(range(self.args.frames_per_proc)):
@@ -236,32 +214,29 @@ class DataCollector(ABC):
 
             exps.value = self.values.transpose(0, 1).reshape(-1)
             exps.advantage = self.advantages.transpose(0, 1).reshape(-1)
-            exps.returnn = exps.value + exps.advantage # TODO: much bigger in OG!
+            exps.returnn = exps.value + exps.advantage
             exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
-            logger.log("Train/Value", to_np(exps.value.mean()))
-            logger.log("Train/Advantage", to_np(exps.advantage.mean()))
-            logger.log("Train/Returnn", to_np(exps.returnn.mean()))
+            logger.logkv("Train/Value", to_np(exps.value.mean()))
+            logger.logkv("Train/Advantage", to_np(exps.advantage.mean()))
+            logger.logkv("Train/Returnn", to_np(exps.returnn.mean()))
 
         # Log some values
-
-        keep = 25
-
         log = {
-            "return_per_episode": [] if len(self.log_return) == 0 else self.log_return[-keep:],
-            "success_per_episode": [] if len(self.log_success) == 0 else self.log_success[-keep:],
-            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) == 0 else self.log_dist_to_goal[-keep:],
-            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) == 0 else self.log_reshaped_return[-keep:],
-            "num_frames_per_episode": [] if len(self.log_num_frames) == 0 else self.log_num_frames[-keep:],
+            "return_per_episode": [] if len(self.log_return) == 0 else self.log_return[-self.log_keep:],
+            "success_per_episode": [] if len(self.log_success) == 0 else self.log_success[-self.log_keep:],
+            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) == 0 else self.log_dist_to_goal[-self.log_keep:],
+            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) == 0 else self.log_reshaped_return[-self.log_keep:],
+            "num_frames_per_episode": [] if len(self.log_num_frames) == 0 else self.log_num_frames[-self.log_keep:],
             "num_frames": self.num_frames,
             "episodes_done": self.log_done_counter,
         }
 
         self.log_done_counter = 0
-        self.log_return = self.log_return[-keep:]
-        self.log_success = self.log_success[-keep:]
-        self.log_dist_to_goal = self.log_dist_to_goal[-keep:]
-        self.log_reshaped_return = self.log_reshaped_return[-keep:]
-        self.log_num_frames = self.log_num_frames[-keep:]
+        self.log_return = self.log_return[-self.log_keep:]
+        self.log_success = self.log_success[-self.log_keep:]
+        self.log_dist_to_goal = self.log_dist_to_goal[-self.log_keep:]
+        self.log_reshaped_return = self.log_reshaped_return[-self.log_keep:]
+        self.log_num_frames = self.log_num_frames[-self.log_keep:]
 
         num_feedback_advice = 0
         for key in exps.obs[0].keys():
@@ -277,8 +252,3 @@ class DataCollector(ABC):
             if 'followed_' in key:
                 log[key] = np.sum(getattr(exps.env_infos, key))
         return exps, log
-
-    @abstractmethod
-    def update_parameters(self):
-        pass
-2

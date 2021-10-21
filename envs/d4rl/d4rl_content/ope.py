@@ -1,7 +1,7 @@
 """
 Metrics for off-policy evaluation.
 """
-from d4rl_content import infos
+from envs.d4rl.d4rl_content import infos
 import numpy as np
 
 

@@ -1,5 +1,6 @@
 from envs.babyai.levels.iclr19_levels import *
 from utils.serializable import Serializable
+from envs.d4rl.d4rl_content.locomotion import *
 from envs.d4rl_envs import PointMassEnv, AntEnv
 from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 import copy
@@ -321,20 +322,22 @@ class EnvDist(Serializable):
                 else:
                     level.seed(int(i))
 
-    def set_task(self, args=None):
+    def set_task(self):
         """
         Each time we set a task, sample which babyai level to use from the categorical distribution array.
         Then set the task as usual.
         """
         env_index = self.np_random.choice(np.arange(len(self.distribution)), p=self.distribution)
         self.set_wrapped_env(env_index)
-        return self._wrapped_env.set_task(args)
+
+    def reset(self):
+        self.set_task()
+        return self._wrapped_env.reset()
 
     def copy(self, index=None):
         env = copy.deepcopy(self)
         if index is None:
             index = self.index
         env.set_level_distribution(index=index, copy_distribution=self.distribution.copy())
-        env.set_task()
         env.reset()
         return env

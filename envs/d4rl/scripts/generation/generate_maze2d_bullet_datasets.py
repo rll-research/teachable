@@ -1,8 +1,8 @@
 import gym
 import logging
-from d4rl_content.pointmaze import waypoint_controller
-from d4rl_content.pointmaze_bullet import bullet_maze
-from d4rl_content.pointmaze import maze_model
+from envs.d4rl.d4rl_content.pointmaze import waypoint_controller
+from envs.d4rl.d4rl_content.pointmaze_bullet import bullet_maze
+from envs.d4rl.d4rl_content.pointmaze import maze_model
 import numpy as np
 import pickle
 import gzip

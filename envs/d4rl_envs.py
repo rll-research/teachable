@@ -2,14 +2,13 @@
 import numpy as np
 import gym
 from gym.spaces import Box
-from d4rl_content.pointmaze.waypoint_controller import WaypointController
+from envs.d4rl.d4rl_content.pointmaze.waypoint_controller import WaypointController
 from envs.d4rl.oracle.batch_teacher import BatchTeacher
-from oracle.cardinal_teacher import CardinalCorrections
-from oracle.direction_teacher import DirectionCorrections
-from oracle.waypoint_teacher import WaypointCorrections
-from oracle.offset_waypoint_teacher import OffsetWaypointCorrections
-
-from oracle.dummy_advice import DummyAdvice
+from envs.d4rl.oracle.cardinal_teacher import CardinalCorrections
+from envs.d4rl.oracle.direction_teacher import DirectionCorrections
+from envs.d4rl.oracle.waypoint_teacher import WaypointCorrections
+from envs.d4rl.oracle.offset_waypoint_teacher import OffsetWaypointCorrections
+from envs.d4rl.oracle.dummy_advice import DummyAdvice
 
 
 class D4RLEnv:
@@ -114,18 +113,9 @@ class D4RLEnv:
         max_grid[:h, :w] = state
         state_obs = obs_dict['obs']
         if self.args.env == 'ant':
-            if self.args.show_pos == 'ours':
-                state_obs[:2] = self.get_pos() / self.scale_factor
-            elif self.args.show_pos == 'none':
-                state_obs[:2] *= 0
-            elif self.args.show_pos == 'default':
-                state_obs[:2] /= 5
-            if self.args.show_goal == 'ours':
-                goal = self.get_target() / self.scale_factor
-            elif self.args.show_goal == 'offset':
-                goal = (self.get_target() - self.get_pos()) / self.scale_factor
-            elif self.args.show_goal == 'none':
-                goal = np.array([0, 0])
+            # Agent position
+            state_obs[:2] = self.get_pos() / self.scale_factor
+            goal = (self.get_target() - self.get_pos()) / self.scale_factor
             state_obs = np.concatenate([state_obs, goal])
         obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
         if self.teacher is not None and not 'None' in self.teacher.teachers:
@@ -284,9 +274,6 @@ class D4RLEnv:
                     print(f"Teacher Actions didn't match {[(k, int(v.next_action)) for k,v in self.teacher.teachers.items()]}")
             return list(self.teacher.teachers.values())[0].next_action
         return None
-
-    def set_task(self, *args, **kwargs):
-        pass  # for compatibility with babyai, which does set tasks
 
     def scale_obs(self, obs):
         return obs

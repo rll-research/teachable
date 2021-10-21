@@ -1,8 +1,8 @@
 import numpy as np
 import h5py
 import argparse
-from d4rl_content.locomotion import maze_env, ant, swimmer
-from d4rl_content.locomotion.wrappers import NormalizedBoxEnv
+from envs.d4rl.d4rl_content.locomotion import maze_env, ant, swimmer
+from envs.d4rl.d4rl_content.locomotion.wrappers import NormalizedBoxEnv
 import torch
 from PIL import Image
 import os

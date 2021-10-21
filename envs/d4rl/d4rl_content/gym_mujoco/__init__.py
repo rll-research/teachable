@@ -1,6 +1,6 @@
 from gym.envs.registration import register
-from d4rl_content.gym_mujoco import gym_envs
-from d4rl_content import infos
+from envs.d4rl.d4rl_content.gym_mujoco import gym_envs
+from envs.d4rl.d4rl_content import infos
 
 # V1 envs
 for agent in ['hopper', 'halfcheetah', 'ant', 'walker2d']:

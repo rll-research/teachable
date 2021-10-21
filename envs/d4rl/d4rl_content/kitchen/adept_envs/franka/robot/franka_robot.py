@@ -18,8 +18,8 @@ import numpy as np
 from termcolor import cprint
 import time
 
-from d4rl_content.kitchen.adept_envs import base_robot
-from d4rl_content.kitchen.adept_envs.utils.config import (get_config_root_node, read_config_from_node)
+from envs.d4rl.d4rl_content.kitchen.adept_envs import base_robot
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.config import (get_config_root_node, read_config_from_node)
 
 # obervations structure
 from collections import namedtuple

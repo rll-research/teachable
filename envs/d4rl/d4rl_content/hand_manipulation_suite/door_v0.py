@@ -3,7 +3,7 @@ from gym import utils
 from gym import spaces
 from mjrl.envs import mujoco_env
 from mujoco_py import MjViewer
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content import offline_env
 import os
 
 ADD_BONUS_REWARDS = True

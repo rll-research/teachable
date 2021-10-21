@@ -1,5 +1,5 @@
-from d4rl_content.pointmaze import MazeEnv, maze_model
-from d4rl_content.offline_env import get_keys
+from envs.d4rl.d4rl_content.pointmaze import MazeEnv, maze_model
+from envs.d4rl.d4rl_content.offline_env import get_keys
 import os
 import argparse
 import numpy as np

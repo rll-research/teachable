@@ -4,9 +4,9 @@ import numpy as np
 from pybullet_envs import env_bases
 from pybullet_envs import scene_abstract
 
-from d4rl_content.pointmaze_bullet import bullet_robot
-from d4rl_content.pointmaze import maze_model
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content.pointmaze_bullet import bullet_robot
+from envs.d4rl.d4rl_content.pointmaze import maze_model
+from envs.d4rl.d4rl_content import offline_env
 
 class MazeRobot(bullet_robot.MJCFBasedRobot):
     def __init__(self, maze_spec):

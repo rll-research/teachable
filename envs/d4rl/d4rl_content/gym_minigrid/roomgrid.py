@@ -1,4 +1,4 @@
-from d4rl_content.gym_minigrid.minigrid import *
+from envs.d4rl.d4rl_content.gym_minigrid.minigrid import *
 
 def reject_next_to(env, pos):
     """

@@ -103,7 +103,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
     return 'no feedback string available'
 
 
-def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index, teacher_name, reward):
+def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     teacher_action = env_info['teacher_action']
     # TODO: if we reintroduce the reward predictor, plot it here too
@@ -120,7 +120,6 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
             label_str += f"Teacher advice: {teacher_action}"
         else:
             label_str += f"Teacher on: {env.teacher.feedback_type}   "
-    # label_str += "Run: " + str(run_index)
     if hasattr(env, 'mission'):
         cv2.putText(background, env.mission, (30, 30), font, 0.5, (0, 0, 0), 1, 0)
     cv2.putText(background, label_str, (30, 90), font, 0.5, (0, 0, 0), 1, 0)
@@ -138,15 +137,15 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, run_index,
         cv2.putText(background, "Reward: " + str(reward), (30, 330), font, 0.5, (0, 0, 0), 1, 0)
         cv2.putText(background, "Dist to goal: " + str(np.linalg.norm(env.get_target() - env.get_pos())), (30, 360), font, 0.5, (0, 0, 0), 1, 0)
     except Exception as e:
-        x = 3
-        # print("Error adding text", e)
+        pass
     return background
 
 
-def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_every=1,
+def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
-            num_save=None, record_teacher=False, reward_predictor=None, save_locally=True,
-            save_wandb=False, obs_preprocessor=None, teacher_name="", rollout_oracle=False, hierarchical_rollout=False):
+            num_save=None, record_teacher=False, save_locally=True,
+            save_wandb=False, teacher_name="", rollout_oracle=False,
+            hierarchical_rollout=False):
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + ".mp4")
     if num_save is None:
@@ -155,49 +154,42 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     # Get setup to log
     timestep = env.get_timestep()
     fps = int(speedup / timestep)
-    img = env.render(mode='rgb_array')
-    height, width, channels = img.shape
-    size = (width * 2, height * 2)
+
+    success_writer = None
+    failure_writer = None
+    all_writer = None
     if save_locally:
+        img = env.render(mode='rgb_array')
+        height, width, channels = img.shape
+        size = (width * 2, height * 2)
         all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
-        success_writer = None
-        failure_writer = None
     if save_wandb:
         all_videos, success_videos, failure_videos = [], [], []
 
     # Collect a few trajectories
     paths, agent_actions, teacher_actions = [], [], []
     correct, stoch_correct, det_correct, count, total_reward, success = 0, 0, 0, 0, 0, 0
-    num_feedback = 0
-    num_steps = 0
     for i in range(num_rollouts):
         observations, actions, rewards, agent_infos, env_infos, curr_images = [], [], [], [], [], []
         path_length = 0
 
-        # Possibly reset the env. If we're doing RL2, we may not reset every time.
-        if i % reset_every == 0:
-            agent.reset(dones=[True])
-            if reward_predictor is not None:
-                reward_predictor.reset(dones=[True])
-            env.set_task()
         o = env.reset()
         # Loop until the max_path_length or we hit done
         while path_length < max_path_length:
             if hierarchical_rollout:
                 del o['OffsetWaypoint']
                 del o['gave_OffsetWaypoint']
-            num_steps += 1
             past_o = o
             # Choose action
             if hierarchical_rollout:
                 a, agent_info = agent.get_hierarchical_actions([o])
             else:
-                o = obs_preprocessor([o], agent.teacher, show_instrs=instrs)
-                a, agent_info = agent.get_actions(o)
+                a, agent_info = agent.get_actions([o], instr_dropout_prob=int(instrs))
             stoch_a = a
             det_a = agent_info['argmax_action']
             if discrete:
-                correct = int(a.item() == env.teacher_action.item())
+                a = a.item()
+                correct = int(a == env.teacher_action.item())
             else:
                 correct = True
             if not stochastic:
@@ -212,21 +204,17 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 next_o, r, d, env_info = env.step(a)
 
             # Store data for logging
-            #teacher_actions.append(env_info['teacher_action'])
             if discrete:
-                if env_info['teacher_action'].item() == a.item():
+                if env_info['teacher_action'].item() == a:
                     correct += 1
-                if env_info['teacher_action'].item() == stoch_a.item():
+                if env_info['teacher_action'].item() == stoch_a:
                     stoch_correct += 1
-                if env_info['teacher_action'].item() == det_a.item():
+                if env_info['teacher_action'].item() == det_a:
                     det_correct += 1
             count += 1
             total_reward += r
-            #agent_actions.append(a)
-            #observations.append(o)
             rewards.append(r)
             actions.append(a)
-            #agent_infos.append(agent_info)
             env_infos.append(env_info)
             path_length += 1
 
@@ -235,7 +223,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
                 img = plot_img(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
-                               record_teacher=record_teacher, run_index=i % reset_every, teacher_name=teacher_name,
+                               record_teacher=record_teacher, teacher_name=teacher_name,
                                reward=r)
                 curr_images.append(img)
 
@@ -243,7 +231,6 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
             if d:
                 if env_info['success']:
                     success += 1
-                # print("timestep success", env_info['timestep_success'])
                 print("Done on timestep", path_length, env_info['success'])
                 break
 
@@ -260,10 +247,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
                 failure_videos += curr_images + [sample_img + 255] * 3
 
         paths.append(dict(
-           #observations=observations,
             actions=actions,
             rewards=rewards,
-            #agent_infos=agent_infos,
             env_infos=env_infos
         ))
 
@@ -273,6 +258,5 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1, reset_ev
     if save_wandb:
         finalize_videos_wandb(video_name, all_videos, success_videos, failure_videos, fps)
 
-    # print("FEEDBACK RATIO", num_feedback, num_steps, num_feedback / num_steps)
     print(f"Finished rollouts, acc = {stoch_correct / count}, success = {success / num_rollouts}",)
     return paths, correct / count, stoch_correct / count, det_correct / count, total_reward / count

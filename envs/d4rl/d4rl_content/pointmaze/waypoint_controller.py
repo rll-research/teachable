@@ -1,8 +1,8 @@
 import numpy as np
-from d4rl_content.pointmaze import q_iteration
-from d4rl_content.pointmaze.gridcraft import grid_env
-from d4rl_content.pointmaze.gridcraft import grid_spec
-from d4rl_content.pointmaze.gridcraft.grid_spec import WALL, IDENTITY_MAP
+from envs.d4rl.d4rl_content.pointmaze import q_iteration
+from envs.d4rl.d4rl_content.pointmaze.gridcraft import grid_env
+from envs.d4rl.d4rl_content.pointmaze.gridcraft import grid_spec
+from envs.d4rl.d4rl_content.pointmaze.gridcraft.grid_spec import WALL, IDENTITY_MAP
 
 ZEROS = np.zeros((2,), dtype=np.float32)
 ONES = np.zeros((2,), dtype=np.float32)

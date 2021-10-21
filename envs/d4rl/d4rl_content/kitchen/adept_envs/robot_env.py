@@ -24,10 +24,10 @@ from typing import Dict, Optional
 import numpy as np
 
 
-from d4rl_content.kitchen.adept_envs import mujoco_env
-from d4rl_content.kitchen.adept_envs.base_robot import BaseRobot
-from d4rl_content.kitchen.adept_envs.utils.configurable import import_class_from_path
-from d4rl_content.kitchen.adept_envs.utils.constants import MODELS_PATH
+from envs.d4rl.d4rl_content.kitchen.adept_envs import mujoco_env
+from envs.d4rl.d4rl_content.kitchen.adept_envs.base_robot import BaseRobot
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.configurable import import_class_from_path
+from envs.d4rl.d4rl_content.kitchen.adept_envs.utils.constants import MODELS_PATH
 
 
 class RobotEnv(mujoco_env.MujocoEnv):

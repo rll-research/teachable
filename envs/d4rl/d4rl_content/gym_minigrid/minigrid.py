@@ -1,8 +1,8 @@
 from enum import IntEnum
 from gym import spaces
 from gym.utils import seeding
-from d4rl_content.gym_minigrid.rendering import *
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content.gym_minigrid.rendering import *
+from envs.d4rl.d4rl_content import offline_env
 
 # Size in pixels of a tile in the full-scale human view
 TILE_PIXELS = 32

@@ -1,6 +1,6 @@
 import gym
 import os
-from d4rl_content import offline_env
+from envs.d4rl.d4rl_content import offline_env
 from gym.envs.registration import register
 
 from copy import deepcopy
@@ -20,9 +20,9 @@ from flow.envs.ring.accel import AccelEnv
 from flow.core.params import SumoParams
 from flow.envs import WaveAttenuationPOEnv
 
-from d4rl_content.flow import traffic_light_grid
-from d4rl_content.flow import merge
-from d4rl_content.flow import bottleneck
+from envs.d4rl.d4rl_content.flow import traffic_light_grid
+from envs.d4rl.d4rl_content.flow import merge
+from envs.d4rl.d4rl_content.flow import bottleneck
 
 def flow_register(flow_params, render=None, **kwargs):
     exp_tag = flow_params["exp_tag"]

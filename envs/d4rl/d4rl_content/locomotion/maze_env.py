@@ -22,7 +22,7 @@ import math
 import numpy as np
 import gym
 from copy import deepcopy
-from d4rl_content.locomotion.generate_new_maze import generate_maze
+from envs.d4rl.d4rl_content.locomotion.generate_new_maze import generate_maze
 
 RESET = R = 'r'  # Reset position.
 GOAL = G = 'g'

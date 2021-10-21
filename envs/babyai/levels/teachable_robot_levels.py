@@ -1,20 +1,14 @@
 import copy
 import pickle as pkl
 
+import torch
+
 from envs.babyai.levels.levelgen import RoomGridLevel
 from gym_minigrid.minigrid import MiniGridEnv, OBJECT_TO_IDX, COLOR_TO_IDX, TILE_PIXELS
 import numpy as np
 from copy import deepcopy
-from envs.babyai.oracle.post_action_advice import PostActionAdvice
 from envs.babyai.oracle.pre_action_advice import PreActionAdvice
-from envs.babyai.oracle.cartesian_corrections import CartesianCorrections
-from envs.babyai.oracle.cartesian_corrections_repeated_index import CartesianCorrectionsRepeatedIndex
-from envs.babyai.oracle.subgoal_corrections import SubgoalCorrections
 from envs.babyai.oracle.subgoal_simple_corrections import SubgoalSimpleCorrections
-from envs.babyai.oracle.offset_corrections import OffsetCorrections
-from envs.babyai.oracle.offset_corrections_repeated_index import OFFIO
-from envs.babyai.oracle.offset_sparse import OFFSparse
-from envs.babyai.oracle.offset_sparse_random import OFFSparseRandom
 from envs.babyai.oracle.off_sparse_random_easy import OSREasy
 from envs.babyai.oracle.osr_mistaken import OSRMistaken
 from envs.babyai.oracle.osr_periodic_explicit import OSRPeriodicExplicit
@@ -63,35 +57,11 @@ class Level_TeachableRobot(RoomGridLevel):
             for ft, ff in zip(feedback_type, feedback_freq):
                 if ft == 'none':
                     teacher = DummyAdvice(Bot, self, fully_observed=fully_observed)
-                elif ft == 'PostActionAdvice':
-                    teacher = PostActionAdvice(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'PreActionAdvice':
                     teacher = PreActionAdvice(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'CartesianCorrections':
-                    obs_size = self.reset()['obs'].flatten().size
-                    teacher = CartesianCorrections(Bot, self, obs_size=obs_size, feedback_frequency=ff,
-                                                   fully_observed=fully_observed)
-                elif ft == 'CCIO':
-                    obs_size = self.reset()['obs'].flatten().size
-                    teacher = CartesianCorrectionsRepeatedIndex(Bot, self, obs_size=obs_size, feedback_frequency=ff,
-                                                                fully_observed=fully_observed)
-                elif ft == 'SubgoalCorrections':
-                    teacher = SubgoalCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'SubgoalSimple':
                     teacher = SubgoalSimpleCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OffsetCorrections':
-                    teacher = OffsetCorrections(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OFFIO':
-                    teacher = OFFIO(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OFFSparse':
-                    teacher = OFFSparse(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OFFSparseRandom':
-                    teacher = OFFSparseRandom(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OFFSparseRandom2':
-                    teacher = OFFSparseRandom(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSREasy':
-                    teacher = OSREasy(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
-                elif ft == 'OSREasy2':
                     teacher = OSREasy(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
                 elif ft == 'OSRMistaken':
                     teacher = OSRMistaken(Bot, self, feedback_frequency=ff, fully_observed=fully_observed)
@@ -237,6 +207,21 @@ class Level_TeachableRobot(RoomGridLevel):
         self.instrs = mission['instrs']
 
 
+    def get_doors(self):
+        """
+        Get a list of all doors in the environment.
+        :return: List of Door objects
+        """
+        doors = []
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
+                room = self.get_room(i, j)
+                for door in room.doors:
+                    if door:
+                        doors.append(door)
+        return doors
+
+
     def place_agent(self, i=None, j=None, rand_dir=True, top_index=None, bottom_index=None):
         """
         Place the agent randomly into a room.  Optionally, initialize it in a particular part of the room.
@@ -365,7 +350,12 @@ class Level_TeachableRobot(RoomGridLevel):
         :param action: action to take
         :return: results of stepping the env
         """
-        assert type(action) is int
+        if type(action) in [np.ndarray, torch.IntTensor]:
+            if not action.shape == (1,):
+                print("uh oh")
+            assert action.shape == (1,)
+            action = action.item()
+        action = int(action)
 
         # Off by one error potentially.  # TODO: double check!
         if hasattr(self, 'teacher') and self.teacher is not None:

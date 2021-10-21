@@ -1,6 +1,6 @@
 from ..pointmaze.maze_model import OPEN, U_MAZE, MEDIUM_MAZE, LARGE_MAZE
 from gym.envs.registration import register
-from d4rl_content import infos
+from envs.d4rl.d4rl_content import infos
 
 register(
     id='bullet-maze2d-open-v0',

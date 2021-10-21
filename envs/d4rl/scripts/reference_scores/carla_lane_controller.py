@@ -1,6 +1,6 @@
 import d4rl_content
 import gym
-from d4rl_content.carla import data_collection_agent_lane
+from envs.d4rl.d4rl_content.carla import data_collection_agent_lane
 import numpy as np
 import argparse
 

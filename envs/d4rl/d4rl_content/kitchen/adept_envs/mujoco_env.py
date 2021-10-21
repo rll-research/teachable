@@ -27,7 +27,7 @@ from gym import spaces
 from gym.utils import seeding
 import numpy as np
 
-from d4rl_content.kitchen.adept_envs.simulation.sim_robot import MujocoSimRobot, RenderMode
+from envs.d4rl.d4rl_content.kitchen.adept_envs.simulation.sim_robot import MujocoSimRobot, RenderMode
 
 DEFAULT_RENDER_SIZE = 480
 
