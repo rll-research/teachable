@@ -228,7 +228,7 @@ def run_experiment():
     else:
         collect_policy = None
 
-    exp_dir = os.getcwd() + '/logs/' + exp_name + "_" + str(args.seed)
+    exp_dir = os.getcwd() + '/logs/' + exp_name
     args.exp_dir = exp_dir
     is_debug = args.prefix == 'DEBUG'
     configure_logger(args, exp_dir, args.start_itr, is_debug)
