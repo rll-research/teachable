@@ -25,15 +25,7 @@ class PPOAgent(Agent):
         self.actor = DiagGaussianActor(obs_dim, self.action_dim, discrete=args.discrete, hidden_dim=args.hidden_dim).to(
             self.device)
 
-        params = list(self.actor.parameters()) + list(self.critic.parameters())
-        if self.state_encoder is not None:
-            params += list(self.state_encoder.parameters())
-        if self.task_encoder is not None:
-            params += list(self.task_encoder.parameters())
-        if self.advice_embedding is not None:
-            params += list(self.advice_embedding.parameters())
-
-        self.optimizer = torch.optim.Adam(params, lr=args.lr, betas=(args.beta1, args.beta2), eps=self.args.optim_eps)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=self.args.optim_eps)
         self.train()
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
