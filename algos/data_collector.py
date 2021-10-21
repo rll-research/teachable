@@ -128,7 +128,10 @@ class DataCollector(ABC):
                 self.argmax_action[i] = agent_dict['argmax_action']
             if self.args.on_policy:
                 self.values[i] = agent_dict['value'].squeeze(1)
-                self.log_probs[i] = agent_dict['dist'].log_prob(action).sum(-1)
+                if self.args.discrete:
+                    self.log_probs[i] = agent_dict['dist'].log_prob(action[:, 0])
+                else:
+                    self.log_probs[i] = agent_dict['dist'].log_prob(action).sum(-1)
             self.rewards[i] = torch.tensor(reward, device=self.device)
 
             # Update log values
