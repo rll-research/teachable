@@ -130,7 +130,7 @@ def make_env(args, feedback_list):
 
 
 def configure_logger(args, exp_dir, start_itr, is_debug):
-    if not args.reload_exp_path is None:
+    if args.reload_exp_path is None:
         if os.path.isdir(exp_dir):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']

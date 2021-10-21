@@ -121,7 +121,10 @@ class Buffer:
         # We can fit the entire traj in
         for k in value:
             arr = getattr(value, k)
-            arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            try:
+                arr[index:index + max_val] = getattr(traj, k)[:max_val]
+            except:
+                print("uh oh")
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:
