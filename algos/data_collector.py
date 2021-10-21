@@ -41,7 +41,7 @@ class DataCollector(ABC):
             action_shape = envs[0].action_space.shape[0]
         if self.args.discrete:
             self.actions = torch.zeros(*shape, 1, device=self.device, dtype=torch.int)
-            self.teacher_actions = torch.zeros(*shape, device=self.device, dtype=torch.int)
+            self.teacher_actions = torch.zeros(*shape, 1, device=self.device, dtype=torch.int)
             self.action_probs = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
         else:
             self.actions = torch.zeros(*shape, action_shape, device=self.device, dtype=torch.float16)
@@ -112,8 +112,8 @@ class DataCollector(ABC):
             self.obss[i] = self.obs
             self.obs = obs
             try:
-                self.teacher_actions[i] = torch.FloatTensor(np.concatenate([ei['teacher_action'] for ei in env_info])).to(self.device)
-            except:
+                self.teacher_actions[i] = torch.FloatTensor(np.stack([ei['teacher_action'] for ei in env_info])).to(self.device)
+            except Exception as e:
                 self.teacher_actions[i] = self.teacher_actions[i] * 0 - 1
 
             self.masks[i] = self.mask
