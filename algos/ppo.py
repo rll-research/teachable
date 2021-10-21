@@ -90,7 +90,10 @@ class PPOAgent(Agent):
         entropy = dist.entropy().mean()
         action = batch.action
         assert action.shape == (batch_size, self.action_shape), (action.shape, batch_size, self.action_shape)
-        new_log_prob = dist.log_prob(action).sum(-1)
+        if self.args.discrete:
+            new_log_prob = dist.log_prob(action[:, 0])
+        else:
+            new_log_prob = dist.log_prob(action).sum(-1)
         assert batch.log_prob.shape == new_log_prob.shape == batch.advantage.shape == (batch_size, )
         ratio = torch.exp(new_log_prob - batch.log_prob)
         surrr1 = ratio * batch.advantage
