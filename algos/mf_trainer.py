@@ -257,7 +257,7 @@ class Trainer(object):
 
             if self.args.discrete:
                 logger.logkv(f"{tag}/Accuracy", torch.eq(data.action, data.teacher_action).float().mean().item())
-                logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1),
+                logger.logkv(f"{tag}/Argmax_Accuracy", torch.eq(data.action_probs.argmax(dim=1).unsqueeze(1),
                                                                 data.teacher_action).float().mean().item())
 
             self.num_feedback_advice += episode_logs['num_feedback_advice']
