@@ -157,6 +157,9 @@ class Agent(nn.Module):
             action_teacher = batch.teacher_action
         else:
             action_teacher = torch.zeros_like(action_true)
+        if self.args.discrete:  # remove extra dim, since it messes with log_prob function
+            action_true = action_true[:, 0]
+            action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
     def distill(self, batch, is_training=False, source='agent'):
@@ -165,8 +168,10 @@ class Agent(nn.Module):
 
         # Obtain batch and preprocess
         obss, action_true, action_teacher = self.preprocess_distill(batch, source)
-
-        assert len(action_true.shape) == 2, (action_true.shape, "action should be batch, action_dim")
+        if self.args.discrete:
+            assert len(action_true.shape) == 1
+        else:
+            assert len(action_true.shape) == 2
         assert action_true.shape == action_teacher.shape, (action_true.shape, action_teacher.shape)
 
         # Dropout instructions with probability instr_dropout_prob,
