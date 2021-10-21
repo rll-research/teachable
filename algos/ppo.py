@@ -96,7 +96,7 @@ class PPOAgent(Agent):
         surrr1 = ratio * batch.advantage
         surrr2 = torch.clamp(ratio, 1.0 - self.args.clip_eps, 1.0 + self.args.clip_eps) * batch.advantage
         if self.args.discrete:
-            control_penalty = torch.zeros(1, device=ratio.device)
+            control_penalty = torch.zeros(1, device=ratio.device).mean()
         else:
             control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
