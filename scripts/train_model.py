@@ -111,7 +111,6 @@ def make_env(args, feedback_list):
         args.discrete = True
         args.image_obs = False
         args.no_instr = True
-    args.discrete = args.discrete
 
     arguments = {
         "start_loc": 'all',
