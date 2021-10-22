@@ -47,7 +47,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="RMSprop optimizer apha (default: 0.99)")
         self.add_argument("--batch_size", type=int, default=512,
                           help="batch size for distillation")
-        self.add_argument("--entropy_coef", type=float, default=0.01,
+        self.add_argument("--entropy_coef", type=float, default=0.001,
                           help="entropy term coefficient")
         self.add_argument('--n_itr', type=int, default=100000)
         self.add_argument('--end_on_full_buffer', action='store_true')
