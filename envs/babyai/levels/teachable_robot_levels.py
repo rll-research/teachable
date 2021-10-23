@@ -351,9 +351,6 @@ class Level_TeachableRobot(RoomGridLevel):
         :return: results of stepping the env
         """
         if type(action) in [np.ndarray, torch.IntTensor]:
-            if not action.shape == (1,):
-                print("uh oh")
-            assert action.shape == (1,)
             action = action.item()
         action = int(action)
 
