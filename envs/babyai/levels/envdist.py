@@ -28,7 +28,7 @@ class EnvDist(Serializable):
         elif env == 'ant':
             self.levels_list = {k: NULL_SEED for k in range(12 + 10)}
         elif env == 'babyai':
-            self.levels_list = {k: NULL_SEED for k in range(49)}
+            self.levels_list = {k: NULL_SEED for k in range(50)}
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
         if self.env_dist == 'four_levels':
@@ -250,6 +250,8 @@ class EnvDist(Serializable):
                 level = Level_OpenSmall3by3(**kwargs)  # 47 test21
             elif index == 48:
                 level = Level_SeekL0(**kwargs)  # 48 test22
+            elif index == 49:
+                level = Level_UnlockTopLeft(**kwargs)  # UnlockTopLeft
             else:
                 raise NotImplementedError(index)
             level.seed(seed)
