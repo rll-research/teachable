@@ -88,6 +88,14 @@ class Level_TeachableRobot(RoomGridLevel):
             COLOR_TO_IDX['red'],
             env.agent_dir
         ])
+        # If carrying, set the carried object at [0,0]
+        if self.carrying:
+            object_encoding = self.carrying.encode()
+            full_grid[0, 0] = np.array([
+                object_encoding[0],
+                object_encoding[1],
+                1,
+            ])
         return full_grid
 
     def sample_object(self):
@@ -498,7 +506,7 @@ class Level_TeachableRobot(RoomGridLevel):
             self.agent_pos,
             self.agent_dir,
             highlight_mask=highlight_mask if highlight else None,
-            vis_mask=full_vis_mask,
+            # vis_mask=full_vis_mask,
         )
 
         if mode == 'human':
