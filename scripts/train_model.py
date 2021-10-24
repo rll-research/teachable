@@ -180,9 +180,7 @@ def eval_policy(policy, env, args, exp_dir):
                 f'{args.prefix}-{env_index},{args.prefix},{env_index},{success_rate},{stoch_accuracy},{det_accuracy},{reward} \n')
 
 
-def run_experiment():
-    parser = ArgumentParser()
-    args = parser.parse_args()
+def run_experiment(args):
     args, log_dict = load_experiment(args)
     exp_name = args.prefix
     set_seed(args.seed)
@@ -272,6 +270,32 @@ def run_experiment():
 
 
 if __name__ == '__main__':
-    base_path = 'data/'
-    run_experiment()
+    try:
+        parser = ArgumentParser()
+        args = parser.parse_args()
+        run_experiment(args)
+    except Exception as e:
+        import traceback
+        from datetime import datetime
+        import os
+
+        error_content = [
+            f'Run Name: {args.prefix}',
+            f'Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
+            f'GPU: {os.environ["CUDA_VISIBLE_DEVICES"]}',
+            f'Error: {traceback.format_exc()}',
+            '=======================================================================================================\n',
+        ]
+
+        for error_line in error_content[:-2]:
+            print(error_line)
+
+        file = pathlib.Path('/home/olivia/failed_runs.txt')
+        if file.exists():
+            with open(file, 'a') as f:
+                f.writelines(error_content)
+        else:
+            print("Not logging anywhere b/c we can't find the file")
+        raise
+
 
