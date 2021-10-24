@@ -165,7 +165,8 @@ def eval_policy(policy, env, args, exp_dir):
                                                                         save_wandb=False,
                                                                         save_locally=True,
                                                                         num_save=args.num_rollouts,
-                                                                        rollout_oracle=False)
+                                                                        rollout_oracle=False,
+                                                                        teacher_name=policy.teacher)
         success_rate = np.mean([path['env_infos'][-1]['success'] for path in paths])
         try:
             success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
