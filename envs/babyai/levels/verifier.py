@@ -478,7 +478,7 @@ class PutNextInstr(ActionInstr):
 class PutNextSameColorInstr(PutNextInstr):
 
     def surface(self, env):
-        return f'put a {self.desc_move.type} next to a {self.desc_fixed.type} object {self.desc_move.color}'
+        return f'put a {self.desc_move.color} {self.desc_move.type} next to a {self.desc_fixed.type} object of the same color'
 
 
 class SeqInstr(Instr):
