@@ -14,20 +14,20 @@ def write_video(writer, frames, show_last=None):
         writer.write(frame)
 
 
-def write_traj_local(video_filename, curr_images, success, success_writer, failure_writer, all_writer, fps, size):
+def write_traj_local(video_filename, curr_images, success, success_writer, failure_writer, all_writer, fps, size, codec):
     # Add a few blank frames at the end to indicate success (white) or failure (black)
     sample_img = np.zeros_like(curr_images[-1])
     if success:
         curr_images += [sample_img + 255] * 3
         if success_writer is None:
             success_writer = cv2.VideoWriter(video_filename[:-4] + "success" + video_filename[-4:],
-                                             cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+                                             cv2.VideoWriter_fourcc(*codec), fps, size)
         write_video(success_writer, curr_images)
     else:
         curr_images += [sample_img] * 3
         if failure_writer is None:
             failure_writer = cv2.VideoWriter(video_filename[:-4] + "failures" + video_filename[-4:],
-                                             cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+                                             cv2.VideoWriter_fourcc(*codec), fps, size)
         write_video(failure_writer, curr_images)
     write_video(all_writer, curr_images)
 
@@ -100,7 +100,7 @@ def get_readable_feedback(env_info, obs, teacher_name):
         coordinate = (coordinate * 10) + agent_pos
         return f"Name: {subgoal_name}, Coord: {coordinate}, " \
                f"obj {obj_color} {obj_type}, pos {agent_pos}, dir {agent_dir}"
-    return 'no feedback string available'
+    return f'no feedback string available for {teacher_name}'
 
 
 def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
@@ -146,8 +146,10 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
             hierarchical_rollout=False):
+    codec = 'mjpg'
+    extension = '.avi'
     discrete = type(env.action_space) is Discrete
-    video_filename = os.path.join(video_directory, video_name + ".mp4")
+    video_filename = os.path.join(video_directory, video_name + extension)
     if num_save is None:
         num_save = num_rollouts
 
@@ -162,7 +164,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
         img = env.render(mode='rgb_array')
         height, width, channels = img.shape
         size = (width * 2, height * 2)
-        all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*codec), fps, size)
     if save_wandb:
         all_videos, success_videos, failure_videos = [], [], []
 
@@ -237,7 +239,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
         # At the end of a trajectory, save it
         if save_locally and i < num_save:
             write_traj_local(video_filename, curr_images, success, success_writer, failure_writer,
-                             all_writer, fps, size)
+                    all_writer, fps, size, codec)
         if save_wandb and i < num_save:
             sample_img = np.zeros_like(curr_images[-1])
             all_videos += curr_images

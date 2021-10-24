@@ -265,8 +265,8 @@ class Level_TeachableRobot(RoomGridLevel):
         types = ['door', 'key', 'ball', 'box']
         actions = ["go", "pick", "up", "open", "put"]
         fillers = ["to", "next", "the", "a"]
-        misc = ["object", "lime", "chest", "seek", "matching", "object", "then"]
-        unknown = [f"unk{i}" for i in range(10)]
+        misc = ["object", "lime", "chest", "seek", "matching",  "then", 'of', 'same', 'color']
+        unknown = [f"unk{i}" for i in range(8)]
         return ['PAD'] + colors + types + actions + fillers + misc + unknown
 
     def to_vocab_index(self, mission, pad_length=None):
