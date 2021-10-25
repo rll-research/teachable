@@ -25,8 +25,10 @@ class RoomGridLevel(RoomGrid):
     def __init__(
         self,
         room_size=8,
+        horizon=float('inf'),
         **kwargs
     ):
+        self.horizon = horizon
         super().__init__(
             room_size=room_size,
             **kwargs
@@ -45,7 +47,7 @@ class RoomGridLevel(RoomGrid):
 
         nav_time_maze = nav_time_room * self.num_rows * self.num_cols
         num_navs = self.num_navs_needed(self.instrs)
-        self.max_steps = num_navs * nav_time_maze
+        self.max_steps = min(num_navs * nav_time_maze, self.horizon)
 
         return obs
 
@@ -486,10 +488,13 @@ def register_levels(module_name, globals):
         # Register the levels with OpenAI Gym
         gym_id = 'BabyAI-%s-v0' % (level_name)
         entry_point = '%s:%s' % (module_name, global_name)
-        gym.envs.registration.register(
-            id=gym_id,
-            entry_point=entry_point,
-        )
+        try:
+            gym.envs.registration.register(
+                id=gym_id,
+                entry_point=entry_point,
+            )
+        except Exception as e:
+            print(f"Error registering env: {e}")
 
         # Add the level to the dictionary
         level_dict[level_name] = level_class
