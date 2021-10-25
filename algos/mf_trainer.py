@@ -170,7 +170,10 @@ class Trainer(object):
                                                                            train=self.should_train_rl)
                 if self.relabel_policy is not None:
                     samples_data = self.relabel(samples_data)
+                buffer_start = time.time()
                 self.buffer.add_batch(samples_data)
+                buffer_time = time.time() - buffer_start
+                logger.logkv('Time/Buffer', buffer_time)
             else:
                 episode_logs = None
                 samples_data = None
