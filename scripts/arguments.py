@@ -30,6 +30,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--leave_out_object', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--eval_envs', nargs='+', type=int, default=None)
+        self.add_argument('--horizon', type=int, default=None)
 
         # Training arguments
         self.add_argument("--seed", type=int, default=1,

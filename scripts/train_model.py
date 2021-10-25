@@ -123,6 +123,7 @@ def make_env(args, feedback_list):
         "args": args,
         "seed": args.seed,
         "static_env": args.static_env,
+        "horizon": args.horizon,
     }
 
     env = EnvDist(args.env_dist, env=args.env, start_index=args.level, **arguments)
