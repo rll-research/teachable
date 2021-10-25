@@ -4,6 +4,8 @@ import numpy as np
 import pathlib
 import pickle as pkl
 import torch
+from logger import logger
+import time
 
 from utils.dictlist import merge_dictlists, DictList
 
@@ -140,6 +142,7 @@ class Buffer:
 
     def add_trajs(self, batch, trim=True, only_val=False):
         """ Save a batch of trajectories, passed in as a Dictlist of timesteps of sequential trajs. """
+        start = time.time()
         if trim:
             batch = trim_batch(batch)
         trajs = self.split_batch(batch)
@@ -150,15 +153,22 @@ class Buffer:
             split = 1
         if only_val:
             split = len(trajs)
+        logger.logkv('Time/Buffer_Preprocess', time.time() - start)
+        start = time.time()
         for traj in trajs[:split]:
             self.save_traj(traj, self.index_val, 'val')
             self.index_val = (self.index_val + len(traj)) % self.val_buffer_capacity
             self.counts_val = min(self.val_buffer_capacity, self.counts_val + len(traj))
+        logger.logkv('Time/Buffer_Val', time.time() - start)
+        start = time.time()
         for traj in trajs[split:]:
             self.save_traj(traj, self.index_train, 'train')
             self.index_train = (self.index_train + len(traj)) % self.train_buffer_capacity
             self.counts_train = min(self.train_buffer_capacity, self.counts_train + len(traj))
+        logger.logkv('Time/Buffer_Train', time.time() - start)
+        start = time.time()
         self.save_buffer()
+        logger.logkv('Time/Buffer_Save', time.time() - start)
         print("COUNTS", self.counts_train, self.counts_val, self.index_train, self.index_val)
 
     def add_batch(self, batch, trim=True, only_val=False):
@@ -167,7 +177,9 @@ class Buffer:
         if self.trajs_train is None:
             self.create_blank_buffer(batch)
         self.add_trajs(batch, trim, only_val)
+        start = time.time()
         self.update_stats(batch)
+        logger.logkv('Time/Buffer_Stats', time.time() - start)
 
     def update_stats(self, batch):
         """ Save pointers to our current index in the buffer and some counts. """
