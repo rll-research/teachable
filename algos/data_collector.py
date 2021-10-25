@@ -101,7 +101,7 @@ class DataCollector(ABC):
 
         loop_start = time.time()
         for i in range(self.args.frames_per_proc):
-            policy_start = 0
+            policy_start = time.time()
             with torch.no_grad():  # TODO: what's this for?
                 action, agent_dict = policy.act(self.obs, sample=True,
                                                 instr_dropout_prob=self.args.collect_dropout_prob)
@@ -111,7 +111,7 @@ class DataCollector(ABC):
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
 
-            env_start = 0
+            env_start = time.time()
             obs, reward, done, env_info = self.env.step(action_to_take)
             env_time += (time.time() - env_start)
             if not collect_reward:
