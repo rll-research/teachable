@@ -25,7 +25,7 @@ class RoomGridLevel(RoomGrid):
     def __init__(
         self,
         room_size=8,
-        horizon=float('inf'),
+        horizon=None,
         **kwargs
     ):
         self.horizon = horizon
@@ -47,7 +47,9 @@ class RoomGridLevel(RoomGrid):
 
         nav_time_maze = nav_time_room * self.num_rows * self.num_cols
         num_navs = self.num_navs_needed(self.instrs)
-        self.max_steps = min(num_navs * nav_time_maze, self.horizon)
+        self.max_steps = num_navs * nav_time_maze
+        if self.horizon is not None:
+            self.max_steps = min(self.max_steps, self.horizon)
 
         return obs
 
