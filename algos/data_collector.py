@@ -91,29 +91,19 @@ class DataCollector(ABC):
             reward, policy loss, value loss, etc.
 
         """
-        import time
-        full_start = time.time()
         policy = self.policy
         policy.train(train)
 
-        policy_time = 0
-        env_time = 0
-
-        loop_start = time.time()
         for i in range(self.args.frames_per_proc):
-            policy_start = time.time()
-            with torch.no_grad():  # TODO: what's this for?
+            with torch.no_grad():
                 action, agent_dict = policy.act(self.obs, sample=True,
                                                 instr_dropout_prob=self.args.collect_dropout_prob)
-            policy_time += (time.time() - policy_start)
 
             action_to_take = action.cpu().numpy()
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
 
-            env_start = time.time()
             obs, reward, done, env_info = self.env.step(action_to_take)
-            env_time += (time.time() - env_start)
             if not collect_reward:
                 reward = [np.nan for _ in reward]
 
@@ -169,9 +159,7 @@ class DataCollector(ABC):
 
         # Flatten the data correctly, making sure that
         # each episode's data is a continuous chunk
-        loop_time = time.time() - loop_start
 
-        exps_time = time.time()
         exps = DictList()
         exps.obs = [self.obss[i][j]
                     for j in range(self.num_procs)
@@ -211,9 +199,7 @@ class DataCollector(ABC):
         full_done = self.dones.transpose(0, 1)
         full_done[:, -1] = 1
         exps.full_done = full_done.reshape(-1).int()
-        exps_time = time.time() - exps_time
 
-        adv_time = time.time()
         if self.args.on_policy:
             self.advantages = torch.zeros(self.args.frames_per_proc, self.num_procs, device=self.device)
             # Add advantage and return to experiences
@@ -236,12 +222,6 @@ class DataCollector(ABC):
             logger.logkv("Train/Value", to_np(exps.value.mean()))
             logger.logkv("Train/Advantage", to_np(exps.advantage.mean()))
             logger.logkv("Train/Returnn", to_np(exps.returnn.mean()))
-            logger.logkv("Train/Time_Collect", time.time() - full_start)
-            logger.logkv("Train/Time_Policy", policy_time)
-            logger.logkv("Train/Time_Env", env_time)
-            logger.logkv("Train/Time_Loop", loop_time)
-            logger.logkv("Train/Time_Exps", exps_time)
-        adv_time = time.time() - adv_time
 
         # Log some values
         log = {
