@@ -133,6 +133,7 @@ class Agent(nn.Module):
         }
         train_str = 'Train' if train else 'Val'
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
+        logger.logkv(f"Distill/Entropy_{train_str}", float(dist.entropy().mean()))
         logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))
         logger.logkv(f"Distill/Accuracy_{train_str}", float((action_pred == action_true).sum()) / len(action_pred))
         logger.logkv(f"Distill/Label_Accuracy_{train_str}", float((action_teacher == action_true).sum()) / len(action_pred))
@@ -181,8 +182,9 @@ class Agent(nn.Module):
         _, info = self.act(obss, sample=True, instr_dropout_prob=instr_dropout_prob)
         dist = info['dist']
         policy_loss = -dist.log_prob(action_true).mean()
+        entropy_loss = -dist.entropy().mean()
         # TODO: consider re-adding recon loss
-        loss = policy_loss
+        loss = policy_loss + self.args.distill_entropy_coef * entropy_loss
 
         ### LOGGING ###
         log = self.log_distill(action_true, action_teacher, policy_loss, loss, dist, is_training)

@@ -49,6 +49,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="batch size for distillation")
         self.add_argument("--entropy_coef", type=float, default=0.001,
                           help="entropy term coefficient")
+        self.add_argument('--distill_entropy_coef', type=float, default=0)
         self.add_argument('--n_itr', type=int, default=100000)
         self.add_argument('--end_on_full_buffer', action='store_true')
         self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo', 'hppo'])
