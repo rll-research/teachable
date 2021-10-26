@@ -146,9 +146,8 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
             hierarchical_rollout=False):
-    codec = 'mjpg'
+    codec = 'MJPG'
     extension = '.avi'
-    max_path_length = 100
     discrete = type(env.action_space) is Discrete
     video_filename = os.path.join(video_directory, video_name + extension)
     if num_save is None:
