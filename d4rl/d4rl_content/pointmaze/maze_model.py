@@ -297,9 +297,15 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
+    #def viewer_setup(self):
+    #    from mujoco_py.generated import const
+    #    self.viewer.cam.type = const.CAMERA_FREE
+    #    self.viewer.cam.fixedcamid = 0
+    #    pass
+
     def viewer_setup(self):
         from mujoco_py.generated import const
         self.viewer.cam.type = const.CAMERA_FREE
         self.viewer.cam.fixedcamid = 0
-        pass
-
+        self.viewer.cam.elevation = -90
+        self.viewer.cam.distance = self.model.stat.extent * 0.5 * 3
