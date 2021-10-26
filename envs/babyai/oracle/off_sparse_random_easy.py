@@ -53,7 +53,11 @@ class OSREasy(Teacher):
         env = oracle.mission
         # Remove teacher so we don't end up with a recursion error
         env.teacher = None
-        num_steps = np.random.randint(2, self.cartesian_steps + 1)
+        # with probability .1, choose something nearby
+        if np.random.uniform() < .1:
+            num_steps = np.random.randint(2, 10)
+        else:
+            num_steps = np.random.randint(10, 30)
 
         self.next_state, next_coords, actions, env, num_steps = self.step_away_state(oracle, num_steps,
                                                                           last_action=last_action)
