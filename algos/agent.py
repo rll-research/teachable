@@ -159,8 +159,9 @@ class Agent(nn.Module):
         else:
             action_teacher = torch.zeros_like(action_true)
         if self.args.discrete:  # remove extra dim, since it messes with log_prob function
-            action_true = action_true[:, 0]
-            action_teacher = action_teacher[:, 0]
+            if len(action_true.shape) == 2:
+                action_true = action_true[:, 0]
+                action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
     def distill(self, batch, is_training=False, source='agent'):
