@@ -72,6 +72,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--instr_dim', type=int, default=128)
         self.add_argument('--sequential', action='store_true')
         self.add_argument('--clip_eps', type=float, default=.2)
+        self.add_argument('--frame_stack', type=int, default=1)
 
         # Saving/loading/logging
         self.add_argument('--prefix', type=str, default='DEBUG')

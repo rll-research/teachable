@@ -32,7 +32,7 @@ class Agent(nn.Module):
 
         # Create encoders or dummy encoders for each piece of our input
         if args.image_obs:
-            self.state_encoder = ImageEmbedding().to(self.device)
+            self.state_encoder = ImageEmbedding(args.frame_stack).to(self.device)
         else:
             self.state_encoder = None
         if not args.no_instr:

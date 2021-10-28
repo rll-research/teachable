@@ -40,12 +40,15 @@ def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cud
             if len(v) == 0:
                 continue
             if k == 'obs' and type(v[0]) is tuple:  # Padding for egocentric view
-                obs_final[k] = np.zeros((len(v), pad_size, pad_size, 3))
+                frame_stack = len(v[0][-1])
+                obs_final[k] = np.zeros((len(v), pad_size, pad_size, 3 * frame_stack))
                 middle = int(pad_size / 2)
                 for i, (img, x, y) in enumerate(v):
-                    y_start = middle - y
-                    x_start = middle - x
-                    obs_final[k][i][x_start:x_start + len(img), y_start:y_start + len(img[0])] = img
+                    for frame in range(frame_stack):
+                        y_start = middle - y[frame]
+                        x_start = middle - x[frame]
+                        f_start = frame * 3
+                        obs_final[k][i][x_start:x_start + len(img), y_start:y_start + len(img[0]), f_start: f_start + 3] = img[:, :, f_start: f_start + 3]
                 obs_final[k] = torch.FloatTensor(obs_final[k]).to(device)
             else:
                 obs_final[k] = torch.FloatTensor(v).to(device)

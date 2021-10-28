@@ -142,17 +142,24 @@ class FiLM(nn.Module):
 
 
 class ImageBOWEmbedding(nn.Module):
-    def __init__(self, max_value, embedding_dim):
+    def __init__(self, max_value, embedding_dim, frame_stack):
         super().__init__()
         self.max_value = max_value
         self.embedding_dim = embedding_dim
+        self.frame_stack = frame_stack
         self.embedding = nn.Embedding(3 * max_value, embedding_dim)
         self.apply(weight_init)
 
     def forward(self, inputs):
-        offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inputs.device)
-        inputs = (inputs + offsets[None, :, None, None]).long()
-        return self.embedding(inputs).sum(1).permute(0, 3, 1, 2)
+        obs_list = []
+        for frame in range(self.frame_stack):
+            inp = inputs[:, frame * 3: (frame + 1) * 3]
+            offsets = torch.Tensor([0, self.max_value, 2 * self.max_value]).to(inp.device)
+            inp = (inp + offsets[None, :, None, None]).long()
+            out = self.embedding(inp).sum(1).permute(0, 3, 1, 2)
+            obs_list.append(out)
+        out = torch.cat(obs_list, dim=1)
+        return out
 
 
 class TanhTransform(pyd.transforms.Transform):
@@ -302,12 +309,12 @@ class InstrEmbedding(nn.Module):
 
 
 class ImageEmbedding(nn.Module):
-    def __init__(self):
+    def __init__(self, frame_stack):
         super().__init__()
         self.image_conv = nn.Sequential(*[
-            ImageBOWEmbedding(147, 128),
+            ImageBOWEmbedding(147, 128, frame_stack),
             nn.Conv2d(
-                in_channels=128, out_channels=32,
+                in_channels=128 * frame_stack, out_channels=32,
                 kernel_size=(8, 8), stride=8, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),

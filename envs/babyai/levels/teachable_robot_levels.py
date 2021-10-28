@@ -45,6 +45,7 @@ class Level_TeachableRobot(RoomGridLevel):
         self.fully_observed = fully_observed
         self.padding = padding
         self.args = args
+        self.past_obs = []
         super().__init__(**kwargs)
         if feedback_type is not None:
             rng = np.random.RandomState()
@@ -297,7 +298,7 @@ class Level_TeachableRobot(RoomGridLevel):
             raise ValueError("Mission is too long: " + mission + str(pad_length))
         return mission_list
 
-    def gen_obs(self, oracle=None, past_action=None, generate_feedback=False):
+    def gen_obs(self, oracle=None, past_action=None, generate_feedback=False, update_past_obs=False):
         """
         Generate the agent's view (partially observable). It's a concatenation of the agent's direction and position,
         the flattened partially observable view in front of it, the encoded mission string, and the teacher's feedback,
@@ -333,6 +334,21 @@ class Level_TeachableRobot(RoomGridLevel):
         goal = self.to_vocab_index(self.mission, pad_length=15)
         obs_dict = {}
         additional = deepcopy(np.concatenate([[self.agent_dir], self.agent_pos]))
+        if update_past_obs:
+            self.past_obs = [image] + self.past_obs
+            if len(self.past_obs) > self.args.frame_stack:
+                self.past_obs = self.past_obs[:self.args.frame_stack]
+        past_obs = self.past_obs
+        if len(past_obs) < self.args.frame_stack:
+            past_obs = [image] * (self.args.frame_stack - len(self.past_obs)) + self.past_obs
+        assert len(past_obs) == self.args.frame_stack
+        if type(image) is np.ndarray:
+            image = np.concatenate(past_obs, axis=-1)
+        else:
+            arr = np.concatenate([o[0] for o in past_obs], axis=-1)
+            x_list = [o[1] for o in past_obs]
+            y_list = [o[2] for o in past_obs]
+            image = (arr, x_list, y_list)
         obs_dict["obs"] = image
         obs_dict['instr'] = goal
         obs_dict['extra'] = additional
@@ -397,7 +413,7 @@ class Level_TeachableRobot(RoomGridLevel):
         else:
             original_oracle = None
             info['teacher_action'] = np.array(self.action_space.n, dtype=np.int32)
-        obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action)
+        obs = self.gen_obs(oracle=original_oracle, generate_feedback=True, past_action=action, update_past_obs=True)
         info['next_obs'] = obs
         # Reward at the end scaled by 1000
         if self.args.reward_type == 'dense':
@@ -451,7 +467,8 @@ class Level_TeachableRobot(RoomGridLevel):
             self.oracle = self.teacher.reset(self.oracle)
 
         self.teacher_action = self.get_teacher_action()
-        obs = self.gen_obs(generate_feedback=True, past_action=-1)
+        self.past_obs = []
+        obs = self.gen_obs(generate_feedback=True, past_action=-1, update_past_obs=True)
         self.itr += 1
         return obs
 
