@@ -56,14 +56,19 @@ class Buffer:
         if train_path.exists():
             with open(train_path, 'rb') as f:
                 self.trajs_train, self.index_train, self.counts_train = pkl.load(f)
+            # if buffers are too big, trim them
+            self.counts_train = min(self.counts_train, self.train_buffer_capacity)
+            self.index_train = min(self.index_train, self.train_buffer_capacity - 1)
+            self.trajs_train = self.trajs_train[:self.train_buffer_capacity]
+
         val_path = self.buffer_path.joinpath(f'val_buffer.pkl')
         if val_path.exists():
             with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
                 self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
-        # if buffers are too big, trim them
-        self.counts_train = min(self.counts_train, self.train_buffer_capacity)
-        self.index_train = min(self.index_train, self.train_buffer_capacity - 1)
-        self.trajs_train = self.trajs_train[:self.train_buffer_capacity]
+            # if buffers are too big, trim them
+            self.counts_val = min(self.counts_val, self.val_buffer_capacity)
+            self.index_val = min(self.index_val, self.val_buffer_capacity - 1)
+            self.trajs_val = self.trajs_val[:self.val_buffer_capacity]
 
     def create_blank_buffer(self, batch):
         """ Create blank buffer with all keys. (We don't do this at startup b/c we don't know all the batch keys.) """
@@ -123,8 +128,8 @@ class Buffer:
             arr = getattr(value, k)
             try:
                 arr[index:index + max_val] = getattr(traj, k)[:max_val]
-            except:
-                print("uh oh")
+            except Exception as e:
+                print("uh oh", e)
         # Uh oh, overfilling the buffer. Let's wrap around.
         remainder = min(len(traj) - max_val, len(arr))
         if remainder > 0:

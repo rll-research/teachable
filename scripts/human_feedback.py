@@ -4,14 +4,17 @@ import os
 import pathlib
 import torch
 import matplotlib
+
+from scripts.train_model import create_policy
+from utils.dictlist import DictList
+
 matplotlib.use('TkAgg')
 from envs.babyai.utils.buffer import Buffer
-from envs.babyai import OBJ_TYPES
+from envs.babyai.bot import OBJ_TYPES
 from gym_minigrid.window import Window
 from gym_minigrid.minigrid import TILE_PIXELS, Key, Ball, Box, Door, Wall, COLOR_NAMES
 import numpy as np
 import matplotlib.pyplot as plt
-from envs.babyai.rl.utils import DictList
 from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
 from utils.utils import set_seed
 import time
@@ -34,7 +37,7 @@ class HumanFeedback:
     def __init__(self):
         self.args = self.make_args()
         # Load model
-        self.policy, self.env, _, self.saved_model = self.load_policy(self.args.model)
+        self.policy, self.env, _ = self.load_policy(self.args.model)
         if self.args.target_policy is not None:
             target_policy, _, _, _ = self.load_policy(self.args.target_policy)
             self.policy['none'] = target_policy['none']
@@ -45,10 +48,9 @@ class HumanFeedback:
         self.save_path = save_path
         if not save_path.exists():
             save_path.mkdir()
-        self.buffer = Buffer(save_path, self.args.num_trajs, 1, val_prob=.1, successful_only=self.args.successful_only)
+        self.buffer = Buffer(save_path, self.args.num_trajs, val_prob=.1, successful_only=self.args.successful_only)
         self.teacher_null_dict = self.env.teacher.null_feedback()
         self.teacher_dict = {k: k == self.args.feedback_type for k in self.teacher_null_dict.keys()}
-        self.obs_preprocessor = make_obs_preprocessor(self.teacher_null_dict, include_zeros=False)
         # Create window
         self.window = Window('gym_minigrid - ' + str(self.args.env))
         self.window.reg_key_handler(self.key_handler)
@@ -94,12 +96,10 @@ class HumanFeedback:
     def reset(self):
         # If we're training concurrently, reload so we get the new model
         if self.args.train_concurrently:
-            self.policy, _, _, self.saved_model = self.load_policy(self.args.model)
+            self.policy, _, _ = self.load_policy(self.args.model)
             if self.args.target_policy is not None:
                 target_policy, _, _, _ = self.load_policy(self.args.target_policy)
                 self.policy['none'] = target_policy['none']
-        for agent in self.policy.values():
-            agent.reset(dones=[True])
         self.obs_list = []
         self.action_list = []
         self.action_probs = []
@@ -129,18 +129,16 @@ class HumanFeedback:
         self.ready = True  # TODO: change back!
 
     def load_policy(self, path):
-        base_path = os.path.join(os.getcwd(), "data")
-        path = os.path.join(base_path, path)
-        print("PATH", path)
-        saved_model = joblib.load(path)
-        env = saved_model['env']
-        set_seed(1)
-        env.seed(1)
-        policy = saved_model['policy']
-        args = saved_model['args']
-        # for p_dict in policy.values():
-        #     p_dict.instr_rnn.flatten_parameters()
-        return policy, env, args, saved_model
+        path = os.path.join(os.getcwd(), path)
+        exp_path = os.path.join(path, 'latest.pkl')
+        exp_data = joblib.load(exp_path)
+        obs_preprocessor = make_obs_preprocessor([self.args.feedback_type])
+        env = exp_data['env']
+        args = exp_data['args']
+        policy = create_policy(path, self.args.feedback_type, env, args, obs_preprocessor)
+        set_seed(self.args.seed)
+        env.seed(self.args.seed)
+        return policy, env, args
 
     def clear_feedback(self):
         return # TODO: add back if we want to auto-swap-in no teacher
@@ -173,6 +171,11 @@ class HumanFeedback:
         parser.add_argument(
             '--speed',
             default=0.1,
+        )
+
+        parser.add_argument(
+            '--seed',
+            default=1,
         )
         parser.add_argument(
             '--successful_only',
@@ -244,12 +247,8 @@ class HumanFeedback:
                 self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
             self.feedback_indicator += 1  # TODO: redundant with the other indicator
             if action is None:
-                teacher_dict = {k: k == self.current_feedback_type for k in self.teacher_null_dict.keys()}
-                o = self.obs_preprocessor([self.obs], teacher_dict, show_instrs=True)  # TODO: show instrs flag
-                agent = self.policy[self.current_feedback_type]
-                agent.eval()
-                action, agent_info = agent.get_actions_t(o, temp=1)
-            teacher_action = self.env.teacher_action
+                self.policy.eval()
+                action, agent_info = self.policy.get_actions([self.obs])
             new_obs, reward, done, info = self.env.step(action)
             self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
             self.steps_since_feedback += 1
@@ -270,7 +269,7 @@ class HumanFeedback:
 
         if done:
             self.last = 'success' if info['success'] else 'timed out'
-            self.end_trajectory()
+            self.end_trajectory(self.obs)
         else:
             # if np.random.uniform() < .25:
             self.redraw(self.obs)
@@ -565,18 +564,19 @@ class HumanFeedback:
             self.step()
         self.decode_feedback(self.obs[self.args.feedback_type].copy(), preprocessed=False, tag="human-nop")
 
-    def end_trajectory(self):
+    def end_trajectory(self, final_obs):
         self.num_trajs += 1
         self.full_done[-1] = 1
         if not self.args.no_save:
             # Save buffer
             env_infos = {
                 'advice_count': torch.IntTensor(self.advice_count),
-                'success': torch.FloatTensor(self.full_done),
+                'success': np.array(self.full_done),
             }
 
             traj_dict = {
                 'obs': self.obs_list,
+                'next_obs': self.obs_list[1:] + [final_obs],
                 'action': torch.FloatTensor(np.concatenate(self.action_list)).cuda(),
                 # 'action_probs': self.action_probs,
                 'teacher_action': torch.FloatTensor(self.teacher_action),
@@ -585,7 +585,7 @@ class HumanFeedback:
             }
             assert len(traj_dict['teacher_action'].shape) == len(traj_dict['full_done'].shape) == 1
             traj = DictList(traj_dict)
-            self.buffer.add_batch(traj, int(self.args.env), trim=True, only_val=self.collecting_val)
+            self.buffer.add_batch(traj, trim=True, only_val=self.collecting_val)
             path = self.save_path.joinpath('timesteps.pkl')
             time_dict = {'timesteps': self.timesteps, 'times': self.times}
             with open(path, 'wb') as f:
@@ -602,7 +602,7 @@ class HumanFeedback:
             self.collecting_val = not self.collecting_val
         if event.key == 'r':
             self.last = 'manual reset'
-            self.end_trajectory()
+            self.end_trajectory(self.obs)
             return
         if event.key == 'c':
             self.step()
