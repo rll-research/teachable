@@ -43,18 +43,18 @@ class PPOAgent(Agent):
         critic_loss = torch.max(surr1, surr2).mean()
 
         if train:
-            tag = 'train_critic'
+            tag = 'Train'
             # Optimize the critic
             self.optimizer.zero_grad()
             critic_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
             self.optimizer.step()
         else:
-            tag = 'val_critic'
+            tag = 'Val'
         self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs)
 
     def log_critic(self, tag, critic_loss, value, collected_value, collected_return, obs):
-        logger.logkv(f'{tag}/critic_loss', utils.to_np(critic_loss))
+        logger.logkv(f'{tag}/Value_loss', utils.to_np(critic_loss))
         logger.logkv(f'{tag}/V_mean', utils.to_np(value.mean()))
         logger.logkv(f'{tag}/Return', utils.to_np(collected_return.mean()))
         logger.logkv(f'{tag}/Collected_value', utils.to_np(collected_value.mean()))
@@ -62,17 +62,18 @@ class PPOAgent(Agent):
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
 
-    def log_actor(self, actor_loss, entropy, dist, value, policy_loss, control_penalty, action):
-        logger.logkv('train_actor/loss', utils.to_np(actor_loss))
-        logger.logkv('train_actor/entropy', utils.to_np(entropy))
+    def log_actor(self, actor_loss, dist, value, policy_loss, control_penalty, action, log_prob):
+        logger.logkv('Train/LogProb', utils.to_np(log_prob).mean())
+        logger.logkv('Train/Loss', utils.to_np(actor_loss))
         logger.logkv('Train/Entropy', utils.to_np(dist.entropy().mean()))
-        logger.logkv('train_actor/V', utils.to_np(value.mean()))
-        logger.logkv('train_actor/policy_loss', utils.to_np(policy_loss))
-        logger.logkv('train_actor/control_penalty', utils.to_np(control_penalty))
+        logger.logkv('Train/Entropy_Loss',  - self.args.entropy_coef * utils.to_np(dist.entropy().mean()))
+        logger.logkv('Train/V', utils.to_np(value.mean()))
+        logger.logkv('Train/policy_loss', utils.to_np(policy_loss))
+        logger.logkv('Train/control_penalty', utils.to_np(control_penalty))
         if not self.args.discrete:
-            logger.logkv('train_actor/abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
-            logger.logkv('train_actor/std', utils.to_np(dist.scale.mean()))
-        logger.logkv('train_actor/act_norm', utils.to_np(action.float().norm(2, dim=-1).mean()))
+            logger.logkv('Train/Action_abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
+            logger.logkv('Train/Action_std', utils.to_np(dist.scale.mean()))
+        logger.logkv('Train/Action_magnitude', utils.to_np(action.float().norm(2, dim=-1).mean()))
 
     def update_actor(self, obs, batch):
         assert len(obs.shape) == 2
@@ -101,7 +102,7 @@ class PPOAgent(Agent):
         actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         self.optimizer.step()
-        self.log_actor(actor_loss, entropy, dist, batch.value, policy_loss, control_penalty, action)
+        self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
         obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
