@@ -30,13 +30,13 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--leave_out_object', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--eval_envs', nargs='+', type=int, default=None)
-        self.add_argument('--horizon', type=int, default=None)
+        self.add_argument('--horizon', type=int, default='default')
 
         # Training arguments
         self.add_argument("--seed", type=int, default=1,
                           help="random seed; if -1, a random random seed will be used  (default: 1)")
         self.add_argument("--epochs", type=int, default=20)
-        self.add_argument("--frames_per_proc", type=int, default=10,
+        self.add_argument("--frames_per_proc", type=int, default=40,
                           help="number of frames per process before update (default: 40)")
         self.add_argument("--beta1", type=float, default=0.9,
                           help="beta1 for Adam (default: 0.9)")
