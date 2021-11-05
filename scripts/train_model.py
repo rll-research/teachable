@@ -211,7 +211,7 @@ def run_experiment(args):
     else:
         il_policy = None
     if args.relabel_teacher is not None:
-        relabel_policy = create_policy(args.distill_policy, args.relabel_teacher, env, args, obs_preprocessor)
+        relabel_policy = create_policy(args.relabel_policy, args.relabel_teacher, env, args, obs_preprocessor)
     else:
         relabel_policy = None
 
