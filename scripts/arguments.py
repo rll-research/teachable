@@ -65,7 +65,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--no_buffer', action='store_true')
         self.add_argument('--num_rollouts', type=int, default=10)
         self.add_argument('--hide_instrs', action='store_true')
-        self.add_argument('--reconstruction', action='store_true')
         self.add_argument('--padding', action='store_true')
         self.add_argument('--feedback_from_buffer', action='store_true')
         self.add_argument('--hidden_dim', type=int, default=128)
@@ -110,7 +109,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0)
         self.add_argument('--control_penalty', type=float, default=0)
-        self.add_argument('--mi_coef', type=float, default=0.003)
+        self.add_argument('--recon_coef', type=float, default=0)
         self.add_argument('--z_dim', type=int, default=32)
         self.add_argument('--info_bot', action='store_true')
         self.add_argument('--source', type=str, default='agent', choices=['agent', 'teacher', 'agent_argmax',

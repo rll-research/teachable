@@ -24,6 +24,11 @@ class PPOAgent(Agent):
         self.critic = utils.mlp(obs_dim, args.hidden_dim, 1, 2).to(self.device)
         self.actor = DiagGaussianActor(obs_dim, self.action_dim, discrete=args.discrete, hidden_dim=args.hidden_dim).to(
             self.device)
+        if args.recon_coef:
+            obs_dim = 128 if args.image_obs else len(obs['obs'].flatten())
+            act_dim = self.action_dim if args.discrete else 2 * self.action_dim
+            out_dim = 2 * self.advice_size
+            self.reconstructor = utils.mlp(obs_dim + act_dim, 64, out_dim, 1).to(self.device)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=self.args.optim_eps)
         self.train()
@@ -62,7 +67,7 @@ class PPOAgent(Agent):
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
 
-    def log_actor(self, actor_loss, dist, value, policy_loss, control_penalty, action, log_prob):
+    def log_actor(self, actor_loss, dist, value, policy_loss, control_penalty, action, log_prob, recon_loss):
         logger.logkv('Train/LogProb', utils.to_np(log_prob).mean())
         logger.logkv('Train/Loss', utils.to_np(actor_loss))
         logger.logkv('Train/Entropy', utils.to_np(dist.entropy().mean()))
@@ -70,12 +75,13 @@ class PPOAgent(Agent):
         logger.logkv('Train/V', utils.to_np(value.mean()))
         logger.logkv('Train/policy_loss', utils.to_np(policy_loss))
         logger.logkv('Train/control_penalty', utils.to_np(control_penalty))
+        logger.logkv('Train/recon_loss', utils.to_np(recon_loss))
         if not self.args.discrete:
             logger.logkv('Train/Action_abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
             logger.logkv('Train/Action_std', utils.to_np(dist.scale.mean()))
         logger.logkv('Train/Action_magnitude', utils.to_np(action.float().norm(2, dim=-1).mean()))
 
-    def update_actor(self, obs, batch):
+    def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         assert len(obs.shape) == 2
         batch_size = len(obs)
         # control penalty
@@ -96,16 +102,30 @@ class PPOAgent(Agent):
         else:
             control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
-        actor_loss = policy_loss - self.args.entropy_coef * entropy + self.args.control_penalty * control_penalty
+        if self.args.recon_coef > 0:
+            if self.args.discrete:
+                output = dist.probs
+            else:
+                output = torch.cat([dist.loc, dist.scale], dim=1)
+            recon_embedding = torch.cat([no_advice_obs, output], dim=1)  # Output = (B, 4); obs = (B, 383)
+            pred_advice = self.reconstructor(recon_embedding)  # 259 total (255 + 4 from action
+            full_advice_size = int(len(pred_advice[0]) / 2)
+            mean = pred_advice[:, :full_advice_size]
+            var = torch.exp(pred_advice[:, full_advice_size:])
+            recon_loss = torch.nn.GaussianNLLLoss()(advice, mean, var)  # TODO: consider just reconstructing embedding
+        else:
+            recon_loss = torch.zeros(1, device=ratio.device).mean()
+        actor_loss = policy_loss - self.args.entropy_coef * entropy + self.args.control_penalty * control_penalty + \
+                     self.args.recon_coef * recon_loss
         # optimize the actor
         self.optimizer.zero_grad()
         actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         self.optimizer.step()
-        self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob)
+        self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob, recon_loss)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
-        obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
+        obs, _ = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
         dist = self.actor(obs)
         argmax_action = dist.probs.argmax(dim=1) if self.args.discrete else dist.mean
         action = dist.sample() if sample else argmax_action

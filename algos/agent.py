@@ -42,10 +42,8 @@ class Agent(nn.Module):
         if teacher == 'none':
             self.advice_embedding = None
         else:
-            self.advice_embedding = nn.Sequential(
-                nn.Linear(advice_size, advice_dim),
-                nn.Sigmoid(),
-            ).to(self.device)
+            self.advice_embedding = utils.mlp(advice_size, None, advice_dim, 0, output_mod=nn.Sigmoid()).to(self.device)
+
         self.apply(utils.weight_init)
 
     def train(self, training=True):
@@ -59,7 +57,7 @@ class Agent(nn.Module):
             self.advice_embedding.train(training)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
-        obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
+        obs, _ = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
         dist = self.actor(obs)
         argmax_action = dist.probs.argmax(dim=1) if self.args.discrete else dist.mean
         action = dist.sample() if sample else argmax_action
@@ -71,8 +69,8 @@ class Agent(nn.Module):
     def log_rl(self, val_batch):
         self.train(False)
         with torch.no_grad():
-            obs = self.format_obs(val_batch.obs)
-            next_obs = self.format_obs(val_batch.next_obs)
+            obs, _ = self.format_obs(val_batch.obs)
+            next_obs, _ = self.format_obs(val_batch.next_obs)
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def format_obs(self, obs, instr_dropout_prob=0):
@@ -83,29 +81,31 @@ class Agent(nn.Module):
             obs = self.state_encoder(obs)
         if self.task_encoder is not None:
             obs = self.task_encoder(obs)
+        no_advice_obs = obs.obs.flatten(1).to(self.device)
+        unprocessed_advice = obs.advice
         if self.advice_embedding is not None:
             advice = self.advice_embedding(obs.advice)
             obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         else:
-            obs = obs.obs.flatten(1)
-        return obs
+            obs = no_advice_obs
+        return obs, (unprocessed_advice, no_advice_obs)
 
     def optimize_policy(self, batch, step):
         reward = batch.reward.unsqueeze(1)
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
-        obs = self.format_obs(batch.obs)
-        next_obs = self.format_obs(batch.next_obs)
+        obs, _ = self.format_obs(batch.obs)
+        next_obs, _ = self.format_obs(batch.next_obs)
         self.update_critic(obs, next_obs, batch, step=step)
 
         if step % self.actor_update_frequency == 0:
-            obs = self.format_obs(batch.obs)  # Recompute with updated params
-            self.update_actor(obs, batch)
+            obs, (advice, no_advice_obs) = self.format_obs(batch.obs)  # Recompute with updated params
+            self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs)
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
         raise NotImplementedError('update_critic should be defined in child class')
 
-    def update_actor(self, obs, batch):
+    def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         raise NotImplementedError('update_actor should be defined in child class')
 
     def save(self, model_dir, save_name=None):
