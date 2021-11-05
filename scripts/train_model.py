@@ -84,6 +84,14 @@ def make_env(args, feedback_list):
         args.no_instr = True
         args.discrete = False
         args.image_obs = False
+        if args.discount == 'default':
+            args.discount = .99
+        else:
+            args.discount = float(args.discount)
+        if args.horizon == 'default':
+            args.horizon = None
+        else:
+            args.horizon = int(args.horizon)
     if args.env in ['babyai']:
         args.discrete = True
         args.image_obs = True
@@ -93,8 +101,12 @@ def make_env(args, feedback_list):
         args.feedback_freq = [20]
         if args.discount == 'default':
             args.discount = .25
+        else:
+            args.discount = float(args.discount)
         if args.horizon == 'default':
             args.horizon = 200
+        else:
+            args.horizon = int(args.horizon)
         if args.train_level:
             args.env_dist = 'five_levels'
             args.leave_out_object = True
@@ -102,19 +114,11 @@ def make_env(args, feedback_list):
         if args.reward_type == 'default_reward':
             args.reward_type = 'dense'
     if args.env == 'point_mass':
-        if args.discount == 'default':
-            args.discount = .99
-        if args.horizon == 'default':
-            args.horizon = None
         if args.train_level:
             args.level = 4
         if args.reward_type == 'default_reward':
             args.reward_type = 'waypoint'
     if args.env == 'ant':
-        if args.discount == 'default':
-            args.discount = .99
-        if args.horizon == 'default':
-            args.horizon = None
         if args.train_level:
             args.level = 6
         if args.reward_type == 'default_reward':

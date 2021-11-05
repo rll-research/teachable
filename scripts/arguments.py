@@ -30,7 +30,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--leave_out_object', action='store_true')
         self.add_argument('--static_env', action='store_true')
         self.add_argument('--eval_envs', nargs='+', type=int, default=None)
-        self.add_argument('--horizon', type=int, default='default')
+        self.add_argument('--horizon', type=str, default='default')
 
         # Training arguments
         self.add_argument("--seed", type=int, default=1,
@@ -57,7 +57,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--min_itr_steps', type=int, default=0)
         self.add_argument('--min_itr_steps_distill', type=int, default=0)
         self.add_argument('--lr', type=float, default=1e-3)
-        self.add_argument('--discount', type=float, default='default')
+        self.add_argument('--discount', type=str, default='default')
         self.add_argument('--gae_lambda', type=float, default=.95)
         self.add_argument('--num_envs', type=int, default=5)
         self.add_argument('--early_stop', type=int, default=float('inf'))
