@@ -108,8 +108,10 @@ class Agent(nn.Module):
     def update_actor(self, obs, batch):
         raise NotImplementedError('update_actor should be defined in child class')
 
-    def save(self, model_dir):
-        torch.save(self.state_dict(), f'{model_dir}/{self.teacher}_model.pt')
+    def save(self, model_dir, save_name=None):
+        if save_name is None:
+            save_name = f"{self.teacher}_model.pt"
+        torch.save(self.state_dict(), f'{model_dir}/{save_name}')
 
     def load(self, model_dir):
         self.load_state_dict(torch.load(f'{model_dir}/{self.teacher}_model.pt'))
