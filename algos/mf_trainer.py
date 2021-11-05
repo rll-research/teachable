@@ -44,6 +44,7 @@ class Trainer(object):
 
         # Counters to determine early stopping
         self.best_val_loss = float('inf')
+        self.best_success = 0
         self.itrs_since_best = 0
 
     def save_model(self):
@@ -54,6 +55,10 @@ class Trainer(object):
             self.rl_policy.save(self.args.exp_dir)
         if self.il_policy is not None:
             self.il_policy.save(self.args.exp_dir)
+        if self.rl_policy is not None and self.current_success >= self.best_success:
+            self.rl_policy.save(self.args.exp_dir, save_name=f"best_{self.rl_policy.teacher}_model.pt")
+        if self.il_policy is not None and self.current_val_loss <= self.best_val_loss:
+            self.il_policy.save(self.args.exp_dir, save_name=f"best_{self.il_policy.teacher}_model.pt")
         logger.save_itr_params(self.itr, self.args.level, params)
 
     def log_rollouts(self):
@@ -213,6 +218,7 @@ class Trainer(object):
                 distill_log_val = self.distill(sampled_val_batch, is_training=False)
 
                 val_loss = distill_log_val['Loss']
+                self.current_val_loss = val_loss
                 self.itrs_since_best = 0 if val_loss < self.best_val_loss else self.itrs_since_best + 1
                 self.best_val_loss = min(self.best_val_loss, val_loss)
                 distill_time = time.time() - time_distill_start
@@ -252,6 +258,8 @@ class Trainer(object):
             avg_success = np.mean(episode_logs['success_per_episode'])
             avg_dist_to_goal = np.mean(episode_logs['dist_to_goal_per_episode'])
             avg_reward = np.mean(episode_logs["return_per_episode"])
+            self.current_success = avg_success
+            self.best_success = max(self.best_success, avg_success)
             logger.logkv(f"{tag}/Success", avg_success)
             logger.logkv(f"{tag}/DistToGoal", avg_dist_to_goal)
             logger.logkv(f"{tag}/Reward", avg_reward)
