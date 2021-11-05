@@ -91,6 +91,8 @@ def make_env(args, feedback_list):
         args.fully_observed = True
         args.padding = True
         args.feedback_freq = [20]
+        if args.discount == 'default':
+            args.discount = .25
         if args.horizon == 'default':
             args.horizon = 200
         if args.train_level:
@@ -100,6 +102,8 @@ def make_env(args, feedback_list):
         if args.reward_type == 'default_reward':
             args.reward_type = 'dense'
     if args.env == 'point_mass':
+        if args.discount == 'default':
+            args.discount = .99
         if args.horizon == 'default':
             args.horizon = None
         if args.train_level:
@@ -107,6 +111,8 @@ def make_env(args, feedback_list):
         if args.reward_type == 'default_reward':
             args.reward_type = 'waypoint'
     if args.env == 'ant':
+        if args.discount == 'default':
+            args.discount = .99
         if args.horizon == 'default':
             args.horizon = None
         if args.train_level:
