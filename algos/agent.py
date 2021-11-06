@@ -84,20 +84,34 @@ class Agent(nn.Module):
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def format_obs(self, obs, instr_dropout_prob=0):
+        import time
+        t = time.time()
         obs = [self.obs_preprocessor([o], self.teacher, show_instrs=np.random.uniform() > instr_dropout_prob)
                for o in obs]
+        logger.logkv('Time/BB_preprocessor', time.time() - t)
+        t = time.time()
         obs = merge_dictlists(obs)
+        logger.logkv('Time/BB_merge', time.time() - t)
+        t = time.time()
         if self.state_encoder is not None:
             obs = self.state_encoder(obs)
+        logger.logkv('Time/BB_obs_encoder', time.time() - t)
+        t = time.time()
         if self.task_encoder is not None:
             obs = self.task_encoder(obs)
+        logger.logkv('Time/BB_instr', time.time() - t)
+        t = time.time()
         no_advice_obs = obs.obs.flatten(1).to(self.device)
         unprocessed_advice = obs.advice
+        logger.logkv('Time/BB_flatten', time.time() - t)
+        t = time.time()
         if self.advice_embedding is not None:
             advice = self.advice_embedding(obs.advice)
             obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         else:
             obs = no_advice_obs
+        logger.logkv('Time/BB_advice', time.time() - t)
+        t = time.time()
         return obs, (unprocessed_advice, no_advice_obs)
 
     def optimize_policy(self, batch, step):
