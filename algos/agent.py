@@ -101,23 +101,30 @@ class Agent(nn.Module):
         return obs, (unprocessed_advice, no_advice_obs)
 
     def optimize_policy(self, batch, step):
+        import time
+        t = time.time()
         reward = batch.reward.unsqueeze(1)
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
+
         obs, _ = self.format_obs(batch.obs)
         next_obs, _ = self.format_obs(batch.next_obs)
-        import time
+        logger.logkv('Time/B_Original_Format_Time', time.time() - t)
         t = time.time()
         self.update_critic(obs, next_obs, batch, step=step)
         critic_time = time.time() - t
 
-        t = time.time()
+
         if step % self.actor_update_frequency == 0:
+            t = time.time()
             obs, (advice, no_advice_obs) = self.format_obs(batch.obs)  # Recompute with updated params
+            actor_time = time.time() - t
+            logger.logkv('Time/B_Format_Time', actor_time)
+            t = time.time()
             self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs)
-        actor_time = time.time() - t
-        logger.logkv('Time/Actor_Time', actor_time)
-        logger.logkv('Time/Critic_Time', critic_time)
+            actor_time = time.time() - t
+            logger.logkv('Time/B_Actor_Time', actor_time)
+        logger.logkv('Time/B_Critic_Time', critic_time)
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
         raise NotImplementedError('update_critic should be defined in child class')
