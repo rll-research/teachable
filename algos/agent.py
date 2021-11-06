@@ -43,6 +43,14 @@ class Agent(nn.Module):
             self.advice_embedding = None
         else:
             self.advice_embedding = utils.mlp(advice_size, None, advice_dim, 0, output_mod=nn.Sigmoid()).to(self.device)
+        if args.recon_coef:
+            obs = env.reset()
+            obs_dim = 128 if args.image_obs else len(obs['obs'].flatten())
+            act_dim = self.action_dim if args.discrete else 2 * self.action_dim
+            out_dim = 2 * self.advice_size
+            self.reconstructor = utils.mlp(obs_dim + act_dim, 64, out_dim, 1).to(self.device)
+        else:
+            self.reconstructor = None
 
         self.apply(utils.weight_init)
 
@@ -55,13 +63,15 @@ class Agent(nn.Module):
             self.task_encoder.train(training)
         if self.advice_embedding is not None:
             self.advice_embedding.train(training)
+        if self.reconstructor is not None:
+            self.reconstructor.train(training)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
-        obs, _ = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
+        obs, addl_obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
         dist = self.actor(obs)
         argmax_action = dist.probs.argmax(dim=1) if self.args.discrete else dist.mean
         action = dist.sample() if sample else argmax_action
-        agent_info = {'argmax_action': argmax_action, 'dist': dist}
+        agent_info = {'argmax_action': argmax_action, 'dist': dist, 'addl_obs': addl_obs}
         if len(action.shape) == 1:
             action = action.unsqueeze(1)
         return action, agent_info
@@ -96,11 +106,18 @@ class Agent(nn.Module):
 
         obs, _ = self.format_obs(batch.obs)
         next_obs, _ = self.format_obs(batch.next_obs)
+        import time
+        t = time.time()
         self.update_critic(obs, next_obs, batch, step=step)
+        critic_time = time.time() - t
 
+        t = time.time()
         if step % self.actor_update_frequency == 0:
             obs, (advice, no_advice_obs) = self.format_obs(batch.obs)  # Recompute with updated params
             self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs)
+        actor_time = time.time() - t
+        logger.logkv('Time/Actor_Time', actor_time)
+        logger.logkv('Time/Critic_Time', critic_time)
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
         raise NotImplementedError('update_critic should be defined in child class')
@@ -166,6 +183,19 @@ class Agent(nn.Module):
                 action_teacher = action_teacher[:, 0]
         return obss, action_true, action_teacher
 
+    def compute_recon_loss(self, dist, no_advice_obs, advice):
+        if self.args.discrete:
+            output = dist.probs
+        else:
+            output = torch.cat([dist.loc, dist.scale], dim=1)
+        recon_embedding = torch.cat([no_advice_obs, output], dim=1)  # Output = (B, 4); obs = (B, 383)
+        pred_advice = self.reconstructor(recon_embedding)  # 259 total (255 + 4 from action
+        full_advice_size = int(len(pred_advice[0]) / 2)
+        mean = pred_advice[:, :full_advice_size]
+        var = torch.exp(pred_advice[:, full_advice_size:])
+        recon_loss = torch.nn.GaussianNLLLoss()(advice, mean, var)  # TODO: consider just reconstructing embedding
+        return recon_loss
+
     def distill(self, batch, is_training=False, source='agent'):
         ### SETUP ###
         self.train(is_training)
@@ -187,7 +217,9 @@ class Agent(nn.Module):
         policy_loss = -dist.log_prob(action_true).mean()
         entropy_loss = -dist.entropy().mean()
         # TODO: consider re-adding recon loss
-        loss = policy_loss + self.args.distill_entropy_coef * entropy_loss
+        (advice, no_advice_obs) = info['addl_obs']
+        recon_loss = self.compute_recon_loss(dist, no_advice_obs, advice)
+        loss = policy_loss + self.args.distill_entropy_coef * entropy_loss + self.args.recon_coef * recon_loss
 
         ### LOGGING ###
         log = self.log_distill(action_true, action_teacher, policy_loss, loss, dist, is_training)

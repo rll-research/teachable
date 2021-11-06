@@ -24,11 +24,6 @@ class PPOAgent(Agent):
         self.critic = utils.mlp(obs_dim, args.hidden_dim, 1, 2).to(self.device)
         self.actor = DiagGaussianActor(obs_dim, self.action_dim, discrete=args.discrete, hidden_dim=args.hidden_dim).to(
             self.device)
-        if args.recon_coef:
-            obs_dim = 128 if args.image_obs else len(obs['obs'].flatten())
-            act_dim = self.action_dim if args.discrete else 2 * self.action_dim
-            out_dim = 2 * self.advice_size
-            self.reconstructor = utils.mlp(obs_dim + act_dim, 64, out_dim, 1).to(self.device)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=self.args.optim_eps)
         self.train()
@@ -103,16 +98,7 @@ class PPOAgent(Agent):
             control_penalty = dist.rsample().float().norm(2, dim=-1).mean()
         policy_loss = -torch.min(surrr1, surrr2).mean()
         if self.args.recon_coef > 0:
-            if self.args.discrete:
-                output = dist.probs
-            else:
-                output = torch.cat([dist.loc, dist.scale], dim=1)
-            recon_embedding = torch.cat([no_advice_obs, output], dim=1)  # Output = (B, 4); obs = (B, 383)
-            pred_advice = self.reconstructor(recon_embedding)  # 259 total (255 + 4 from action
-            full_advice_size = int(len(pred_advice[0]) / 2)
-            mean = pred_advice[:, :full_advice_size]
-            var = torch.exp(pred_advice[:, full_advice_size:])
-            recon_loss = torch.nn.GaussianNLLLoss()(advice, mean, var)  # TODO: consider just reconstructing embedding
+            recon_loss = self.compute_recon_loss(dist, no_advice_obs, advice)
         else:
             recon_loss = torch.zeros(1, device=ratio.device).mean()
         actor_loss = policy_loss - self.args.entropy_coef * entropy + self.args.control_penalty * control_penalty + \
