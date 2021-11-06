@@ -80,7 +80,11 @@ class PPOAgent(Agent):
         assert len(obs.shape) == 2
         batch_size = len(obs)
         # control penalty
+        import time
+        t = time.time()
         dist = self.actor(obs)
+        logger.logkv('Time/B_actor_time', time.time() - t)
+        t = time.time()
         entropy = dist.entropy().mean()
         action = batch.action
         assert action.shape == (batch_size, self.action_shape), (action.shape, batch_size, self.action_shape)
@@ -103,12 +107,17 @@ class PPOAgent(Agent):
             recon_loss = torch.zeros(1, device=ratio.device).mean()
         actor_loss = policy_loss - self.args.entropy_coef * entropy + self.args.control_penalty * control_penalty + \
                      self.args.recon_coef * recon_loss
+        logger.logkv('Time/B_compute_loss_time', time.time() - t)
+        t = time.time()
         # optimize the actor
         self.optimizer.zero_grad()
         actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         self.optimizer.step()
+        logger.logkv('Time/B_update_time', time.time() - t)
+        t = time.time()
         self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob, recon_loss)
+        logger.logkv('Time/B_log_time', time.time() - t)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
         obs, _ = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
