@@ -4,36 +4,15 @@ from utils.dictlist import DictList
 
 def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                           pad_size=51):
-    def obss_preprocessor(obs, teacher, show_instrs=True, show_feedback=1.0, show_obs=1.0):
+    def obss_preprocessor(obs, teacher, show_instrs=True):
         obs_output = {}
         assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
 
-        # Populate dictionary with an empty dict
-        for k in obs[0].keys():
-            # Don't have individual elements for the advice, since we concat these together
-            # We might consider changing this if we process diff advice types differently (e.g. cartesian with a conv net)
-            if not k in feedback_list:
-                obs_output[k] = []
-        obs_output['advice'] = []
-
         instr_mask = int(show_instrs)
-        feedback_mask = int((not show_instrs) or np.random.uniform() < show_feedback)
-        obs_mask = ((not show_instrs) or (not feedback_mask) or np.random.uniform() < show_obs)
-        for o in obs:
-            for k, v in o.items():
-                if k == 'extra':
-                    continue
-                if k == teacher:
-                    obs_output['advice'].append(v * feedback_mask)
-                elif k == 'instr':
-                    obs_output[k].append(np.array(v) * instr_mask)
-                elif k == 'obs':
-                    if type(v) is tuple:  # Padding for egocentric view
-                        obs_output[k].append((v[0] * obs_mask, v[1], v[2]))
-                    else:
-                        obs_output[k].append(v * obs_mask)
-                else:
-                    continue
+        obs_output['advice'] = [o[teacher] for o in obs]
+        if 'instr' in obs[0]:
+            obs_output['instr'] = [o['instr'] for o in obs]
+        obs_output['obs'] = [o['obs'] for o in obs]
 
         obs_final = {}
         for k, v in obs_output.items():
@@ -49,6 +28,8 @@ def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cud
                 obs_final[k] = torch.FloatTensor(obs_final[k]).to(device)
             else:
                 obs_final[k] = torch.FloatTensor(v).to(device)
+            if k == 'instr':
+                obs_final[k] = obs_final[k] * instr_mask
         return DictList(obs_final)
 
     return obss_preprocessor

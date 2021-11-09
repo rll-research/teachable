@@ -120,12 +120,12 @@ class PPOAgent(Agent):
         logger.logkv('Time/B_log_time', time.time() - t)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
-        obs, _ = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
+        obs, addl_obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
         dist = self.actor(obs)
         argmax_action = dist.probs.argmax(dim=1) if self.args.discrete else dist.mean
         action = dist.sample() if sample else argmax_action
         value = self.critic(obs)
-        agent_info = {'argmax_action': argmax_action, 'dist': dist, 'value': value}
+        agent_info = {'argmax_action': argmax_action, 'dist': dist, 'value': value, 'addl_obs': addl_obs}
         if len(action.shape) == 1:  # Make sure discrete envs still have an action_dim dimension
             action = action.unsqueeze(1)
         return action, agent_info

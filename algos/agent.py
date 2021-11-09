@@ -1,4 +1,5 @@
 # Code found here: https://github.com/denisyarats/pytorch_sac
+import random
 
 import numpy as np
 import torch
@@ -86,8 +87,11 @@ class Agent(nn.Module):
     def format_obs(self, obs, instr_dropout_prob=0):
         import time
         t = time.time()
-        obs = [self.obs_preprocessor([o], self.teacher, show_instrs=np.random.uniform() > instr_dropout_prob)
-               for o in obs]
+        random.shuffle(obs)
+        cutoff = int(instr_dropout_prob * len(obs))
+        without_obs = [self.obs_preprocessor([o], self.teacher, show_instrs=False) for o in obs[:cutoff]]
+        with_obs = [self.obs_preprocessor([o], self.teacher, show_instrs=True) for o in obs[cutoff:]]
+        obs = without_obs + with_obs
         logger.logkv('Time/BB_preprocessor', time.time() - t)
         t = time.time()
         obs = merge_dictlists(obs)
