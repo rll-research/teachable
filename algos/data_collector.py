@@ -96,7 +96,7 @@ class DataCollector(ABC):
 
         for i in range(self.args.frames_per_proc):
             with torch.no_grad():
-                action, agent_dict = policy.act(self.obs, sample=True,
+                action, agent_dict = policy.act(list(self.obs), sample=True,
                                                 instr_dropout_prob=self.args.collect_dropout_prob)
 
             action_to_take = action.cpu().numpy()
@@ -204,7 +204,7 @@ class DataCollector(ABC):
             self.advantages = torch.zeros(self.args.frames_per_proc, self.num_procs, device=self.device)
             # Add advantage and return to experiences
             with torch.no_grad():
-                action, agent_dict = policy.act(self.obs, sample=True, instr_dropout_prob=self.args.collect_dropout_prob)
+                action, agent_dict = policy.act(list(self.obs), sample=True, instr_dropout_prob=self.args.collect_dropout_prob)
                 next_value = agent_dict['value'].squeeze(1)
 
             for i in reversed(range(self.args.frames_per_proc)):
