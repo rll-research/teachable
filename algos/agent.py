@@ -94,6 +94,9 @@ class Agent(nn.Module):
         obs = without_obs + with_obs
         logger.logkv('Time/BB_preprocessor', time.time() - t)
         t = time.time()
+        obs = merge_dictlists(obs)
+        logger.logkv('Time/BB_merge', time.time() - t)
+        t = time.time()
         if self.state_encoder is not None:
             obs = self.state_encoder(obs)
         logger.logkv('Time/BB_obs_encoder', time.time() - t)
