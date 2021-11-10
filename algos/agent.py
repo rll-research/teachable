@@ -87,10 +87,9 @@ class Agent(nn.Module):
     def format_obs(self, obs, instr_dropout_prob=0):
         import time
         t = time.time()
-        random.shuffle(obs)
         cutoff = int(instr_dropout_prob * len(obs))
-        without_obs = [self.obs_preprocessor([o], self.teacher, show_instrs=False) for o in obs[:cutoff]]
-        with_obs = [self.obs_preprocessor([o], self.teacher, show_instrs=True) for o in obs[cutoff:]]
+        without_obs = [] if cutoff == 0 else [self.obs_preprocessor(obs[:cutoff], self.teacher, show_instrs=False)]
+        with_obs = [] if cutoff == len(obs) else [self.obs_preprocessor(obs[cutoff:], self.teacher, show_instrs=True)]
         obs = without_obs + with_obs
         logger.logkv('Time/BB_preprocessor', time.time() - t)
         t = time.time()

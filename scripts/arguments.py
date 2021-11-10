@@ -108,7 +108,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--collect_dropout_prob', type=float, default=0.)
         self.add_argument('--distill_successful_only', action='store_true')
         self.add_argument('--kl_coef', type=float, default=0)
-        self.add_argument('--control_penalty', type=str, default=.01)
+        self.add_argument('--control_penalty', type=float, default=.01)
         self.add_argument('--recon_coef', type=float, default=0)
         self.add_argument('--z_dim', type=int, default=32)
         self.add_argument('--info_bot', action='store_true')
