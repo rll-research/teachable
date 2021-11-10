@@ -225,11 +225,11 @@ class DataCollector(ABC):
 
         # Log some values
         log = {
-            "return_per_episode": [] if len(self.log_return) == 0 else self.log_return[-self.log_keep:],
-            "success_per_episode": [] if len(self.log_success) == 0 else self.log_success[-self.log_keep:],
-            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) == 0 else self.log_dist_to_goal[-self.log_keep:],
-            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) == 0 else self.log_reshaped_return[-self.log_keep:],
-            "num_frames_per_episode": [] if len(self.log_num_frames) == 0 else self.log_num_frames[-self.log_keep:],
+            "return_per_episode": [] if len(self.log_return) < self.log_keep else self.log_return[-self.log_keep:],
+            "success_per_episode": [] if len(self.log_success) < self.log_keep else self.log_success[-self.log_keep:],
+            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) < self.log_keep else self.log_dist_to_goal[-self.log_keep:],
+            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) < self.log_keep else self.log_reshaped_return[-self.log_keep:],
+            "num_frames_per_episode": [] if len(self.log_num_frames) < self.log_keep else self.log_num_frames[-self.log_keep:],
             "num_frames": self.num_frames,
             "episodes_done": self.log_done_counter,
         }
