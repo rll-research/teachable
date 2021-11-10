@@ -85,36 +85,22 @@ class Agent(nn.Module):
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def format_obs(self, obs, instr_dropout_prob=0):
-        import time
-        t = time.time()
         cutoff = int(instr_dropout_prob * len(obs))
         without_obs = [] if cutoff == 0 else [self.obs_preprocessor(obs[:cutoff], self.teacher, show_instrs=False)]
         with_obs = [] if cutoff == len(obs) else [self.obs_preprocessor(obs[cutoff:], self.teacher, show_instrs=True)]
         obs = without_obs + with_obs
-        logger.logkv('Time/BB_preprocessor', time.time() - t)
-        t = time.time()
         obs = merge_dictlists(obs)
-        logger.logkv('Time/BB_merge', time.time() - t)
-        t = time.time()
         if self.state_encoder is not None:
             obs = self.state_encoder(obs)
-        logger.logkv('Time/BB_obs_encoder', time.time() - t)
-        t = time.time()
         if self.task_encoder is not None:
             obs = self.task_encoder(obs)
-        logger.logkv('Time/BB_instr', time.time() - t)
-        t = time.time()
         no_advice_obs = obs.obs.flatten(1).to(self.device)
         unprocessed_advice = obs.advice
-        logger.logkv('Time/BB_flatten', time.time() - t)
-        t = time.time()
         if self.advice_embedding is not None:
             advice = self.advice_embedding(obs.advice)
             obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         else:
             obs = no_advice_obs
-        logger.logkv('Time/BB_advice', time.time() - t)
-        t = time.time()
         return obs, (unprocessed_advice, no_advice_obs)
 
     def optimize_policy(self, batch, step):
@@ -140,8 +126,8 @@ class Agent(nn.Module):
             t = time.time()
             self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs)
             actor_time = time.time() - t
-            logger.logkv('Time/B_Actor_Time', actor_time)
-        logger.logkv('Time/B_Critic_Time', critic_time)
+            logger.logkv('Time/Actor_Time', actor_time)
+        logger.logkv('Time/Critic_Time', critic_time)
 
     def update_critic(self, obs, next_obs, batch, train=True, step=1):
         raise NotImplementedError('update_critic should be defined in child class')
@@ -221,11 +207,15 @@ class Agent(nn.Module):
         return recon_loss
 
     def distill(self, batch, is_training=False, source='agent'):
+        import time
         ### SETUP ###
         self.train(is_training)
 
         # Obtain batch and preprocess
+        t = time.time()
         obss, action_true, action_teacher = self.preprocess_distill(batch, source)
+        logger.logkv(f"Time/Q_Preprocess", time.time() - t)
+        t = time.time()
         if self.args.discrete:
             assert len(action_true.shape) == 1
         else:
@@ -237,20 +227,29 @@ class Agent(nn.Module):
         instr_dropout_prob = 0 if self.teacher == 'none' else self.args.distill_dropout_prob
         ### RUN MODEL, COMPUTE LOSS ###
         _, info = self.act(obss, sample=True, instr_dropout_prob=instr_dropout_prob)
+        logger.logkv(f"Time/Q_Act", time.time() - t)
+        t = time.time()
         dist = info['dist']
         policy_loss = -dist.log_prob(action_true).mean()
         entropy_loss = -dist.entropy().mean()
-        # TODO: consider re-adding recon loss
         (advice, no_advice_obs) = info['addl_obs']
-        recon_loss = self.compute_recon_loss(dist, no_advice_obs, advice)
+        if self.args.recon_coef > 0:
+            recon_loss = self.compute_recon_loss(dist, no_advice_obs, advice)
+        else:
+            recon_loss = torch.zeros_like(policy_loss)
         loss = policy_loss + self.args.distill_entropy_coef * entropy_loss + self.args.recon_coef * recon_loss
 
         ### LOGGING ###
         log = self.log_distill(action_true, action_teacher, policy_loss, loss, dist, is_training)
+        logger.logkv(f"Time/Q_Log", time.time() - t)
+        t = time.time()
 
         ### UPDATE ###
         if is_training:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+
+        logger.logkv(f"Time/Q_Update", time.time() - t)
+        t = time.time()
         return log
