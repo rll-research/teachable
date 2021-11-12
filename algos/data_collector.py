@@ -224,12 +224,13 @@ class DataCollector(ABC):
             logger.logkv("Train/Returnn", to_np(exps.returnn.mean()))
 
         # Log some values
+        log_cutoff = min(self.args.num_envs, self.log_keep)
         log = {
-            "return_per_episode": [] if len(self.log_return) < self.log_keep else self.log_return[-self.log_keep:],
-            "success_per_episode": [] if len(self.log_success) < self.log_keep else self.log_success[-self.log_keep:],
-            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) < self.log_keep else self.log_dist_to_goal[-self.log_keep:],
-            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) < self.log_keep else self.log_reshaped_return[-self.log_keep:],
-            "num_frames_per_episode": [] if len(self.log_num_frames) < self.log_keep else self.log_num_frames[-self.log_keep:],
+            "return_per_episode": [] if len(self.log_return) < log_cutoff else self.log_return[-self.log_keep:],
+            "success_per_episode": [] if len(self.log_success) < log_cutoff else self.log_success[-self.log_keep:],
+            "dist_to_goal_per_episode": [] if len(self.log_dist_to_goal) < log_cutoff else self.log_dist_to_goal[-self.log_keep:],
+            "reshaped_return_per_episode": [] if len(self.log_reshaped_return) < log_cutoff else self.log_reshaped_return[-self.log_keep:],
+            "num_frames_per_episode": [] if len(self.log_num_frames) < log_cutoff else self.log_num_frames[-self.log_keep:],
             "num_frames": self.num_frames,
             "episodes_done": self.log_done_counter,
         }
