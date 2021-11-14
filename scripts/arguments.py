@@ -101,7 +101,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--relabel_teacher', default=None)
 
         # Distillations
-        self.add_argument('--distillation_steps', type=int, default=15)
+        self.add_argument('--distillation_steps', type=int, default=100)
         self.add_argument('--buffer_capacity', type=int, default=1)
         self.add_argument('--buffer_path', type=str, default=None)
         self.add_argument('--distill_dropout_prob', type=float, default=0.)
