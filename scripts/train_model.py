@@ -88,7 +88,7 @@ def make_env(args, feedback_list):
             args.discount = .99
         else:
             args.discount = float(args.discount)
-        if args.horizon == 'default':
+        if args.horizon in ['default', None]:
             args.horizon = None
         else:
             args.horizon = int(args.horizon)
