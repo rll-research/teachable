@@ -47,12 +47,14 @@ class PPOAgent(Agent):
             # Optimize the critic
             self.optimizer.zero_grad()
             critic_loss.backward()
+            grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.critic.parameters() if p.grad is not None) ** 0.5
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), .5)
             self.optimizer.step()
         else:
             tag = 'Val'
+            grad_norm = torch.zeros_like(critic_loss)
         clip = surr1 - surr2
-        self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs, clip)
+        self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs, grad_norm, clip)
 
     def log_critic(self, tag, critic_loss, value, collected_value, collected_return, obs, grad_norm, clip):
         logger.logkv(f'{tag}/Value_loss', utils.to_np(critic_loss))
