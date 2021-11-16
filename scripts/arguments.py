@@ -85,7 +85,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
         self.add_argument('--collect_with_oracle', action='store_true')
         self.add_argument('--reload_exp_path', type=str, default=None)
-        self.add_argument('--continue_train', action='store_true')
 
         # Policies
         self.add_argument('--collect_policy', default=None, help='path to collection policy')

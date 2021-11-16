@@ -51,9 +51,10 @@ class PPOAgent(Agent):
             self.optimizer.step()
         else:
             tag = 'Val'
-        self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs)
+        clip = surr1 - surr2
+        self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs, clip)
 
-    def log_critic(self, tag, critic_loss, value, collected_value, collected_return, obs):
+    def log_critic(self, tag, critic_loss, value, collected_value, collected_return, obs, grad_norm, clip):
         logger.logkv(f'{tag}/Value_loss', utils.to_np(critic_loss))
         logger.logkv(f'{tag}/V_mean', utils.to_np(value.mean()))
         logger.logkv(f'{tag}/Return', utils.to_np(collected_return.mean()))
@@ -61,20 +62,30 @@ class PPOAgent(Agent):
         logger.logkv(f'{tag}/V_std', utils.to_np(value.std()))
         logger.logkv(f'{tag}/obs_min', utils.to_np(obs.min()))
         logger.logkv(f'{tag}/obs_max', utils.to_np(obs.max()))
+        logger.logkv('Train/Grad_norm_critic', utils.to_np(grad_norm))
+        logger.logkv('Train/ValueClip', utils.to_np(clip.mean()))
 
-    def log_actor(self, actor_loss, dist, value, policy_loss, control_penalty, action, log_prob, recon_loss):
+    def log_actor(self, actor_loss, dist, value, policy_loss, control_penalty, action, log_prob, recon_loss,
+                  grad_norm, clip, ratio):
         logger.logkv('Train/LogProb', utils.to_np(log_prob).mean())
         logger.logkv('Train/Loss', utils.to_np(actor_loss))
         logger.logkv('Train/Entropy', utils.to_np(dist.entropy().mean()))
         logger.logkv('Train/Entropy_Loss',  - self.args.entropy_coef * utils.to_np(dist.entropy().mean()))
+        logger.logkv('Train/Entropy_loss',  - self.args.entropy_coef * utils.to_np(dist.entropy().mean()))
         logger.logkv('Train/V', utils.to_np(value.mean()))
         logger.logkv('Train/policy_loss', utils.to_np(policy_loss))
+        logger.logkv('Train/Policy_loss', utils.to_np(policy_loss))
         logger.logkv('Train/control_penalty', utils.to_np(control_penalty))
         logger.logkv('Train/recon_loss', utils.to_np(recon_loss))
+        logger.logkv('Train/Grad_norm_actor', utils.to_np(grad_norm))
+        logger.logkv('Train/PolicyClip', utils.to_np(clip.mean()))
+        logger.logkv('Train/Ratio', utils.to_np(ratio))
         if not self.args.discrete:
             logger.logkv('Train/Action_abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
             logger.logkv('Train/Action_std', utils.to_np(dist.scale.mean()))
         logger.logkv('Train/Action_magnitude', utils.to_np(action.float().norm(2, dim=-1).mean()))
+        logger.logkv('Train/Action_magnitude_L1', utils.to_np(action.float().norm(1, dim=-1).mean()))
+        logger.logkv('Train/Action_max', utils.to_np(action.float().max(dim=-1).mean()))
 
     def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         assert len(obs.shape) == 2
@@ -112,11 +123,14 @@ class PPOAgent(Agent):
         # optimize the actor
         self.optimizer.zero_grad()
         actor_loss.backward()
+        grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.actor.parameters() if p.grad is not None) ** 0.5
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
         self.optimizer.step()
         logger.logkv('Time/B_update_time', time.time() - t)
         t = time.time()
-        self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob, recon_loss)
+        clip = surrr1 - surrr2
+        self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob, recon_loss,
+                       grad_norm, clip, ratio)
         logger.logkv('Time/B_log_time', time.time() - t)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
