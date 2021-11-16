@@ -81,13 +81,13 @@ class PPOAgent(Agent):
         logger.logkv('Train/recon_loss', utils.to_np(recon_loss))
         logger.logkv('Train/Grad_norm_actor', utils.to_np(grad_norm))
         logger.logkv('Train/PolicyClip', utils.to_np(clip.mean()))
-        logger.logkv('Train/Ratio', utils.to_np(ratio))
+        logger.logkv('Train/Ratio', utils.to_np(ratio.mean()))
         if not self.args.discrete:
             logger.logkv('Train/Action_abs_mean', utils.to_np(torch.abs(dist.loc).mean()))
             logger.logkv('Train/Action_std', utils.to_np(dist.scale.mean()))
         logger.logkv('Train/Action_magnitude', utils.to_np(action.float().norm(2, dim=-1).mean()))
         logger.logkv('Train/Action_magnitude_L1', utils.to_np(action.float().norm(1, dim=-1).mean()))
-        logger.logkv('Train/Action_max', utils.to_np(action.float().max(dim=-1).mean()))
+        logger.logkv('Train/Action_max', utils.to_np(action.float().max(dim=-1)[0].mean()))
 
     def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         assert len(obs.shape) == 2
