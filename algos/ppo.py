@@ -89,7 +89,7 @@ class PPOAgent(Agent):
         logger.logkv('Train/Action_magnitude_L1', utils.to_np(action.float().norm(1, dim=-1).mean()))
         logger.logkv('Train/Action_max', utils.to_np(action.float().max(dim=-1)[0].mean()))
 
-    def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
+    def update_actor(self, obs, batch, advice=None, no_advice_obs=None, next_obs=None):
         assert len(obs.shape) == 2
         batch_size = len(obs)
         # control penalty
@@ -123,17 +123,41 @@ class PPOAgent(Agent):
         logger.logkv('Time/B_compute_loss_time', time.time() - t)
         t = time.time()
         # optimize the actor
-        self.optimizer.zero_grad()
-        actor_loss.backward()
-        grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.actor.parameters() if p.grad is not None) ** 0.5
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
-        self.optimizer.step()
-        logger.logkv('Time/B_update_time', time.time() - t)
+        # self.optimizer.zero_grad()
+        # actor_loss.backward()
+        # grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.actor.parameters() if p.grad is not None) ** 0.5
+        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), .5)
+        # self.optimizer.step()
+        # logger.logkv('Time/B_update_time', time.time() - t)
         t = time.time()
         clip = surrr1 - surrr2
         self.log_actor(actor_loss, dist, batch.value, policy_loss, control_penalty, action, new_log_prob, recon_loss,
-                       grad_norm, clip, ratio)
+                       torch.zeros_like(actor_loss), clip, ratio)
         logger.logkv('Time/B_log_time', time.time() - t)
+
+        assert len(obs.shape) == 2
+        assert obs.shape == next_obs.shape
+        collected_value = batch.value
+        collected_return = batch.returnn
+        value = self.critic(obs)[:, 0]  # (batch, )
+        assert value.shape == collected_value.shape == collected_return.shape, \
+            (value.shape, collected_value.shape, collected_return.shape)
+        assert value.shape == torch.Size((len(obs), )), (value.shape, len(obs))
+        value_clipped = collected_value + torch.clamp(value - collected_value, -self.args.clip_eps, self.args.clip_eps)
+        surr1 = (value - collected_return).pow(2)
+        surr2 = (value_clipped - collected_return).pow(2)
+        critic_loss = torch.max(surr1, surr2).mean()
+
+        tag = 'Train'
+        # Optimize the critic
+        self.optimizer.zero_grad()
+        loss = actor_loss + .5 * critic_loss
+        loss.backward()
+        grad_norm = sum(p.grad.data.norm(2) ** 2 for p in self.parameters() if p.grad is not None) ** 0.5
+        torch.nn.utils.clip_grad_norm_(self.parameters(), .5)
+        self.optimizer.step()
+        clip = surr1 - surr2
+        self.log_critic(tag, critic_loss, value, collected_value, collected_return, obs, grad_norm, clip)
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
         obs, addl_obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)

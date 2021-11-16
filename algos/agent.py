@@ -114,7 +114,7 @@ class Agent(nn.Module):
         next_obs, _ = self.format_obs(batch.next_obs)
         logger.logkv('Time/B_Original_Format_Time', time.time() - t)
         t = time.time()
-        self.update_critic(obs, next_obs, batch, step=step)
+        # self.update_critic(obs, next_obs, batch, step=step)
         critic_time = time.time() - t
 
 
@@ -124,7 +124,7 @@ class Agent(nn.Module):
             actor_time = time.time() - t
             logger.logkv('Time/B_Format_Time', actor_time)
             t = time.time()
-            self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs)
+            self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs, next_obs=next_obs)
             actor_time = time.time() - t
             logger.logkv('Time/Actor_Time', actor_time)
         logger.logkv('Time/Critic_Time', critic_time)
