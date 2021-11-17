@@ -38,6 +38,8 @@ def load_experiment(args):
         saved_model = joblib.load(reload_path + '/latest.pkl')
         args = saved_model['args']
         args.start_itr = saved_model['itr']
+        args.buffer_path = args.exp_dir
+        args.reload_exp_path = reload_path
         if args.rl_teacher is not None:
             args.rl_policy = reload_path
         if args.distill_teacher is not None:
