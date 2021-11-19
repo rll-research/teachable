@@ -177,7 +177,7 @@ class Trainer(object):
                 if self.relabel_policy is not None:
                     samples_data = self.relabel(samples_data)
                 buffer_start = time.time()
-                self.buffer.add_batch(samples_data, save=self.itr % self.args.eval_interval == 0)
+                self.buffer.add_batch(samples_data, save=self.itr % 200  == 0)
                 buffer_time = time.time() - buffer_start
                 logger.logkv('Time/Buffer', buffer_time)
             else:
