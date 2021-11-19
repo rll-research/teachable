@@ -1,4 +1,5 @@
 import random
+import uuid
 
 import numpy as np
 import pathlib
@@ -63,7 +64,7 @@ class Buffer:
 
         val_path = self.buffer_path.joinpath(f'val_buffer.pkl')
         if val_path.exists():
-            with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'rb') as f:
+            with open(val_path, 'rb') as f:
                 self.trajs_val, self.index_val, self.counts_val = pkl.load(f)
             # if buffers are too big, trim them
             self.counts_val = min(self.counts_val, self.val_buffer_capacity)
@@ -136,12 +137,18 @@ class Buffer:
             for k in value:
                 getattr(value, k)[:remainder] = getattr(traj, k)[-remainder:]
 
+    def safe_save(self, data, filename):
+        temp_name = filename.with_name(str(uuid.uuid4()))
+        with open(temp_name, 'wb') as fp:
+            pkl.dump(data, fp)
+        temp_name.rename(filename)  # will remove `filename` if it exists
+
     def save_buffer(self):
         """ Save buffer to pkl files. """
-        with open(self.buffer_path.joinpath(f'train_buffer.pkl'), 'wb') as f:
-            pkl.dump((self.trajs_train, self.index_train, self.counts_train), f)
-        with open(self.buffer_path.joinpath(f'val_buffer.pkl'), 'wb') as f:
-            pkl.dump((self.trajs_val, self.index_val, self.counts_val), f)
+        self.safe_save((self.trajs_train, self.index_train, self.counts_train),
+                       self.buffer_path.joinpath(f'train_buffer.pkl'))
+        self.safe_save((self.trajs_val, self.index_val, self.counts_val),
+                       self.buffer_path.joinpath(f'val_buffer.pkl'))
 
     def add_trajs(self, batch, trim=True, only_val=False):
         """ Save a batch of trajectories, passed in as a Dictlist of timesteps of sequential trajs. """
