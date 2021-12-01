@@ -12,7 +12,7 @@ import shutil
 from logger import logger
 from utils.utils import set_seed
 from envs.babyai.levels.iclr19_levels import *
-from envs.babyai.levels.envdist import EnvDist
+from envs.envdist import EnvDist
 import pathlib
 import joblib
 

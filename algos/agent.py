@@ -13,7 +13,6 @@ from utils.dictlist import merge_dictlists
 
 
 class Agent(nn.Module):
-    """SAC algorithm."""
 
     def __init__(self, args, obs_preprocessor, teacher, env, device='cuda', advice_size=0, advice_dim=128,
                  actor_update_frequency=1):
