@@ -9,15 +9,13 @@ def make_obs_preprocessor(feedback_list, device=torch.device("cuda" if torch.cud
         assert not 'advice' in obs[0].keys(), "Appears to already be preprocessed"
 
         instr_mask = int(show_instrs)
-        obs_output['advice'] = [o[teacher] for o in obs]
+        obs_output['advice'] = [o[teacher] for o in obs if teacher in o]
         if 'instr' in obs[0]:
             obs_output['instr'] = [o['instr'] for o in obs]
         obs_output['obs'] = [o['obs'] for o in obs]
 
         obs_final = {}
         for k, v in obs_output.items():
-            if len(v) == 0:
-                continue
             if k == 'obs' and type(v[0]) is tuple:  # Padding for egocentric view
                 obs_final[k] = np.zeros((len(v), pad_size, pad_size, 3))
                 middle = int(pad_size / 2)
