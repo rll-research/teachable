@@ -1,5 +1,5 @@
 import argparse
-from envs.envdist import EnvDist
+from envs.babyai.levels.envdist import EnvDist
 import pathlib
 import matplotlib.pyplot as plt
 

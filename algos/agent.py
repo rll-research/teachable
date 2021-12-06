@@ -43,6 +43,12 @@ class Agent(nn.Module):
             self.advice_embedding = None
         else:
             self.advice_embedding = utils.mlp(advice_size, None, advice_dim, 0, output_mod=nn.Sigmoid()).to(self.device)
+
+        # TODO: these next 2 lines are in place since I want to run models collected before recon_coef was added.
+        # If you're not doing this, feel free to remove.
+        if not hasattr(args, 'recon_coef'):
+            args.recon_coef = 0
+
         if args.recon_coef:
             obs = env.reset()
             obs_dim = 128 if args.image_obs else len(obs['obs'].flatten())

@@ -1,8 +1,8 @@
 from envs.babyai.levels.iclr19_levels import *
 from utils.serializable import Serializable
-from envs.d4rl.d4rl_content.locomotion import *
-from envs.d4rl_envs import PointMassEnv, AntEnv
-from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
+#from envs.d4rl.d4rl_content.locomotion import *
+#from envs.d4rl_envs import PointMassEnv, AntEnv
+#from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 import copy
 NULL_SEED = 1000
 
