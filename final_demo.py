@@ -113,6 +113,7 @@ class HumanFeedback:
     def redraw(self, img):
         vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
         img = self.env.render('rgb_array', tile_size=32, full_vis_mask=vis_mask, highlight=False)
+        plt.clf()
         plt.imshow(img)
         plt.show()
 
@@ -193,7 +194,6 @@ class HumanFeedback:
             self.last = 'success' if info['success'] else 'timed out'
             self.end_trajectory(self.obs)
         else:
-#             if self.feedback_indicator % 2 == 0:  # TODO: STOP!
             self.redraw(self.obs)
 
     def preprocess_obs(self):
@@ -608,7 +608,7 @@ def make_args(collector, save_path):
 def display_trained_model(save_path):
     ffmpeg_cmd = ['ffmpeg', '-i', f'logs/{save_path}/vid.avi', f'logs/{save_path}/vid.mp4']
     if subprocess.run(ffmpeg_cmd).returncode == 0:
-        print ("FFmpeg Script Ran Successfully")
+        pass
     else:
         print ("There was an error running your FFmpeg script")
     mp4 = open(f'logs/{save_path}/vid.mp4','rb').read()
