@@ -39,7 +39,7 @@ env_params = EnvParams()
 
 
 class HumanFeedback:
-    def __init__(self, collect_type='Advice', save_path=None):
+    def __init__(self, collect_type='Advice', save_path=None, seed=1):
         class Args:
             def __init__(self):
                 env_type = 'BabyAI'
@@ -61,7 +61,7 @@ class HumanFeedback:
                 self.no_save = save_path is None
                 self.advance = 'scroll'
                 self.num_trajs = 100000
-                self.seed = 1
+                self.seed = seed
                 self.save_path = 'logs/' + save_path + '_buffer'
                 self.successful_only = False
                 self.demos = collect_type == 'Demos'
@@ -567,7 +567,8 @@ def update_env(d):
 env_button.observe(update_env, names='value')
 
 collect_button = widgets.ToggleButtons(
-    options=['Advice', 'Demos', 'Precollected'],
+    options=['Advice', 'Demos'],
+    # options=['Advice', 'Demos', 'Precollected'],
     description='Collect Mode',
     disabled=False,
     button_style=''
@@ -602,7 +603,11 @@ def make_args(collector, save_path):
     # args.buffer_path = '/home/olivia/Documents/Teachable/teachable/logs/human_data/L49_BABYAI_ANIKA'
     args.buffer_path = collector.args.save_path
     args.distill_teacher = 'none'
-    args.num_rollouts = 1#5  TODO: fix this!
+    args.num_rollouts = 3#5  TODO: fix this!
+    args.log_interval = 1
+    args.horizon = 60
+    args.buffer_capacity = 100000
+    args.n_itr = 20
     return args
 
 

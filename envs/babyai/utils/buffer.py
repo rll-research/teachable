@@ -70,6 +70,7 @@ class Buffer:
             self.counts_val = min(self.counts_val, self.val_buffer_capacity)
             self.index_val = min(self.index_val, self.val_buffer_capacity - 1)
             self.trajs_val = self.trajs_val[:self.val_buffer_capacity]
+        print("loaded buffer", train_path.resolve(), self.counts_train, self.counts_val)
 
     def create_blank_buffer(self, batch):
         """ Create blank buffer with all keys. (We don't do this at startup b/c we don't know all the batch keys.) """
@@ -169,6 +170,7 @@ class Buffer:
             self.save_traj(traj, self.index_train, 'train')
             self.index_train = (self.index_train + len(traj)) % self.train_buffer_capacity
             self.counts_train = min(self.train_buffer_capacity, self.counts_train + len(traj))
+        print("updated buffer", self.counts_train)
 
     def add_batch(self, batch, trim=True, only_val=False, save=True):
         """ Save a batch of data and update counters. Data is a Dictlist of timesteps of sequential trajs.
