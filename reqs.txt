@@ -5,7 +5,7 @@ opencv-python
 gym_minigrid
 numpy==1.19.5
 gym==0.18.0
-matplotlib==2.2.3
+matplotlib
 imageio==2.4.1
 joblib==0.12.4
 colorama
