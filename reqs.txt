@@ -1,3 +1,4 @@
+ipywidgets
 scikit-build
 torch
 opencv-python
