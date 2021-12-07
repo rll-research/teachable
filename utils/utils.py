@@ -209,7 +209,6 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     # tf.set_random_seed(seed)
-    print('using seed %s' % (str(seed)))
 
 
 class ClassEncoder(json.JSONEncoder):

@@ -117,7 +117,6 @@ class Buffer:
                 trajs.append(traj)
                 self.added_count += 1
         self.total_count += 1
-        print("Buffer Counts", self.added_count, self.total_count, self.added_count / self.total_count)
         return trajs
 
     def save_traj(self, traj, index, split):
@@ -170,7 +169,6 @@ class Buffer:
             self.save_traj(traj, self.index_train, 'train')
             self.index_train = (self.index_train + len(traj)) % self.train_buffer_capacity
             self.counts_train = min(self.train_buffer_capacity, self.counts_train + len(traj))
-        print("COUNTS", self.counts_train, self.counts_val, self.index_train, self.index_val)
 
     def add_batch(self, batch, trim=True, only_val=False, save=True):
         """ Save a batch of data and update counters. Data is a Dictlist of timesteps of sequential trajs.
