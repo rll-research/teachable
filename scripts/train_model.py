@@ -154,8 +154,8 @@ def configure_logger(args, exp_dir, start_itr, is_debug):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']
 
-    if not is_debug:
-        log_formats.append('tensorboard')
+    # if not is_debug:
+    #     log_formats.append('tensorboard')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed))

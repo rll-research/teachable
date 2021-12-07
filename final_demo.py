@@ -603,8 +603,6 @@ def make_args(collector, save_path):
     args.buffer_path = collector.args.save_path
     args.distill_teacher = 'none'
     args.num_rollouts = 1#5  TODO: fix this!
-    logger.configure(dir=save_path, format_strs=['stdout'],
-                     snapshot_mode='none')
     return args
 
 
