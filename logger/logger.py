@@ -179,7 +179,6 @@ class TensorBoardOutputFormat(KVWriter):
             self.pywrap_tensorflow = pywrap_tensorflow
             self.writer = pywrap_tensorflow.EventsWriter(compat.as_bytes(path))
             self.old_tf = True
-            print("using older version of TF")
         except Exception as e:
             print("Couldn't use old version of TF because", e)
             self.tf = tf

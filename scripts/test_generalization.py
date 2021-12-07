@@ -4,8 +4,6 @@ import time
 
 from utils.rollout import rollout
 from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
-import matplotlib
-matplotlib.use('Agg')
 
 
 def eval_policy(env, policy, save_dir, num_rollouts, hide_instrs, stochastic, args, seed=0,
@@ -31,7 +29,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, hide_instrs, stochastic, ar
     try:
         success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
     except:
-        print("doesn't have timestep_success")
+        pass
     return success_rate, stoch_accuracy, det_accuracy, reward
 
 
@@ -47,7 +45,7 @@ def make_log_fn(env, args, start_num_feedback, save_dir, policy, hide_instrs, se
 
     def log_fn(itr, num_feedback):
         policy_env_name = f'Policy{policy_name}-{env_name}'
-        full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
+        full_save_dir = save_dir
         if itr == 0:
             if not full_save_dir.exists():
                 full_save_dir.mkdir()
@@ -71,8 +69,7 @@ def make_log_fn(env, args, start_num_feedback, save_dir, policy, hide_instrs, se
 def test_success_checkpoint(env, save_dir, num_rollouts, policy=None,
                             policy_name="", env_name="", hide_instrs=False, stochastic=True, args=None,
                             seed=0, num_save=0):
-    policy_env_name = f'Policy{policy_name}-{env_name}'
-    full_save_dir = save_dir.joinpath(policy_env_name + f'_checkpoint{seed}')
+    full_save_dir = save_dir
     if not full_save_dir.exists():
         full_save_dir.mkdir()
     success_rate, stoch_accuracy, det_accuracy, reward = eval_policy(env, policy, full_save_dir, num_rollouts,

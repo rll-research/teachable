@@ -190,13 +190,13 @@ def eval_policy(policy, env, args, exp_dir):
         try:
             success_rate = np.mean([path['env_infos'][-1]['timestep_success'] for path in paths])
         except:
-            print("doesn't have timestep_success")
+            pass
 
-        print(
-            f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy}, reward: {reward}")
+        print(f"Finished with success: {success_rate}, stoch acc: {stoch_accuracy}, det acc: {det_accuracy},"
+              f" reward: {reward}")
         with open(save_dir.joinpath('results.csv'), 'a') as f:
-            f.write(
-                f'{args.prefix}-{env_index},{args.prefix},{env_index},{success_rate},{stoch_accuracy},{det_accuracy},{reward} \n')
+            f.write(f'{args.prefix}-{env_index},{args.prefix},{env_index},{success_rate},{stoch_accuracy},'
+                    f'{det_accuracy},{reward} \n')
 
 
 def run_experiment(args):

@@ -104,6 +104,11 @@ def get_readable_feedback(env_info, obs, teacher_name):
 
 
 def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
+    image = image[:, :, ::-1]  # RGB --> BGR
+    return image
+
+
+def plot_img_complex(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     teacher_action = env_info['teacher_action']
     # TODO: if we reintroduce the reward predictor, plot it here too
@@ -163,7 +168,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
     if save_locally:
         img = env.render(mode='rgb_array')
         height, width, channels = img.shape
-        size = (width * 2, height * 2)
+        size = (width, height)
         all_writer = cv2.VideoWriter(video_filename, cv2.VideoWriter_fourcc(*codec), fps, size)
     if save_wandb:
         all_videos, success_videos, failure_videos = [], [], []
