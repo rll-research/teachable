@@ -604,6 +604,7 @@ def make_args(collector, save_path):
     args.env = collector.args.env_type
     args.level = collector.args.env
     args.buffer_path = collector.args.save_path
+    print("SAVE PATH", args.buffer_path)
     if collector.buffer.trajs_train == 0:
         raise ValueError("Please collect data before training!")
     args.distill_teacher = 'none'
