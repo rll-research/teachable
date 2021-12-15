@@ -504,7 +504,7 @@ class HumanFeedback:
             }
             assert len(traj_dict['teacher_action'].shape) == len(traj_dict['full_done'].shape) == 1
             traj = DictList(traj_dict)
-            self.buffer.add_batch(traj, trim=True, only_val=self.num_trajs == self.val_every - 1)
+            self.buffer.add_batch(traj, trim=True, only_val=self.num_trajs == self.args.val_every - 1)
             path = self.save_path.joinpath('timesteps.pkl')
             time_dict = {'timesteps': self.timesteps, 'times': self.times}
             with open(path, 'wb') as f:
