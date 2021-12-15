@@ -29,20 +29,10 @@ import subprocess
 from logger import logger
 
 
-class EnvParams:
-    def __init__(self):
-        self.env_type = 'babyai'
-        self.collect_type = 'Advice'
-        self.save_path = 'temp'
-
-env_params = EnvParams()
-
-
 class HumanFeedback:
-    def __init__(self, collect_type='Advice', save_path=None, seed=1):
+    def __init__(self, env_type='BabyAI', collect_type='Advice', save_path=None, seed=1):
         class Args:
             def __init__(self):
-                env_type = 'BabyAI'
                 if env_type == 'BabyAI':
                     self.feedback_type = 'OSREasy'
                     self.env_type = 'babyai'
@@ -85,9 +75,10 @@ class HumanFeedback:
             self.buffer = Buffer(save_path, self.args.num_trajs, val_prob=.1, successful_only=self.args.successful_only)
         self.teacher_null_dict = self.env.teacher.null_feedback()
         self.teacher_dict = {k: k == self.args.feedback_type for k in self.teacher_null_dict.keys()}
+        if collect_type == 'Precollected':
+            return
         # Create window
         self.window = plt.figure(figsize=(10,10))
-        print("adding key press event")
         self.window.canvas.mpl_connect('key_press_event', self.key_handler)
         self.window.canvas.mpl_connect('button_press_event', self.onclick)
         self.window.canvas.mpl_connect('scroll_event', self.on_scroll)
@@ -233,12 +224,6 @@ class HumanFeedback:
                 feedback_obs[-feedback_freq - 3: -feedback_freq - 1] = np.array([-1, -1])
 
     def onclick(self, event):
-        if event.button == 3:  # right click
-            self.last = 'manual reset'
-            self.end_trajectory(self.obs)
-            return
-            print("got click - ending trajectory")
-        print("not ending traj")
         try:
             ix, iy = event.xdata, event.ydata
             pixels = TILE_PIXELS if self.args.env_type == 'babyai' else D4RL_TILE_PIXELS
@@ -561,46 +546,6 @@ class HumanFeedback:
                 return
         else:
             raise print("Invalid key", event.key)
-        print('pressed', event.key)
-
-
-
-
-env_button = widgets.ToggleButtons(
-    options=['Ant', 'BabyAI'],
-    description='Environment',
-    disabled=False,
-    button_style=''
-)
-def update_env(d):
-    global env_params
-    env_params.env_type = d['new']
-env_button.observe(update_env, names='value')
-
-collect_button = widgets.ToggleButtons(
-    options=['Advice', 'Demos', 'Precollected'],
-    description='Collect Mode',
-    disabled=False,
-    button_style=''
-)
-def update_collect(d):
-    global env_params
-    env_params.collect_type = d['new']
-collect_button.observe(update_collect, names='value')
-
-save_button = widgets.Text(
-    value='',
-    placeholder='Save Name',
-    description='Save Name:',
-    disabled=False
-)
-def update_save(d):
-    global env_params
-    env_params.save_path = None if d['new'] == '' else d['new']
-save_button.observe(update_save, names='value')
-
-
-items = [collect_button, save_button]
 
 
 def make_args(collector, save_path):
@@ -611,7 +556,6 @@ def make_args(collector, save_path):
     args.env = collector.args.env_type
     args.level = collector.args.env
     args.buffer_path = collector.args.save_path
-    print("SAVE PATH", args.buffer_path, collector)
     if collector.buffer.counts_train == 0:
         raise ValueError("Please collect data before training!")
     args.distill_teacher = 'none'

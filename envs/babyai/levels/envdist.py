@@ -1,8 +1,11 @@
 from envs.babyai.levels.iclr19_levels import *
 from utils.serializable import Serializable
-#from envs.d4rl.d4rl_content.locomotion import *
-#from envs.d4rl_envs import PointMassEnv, AntEnv
-#from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
+try:
+    from envs.d4rl.d4rl_content.locomotion import *
+    from envs.d4rl_envs import PointMassEnv, AntEnv
+    from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
+except Exception as e:
+    print("Unable to load AntMaze, likely because Mujoco isn't properly installed.  This is fine so long as you only use BabyAI.")
 import copy
 NULL_SEED = 1000
 
