@@ -478,10 +478,11 @@ class HumanFeedback:
                 'success': np.array(self.full_done),
             }
 
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             traj_dict = {
                 'obs': self.obs_list,
                 'next_obs': self.obs_list[1:] + [final_obs],
-                'action': torch.FloatTensor(np.concatenate(self.action_list)).cuda(),
+                'action': torch.FloatTensor(np.concatenate(self.action_list)).to(device),
                 # 'action_probs': self.action_probs,
                 'teacher_action': torch.FloatTensor(self.teacher_action),
                 'full_done': torch.FloatTensor(self.full_done),

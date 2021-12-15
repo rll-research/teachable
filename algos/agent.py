@@ -14,7 +14,7 @@ from utils.dictlist import merge_dictlists
 
 class Agent(nn.Module):
 
-    def __init__(self, args, obs_preprocessor, teacher, env, device='cuda', advice_size=0, advice_dim=128,
+    def __init__(self, args, obs_preprocessor, teacher, env, device=None, advice_size=0, advice_dim=128,
                  actor_update_frequency=1):
         super().__init__()
         if args.discrete:
@@ -27,6 +27,8 @@ class Agent(nn.Module):
         self.obs_preprocessor = obs_preprocessor
         self.teacher = teacher
         self.env = env
+        if device is None:
+           device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = torch.device(device)
         self.actor_update_frequency = actor_update_frequency
 
@@ -146,7 +148,7 @@ class Agent(nn.Module):
         torch.save(self.state_dict(), f'{model_dir}/{save_name}')
 
     def load(self, model_dir):
-        self.load_state_dict(torch.load(f'{model_dir}/{self.teacher}_model.pt'))
+        self.load_state_dict(torch.load(f'{model_dir}/{self.teacher}_model.pt', map_location=self.device))
 
     def get_actions(self, obs, training=False, instr_dropout_prob=0):
         self.train(training=training)

@@ -9,5 +9,5 @@ matplotlib==2.2.3
 imageio==2.4.1
 joblib==0.12.4
 colorama==0.4.1
-psutil==5.7.0
+psutil
 h5py==2.10.0

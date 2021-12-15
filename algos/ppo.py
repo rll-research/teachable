@@ -12,12 +12,14 @@ from algos import utils
 class PPOAgent(Agent):
     """PPO algorithm."""
 
-    def __init__(self, args, obs_preprocessor, teacher, env, device='cuda', advice_dim=128):
+    def __init__(self, args, obs_preprocessor, teacher, env, device=None, advice_dim=128):
         obs = env.reset()
         self.action_dim = env.action_space.n if args.discrete else env.action_space.shape[0]
         self.action_shape = 1 if args.discrete else self.action_dim
         self.advice_size = 0 if teacher is 'none' else len(obs[teacher])
         self.advice_dim = 0 if self.advice_size == 0 else advice_dim
+        if device is None:
+           device = 'cuda' if torch.cuda.is_available() else 'cpu'
         super().__init__(args, obs_preprocessor, teacher, env, device=device, advice_size=self.advice_size,
                          advice_dim=128)
         obs_dim = (128 + self.advice_dim) if args.image_obs else (len(obs['obs'].flatten()) + self.advice_dim)
