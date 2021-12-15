@@ -600,8 +600,9 @@ def make_args(collector, save_path):
     args.prefix = save_path
     args.env = collector.args.env_type
     args.level = collector.args.env
-    # args.buffer_path = '/home/olivia/Documents/Teachable/teachable/logs/human_data/L49_BABYAI_ANIKA'
     args.buffer_path = collector.args.save_path
+    print("SAVE PATH", args.buffer_path)
+    if collector.buffer.
     args.distill_teacher = 'none'
     args.num_rollouts = 3#5  TODO: fix this!
     args.log_interval = 1
