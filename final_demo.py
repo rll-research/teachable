@@ -62,9 +62,13 @@ class HumanFeedback:
                 self.advance = 'scroll'
                 self.num_trajs = 100000
                 self.seed = seed
-                self.save_path = 'logs/' + save_path + '_buffer'
+                if collect_type == 'Precollected':
+                    self.save_path = 'logs/precollected_babyai_buffer'
+                else:
+                    self.save_path = 'logs/' + save_path + '_buffer'
                 self.successful_only = False
                 self.demos = collect_type == 'Demos'
+                self.val_every = 10
                 
         # Load model
         self.args = Args()
@@ -493,7 +497,7 @@ class HumanFeedback:
             }
             assert len(traj_dict['teacher_action'].shape) == len(traj_dict['full_done'].shape) == 1
             traj = DictList(traj_dict)
-            self.buffer.add_batch(traj, trim=True, only_val=self.collecting_val)
+            self.buffer.add_batch(traj, trim=True, only_val=self.num_trajs == self.val_every - 1)
             path = self.save_path.joinpath('timesteps.pkl')
             time_dict = {'timesteps': self.timesteps, 'times': self.times}
             with open(path, 'wb') as f:
@@ -567,8 +571,7 @@ def update_env(d):
 env_button.observe(update_env, names='value')
 
 collect_button = widgets.ToggleButtons(
-    options=['Advice', 'Demos'],
-    # options=['Advice', 'Demos', 'Precollected'],
+    options=['Advice', 'Demos', 'Precollected'],
     description='Collect Mode',
     disabled=False,
     button_style=''
@@ -602,13 +605,15 @@ def make_args(collector, save_path):
     args.level = collector.args.env
     args.buffer_path = collector.args.save_path
     print("SAVE PATH", args.buffer_path)
-    if collector.buffer.
+    if collector.buffer.trajs_train == 0:
+        raise ValueError("Please collect data before training!")
     args.distill_teacher = 'none'
     args.num_rollouts = 3#5  TODO: fix this!
     args.log_interval = 1
     args.horizon = 60
     args.buffer_capacity = 100000
-    args.n_itr = 20
+    args.n_itr = 100
+    args.early_stop = 10
     return args
 
 
