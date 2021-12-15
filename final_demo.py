@@ -87,6 +87,7 @@ class HumanFeedback:
         self.teacher_dict = {k: k == self.args.feedback_type for k in self.teacher_null_dict.keys()}
         # Create window
         self.window = plt.figure(figsize=(10,10))
+        print("adding key press event")
         self.window.canvas.mpl_connect('key_press_event', self.key_handler)
         self.window.canvas.mpl_connect('button_press_event', self.onclick)
         self.window.canvas.mpl_connect('scroll_event', self.on_scroll)
@@ -232,6 +233,12 @@ class HumanFeedback:
                 feedback_obs[-feedback_freq - 3: -feedback_freq - 1] = np.array([-1, -1])
 
     def onclick(self, event):
+        if event.button == 3:  # right click
+            self.last = 'manual reset'
+            self.end_trajectory(self.obs)
+            return
+            print("got click - ending trajectory")
+        print("not ending traj")
         try:
             ix, iy = event.xdata, event.ydata
             pixels = TILE_PIXELS if self.args.env_type == 'babyai' else D4RL_TILE_PIXELS
@@ -604,8 +611,8 @@ def make_args(collector, save_path):
     args.env = collector.args.env_type
     args.level = collector.args.env
     args.buffer_path = collector.args.save_path
-    print("SAVE PATH", args.buffer_path)
-    if collector.buffer.trajs_train == 0:
+    print("SAVE PATH", args.buffer_path, collector)
+    if collector.buffer.counts_train == 0:
         raise ValueError("Please collect data before training!")
     args.distill_teacher = 'none'
     args.num_rollouts = 3#5  TODO: fix this!
