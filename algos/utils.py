@@ -292,7 +292,11 @@ class InstrEmbedding(nn.Module):
         instruction_vector = obs.instr.long()
         instr_embedding = self._get_instr_embedding(instruction_vector)
         obs.instr = instr_embedding
-        obs.obs = torch.cat([obs.obs, obs.instr])
+        x = obs.obs
+        for controller in self.controllers:
+            x = controller(x, instr_embedding) + x
+        x = F.relu(x)
+        obs.obs = x
         return obs
 
     def _get_instr_embedding(self, instr):
@@ -318,13 +322,12 @@ class ImageEmbedding(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(2, 2), stride=2),
         ])
-        self.film_pool = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
 
         # Initialize parameters correctly
         self.apply(weight_init)
 
     def forward(self, obs):
         inputs = torch.transpose(torch.transpose(obs.obs, 1, 3), 2, 3)
-        obs.obs = self.image_conv(inputs).flatten(1)
+        obs.obs = self.image_conv(inputs)
         return obs
 

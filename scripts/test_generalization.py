@@ -14,7 +14,7 @@ def eval_policy(env, policy, save_dir, num_rollouts, hide_instrs, stochastic, ar
     env.reset()
     policy.train(False)
     paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
-                                                                    instrs=not hide_instrs,
+                                                                    instr_dropout_prob=int(hide_instrs),
                                                                     stochastic=stochastic,
                                                                     record_teacher=True,
                                                                     video_directory=save_dir,

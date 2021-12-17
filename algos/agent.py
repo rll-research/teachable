@@ -73,6 +73,7 @@ class Agent(nn.Module):
             self.advice_embedding.train(training)
         if self.reconstructor is not None:
             self.reconstructor.train(training)
+        self.training = training
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
         obs, addl_obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
