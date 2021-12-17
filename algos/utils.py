@@ -292,6 +292,7 @@ class InstrEmbedding(nn.Module):
         instruction_vector = obs.instr.long()
         instr_embedding = self._get_instr_embedding(instruction_vector)
         obs.instr = instr_embedding
+        obs.obs = torch.cat([obs.obs, obs.instr])
         return obs
 
     def _get_instr_embedding(self, instr):

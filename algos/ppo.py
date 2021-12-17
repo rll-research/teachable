@@ -22,6 +22,9 @@ class PPOAgent(Agent):
            device = 'cuda' if torch.cuda.is_available() else 'cpu'
         super().__init__(args, obs_preprocessor, teacher, env, device=device, advice_size=self.advice_size,
                          advice_dim=128)
+        obs_dim = 128 if args.image_obs else len(obs['obs'].flatten())
+        obs_dim += self.advice_dim
+        obs_dim += (0 if self.task_encoder is None else 128)
         obs_dim = (128 + self.advice_dim) if args.image_obs else (len(obs['obs'].flatten()) + self.advice_dim)
         self.critic = utils.mlp(obs_dim, args.hidden_dim, 1, 2).to(self.device)
         self.actor = DiagGaussianActor(obs_dim, self.action_dim, discrete=args.discrete, hidden_dim=args.hidden_dim).to(
