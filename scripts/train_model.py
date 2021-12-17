@@ -154,8 +154,8 @@ def configure_logger(args, exp_dir, start_itr, is_debug):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']
 
-    # if not is_debug:
-    #     log_formats.append('tensorboard')
+    if not (args.no_tb or is_debug):
+        log_formats.append('tensorboard')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed))
@@ -257,7 +257,7 @@ def run_experiment(args):
 
     envs = [env.copy() for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
-        new_env.seed(i)
+        new_env.seed(i+100)
         new_env.set_task()
         new_env.reset()
     if collect_policy is None:
@@ -268,7 +268,7 @@ def run_experiment(args):
     buffer_name = exp_dir if args.buffer_path is None else args.buffer_path
     args.buffer_name = buffer_name
     num_rollouts = 1 if is_debug else args.num_rollouts
-    log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed,
+    log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed+1000,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),
                          log_every=args.log_interval)

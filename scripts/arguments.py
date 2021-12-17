@@ -80,6 +80,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--log_interval", type=int, default=20)
         self.add_argument("--eval_interval", type=int, default=20)
         self.add_argument('--no_video', action='store_true')
+        self.add_argument('--no_tb', action='store_true')
 
         # Teacher
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])

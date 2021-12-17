@@ -565,6 +565,7 @@ def make_args(collector, save_path):
     args.horizon = 60
     args.buffer_capacity = 100000
     args.n_itr = 50
+    args.no_tb
     return args
 
 

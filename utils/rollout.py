@@ -146,7 +146,7 @@ def plot_img_complex(env, obs, image, agent_action, env_info, record_teacher, te
     return background
 
 
-def rollout(env, agent, instr_dropout_prob=True, max_path_length=np.inf, speedup=1,
+def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
