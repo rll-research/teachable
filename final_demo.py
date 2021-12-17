@@ -564,8 +564,7 @@ def make_args(collector, save_path):
     args.log_interval = 1
     args.horizon = 60
     args.buffer_capacity = 100000
-    args.n_itr = 100
-    args.early_stop = 10
+    args.n_itr = 50
     return args
 
 
