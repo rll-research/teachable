@@ -153,6 +153,11 @@ class Trainer(object):
         for itr in range(self.itr, self.args.n_itr):
             self.itr = itr
 
+            if self.num_feedback_advice + self.num_feedback_reward >= self.args.n_advice:
+                self.log_rollouts()
+                self.save_model()
+                return
+
             if self.args.save_untrained:
                 self.save_model()
                 return
