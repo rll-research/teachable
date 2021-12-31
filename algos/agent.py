@@ -86,6 +86,7 @@ class Agent(nn.Module):
         return action, agent_info
 
     def log_rl(self, val_batch):
+        return
         self.train(False)
         with torch.no_grad():
             obs, _ = self.format_obs(val_batch.obs)
@@ -117,12 +118,9 @@ class Agent(nn.Module):
         reward = batch.reward.unsqueeze(1)
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
-
-        obs, _ = self.format_obs(batch.obs)
         next_obs, _ = self.format_obs(batch.next_obs)
         logger.logkv('Time/B_Original_Format_Time', time.time() - t)
         t = time.time()
-        # self.update_critic(obs, next_obs, batch, step=step)
         critic_time = time.time() - t
 
 
@@ -136,9 +134,6 @@ class Agent(nn.Module):
             actor_time = time.time() - t
             logger.logkv('Time/Actor_Time', actor_time)
         logger.logkv('Time/Critic_Time', critic_time)
-
-    def update_critic(self, obs, next_obs, batch, train=True, step=1):
-        raise NotImplementedError('update_critic should be defined in child class')
 
     def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         raise NotImplementedError('update_actor should be defined in child class')
