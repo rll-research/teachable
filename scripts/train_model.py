@@ -289,14 +289,19 @@ def run_experiment(args):
 
 
 if __name__ == '__main__':
+    from datetime import datetime
+    import os
     try:
         parser = ArgumentParser()
         args = parser.parse_args()
         run_experiment(args)
+        file = pathlib.Path('/home/olivia/failed_runs.txt')
+        if file.exists():
+            with open(file, 'a') as f:
+                f.writelines(f'Finished run {args.prefix} on GPU {os.environ["CUDA_VISIBLE_DEVICES"]} at time {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+                f.writelines('\n' + "=" * 100 + '\n')
     except Exception as e:
         import traceback
-        from datetime import datetime
-        import os
 
         error_content = [
             f'Run Name: {args.prefix}',
