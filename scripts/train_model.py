@@ -175,7 +175,7 @@ def eval_policy(policy, env, args, exp_dir):
         policy.train(False)
         video_name = f'vids_env_{env_index}'
         paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
-                                                                        instrs=not args.hide_instrs,
+                                                                        instr_dropout_prob=int(args.hide_instrs)
                                                                         stochastic=True,
                                                                         record_teacher=True,
                                                                         video_directory=save_dir,
