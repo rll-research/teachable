@@ -42,10 +42,12 @@ class Trainer(object):
         self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.args.feedback_list})
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 5)
 
-        # Counters to determine early stopping
+        # Counters to determine early stopping and saving
         self.best_val_loss = float('inf')
         self.best_success = 0
         self.itrs_since_best = 0
+        self.current_success = 0  # TODO: store these
+        self.current_val_loss = float('inf')
 
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
