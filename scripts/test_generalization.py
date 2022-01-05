@@ -53,8 +53,6 @@ def make_log_fn(env, args, start_num_feedback, save_dir, policy, hide_instrs, se
             if not file_name.exists():
                 with open(file_name, 'w') as f:
                     f.write('policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward\n')
-        if not itr % log_every == 0:
-            return
         num_save = 0 if args.no_video else 10
         avg_success, avg_accuracy, det_accuracy, reward = log_fn_vidrollout(itr, num_save)
         print(f"Finetuning achieved success: {avg_success}, stoch acc: {avg_accuracy}")
