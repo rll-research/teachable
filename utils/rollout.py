@@ -108,6 +108,17 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_na
     return image
 
 
+def plot_img_intermediate(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
+    h, w, c = image.shape
+    image = image[:, :, ::-1]  # RGB --> BGR
+    background = np.zeros((h + 100, w, c), dtype=np.uint8) + 255
+    background[:h] = image
+    if hasattr(env, 'mission'):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(background, env.mission, (30, h + 30), font, 0.5, (0, 0, 0), 1, 0)
+    return image
+
+
 def plot_img_complex(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     teacher_action = env_info['teacher_action']
@@ -229,7 +240,7 @@ def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
 
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
-                img = plot_img(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
+                img = plot_img_intermediate(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
                                record_teacher=record_teacher, teacher_name=teacher_name,
                                reward=r)
                 curr_images.append(img)
