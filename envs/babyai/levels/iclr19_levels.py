@@ -1077,6 +1077,17 @@ class Level_Unlock(Level_TeachableRobot):
         return [key] + all_dists + self.get_doors(), door
 
 
+class Level_UnlockRed(Level_Unlock):
+    """
+    Unlock a door. Door is always red.
+    """
+
+    def make_mission(self):
+        return {
+            "task": 'red',
+            "instrs": OpenInstr(ObjDesc("door", 'red'))
+        }
+
 class Level_UnlockTopLeft(Level_TeachableRobot):
     """
     Unlock a door.
@@ -1341,6 +1352,13 @@ class Level_PutNextSameColor(Level_PutNext):
             "instrs": PutNextSameColorInstr(ObjDesc(o1_type, o1_color), ObjDesc(o2_type, o1_color))
         }
 
+
+class Level_PutNextSameColorRed(Level_PutNext):
+    def make_mission(self):
+        return {
+            "task": ('key', 'red', 'box', 'red'),
+            "instrs": PutNextSameColorInstr(ObjDesc('key', 'red'), ObjDesc('box', 'red'))
+        }
 
 class Level_PutNextSameColorLocal(Level_PutNextLocal):
     def __init__(self, seed=None, **kwargs):

@@ -273,6 +273,11 @@ class EnvDist(Serializable):
                 level = Level_GoToObjDistractorsRed(**kwargs)  # Like L27 (bigger, more dists) but red only
             elif index == 58:
                 level = Level_UnlockFixedKeyMedium(**kwargs)  # Key is always in same place, grid is bigger
+            elif index == 30:
+                level = Level_PutNextSameColorRed(**kwargs)  # 30 test4
+            elif index == 31:
+                # New object
+                level = Level_UnlockRed(**kwargs)  # 31 test5 ("unlock" is a completely new instruction)
 
             else:
                 raise NotImplementedError(index)
