@@ -1,7 +1,7 @@
 """
 Levels described in the ICLR 2019 submission.
 """
-from gym_minigrid.minigrid import Key
+from gym_minigrid.minigrid import Key, Door
 
 from .levelgen import *
 from .teachable_robot_levels import Level_TeachableRobot
@@ -1083,9 +1083,8 @@ class Level_UnlockTopLeft(Level_TeachableRobot):
     Competencies: Maze, Open, Unlock. No unblocking.
     """
 
-    def __init__(self, *args, **kwargs):
-        room_size = 8
-        super().__init__(*args, **kwargs, max_steps=room_size ** 2, )
+    def __init__(self, room_size=8, *args, **kwargs):
+        super().__init__(*args, max_steps=room_size ** 2, **kwargs, )
 
     def make_mission(self):
         _, obj_color = self.sample_object()
@@ -1201,6 +1200,59 @@ class Level_UnlockTopLeftFixedKey(Level_UnlockTopLeft):
                         i,
                         j,
                         num_distractors=3,
+                        all_unique=False
+                    )
+                    all_dists += dists
+
+        self.check_objs_reachable()
+        return [key] + all_dists + self.get_doors(), door
+
+
+class Level_UnlockFixedKeyMedium(Level_Unlock):
+    """
+    Unlock a door in the top-left room. Key has deterministic resets.
+    """
+    def __init__(self, *args, **kwargs):
+        room_size = 13
+        super().__init__(*args, room_size=room_size,
+                         num_rows=1,
+                         num_cols=1,
+                         # max_steps=room_size * 6,
+                         **kwargs,
+                          )
+
+    def add_objs(self, task):
+
+        obj_color = task
+        door = Door(obj_color, is_locked=True)
+        pos = [12, np.random.randint(1, 12)]
+        self.grid.set(*pos, door)
+        door.cur_pos = pos
+        # room.doors[0] = door
+
+        # Add the key to the same room
+        key = Key(door.color)
+        self.grid.set(3, 10, key)
+        key.init_pos = pos
+        key.cur_pos = pos
+
+        # Ensure that the locked door is the only
+        # door of that color
+        colors = list(filter(lambda c: not c == obj_color, COLOR_NAMES))
+        self.connect_all(door_colors=colors)
+
+        # Add distractors to all but the locked room.
+        # We do this to speed up the reachability test,
+        # which otherwise will reject all levels with
+        # objects in the locked room.
+        all_dists = []
+        for i in range(self.num_cols):
+            for j in range(self.num_rows):
+                if i is not id or j is not jd:
+                    dists = self.add_distractors(
+                        i,
+                        j,
+                        num_distractors=18,
                         all_unique=False
                     )
                     all_dists += dists
