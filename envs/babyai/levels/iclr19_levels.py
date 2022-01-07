@@ -1,9 +1,10 @@
 """
 Levels described in the ICLR 2019 submission.
 """
+from gym_minigrid.minigrid import Key
+
 from .levelgen import *
 from .teachable_robot_levels import Level_TeachableRobot
-from ...d4rl.d4rl_content.gym_minigrid.minigrid import Key
 
 
 class Level_IntroPrimitives(Level_TeachableRobot):
