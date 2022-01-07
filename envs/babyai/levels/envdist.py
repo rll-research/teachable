@@ -31,7 +31,7 @@ class EnvDist(Serializable):
         elif env == 'ant':
             self.levels_list = {k: NULL_SEED for k in range(12 + 10)}
         elif env == 'babyai':
-            self.levels_list = {k: NULL_SEED for k in range(59)}
+            self.levels_list = {k: NULL_SEED for k in range(61)}
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
         if self.env_dist == 'four_levels':
@@ -273,9 +273,9 @@ class EnvDist(Serializable):
                 level = Level_GoToObjDistractorsRed(**kwargs)  # Like L27 (bigger, more dists) but red only
             elif index == 58:
                 level = Level_UnlockFixedKeyMedium(**kwargs)  # Key is always in same place, grid is bigger
-            elif index == 30:
+            elif index == 59:
                 level = Level_PutNextSameColorRed(**kwargs)  # 30 test4
-            elif index == 31:
+            elif index == 60:
                 # New object
                 level = Level_UnlockRed(**kwargs)  # 31 test5 ("unlock" is a completely new instruction)
 
