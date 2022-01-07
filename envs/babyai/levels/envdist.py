@@ -31,7 +31,7 @@ class EnvDist(Serializable):
         elif env == 'ant':
             self.levels_list = {k: NULL_SEED for k in range(12 + 10)}
         elif env == 'babyai':
-            self.levels_list = {k: NULL_SEED for k in range(56)}
+            self.levels_list = {k: NULL_SEED for k in range(58)}
         # If start index isn't specified, start from the beginning (if we're using the pre-levels), or start
         # from the end of the pre-levels.
         if self.env_dist == 'four_levels':
@@ -267,6 +267,10 @@ class EnvDist(Serializable):
                 level = Level_UnlockTopLeftFixedKeyDoor(**kwargs)  # Key and door are always in same place
             elif index == 55:
                 level = Level_UnlockTopLeftFixedAll(**kwargs)  # Agent, key and door are always in same place
+            elif index == 56:
+                level = Level_GoToRed(**kwargs)  # GoTo, but target is always red ball
+            elif index == 57:
+                level = Level_GoToObjDistractorsRed(**kwargs)  # Like L27 (bigger, more dists) but red only
 
             else:
                 raise NotImplementedError(index)

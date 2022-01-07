@@ -495,6 +495,16 @@ class Level_GoTo(Level_TeachableRobot):
         self.check_objs_reachable()
         return dists + self.get_doors() + [obj], obj
 
+class Level_GoToRed(Level_GoTo):
+    """
+    Go to a red ball, the object may be in another room. Many distractors.
+    """
+    def make_mission(self):
+        return {
+            "task": ["ball", "red"],
+            "instrs": GoToInstr(ObjDesc("ball", "red"))
+        }
+
 
 class Level_GoToSmall2by2(Level_GoTo):
     def __init__(
@@ -729,6 +739,13 @@ class Level_GoToObjDistractors(Level_GoTo):
         self.check_objs_reachable()
         return obj_list, obj
 
+class Level_GoToObjDistractorsRed(Level_GoToObjDistractors):
+
+    def make_mission(self):
+        return {
+            "task": ["ball", "red"],
+            "instrs": GoToInstr(ObjDesc("ball", "red"))
+        }
 
 class Level_GoToObjDistractorsLocal(Level_GoToLocal):
     def __init__(self, seed=None, **kwargs):
