@@ -13,7 +13,7 @@ class WaypointController(object):
         self._target = -1000 * ONES
         self.p_gain = p_gain
         self.d_gain = d_gain
-        self.offset_mapping = offset_mapping.astype(np.int32)
+        self.offset_mapping = np.array(offset_mapping).astype(np.int32)
         self.solve_thresh = solve_thresh
         self.vel_thresh = 0.1
         self.waypoints = []
