@@ -164,13 +164,14 @@ class Agent(nn.Module):
             'Accuracy': float((action_pred == action_true).sum()) / len(action_pred),
         }
         train_str = 'Train' if train else 'Val'
-        tokens = torch.unique(action_true)
-        for t in tokens.tolist():
-            locations = action_true == t
-            pred_token = action_pred[locations]
-            true_token = action_true[locations]
-            acc = float((pred_token == true_token).sum()) / len(true_token)
-            logger.logkv(f"Distill/Accz_{t}_{train_str}", acc)
+        if self.args.discrete:
+            tokens = torch.unique(action_true)
+            for t in tokens.tolist():
+                locations = action_true == t
+                pred_token = action_pred[locations]
+                true_token = action_true[locations]
+                acc = float((pred_token == true_token).sum()) / len(true_token)
+                logger.logkv(f"Distill/Accz_{t}_{train_str}", acc)
 
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
         logger.logkv(f"Distill/Entropy_{train_str}", float(dist.entropy().mean()))

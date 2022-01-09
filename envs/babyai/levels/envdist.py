@@ -274,10 +274,10 @@ class EnvDist(Serializable):
             elif index == 58:
                 level = Level_UnlockFixedKeyMedium(**kwargs)  # Key is always in same place, grid is bigger
             elif index == 59:
-                level = Level_PutNextSameColorRed(**kwargs)  # 30 test4
+                level = Level_PutNextSameColorRed(**kwargs)  # Like 30, but always same target
             elif index == 60:
                 # New object
-                level = Level_UnlockRed(**kwargs)  # 31 test5 ("unlock" is a completely new instruction)
+                level = Level_UnlockRed(**kwargs)  # Like 31, but always same target
 
             else:
                 raise NotImplementedError(index)
