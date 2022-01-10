@@ -104,6 +104,8 @@ class DataCollector(ABC):
                 action_to_take = self.env.get_teacher_action()
             
             if self.args.noise:
+                if self.args.frames_per_proc <= 5:
+                    print("Warning! Entirely noise.")
                 if i == 0:
                     repeated_action = np.random.uniform(-1, 1, size=np.array(action_to_take).shape)
                 if i < 5:
