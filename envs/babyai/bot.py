@@ -637,7 +637,8 @@ class Bot:
 
         if self.next_door is not None:
             print("ORIGINAL SUBGOAL", subgoal)
-            # subgoal = OpenSubgoal(self)
+            subgoal = OpenSubgoal(self)
+            subgoal.datum = self.next_door[1]
             # print("NEW SUBGOAL", subgoal)
 
         subgoal_names = ['OpenSubgoal',
