@@ -102,6 +102,12 @@ class DataCollector(ABC):
             action_to_take = action.cpu().numpy()
             if collect_with_oracle:
                 action_to_take = self.env.get_teacher_action()
+            
+            if self.args.noise:
+                if i == 0:
+                    repeated_action = np.random.uniform(-1, 1, size=np.array(action_to_take).shape)
+                if i < 5:
+                    action_to_take = repeated_action
 
             obs, reward, done, env_info = self.env.step(action_to_take)
             if not collect_reward:
