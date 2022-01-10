@@ -593,6 +593,7 @@ class Bot:
 
         """
         self.next_door = None
+        self.long_path = None
         self._process_obs()
 
         # Check that no box has been opened
@@ -631,6 +632,12 @@ class Bot:
             suggested_action = self.mission.actions.done
         self._remember_current_state()
         self.step += 1
+        if suggested_action == 3:
+            print(">>>>>> PICKING UP!!!")
+            print(">>>>>> ", subgoal)
+            print(">>>>>> ", self.next_door)
+            print(">>>>>> ", self.long_path)
+
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
@@ -976,16 +983,19 @@ class Bot:
             if accept_fn((i, j), cell):
                 path = []
                 pos = (i, j)
+                long_path = []
                 while pos:
                     path.append(pos)
 
                     # Record first door
                     cell = grid.get(*pos)
+                    long_path.append((cell, pos))
                     if cell and cell.type == 'door':
                         self.next_door = (cell, pos)
                         # print("setting next door to", self.next_door)
 
                     pos = previous_pos[pos]
+                self.long_path = long_path
                 return path, (i, j), previous_pos
 
             # If this cell was not visually observed, don't expand from it
