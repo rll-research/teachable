@@ -109,9 +109,9 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_na
 
 
 def plot_img_intermediate(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
-    feedback = get_readable_feedback(env_info, obs, teacher_name)
-    options = ['Left', 'Right', 'Forward', 'Pickup', 'Putdown', 'Open']
-    print(env.agent_pos, "Taking action", options[agent_action], feedback)
+    #feedback = get_readable_feedback(env_info, obs, teacher_name)
+    #options = ['Left', 'Right', 'Forward', 'Pickup', 'Putdown', 'Open']
+    #print(env.agent_pos, "Taking action", options[agent_action], feedback)
     h, w, c = image.shape
     image = image[:, :, ::-1]  # RGB --> BGR
     background = np.zeros((h + 100, w, c), dtype=np.uint8) + 255
