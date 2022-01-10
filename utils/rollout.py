@@ -109,6 +109,9 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_na
 
 
 def plot_img_intermediate(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
+    feedback = get_readable_feedback(env_info, obs, teacher_name)
+    options = ['Left', 'Right', 'Forward', 'Pickup', 'Putdown', 'Open']
+    print(env.agent_pos, "Taking action", options[agent_action], feedback)
     h, w, c = image.shape
     image = image[:, :, ::-1]  # RGB --> BGR
     background = np.zeros((h + 100, w, c), dtype=np.uint8) + 255
@@ -162,6 +165,7 @@ def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
             hierarchical_rollout=False):
+    rollout_oracle = True
     codec = 'MJPG'
     extension = '.avi'
     discrete = type(env.action_space) is Discrete
@@ -217,6 +221,7 @@ def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
 
             # Step env
             if rollout_oracle:
+                a = env.teacher_action
                 next_o, r, d, env_info = env.step(env.teacher_action)
             else:
                 next_o, r, d, env_info = env.step(a)
