@@ -201,6 +201,8 @@ def eval_policy(policy, env, args, exp_dir):
 
 def run_experiment(args):
     args, log_dict = load_experiment(args)
+    if not hasattr(args, 'noise'):
+        args.noise = False
     exp_name = args.prefix
     set_seed(args.seed)
     feedback_list = get_feedback_list(args)
