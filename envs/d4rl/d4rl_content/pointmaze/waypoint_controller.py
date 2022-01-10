@@ -77,8 +77,8 @@ class WaypointController(object):
     def _breadth_first_search(self, initial_state, goal, grid):
 
         # Add the offset mapping, which changes from world coordinates to grid coordinates
-        initial_state = initial_state + self.offset_mapping
-        goal = goal + self.offset_mapping
+        initial_state = (initial_state + self.offset_mapping).astype(np.int32)
+        goal = (goal + self.offset_mapping).astype(np.int32)
 
         queue = [(initial_state, None)]
         previous_pos = dict()
