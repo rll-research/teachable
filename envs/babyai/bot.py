@@ -393,6 +393,12 @@ class GoNextToSubgoal(Subgoal):
                 plan_through_doors=self.bot.fully_observed,
             )
 
+        if path:
+            for p in path[::-1]:  # loop from last to first
+                cell = self.bot.grid.get(*p)
+                if cell and cell.type == 'door' and not cell.is_open:
+                    self.next_door = (cell, p)
+
         # No path found
         # -> explore the world
         if not path:
@@ -991,8 +997,8 @@ class Bot:
                     # Record first door
                     cell = grid.get(*pos)
                     long_path.append((cell, pos))
-                    if cell and cell.type == 'door' and not cell.is_open:
-                        self.next_door = (cell, pos)
+                    # if cell and cell.type == 'door' and not cell.is_open:
+                    #     self.next_door = (cell, pos)
                         # print("setting next door to", self.next_door)
 
                     pos = previous_pos[pos]
