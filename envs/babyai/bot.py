@@ -395,9 +395,9 @@ class GoNextToSubgoal(Subgoal):
 
         if path:
             for p in path[::-1]:  # loop from last to first
-                cell = self.bot.grid.get(*p)
-                if cell and cell.type == 'door' and not cell.is_open:
-                    self.next_door = (cell, p)
+                cell = self.bot.mission.grid.get(*p)
+                if cell and cell.type == 'door':# and not cell.is_open:
+                    self.bot.next_door = (cell, p)
 
         # No path found
         # -> explore the world
@@ -599,8 +599,6 @@ class Bot:
 
         """
         self.next_door = None
-        self.long_path = None
-        self.set_path = 0
         self._process_obs()
 
         # Check that no box has been opened
@@ -639,22 +637,15 @@ class Bot:
             suggested_action = self.mission.actions.done
         self._remember_current_state()
         self.step += 1
-        if suggested_action == 3:
-            print(">>>>>> PICKING UP!!!", self.set_path)
-            print(">>>>>> ", subgoal)
-            print(">>>>>> ", self.next_door)
-            print(">>>>>> ", self.long_path)
 
-        #print("STACK", self.stack)
-        #print("replacing?", self.next_door is not None, "original subgoal", subgoal)
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
 
         if self.next_door is not None:
+            cell, pos = self.next_door
             subgoal = OpenSubgoal(self)
-            subgoal.datum = self.next_door[1]
-            # print("NEW SUBGOAL", subgoal)
+            subgoal.datum = pos
 
         subgoal_names = ['OpenSubgoal',
                         'DropSubgoal',
@@ -990,20 +981,9 @@ class Bot:
             if accept_fn((i, j), cell):
                 path = []
                 pos = (i, j)
-                long_path = []
                 while pos:
                     path.append(pos)
-
-                    # Record first door
-                    cell = grid.get(*pos)
-                    long_path.append((cell, pos))
-                    # if cell and cell.type == 'door' and not cell.is_open:
-                    #     self.next_door = (cell, pos)
-                        # print("setting next door to", self.next_door)
-
                     pos = previous_pos[pos]
-                self.long_path = long_path
-                self.set_path += 1
                 return path, (i, j), previous_pos
 
             # If this cell was not visually observed, don't expand from it
