@@ -165,7 +165,6 @@ def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
             hierarchical_rollout=False):
-    rollout_oracle = True
     codec = 'MJPG'
     extension = '.avi'
     discrete = type(env.action_space) is Discrete
