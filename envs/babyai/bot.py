@@ -983,7 +983,7 @@ class Bot:
                     cell = grid.get(*pos)
                     if cell and cell.type == 'door':
                         self.next_door = (cell, pos)
-                        print("setting next door to", self.next_door)
+                        # print("setting next door to", self.next_door)
 
                     pos = previous_pos[pos]
                 return path, (i, j), previous_pos
