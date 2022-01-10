@@ -100,6 +100,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--collect_with_distill_policy', action='store_true')
         self.add_argument('--relabel_policy', default=None, help='path to relabel policy')
         self.add_argument('--relabel_teacher', default=None)
+        self.add_argument('--noise', action='store_true')
 
         # Distillations
         self.add_argument('--distillation_steps', type=int, default=100)
