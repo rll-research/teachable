@@ -137,7 +137,7 @@ class Trainer(object):
         assert log_prob.dtype == batch.log_prob.dtype
         assert log_prob.shape == batch.log_prob.shape
 
-        if 'argmax_action' in agent_dict:
+        if 'argmax_action' in agent_dict and hasattr(batch, 'argmax_action'):
             argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype)
             assert type(argmax_action) == type(batch.argmax_action)
             assert argmax_action.dtype == batch.argmax_action.dtype
