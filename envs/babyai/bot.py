@@ -592,6 +592,7 @@ class Bot:
             bot thinks that the mission has been accomplished.
 
         """
+        self.next_door = None
         self._process_obs()
 
         # Check that no box has been opened
@@ -633,6 +634,12 @@ class Bot:
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
+
+        if self.next_door is not None:
+            print("ORIGINAL SUBGOAL", subgoal)
+            # subgoal = OpenSubgoal(self)
+            # print("NEW SUBGOAL", subgoal)
+
         subgoal_names = ['OpenSubgoal',
                         'DropSubgoal',
                         'PickupSubgoal',
@@ -650,6 +657,7 @@ class Bot:
             # Going to an object to open it
             elif subgoal.reason in ['Open', 'Open2']:
                 subgoal_name = 'OpenSubgoal'
+        print("Subgoal name", subgoal_name)
         try:
             subgoal_name_idx = subgoal_names.index(subgoal_name)
         except:
@@ -969,6 +977,13 @@ class Bot:
                 pos = (i, j)
                 while pos:
                     path.append(pos)
+
+                    # Record first door
+                    cell = grid.get(*pos)
+                    if cell and cell.type == 'door':
+                        self.next_door = (cell, pos)
+                        print("setting next door to", self.next_door)
+
                     pos = previous_pos[pos]
                 return path, (i, j), previous_pos
 
