@@ -52,6 +52,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help="entropy term coefficient")
         self.add_argument('--distill_entropy_coef', type=float, default=0)
         self.add_argument('--n_itr', type=int, default=100000)
+        self.add_argument('--n_advice', type=int, default=float('inf'))
         self.add_argument('--end_on_full_buffer', action='store_true')
         self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo', 'hppo'])
         self.add_argument('--min_itr_steps', type=int, default=0)
@@ -80,6 +81,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--log_interval", type=int, default=20)
         self.add_argument("--eval_interval", type=int, default=20)
         self.add_argument('--no_video', action='store_true')
+        self.add_argument('--no_tb', action='store_true')
 
         # Teacher
         self.add_argument('--feedback_freq', nargs='+', type=int, default=[1])
@@ -98,6 +100,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--collect_with_distill_policy', action='store_true')
         self.add_argument('--relabel_policy', default=None, help='path to relabel policy')
         self.add_argument('--relabel_teacher', default=None)
+        self.add_argument('--noise', action='store_true')
 
         # Distillations
         self.add_argument('--distillation_steps', type=int, default=100)

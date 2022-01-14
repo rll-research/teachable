@@ -175,6 +175,7 @@ class HumanFeedback:
 
         parser.add_argument(
             '--seed',
+            type=int,
             default=1,
         )
         parser.add_argument(

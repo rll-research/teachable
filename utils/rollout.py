@@ -108,6 +108,20 @@ def plot_img(env, obs, image, agent_action, env_info, record_teacher, teacher_na
     return image
 
 
+def plot_img_intermediate(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
+    #feedback = get_readable_feedback(env_info, obs, teacher_name)
+    #options = ['Left', 'Right', 'Forward', 'Pickup', 'Putdown', 'Open']
+    #print(env.agent_pos, "Taking action", options[agent_action], feedback)
+    h, w, c = image.shape
+    image = image[:, :, ::-1]  # RGB --> BGR
+    background = np.zeros((h + 100, w, c), dtype=np.uint8) + 255
+    background[:h] = image
+    if hasattr(env, 'mission'):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(background, env.mission, (30, h + 30), font, 0.5, (0, 0, 0), 1, 0)
+    return image
+
+
 def plot_img_complex(env, obs, image, agent_action, env_info, record_teacher, teacher_name, reward):
     feedback = get_readable_feedback(env_info, obs, teacher_name)
     teacher_action = env_info['teacher_action']
@@ -146,7 +160,7 @@ def plot_img_complex(env, obs, image, agent_action, env_info, record_teacher, te
     return background
 
 
-def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
+def rollout(env, agent, instr_dropout_prob=0, max_path_length=np.inf, speedup=1,
             video_directory="", video_name='sim_out', stochastic=False, num_rollouts=1,
             num_save=None, record_teacher=False, save_locally=True,
             save_wandb=False, teacher_name="", rollout_oracle=False,
@@ -191,7 +205,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
             if hierarchical_rollout:
                 a, agent_info = agent.get_hierarchical_actions([o])
             else:
-                a, agent_info = agent.get_actions([o], instr_dropout_prob=int(instrs))
+                a, agent_info = agent.get_actions([o], instr_dropout_prob=instr_dropout_prob)
             stoch_a = a
             det_a = agent_info['argmax_action']
             if discrete:
@@ -206,6 +220,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
 
             # Step env
             if rollout_oracle:
+                a = env.teacher_action
                 next_o, r, d, env_info = env.step(env.teacher_action)
             else:
                 next_o, r, d, env_info = env.step(a)
@@ -229,7 +244,7 @@ def rollout(env, agent, instrs=True, max_path_length=np.inf, speedup=1,
 
             # Render image, if necessary
             if (save_locally or save_wandb) and i < num_save:
-                img = plot_img(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
+                img = plot_img_intermediate(env, obs=past_o, image=image, agent_action=a, env_info=env_info,
                                record_teacher=record_teacher, teacher_name=teacher_name,
                                reward=r)
                 curr_images.append(img)

@@ -393,6 +393,12 @@ class GoNextToSubgoal(Subgoal):
                 plan_through_doors=self.bot.fully_observed,
             )
 
+        if path:
+            for p in path[::-1]:  # loop from last to first
+                cell = self.bot.mission.grid.get(*p)
+                if cell and cell.type == 'door':# and not cell.is_open:
+                    self.bot.next_door = (cell, p)
+
         # No path found
         # -> explore the world
         if not path:
@@ -592,6 +598,7 @@ class Bot:
             bot thinks that the mission has been accomplished.
 
         """
+        self.next_door = None
         self._process_obs()
 
         # Check that no box has been opened
@@ -630,9 +637,16 @@ class Bot:
             suggested_action = self.mission.actions.done
         self._remember_current_state()
         self.step += 1
+
         return suggested_action, self.subgoal_to_index(subgoal)
 
     def subgoal_to_index(self, subgoal):
+
+        if self.next_door is not None:
+            cell, pos = self.next_door
+            subgoal = OpenSubgoal(self)
+            subgoal.datum = pos
+
         subgoal_names = ['OpenSubgoal',
                         'DropSubgoal',
                         'PickupSubgoal',

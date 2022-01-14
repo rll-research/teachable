@@ -42,10 +42,12 @@ class Trainer(object):
         self.followed_feedback = log_dict.get('followed_feedback', {k: 0 for k in self.args.feedback_list})
         self.num_train_skip_itrs = log_dict.get('num_train_skip_itrs', 5)
 
-        # Counters to determine early stopping
+        # Counters to determine early stopping and saving
         self.best_val_loss = float('inf')
         self.best_success = 0
         self.itrs_since_best = 0
+        self.current_success = 0  # TODO: store these
+        self.current_val_loss = float('inf')
 
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
@@ -135,7 +137,7 @@ class Trainer(object):
         assert log_prob.dtype == batch.log_prob.dtype
         assert log_prob.shape == batch.log_prob.shape
 
-        if 'argmax_action' in agent_dict:
+        if 'argmax_action' in agent_dict and hasattr(batch, 'argmax_action'):
             argmax_action = agent_dict['argmax_action'].to(batch.argmax_action.dtype)
             assert type(argmax_action) == type(batch.argmax_action)
             assert argmax_action.dtype == batch.argmax_action.dtype
@@ -152,6 +154,11 @@ class Trainer(object):
 
         for itr in range(self.itr, self.args.n_itr):
             self.itr = itr
+
+            if self.num_feedback_advice + self.num_feedback_reward >= self.args.n_advice:
+                self.log_rollouts()
+                self.save_model()
+                return
 
             if self.args.save_untrained:
                 self.save_model()

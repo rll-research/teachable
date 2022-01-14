@@ -13,7 +13,7 @@ class WaypointController(object):
         self._target = -1000 * ONES
         self.p_gain = p_gain
         self.d_gain = d_gain
-        self.offset_mapping = offset_mapping
+        self.offset_mapping = np.array(offset_mapping).astype(np.int32)
         self.solve_thresh = solve_thresh
         self.vel_thresh = 0.1
         self.waypoints = []
@@ -77,8 +77,8 @@ class WaypointController(object):
     def _breadth_first_search(self, initial_state, goal, grid):
 
         # Add the offset mapping, which changes from world coordinates to grid coordinates
-        initial_state = initial_state + self.offset_mapping
-        goal = goal + self.offset_mapping
+        initial_state = (initial_state + self.offset_mapping).astype(np.int32)
+        goal = (goal + self.offset_mapping).astype(np.int32)
 
         queue = [(initial_state, None)]
         previous_pos = dict()

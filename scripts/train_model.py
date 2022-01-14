@@ -154,8 +154,8 @@ def configure_logger(args, exp_dir, start_itr, is_debug):
             shutil.rmtree(exp_dir)
     log_formats = ['stdout', 'log', 'csv']
 
-    # if not is_debug:
-    #     log_formats.append('tensorboard')
+    if not (args.no_tb or is_debug):
+        log_formats.append('tensorboard')
     logger.configure(dir=exp_dir, format_strs=log_formats,
                      snapshot_mode=args.save_option,
                      snapshot_gap=50, step=start_itr, name=args.prefix + str(args.seed))
@@ -175,7 +175,7 @@ def eval_policy(policy, env, args, exp_dir):
         policy.train(False)
         video_name = f'vids_env_{env_index}'
         paths, accuracy, stoch_accuracy, det_accuracy, reward = rollout(env, policy,
-                                                                        instrs=not args.hide_instrs,
+                                                                        instr_dropout_prob=int(args.hide_instrs),
                                                                         stochastic=True,
                                                                         record_teacher=True,
                                                                         video_directory=save_dir,
@@ -201,6 +201,8 @@ def eval_policy(policy, env, args, exp_dir):
 
 def run_experiment(args):
     args, log_dict = load_experiment(args)
+    if not hasattr(args, 'noise'):
+        args.noise = False
     exp_name = args.prefix
     set_seed(args.seed)
     feedback_list = get_feedback_list(args)
@@ -257,7 +259,7 @@ def run_experiment(args):
 
     envs = [env.copy() for _ in range(args.num_envs)]
     for i, new_env in enumerate(envs):
-        new_env.seed(i)
+        new_env.seed(i+100)
         new_env.set_task()
         new_env.reset()
     if collect_policy is None:
@@ -268,7 +270,7 @@ def run_experiment(args):
     buffer_name = exp_dir if args.buffer_path is None else args.buffer_path
     args.buffer_name = buffer_name
     num_rollouts = 1 if is_debug else args.num_rollouts
-    log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed,
+    log_fn = make_log_fn(env, args, 0, exp_dir, log_policy, hide_instrs=args.hide_instrs, seed=args.seed+1000,
                          stochastic=True, num_rollouts=num_rollouts, policy_name=exp_name,
                          env_name=str(args.level),
                          log_every=args.log_interval)
@@ -289,14 +291,19 @@ def run_experiment(args):
 
 
 if __name__ == '__main__':
+    from datetime import datetime
+    import os
     try:
         parser = ArgumentParser()
         args = parser.parse_args()
         run_experiment(args)
+        file = pathlib.Path('/home/olivia/failed_runs.txt')
+        if file.exists():
+            with open(file, 'a') as f:
+                f.writelines(f'Finished run {args.prefix} on GPU {os.environ["CUDA_VISIBLE_DEVICES"]} at time {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+                f.writelines('\n' + "=" * 100 + '\n')
     except Exception as e:
         import traceback
-        from datetime import datetime
-        import os
 
         error_content = [
             f'Run Name: {args.prefix}',

@@ -73,6 +73,7 @@ class Agent(nn.Module):
             self.advice_embedding.train(training)
         if self.reconstructor is not None:
             self.reconstructor.train(training)
+        self.training = training
 
     def act(self, obs, sample=False, instr_dropout_prob=0):
         obs, addl_obs = self.format_obs(obs, instr_dropout_prob=instr_dropout_prob)
@@ -85,6 +86,7 @@ class Agent(nn.Module):
         return action, agent_info
 
     def log_rl(self, val_batch):
+        return
         self.train(False)
         with torch.no_grad():
             obs, _ = self.format_obs(val_batch.obs)
@@ -116,12 +118,9 @@ class Agent(nn.Module):
         reward = batch.reward.unsqueeze(1)
         logger.logkv('train/batch_reward', utils.to_np(reward.mean()))
 
-
-        obs, _ = self.format_obs(batch.obs)
         next_obs, _ = self.format_obs(batch.next_obs)
         logger.logkv('Time/B_Original_Format_Time', time.time() - t)
         t = time.time()
-        # self.update_critic(obs, next_obs, batch, step=step)
         critic_time = time.time() - t
 
 
@@ -135,9 +134,6 @@ class Agent(nn.Module):
             actor_time = time.time() - t
             logger.logkv('Time/Actor_Time', actor_time)
         logger.logkv('Time/Critic_Time', critic_time)
-
-    def update_critic(self, obs, next_obs, batch, train=True, step=1):
-        raise NotImplementedError('update_critic should be defined in child class')
 
     def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
         raise NotImplementedError('update_actor should be defined in child class')
@@ -168,6 +164,15 @@ class Agent(nn.Module):
             'Accuracy': float((action_pred == action_true).sum()) / len(action_pred),
         }
         train_str = 'Train' if train else 'Val'
+        if self.args.discrete:
+            tokens = torch.unique(action_true)
+            for t in tokens.tolist():
+                locations = action_true == t
+                pred_token = action_pred[locations]
+                true_token = action_true[locations]
+                acc = float((pred_token == true_token).sum()) / len(true_token)
+                logger.logkv(f"Distill/Accz_{t}_{train_str}", acc)
+
         logger.logkv(f"Distill/Loss_{train_str}", float(policy_loss))
         logger.logkv(f"Distill/Entropy_{train_str}", float(dist.entropy().mean()))
         logger.logkv(f"Distill/TotalLoss_{train_str}", float(loss))

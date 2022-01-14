@@ -36,16 +36,15 @@ class HumanFeedback:
                 if env_type == 'BabyAI':
                     self.feedback_type = 'OSREasy'
                     self.env_type = 'babyai'
-                    self.env = 49
+                    self.env = 53
                     self.skip = 1
                     self.model = 'saved_models/babyai_offset_advice'
                 elif env_type == 'Ant':
-                    raise NotImplementedError()
                     self.feedback_type = 'OffsetWaypoint'
                     self.env_type = 'ant'
                     self.env = 2
                     self.skip = 5  # TODO: what value???
-                    self.model = None # TODO: load model
+                    self.model = 'saved_models/ant_offset_advice'
                 else:
                     raise NotImplementedError
                 self.no_save = save_path is None
@@ -73,8 +72,6 @@ class HumanFeedback:
             if not save_path.exists():
                 save_path.mkdir()
             self.buffer = Buffer(save_path, self.args.num_trajs, val_prob=.1, successful_only=self.args.successful_only)
-        self.teacher_null_dict = self.env.teacher.null_feedback()
-        self.teacher_dict = {k: k == self.args.feedback_type for k in self.teacher_null_dict.keys()}
         if collect_type == 'Precollected':
             return
         # Create window
@@ -108,8 +105,11 @@ class HumanFeedback:
 
 
     def redraw(self, img):
-        vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
-        img = self.env.render('rgb_array', tile_size=32, full_vis_mask=vis_mask, highlight=False)
+        if self.args.env_type == 'ant':
+            img = self.env.render('rgb_array')
+        else:
+            vis_mask = self.env.oracle[self.args.feedback_type].vis_mask
+            img = self.env.render('rgb_array', tile_size=32, full_vis_mask=vis_mask, highlight=False)
         plt.clf()
         plt.imshow(img)
         plt.show()
@@ -566,6 +566,7 @@ def make_args(collector, save_path):
     args.buffer_capacity = 100000
     args.n_itr = 50
     args.discount = .25
+    args.no_tb
     return args
 
 
