@@ -459,6 +459,8 @@ class Level_TeachableRobot(RoomGridLevel):
         """
         Render the whole-grid human view
         """
+        if self.fully_observed:
+            highlight = False
 
         if close:
             if self.window:

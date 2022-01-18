@@ -24,10 +24,8 @@ import uuid
 from scripts.train_model import *
 from scripts.arguments import ArgumentParser
 import sys
-from base64 import b64encode
-import subprocess
-from logger import logger
-
+import mediapy as media
+import pandas as pd
 
 class HumanFeedback:
     def __init__(self, env_type='BabyAI', collect_type='Advice', save_path=None, seed=1):
@@ -43,7 +41,7 @@ class HumanFeedback:
                     self.feedback_type = 'OffsetWaypoint'
                     self.env_type = 'ant'
                     self.env = 2
-                    self.skip = 5  # TODO: what value???
+                    self.skip = 10  # TODO: what value???
                     self.model = 'saved_models/ant_offset_advice'
                 else:
                     raise NotImplementedError
@@ -129,7 +127,7 @@ class HumanFeedback:
         self.obs = self.env.reset()
 #         self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag='orig')
         self.last_feedback = self.obs[self.args.feedback_type] * 0
-        self.clear_feedback()
+        #self.clear_feedback()
         title_str = f"Trajectory {self.num_trajs}, frame {self.num_frames}, Last: {self.last}"
         if self.collecting_val:
             title_str += ' (validation)'
@@ -158,13 +156,18 @@ class HumanFeedback:
         self.current_feedback_type = 'none'
 
     def step(self, action=None, demo=False):
+        print("stepping")
+        assert False
         if not self.ready:
             return
         for i in range(self.args.skip):
             self.num_frames += 1
+            print("why isn't it printing??????????????????????")
             if not demo:
+                print("before feedback", self.obs[self.args.feedback_type])
                 self.preprocess_obs()
-#                 self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
+                self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
+                print("after feedback", self.obs[self.args.feedback_type])
             self.feedback_indicator += 1
             if action is None:
                 self.policy.eval()
@@ -238,12 +241,14 @@ class HumanFeedback:
                     self.set_feedback(dir)
                     return
                 elif self.args.feedback_type in ['Waypoint', 'OffsetWaypoint']:
-                    if event.button == 1:  # left click, normal waypoint
-                        x = round(coord_x)
-                        y = round(coord_y)
-                    elif event.button == 3:  # right click, goal
-                        x = coord_x
-                        y = coord_y
+                    x = coord_x
+                    y = coord_y
+                    #if event.button == 1:  # left click, normal waypoint
+                    #    x = round(coord_x)
+                    #    y = round(coord_y)
+                    #elif event.button == 3:  # right click, goal
+                    #    x = coord_x
+                    #    y = coord_y
                     self.set_feedback(np.array([-y, x], dtype=np.float64))
                     return
 
@@ -440,6 +445,7 @@ class HumanFeedback:
             self.step()
 
     def set_feedback(self, feedback=None, demo=False):
+        return
         self.ready = True
         if self.args.demos and demo:
             action = np.array([int(feedback)])
@@ -560,7 +566,7 @@ def make_args(collector, save_path):
     if collector.buffer.counts_train == 0:
         raise ValueError("Please collect data before training!")
     args.distill_teacher = 'none'
-    args.num_rollouts = 3#5  TODO: fix this!
+    args.num_rollouts = 1#5  TODO: fix this!
     args.log_interval = 1
     args.horizon = 60
     args.buffer_capacity = 100000
@@ -570,16 +576,30 @@ def make_args(collector, save_path):
 
 
 def display_trained_model(save_path):
-    ffmpeg_cmd = ['ffmpeg', '-i', f'logs/{save_path}/vid.avi', f'logs/{save_path}/vid.mp4']
-    if subprocess.run(ffmpeg_cmd).returncode == 0:
-        pass
+    url = f'logs/{save_path}/vid.avi'
+    video = media.read_video(url)
+    media.show_video(video)
+    
+
+def load_data(name, file_name='progress.csv'):
+    csv_name = pathlib.Path.cwd().joinpath('logs', name, file_name)
+    data = pd.read_csv(csv_name)
+    data.columns = [c.strip() for c in data.columns]
+    return data
+
+def plot(run_name, metric='success_rate', x_label='Itrs'):
+    use_itrs = x_label in ['Itrs', 'Samples']
+    data = load_data(run_name, file_name='results.csv')
+    data.columns = ['policy_env','policy','env','success_rate','stoch_accuracy','itr','num_feedback','time','reward']
+    y = data[metric].ewm(span=5).mean().to_numpy()
+    if use_itrs:
+        x = data['itr'].to_numpy()
     else:
-        print ("There was an error running your FFmpeg script")
-    mp4 = open(f'logs/{save_path}/vid.mp4','rb').read()
-    data_url = "data:video/mp4;base64," + b64encode(mp4).decode()
-    html_str = """
-    <video width=400 controls>
-          <source src="%s" type="video/mp4">
-    </video>
-    """ % data_url
-    return html_str
+        x = data['num_feedback'].to_numpy()
+    plt.title(run_name)
+    plt.plot(x, y)
+    plt.ylabel('Success', fontsize=15)
+    plt.xlabel(x_label, fontsize=15)
+    plt.show()
+
+
