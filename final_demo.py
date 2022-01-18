@@ -234,8 +234,8 @@ class HumanFeedback:
                 feedback_obs[-feedback_freq - 3: -feedback_freq - 1] = np.array([-1, -1])
 
     def onclick(self, event):
-        if True:  # try:
-
+        print("GOT A CLICK GOT A CLICK!!!!!")
+        try:
             ix, iy = event.xdata, event.ydata
             with open('ugh.py', 'a') as f:
                 f.write(str(('coord OG', ix, iy)))
@@ -555,7 +555,11 @@ class HumanFeedback:
 
             # Spacebar
             if event.key == ' ':
-                self.set_feedback(actions.toggle, demo=demo)
+                if self.args.env == 'babyai':
+                    self.set_feedback(actions.toggle, demo=demo)
+                if self.args.env == 'ant':
+                    print("SCROLLBAR TIME")
+                    self.step()
                 return
             if event.key == 'pageup':
                 self.set_feedback(actions.pickup, demo=demo)
