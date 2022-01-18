@@ -156,8 +156,6 @@ class HumanFeedback:
         self.current_feedback_type = 'none'
 
     def step(self, action=None, demo=False):
-        print("stepping")
-        #assert False
         if not self.ready:
             return
         for i in range(self.args.skip):
@@ -165,20 +163,14 @@ class HumanFeedback:
             if not demo:
                 import copy
                 a = copy.deepcopy(self.obs[self.args.feedback_type])
-                #print("before feedback", self.obs[self.args.feedback_type])
                 self.preprocess_obs()
                 self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
                 b = self.obs[self.args.feedback_type]
-                with open('ugh.py', 'a') as f:
-                    f.write(str((a, b)))
-                #print("after feedback", self.obs[self.args.feedback_type])
             self.feedback_indicator += 1
             if action is None:
                 self.policy.eval()
                 action, agent_info = self.policy.get_actions([self.obs])
             new_obs, reward, done, info = self.env.step(action)
-            with open('ugh.py', 'a') as f:
-                    f.write(str(('raw advice', self.obs[self.args.feedback_type])))
             self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
             self.steps_since_feedback += 1
             self.timestep_counter += 1
@@ -234,13 +226,8 @@ class HumanFeedback:
                 feedback_obs[-feedback_freq - 3: -feedback_freq - 1] = np.array([-1, -1])
 
     def onclick(self, event):
-        print("GOT A CLICK GOT A CLICK!!!!!")
         try:
             ix, iy = event.xdata, event.ydata
-            with open('ugh.py', 'a') as f:
-                f.write(str(('coord OG', ix, iy)))
-            
-            
             
             AGENT_X = 202
             AGENT_Y = 296
@@ -256,8 +243,6 @@ class HumanFeedback:
                 coord_y = (iy - AGENT_Y) / D4RL_TILE_PIXELS
                 x = round(coord_x)
                 y = round(coord_y)
-                with open('ugh.py', 'a') as f:
-                    f.write(str(('coord', x, y)))
                 self.set_feedback(np.array([-y, x], dtype=np.float64))
                 return
 
@@ -363,8 +348,6 @@ class HumanFeedback:
 
 
         except Exception as e:
-            with open('ugh.py', 'a') as f:
-                f.write(str(('error',)))
             print("invalid coordinate", e)
 
     def add_feedback_indicator(self):
