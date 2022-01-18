@@ -162,7 +162,6 @@ class HumanFeedback:
             return
         for i in range(self.args.skip):
             self.num_frames += 1
-            print("why isn't it printing??????????????????????")
             if not demo:
                 import copy
                 a = copy.deepcopy(self.obs[self.args.feedback_type])
@@ -190,6 +189,7 @@ class HumanFeedback:
             self.times.append(time.time() - self.start_time)
             self.timesteps.append(self.timestep_counter)
             self.obs = new_obs
+            self.decode_feedback(new_obs[self.args.feedback_type], preprocessed=True, tag="og-p")
             action = None
 
             if done:
@@ -256,7 +256,6 @@ class HumanFeedback:
                 coord_y = (iy - AGENT_Y) / D4RL_TILE_PIXELS
                 x = round(coord_x)
                 y = round(coord_y)
-                print("coord")
                 with open('ugh.py', 'a') as f:
                     f.write(str(('coord', x, y)))
                 self.set_feedback(np.array([-y, x], dtype=np.float64))
@@ -363,10 +362,10 @@ class HumanFeedback:
                 self.set_feedback(subgoal_idx_all)
 
 
-        #except Exception as e:
-        #    with open('ugh.py', 'a') as f:
-        #            f.write(str(('error',)))
-        #    print("invalid coordinate", e)
+        except Exception as e:
+            with open('ugh.py', 'a') as f:
+                f.write(str(('error',)))
+            print("invalid coordinate", e)
 
     def add_feedback_indicator(self):
         if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OFFSR', 'OSREasy']:
@@ -529,7 +528,9 @@ class HumanFeedback:
             return
         if event.key == 'c':
             self.step()
-        if self.args.feedback_type == 'Cardinal':
+        if self.args.env_type == 'ant':
+            self.step()
+        elif self.args.feedback_type == 'Cardinal':
             arr = np.zeros(4)
             if event.key == 'left':
                 arr[0] = 1
@@ -558,7 +559,6 @@ class HumanFeedback:
                 if self.args.env == 'babyai':
                     self.set_feedback(actions.toggle, demo=demo)
                 if self.args.env == 'ant':
-                    print("SCROLLBAR TIME")
                     self.step()
                 return
             if event.key == 'pageup':
