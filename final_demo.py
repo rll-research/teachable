@@ -41,7 +41,7 @@ class HumanFeedback:
                     self.feedback_type = 'OffsetWaypoint'
                     self.env_type = 'ant'
                     self.env = 2
-                    self.skip = 10  # TODO: what value???
+                    self.skip = 2#5  # TODO: what value???
                     self.model = 'saved_models/ant_offset_advice'
                 else:
                     raise NotImplementedError
@@ -157,22 +157,29 @@ class HumanFeedback:
 
     def step(self, action=None, demo=False):
         print("stepping")
-        assert False
+        #assert False
         if not self.ready:
             return
         for i in range(self.args.skip):
             self.num_frames += 1
             print("why isn't it printing??????????????????????")
             if not demo:
-                print("before feedback", self.obs[self.args.feedback_type])
+                import copy
+                a = copy.deepcopy(self.obs[self.args.feedback_type])
+                #print("before feedback", self.obs[self.args.feedback_type])
                 self.preprocess_obs()
                 self.decode_feedback(self.obs[self.args.feedback_type], preprocessed=True, tag="human-p")
-                print("after feedback", self.obs[self.args.feedback_type])
+                b = self.obs[self.args.feedback_type]
+                with open('ugh.py', 'a') as f:
+                    f.write(str((a, b)))
+                #print("after feedback", self.obs[self.args.feedback_type])
             self.feedback_indicator += 1
             if action is None:
                 self.policy.eval()
                 action, agent_info = self.policy.get_actions([self.obs])
             new_obs, reward, done, info = self.env.step(action)
+            with open('ugh.py', 'a') as f:
+                    f.write(str(('raw advice', self.obs[self.args.feedback_type])))
             self.advice_count.append(1 if self.steps_since_feedback == 0 else 0)
             self.steps_since_feedback += 1
             self.timestep_counter += 1
@@ -227,30 +234,33 @@ class HumanFeedback:
                 feedback_obs[-feedback_freq - 3: -feedback_freq - 1] = np.array([-1, -1])
 
     def onclick(self, event):
-        try:
+        if True:  # try:
+
             ix, iy = event.xdata, event.ydata
+            with open('ugh.py', 'a') as f:
+                f.write(str(('coord OG', ix, iy)))
+            
+            
+            
+            AGENT_X = 202
+            AGENT_Y = 296
+            D4RL_TILE_PIXELS = 49
+            
+            
             pixels = TILE_PIXELS if self.args.env_type == 'babyai' else D4RL_TILE_PIXELS
             coord_width = ix / pixels
             coord_height = iy / pixels
 
-            if self.args.env_type == 'd4rl':
+            if True:#self.args.env_type == 'd4rl':
                 coord_x = (ix - AGENT_X) / D4RL_TILE_PIXELS
                 coord_y = (iy - AGENT_Y) / D4RL_TILE_PIXELS
-                if self.args.feedback_type == 'Direction':
-                    dir = np.array([coord_x, coord_y])
-                    self.set_feedback(dir)
-                    return
-                elif self.args.feedback_type in ['Waypoint', 'OffsetWaypoint']:
-                    x = coord_x
-                    y = coord_y
-                    #if event.button == 1:  # left click, normal waypoint
-                    #    x = round(coord_x)
-                    #    y = round(coord_y)
-                    #elif event.button == 3:  # right click, goal
-                    #    x = coord_x
-                    #    y = coord_y
-                    self.set_feedback(np.array([-y, x], dtype=np.float64))
-                    return
+                x = round(coord_x)
+                y = round(coord_y)
+                print("coord")
+                with open('ugh.py', 'a') as f:
+                    f.write(str(('coord', x, y)))
+                self.set_feedback(np.array([-y, x], dtype=np.float64))
+                return
 
             x = int(coord_width)
             y = int(coord_height)
@@ -353,8 +363,10 @@ class HumanFeedback:
                 self.set_feedback(subgoal_idx_all)
 
 
-        except Exception as e:
-            print("invalid coordinate", e)
+        #except Exception as e:
+        #    with open('ugh.py', 'a') as f:
+        #            f.write(str(('error',)))
+        #    print("invalid coordinate", e)
 
     def add_feedback_indicator(self):
         if self.args.feedback_type in ['OFFIO', 'OFFSparseRandom', 'OSRPeriodicImplicit', 'OFFSR', 'OSREasy']:
