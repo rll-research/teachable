@@ -16,6 +16,7 @@ Run the following commands:
 ```
 git clone https://github.com/AliengirlLiv/teachable.git
 conda create --name teachable_rl python=3.7
+cd teachable
 conda activate teachable_rl
 sudo apt install libglew-dev libsm6 libxrender1 libosmesa6-dev patchelf
 pip install -r reqs.txt
