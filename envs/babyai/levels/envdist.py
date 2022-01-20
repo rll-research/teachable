@@ -6,6 +6,7 @@ try:
     from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 except Exception as e:
     print("Unable to load AntMaze, likely because Mujoco isn't properly installed.  This is fine so long as you only use BabyAI.")
+    print(e)
 import copy
 NULL_SEED = 1000
 
