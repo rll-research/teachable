@@ -38,6 +38,8 @@ cd envs/d4rl
 pip install -v --editable .
 ```
 
+The most common installation error is mujoco not installing correctly. To check if this is the problem, open a python interpreter and run `import mujoco_py`.
+
 
 ## Usage
 
