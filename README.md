@@ -26,6 +26,12 @@ Add the project directory `MY/PATH/TO/PROJECT/teachable` to your PYTHONPATH.
 
 If you want to use the Point Maze or Ant MAze environments, [install Mujoco](https://github.com/openai/mujoco-py).
 
+Add these to your `~/.bashrc` file (note version numbers may have changed):
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.mujoco/mujoco210/bin
+```
+
+
 Then run:
 ```
 cd envs/d4rl
