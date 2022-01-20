@@ -4,7 +4,7 @@ The codebase contains elements from the [BabyAI platform](https://github.com/mil
 
 ## Replicating NeurIPS Results
 
-The main branch of this repository is updated frequently. If you are looking to replicate or compare against the results from the NeurIPS paper, please use the code on the neurips_21 branch.
+The main branch of this repository is updated frequently, so use that if you want the newest features. If you are looking to replicate or compare against the results from the NeurIPS paper, please use this branch. Exact commands used in the paper can be found [here](https://docs.google.com/spreadsheets/d/1bFcwLeM-eT-dpISRGRHB25fxBtYHNSkN3fK7qkoMe6U/edit?usp=sharing).
 
 
 ## Installation
