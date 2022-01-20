@@ -15,6 +15,7 @@ from envs.babyai.levels.iclr19_levels import *
 from envs.babyai.levels.envdist import EnvDist
 import pathlib
 import joblib
+import os
 
 
 def args_type(default):
@@ -291,37 +292,7 @@ def run_experiment(args):
 
 
 if __name__ == '__main__':
-    from datetime import datetime
-    import os
-    try:
-        parser = ArgumentParser()
-        args = parser.parse_args()
-        run_experiment(args)
-        file = pathlib.Path('/home/olivia/failed_runs.txt')
-        if file.exists():
-            with open(file, 'a') as f:
-                f.writelines(f'Finished run {args.prefix} on GPU {os.environ["CUDA_VISIBLE_DEVICES"]} at time {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
-                f.writelines('\n' + "=" * 100 + '\n')
-    except Exception as e:
-        import traceback
-
-        error_content = [
-            f'Run Name: {args.prefix}',
-            f'Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}',
-            f'GPU: {os.environ["CUDA_VISIBLE_DEVICES"]}',
-            f'Error: {traceback.format_exc()}',
-            '=======================================================================================================\n',
-        ]
-
-        for error_line in error_content[:-2]:
-            print(error_line)
-
-        file = pathlib.Path('/home/olivia/failed_runs.txt')
-        if file.exists():
-            with open(file, 'a') as f:
-                f.writelines(error_content)
-        else:
-            print("Not logging anywhere b/c we can't find the file")
-        raise
-
+    parser = ArgumentParser()
+    args = parser.parse_args()
+    run_experiment(args)
 
