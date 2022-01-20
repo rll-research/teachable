@@ -37,4 +37,4 @@ pip install --editable .
 
 To train a model, run the `train_model.py` script from the `teachable` directory.
 
-Example: `python scripts/train_model.py  --prefix M0009 --collect_with_rl_policy --level 2 --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass`
+Example: `python scripts/train_model.py  --prefix EXP_NAME --collect_with_rl_policy --level 2 --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass`
