@@ -29,7 +29,7 @@ If you want to use the Point Maze or Ant MAze environments, [install Mujoco](htt
 Then run:
 ```
 cd envs/d4rl
-pip install --editable .
+pip install -v --editable .
 ```
 
 
