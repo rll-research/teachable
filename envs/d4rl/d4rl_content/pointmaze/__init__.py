@@ -1,6 +1,13 @@
 from .maze_model import MazeEnv, OPEN, U_MAZE, MEDIUM_MAZE, LARGE_MAZE, U_MAZE_EVAL, MEDIUM_MAZE_EVAL, LARGE_MAZE_EVAL, TWELVE, FIFTEEN
 from gym.envs.registration import register
+import gym
 
+env_dict = gym.envs.registration.registry.env_specs.copy()
+for env in env_dict:
+    if 'maze2d' in env:
+        print('Remove {} from registry'.format(env))
+        del gym.envs.registration.registry.env_specs[env]
+        
 register(
     id='maze2d-open-v0',
     entry_point='envs.d4rl.d4rl_content.pointmaze:MazeEnv',

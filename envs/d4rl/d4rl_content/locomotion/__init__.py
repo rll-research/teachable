@@ -1,3 +1,4 @@
+import gym
 from gym.envs.registration import register
 from envs.d4rl.d4rl_content.locomotion import ant
 from envs.d4rl.d4rl_content.locomotion import maze_env
@@ -19,6 +20,11 @@ register(
     }
 )
 """
+env_dict = gym.envs.registration.registry.env_specs.copy()
+for env in env_dict:
+    if 'antmaze' in env:
+        print('Remove {} from registry'.format(env))
+        del gym.envs.registration.registry.env_specs[env]
 
 register(
     id='antmaze-open-v0',

@@ -1,7 +1,13 @@
 from gym.envs.registration import register
 from envs.d4rl.d4rl_content.gym_bullet import gym_envs
 from envs.d4rl.d4rl_content import infos
+import gym
 
+env_dict = gym.envs.registration.registry.env_specs.copy()
+for env in env_dict:
+    if 'bullet' in env:
+        print('Remove {} from registry'.format(env))
+        del gym.envs.registration.registry.env_specs[env]
 
 for agent in ['hopper', 'halfcheetah', 'ant', 'walker2d']:
     register(
