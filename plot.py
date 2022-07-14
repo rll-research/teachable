@@ -126,7 +126,7 @@ def plot_curriculum(data_names, x_type, use_min_len=True, y='Curriculum Percent'
     plt.ylabel(y_label, fontsize=20)
     plt.ylim(y_lower, y_upper)
     plt.xlabel(x_label, fontsize=20)
-#     plt.legend(handles=plots, fontsize=20)
+    plt.legend(handles=plots, fontsize=20)
     plt.margins(x=0)
     if x_max is not None:
         if x_min is None:
@@ -398,11 +398,24 @@ if __name__ == "__main__":
     data_names = [
         (['EXP_NAME'], 'OffsetWaypoint', 'blue', ''),
     ]
+    baby_data_names = [
+        (['babybase_new_SubgoalSimple'], 'Subgoal', 'c', ''),
+        # (['babybase_PreActionAdvice'], 'Direction', 'r', ''),
+        (['babybase_new_XYCorrections'], 'OffsetWaypoint', 'g', ''),
+        # (['babybase_none'], 'none', 'grey', ''),
+    ]
 
+    # pmbase_names = [
+    #     (['pmbase_OffsetWaypoint'], 'OffsetWaypoint', 'g', ''),
+    #     (['pmbase_Cardinal'], 'Cardinal', 'c', ''),
+    #     (['pmbase_Direction'], 'Direction', 'r', ''),
+    #     (['pmbase_Waypoint'], 'Waypoint', 'b', ''),
+    #     (['pmbase_none'], 'none', 'grey', ''),
+    # ]
 
-    plot_curriculum(data_names, 'feedback', 
+    plot_curriculum(baby_data_names, 'feedback', 
                 y=metrics, 
-                smooth=50, error_bars=False, 
-                title="Train with RL, Dense Reward",
-                y_lower=0, y_upper=1, y_label="Success", save_name="pmo1")
+                smooth=200, error_bars=False, 
+                title="pm maze",
+                y_lower=0, y_upper=1, y_label="Success", save_name="babyai", x_max=1e7)
 

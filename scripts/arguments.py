@@ -16,6 +16,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--env", default='babyai',
                             help="name of the environment to train on")
         self.add_argument('--level', type=int, default=0)
+        self.add_argument('--device', type=str, default='cuda:0')
         self.add_argument('--env_dist', type=str, default='one_hot',
                           choices=["one_hot", "smooth", "uniform", 'four_levels', 'four_big_levels', 'five_levels',
                                    'goto_levels', 'easy_goto'])

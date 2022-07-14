@@ -35,7 +35,7 @@ class DictList(dict):
             setattr(self, index, d)
 
 
-def merge_dictlists(list_of_dictlists):
+def merge_dictlists(list_of_dictlists, device=None):
     batch = list_of_dictlists[0]
     for k in batch.keys():
         try:
@@ -43,12 +43,13 @@ def merge_dictlists(list_of_dictlists):
             if vec_type is list:
                 v = [step for dict_list in list_of_dictlists for step in getattr(dict_list, k)]
             elif vec_type is torch.Tensor:
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                if device is None:
+                    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 v = torch.cat([getattr(dict_list, k).to(device) for dict_list in list_of_dictlists])
             elif vec_type is np.ndarray:
                 v = np.concatenate([getattr(dict_list, k) for dict_list in list_of_dictlists])
             elif vec_type is DictList:
-                v = merge_dictlists([getattr(dict_list, k) for dict_list in list_of_dictlists])
+                v = merge_dictlists([getattr(dict_list, k) for dict_list in list_of_dictlists], device=device)
             else:
                 raise NotImplementedError(vec_type)
             setattr(batch, k, v)

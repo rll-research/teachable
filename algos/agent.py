@@ -98,7 +98,7 @@ class Agent(nn.Module):
         without_obs = [] if cutoff == 0 else [self.obs_preprocessor(obs[:cutoff], self.teacher, show_instrs=False)]
         with_obs = [] if cutoff == len(obs) else [self.obs_preprocessor(obs[cutoff:], self.teacher, show_instrs=True)]
         obs = without_obs + with_obs
-        obs = merge_dictlists(obs)
+        obs = merge_dictlists(obs, device=self.device)
         if self.state_encoder is not None:
             obs = self.state_encoder(obs)
         if self.task_encoder is not None:
