@@ -16,6 +16,8 @@ from envs.babyai.levels.envdist import EnvDist
 import pathlib
 import joblib
 import os
+import sys
+sys.setrecursionlimit(3000)
 
 
 def args_type(default):
@@ -55,14 +57,14 @@ def create_policy(path, teacher, env, args, obs_preprocessor):
         args.on_policy = False
         agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
                          init_temperature=args.entropy_coef, alpha_lr=args.lr, actor_lr=args.lr, critic_lr=args.lr,
-                         control_penalty=args.control_penalty)
+                         control_penalty=args.control_penalty, device=args.device)
     elif args.algo == 'ppo':
         args.on_policy = True
-        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
+        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, device=args.device)
     elif args.algo == 'hppo':
         args.on_policy = True
         agent = HierarchicalPPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                                     lr=args.lr, control_penalty=args.control_penalty)
+                                     lr=args.lr, control_penalty=args.control_penalty, device=args.device)
     else:
         raise NotImplementedError(args.algo)
     if path is not None:
@@ -209,7 +211,7 @@ def run_experiment(args):
     feedback_list = get_feedback_list(args)
     env = make_env(args, feedback_list)
     args.feedback_list = feedback_list
-    obs_preprocessor = make_obs_preprocessor(feedback_list)
+    obs_preprocessor = make_obs_preprocessor(feedback_list, device=args.device)
 
     # Either we need an existing dataset, or we need to collect
     assert (args.buffer_path or (args.collect_policy is not None) or
@@ -266,7 +268,7 @@ def run_experiment(args):
     if collect_policy is None:
         sampler = None
     else:
-        sampler = DataCollector(collect_policy, envs, args)
+        sampler = DataCollector(collect_policy, envs, args, device=args.device)
 
     buffer_name = exp_dir if args.buffer_path is None else args.buffer_path
     args.buffer_name = buffer_name

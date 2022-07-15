@@ -11,7 +11,7 @@ from logger import logger
 class DataCollector(ABC):
     """The collection class."""
 
-    def __init__(self, collect_policy, envs, args, repeated_seed=None):
+    def __init__(self, collect_policy, envs, args, repeated_seed=None, device=None):
 
         if not args.sequential:
             self.env = ParallelEnv(envs, repeated_seed=repeated_seed)
@@ -22,7 +22,10 @@ class DataCollector(ABC):
 
 
         # Store helpers values
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = device
         self.num_procs = len(envs)
         self.num_frames = self.args.frames_per_proc * self.num_procs
 
@@ -93,8 +96,9 @@ class DataCollector(ABC):
         """
         policy = self.policy
         policy.train(train)
-
+        ncount = 0
         for i in range(self.args.frames_per_proc):
+            ncount += 1
             with torch.no_grad():
                 action, agent_dict = policy.act(list(self.obs), sample=True,
                                                 instr_dropout_prob=self.args.collect_dropout_prob)
@@ -152,12 +156,14 @@ class DataCollector(ABC):
             self.log_episode_success += torch.tensor([e['success'] for e in env_info], device=self.device, dtype=torch.float)
             self.log_episode_reshaped_return += self.rewards[i]
             self.log_episode_num_frames += torch.ones(self.num_procs, device=self.device)
-
+            # print(f"self log_episode_success: {self.log_episode_success}")
             for i, done_ in enumerate(done):
                 if done_:
+                    # print(f"done on frame {ncount} index {i}")
                     self.log_done_counter += 1
                     self.log_return.append(self.log_episode_return[i].item())
                     self.log_success.append(self.log_episode_success[i].item())
+                    # print(f"self log_success: {self.log_success}")
                     if 'dist_to_goal' in env_info[i]:
                         self.log_dist_to_goal.append(env_info[i]['dist_to_goal'].item())
                     self.log_reshaped_return.append(self.log_episode_reshaped_return[i].item())

@@ -176,12 +176,14 @@ class Trainer(object):
             self.should_collect = self.args.collect_teacher is not None
             self.should_train_rl = self.args.rl_teacher is not None
             if self.should_collect:
+                logger.log("collect data...")
                 # Collect if we are distilling OR if we're not skipping
                 samples_data, episode_logs = self.sampler.collect_experiences(
                                                                            collect_with_oracle=self.args.collect_with_oracle,
                                                                            collect_reward=self.should_train_rl,
                                                                            train=self.should_train_rl)
                 if self.relabel_policy is not None:
+                    logger.log("relabel samples ...")
                     samples_data = self.relabel(samples_data)
                 buffer_start = time.time()
                 self.buffer.add_batch(samples_data, save=self.itr % 200  == 0)
@@ -199,6 +201,7 @@ class Trainer(object):
                 logger.log("RL Training...")
                 for _ in range(self.args.epochs):
                     if self.args.on_policy:
+                        logger.log("on_policy data...")
                         sampled_batch = samples_data
                     else:
                         sampled_batch = self.buffer.sample(total_num_samples=self.args.batch_size, split='train')
