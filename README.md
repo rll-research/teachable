@@ -45,4 +45,6 @@ The most common installation error is mujoco not installing correctly. To check 
 
 To train a model, run the `train_model.py` script from the `teachable` directory.
 
-Example: `python scripts/train_model.py  --prefix EXP_NAME --collect_with_rl_policy --level 2 --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass`
+Example: `python scripts/train_model.py  --prefix EXP_NAME --collect_with_rl_policy --train_level --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass`
+
+This script trains on the procedurally-generated set of mazes used for training in the NeurIPS paper. To train on mazes of a different size, or on a static maze, replace `--train_level` with a particular level (e.g. `--level 2`).
