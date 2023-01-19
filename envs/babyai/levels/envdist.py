@@ -2,7 +2,8 @@ from envs.babyai.levels.iclr19_levels import *
 from utils.serializable import Serializable
 try:
     from envs.d4rl.d4rl_content.locomotion import *
-    from envs.d4rl_envs import PointMassEnv, AntEnv
+    from envs.d4rl_envs import PointMassEnv
+    from envs.d4rl_envs import AntEnv
     from envs.dummy_envs import PointMassEnvSimple, DummyDiscrete
 except Exception as e:
     print("Unable to load AntMaze, likely because Mujoco isn't properly installed.  This is fine so long as you only use BabyAI.")
@@ -303,7 +304,7 @@ class EnvDist(Serializable):
                 return None
             results = self.__getattribute__(attr)
             return results
-        except:
+        except Exception as e:
             if hasattr(self._wrapped_env, '_wrapped_env'):
                 orig_attr = self._wrapped_env.__getattr__(attr)
             else:
