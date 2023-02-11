@@ -75,6 +75,7 @@ class EnvDist(Serializable):
         elif self.env == 'dummy_discrete':
             level = DummyDiscrete(**kwargs)
         elif self.env == 'point_mass':
+            print(f'Env is point mass. Index {index}')
             if index == 0:
                 level = PointMassEnv(f'maze2d-open{reward_env_name}-v0', reward_type=reward_type, **kwargs)  # 0
             elif index == 1:

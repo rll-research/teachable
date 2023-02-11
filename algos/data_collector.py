@@ -14,8 +14,10 @@ class DataCollector(ABC):
     def __init__(self, collect_policy, envs, args, repeated_seed=None):
 
         if not args.sequential:
+            print('Doing parallel')
             self.env = ParallelEnv(envs, repeated_seed=repeated_seed)
         else:
+            print('Doing sequential')
             self.env = SequentialEnv(envs, repeated_seed=repeated_seed)
         self.policy = collect_policy
         self.args = args

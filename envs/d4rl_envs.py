@@ -79,7 +79,7 @@ class D4RLEnv:
         else:
             om = np.array([0, 0])
         waypoint_controller = WaypointController(grid, offset_mapping=om)
-        waypoint_controller.new_target(pos, target)
+        waypoint_controller.update_waypoints(pos, target)
 
     def wall_distance(self):
         agent_pos = self.get_pos() + np.array(self.waypoint_controller.offset_mapping)
@@ -135,7 +135,7 @@ class D4RLEnv:
         prev_pos = self.get_pos().copy()
         obs, rew, done, info = self._wrapped_env.step(action)
         obs = self.scale_obs(obs)
-        self.waypoint_controller.new_target(self.get_pos(), self.get_target())
+        self.waypoint_controller.update_waypoints(self.get_pos(), self.get_target())
         # Distance to goal
         start_points = [self.get_pos()] + self.waypoint_controller.waypoints[:-1]
         end_points = self.waypoint_controller.waypoints
@@ -149,7 +149,7 @@ class D4RLEnv:
         elif self.reward_type == 'oracle_dist':
             rew = - distance / 100
         elif self.reward_type == 'waypoint':
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew = 1
             else:
                 rew = 0
@@ -176,7 +176,7 @@ class D4RLEnv:
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
             rew = np.dot(dir_taken, dir_desired)
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew += 1
         elif self.reward_type == 'vector_next_waypoint':
             new_pos = self.get_pos().copy()
@@ -184,7 +184,7 @@ class D4RLEnv:
             dir_desired = self.waypoint_controller.waypoints[0] - new_pos  # Same offset (or lack thereof)? Same scale?
             dir_desired = dir_desired / np.linalg.norm(dir_desired)
             rew = np.dot(dir_taken, dir_desired)
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew += 1
         elif self.reward_type == 'wall_penalty':
             new_pos = self.get_pos().copy()
@@ -209,7 +209,7 @@ class D4RLEnv:
             if y < len(grid[0]) - 1 and grid[x, y + 1] == WALL:
                 dist_to_wall = min(dist_to_wall, y + 1 - y_pos)
             rew += dist_to_wall / 10000
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew += 1
         elif self.reward_type == 'vector_dir_waypoint_negative':
             new_pos = self.get_pos().copy()
@@ -218,7 +218,7 @@ class D4RLEnv:
             dir_desired = self.get_teacher_action()
             rew = np.dot(dir_taken, dir_desired)
             rew -= .5
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew += 1
         elif self.reward_type == 'vector_dir_both':
             new_pos = self.get_pos().copy()
@@ -226,7 +226,7 @@ class D4RLEnv:
             # dir_taken = dir_taken / np.linalg.norm(dir_taken)
             dir_desired = self.get_teacher_action()
             rew = np.dot(dir_taken, dir_desired) / 5
-            if len(self.waypoint_controller.waypoints) < self.min_waypoints:
+            if len(self.waypoint_controller.waypoints) < self.current_number_of_planned_waypoints:
                 rew += 1
             success = self.get_success()
             if success:
@@ -238,7 +238,7 @@ class D4RLEnv:
             dir_desired = self.waypoint_controller.waypoints[0] - prev_pos
             dir_desired = dir_desired / np.linalg.norm(dir_desired)  # normalize
             rew = np.dot(dir_taken, dir_desired)
-        self.min_waypoints = min(self.min_waypoints, len(self.waypoint_controller.waypoints))
+        self.current_number_of_planned_waypoints = min(self.current_number_of_planned_waypoints, len(self.waypoint_controller.waypoints))
         obs_dict = {}
         obs_dict["obs"] = obs
         obs_dict = self.update_obs(obs_dict)
@@ -292,8 +292,8 @@ class D4RLEnv:
         else:
             om = np.array([0, 0])
         self.waypoint_controller.offset_mapping = om
-        self.waypoint_controller.new_target(self.get_pos(), self.get_target())
-        self.min_waypoints = len(self.waypoint_controller.waypoints)
+        self.waypoint_controller.update_waypoints(self.get_pos(), self.get_target())
+        self.current_number_of_planned_waypoints = len(self.waypoint_controller.waypoints)
         if hasattr(self, 'teacher') and self.teacher is not None:
             self.teacher.reset(self)
         self.teacher_action = self.get_teacher_action()
