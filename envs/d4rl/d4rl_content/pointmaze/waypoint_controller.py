@@ -34,7 +34,7 @@ class WaypointController(object):
             raise NotImplementedError(f'Unexpected maze str type {type(maze_str)}')
 
     def get_action(self, location, velocity, target_pos):
-        self.new_target(location, target_pos)
+        self.update_waypoints(location, target_pos)
         next_wpnt = self.waypoints[0]
         prop = next_wpnt - location
         action = self.p_gain * prop + self.d_gain * velocity
@@ -50,7 +50,7 @@ class WaypointController(object):
     def gridify_state(self, state):
         return int(round(state[0])), int(round(state[1]))
 
-    def new_target(self, start_pos, target_pos):
+    def update_waypoints(self, start_pos, target_pos):
         raw_start = start_pos
         start_pos = self.gridify_state(start_pos)
         raw_target = target_pos

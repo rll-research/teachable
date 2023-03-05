@@ -94,6 +94,7 @@ class Agent(nn.Module):
             self.update_critic(obs, next_obs, val_batch, train=False)
 
     def format_obs(self, obs, instr_dropout_prob=0):
+        # TODO: understand
         cutoff = int(instr_dropout_prob * len(obs))
         without_obs = [] if cutoff == 0 else [self.obs_preprocessor(obs[:cutoff], self.teacher, show_instrs=False)]
         with_obs = [] if cutoff == len(obs) else [self.obs_preprocessor(obs[cutoff:], self.teacher, show_instrs=True)]
@@ -106,6 +107,8 @@ class Agent(nn.Module):
         no_advice_obs = obs.obs.flatten(1).to(self.device)
         unprocessed_advice = obs.advice
         if self.advice_embedding is not None:
+            # TODO: understand why we need 2 -> 128 mlp
+            # TODO: where is the mlp learning
             advice = self.advice_embedding(obs.advice)
             obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
         else:
@@ -238,10 +241,12 @@ class Agent(nn.Module):
         # unless we have no teachers present in which case we keep the instr.
         instr_dropout_prob = 0 if self.teacher == 'none' else self.args.distill_dropout_prob
         ### RUN MODEL, COMPUTE LOSS ###
+        # TODO: forward pass. Probabilities for different actions
         _, info = self.act(obss, sample=True, instr_dropout_prob=instr_dropout_prob)
         logger.logkv(f"Time/Q_Act", time.time() - t)
         t = time.time()
         dist = info['dist']
+        # action true -> the actual action that was taken
         policy_loss = -dist.log_prob(action_true).mean()
         entropy_loss = -dist.entropy().mean()
         (advice, no_advice_obs) = info['addl_obs']
@@ -249,6 +254,7 @@ class Agent(nn.Module):
             recon_loss = self.compute_recon_loss(dist, no_advice_obs, advice)
         else:
             recon_loss = torch.zeros_like(policy_loss)
+        # Entropy loss is to favor
         loss = policy_loss + self.args.distill_entropy_coef * entropy_loss + self.args.recon_coef * recon_loss
 
         ### LOGGING ###
