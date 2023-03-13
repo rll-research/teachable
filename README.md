@@ -48,3 +48,27 @@ The most common installation error is mujoco not installing correctly. To check 
 To train a model, run the `train_model.py` script from the `teachable` directory.
 
 Example: `python scripts/train_model.py  --prefix EXP_NAME --collect_with_rl_policy --level 2 --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass`
+
+
+## Useful Commands
+
+### RL training
+```
+python scripts/train_model.py --prefix EXP_NAME --collect_with_rl_policy --train_level --frames_per_proc 200 --num_envs 20 --rl_teacher OffsetWaypoint --env point_mass --n_advice 1000000 --seed 1 --reward_type oracle_dist
+```
+
+### Distillation to no advice 
+```python scripts/train_model.py --buffer_capacity 1000000 --frames_per_proc 40 --num_envs 20 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher none --collect_teacher OffsetWaypoint --env point_mass --level 2 --n_advice 300000 --seed 1 --prefix EXP_NAME```
+
+### Distilling from one advice form to another
+```python scripts/train_model.py --prefix EXP_NAME --buffer_capacity 1000000 --train_level --frames_per_proc 200 --num_envs 20 --distillation_steps 15 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher OTHER_TEACHER_NAME --collect_teacher OffsetWaypoint --env point_mass --n_advice 1000000 --seed 1```
+
+## Running experiments faster
+
+* Use the easiest form of advice (for PointMaze, try OffsetWaypoint or Direction advice)
+* Use dense rewards for RL training. This should be enabled by default. In the experiments spreadsheet we default to using a semi-sparse reward which improves advice efficiency but decreases sample efficiency.
+* Use a small maze size.
+* Consider training on a single maze rather than a procedurally generated set of mazes (though I'd expect this change would mean advice doesn't get learned as well/will be less likely to generalize to other mazes)
+* If you use babyAI, there are even smaller mazes than those used in the paper. These could be faster.
+* Use a GPU, if you have one available.
+* You might see small efficiency gains if you sweep over learning rate and frames_per_proc
