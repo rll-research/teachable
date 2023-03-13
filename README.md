@@ -58,10 +58,14 @@ python scripts/train_model.py --prefix EXP_NAME --collect_with_rl_policy --train
 ```
 
 ### Distillation to no advice 
-```python scripts/train_model.py --buffer_capacity 1000000 --frames_per_proc 40 --num_envs 20 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher none --collect_teacher OffsetWaypoint --env point_mass --level 2 --n_advice 300000 --seed 1 --prefix EXP_NAME```
+```
+python scripts/train_model.py --buffer_capacity 1000000 --frames_per_proc 40 --num_envs 20 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher none --collect_teacher OffsetWaypoint --env point_mass --level 2 --n_advice 300000 --seed 1 --prefix EXP_NAME
+```
 
 ### Distilling from one advice form to another
-```python scripts/train_model.py --prefix EXP_NAME --buffer_capacity 1000000 --train_level --frames_per_proc 200 --num_envs 20 --distillation_steps 15 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher OTHER_TEACHER_NAME --collect_teacher OffsetWaypoint --env point_mass --n_advice 1000000 --seed 1```
+```
+python scripts/train_model.py --prefix EXP_NAME --buffer_capacity 1000000 --train_level --frames_per_proc 200 --num_envs 20 --distillation_steps 15 --collect_policy PATH_TO_RL_TRAINED_POLICY --distill_teacher OTHER_TEACHER_NAME --collect_teacher OffsetWaypoint --env point_mass --n_advice 1000000 --seed 1
+```
 
 ## Running experiments faster
 
