@@ -54,7 +54,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--n_itr', type=int, default=100000)
         self.add_argument('--n_advice', type=int, default=float('inf'))
         self.add_argument('--end_on_full_buffer', action='store_true')
-        self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo', 'hppo'])
+        self.add_argument('--algo', type=str, default='ppo', choices=['sac', 'ppo'])
         self.add_argument('--min_itr_steps', type=int, default=0)
         self.add_argument('--min_itr_steps_distill', type=int, default=0)
         self.add_argument('--lr', type=float, default=1e-3)

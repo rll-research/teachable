@@ -1,4 +1,4 @@
-from algos.hierarchical_ppo_torch import HierarchicalPPOAgent
+from algos.agent import Agent
 from algos.ppo import PPOAgent
 from algos.sac import SACAgent
 from algos.mf_trainer import Trainer
@@ -50,7 +50,7 @@ def load_experiment(args):
     return args, log_dict
 
 
-def create_policy(path, teacher, env, args, obs_preprocessor):
+def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
     if args.algo == 'sac':
         args.on_policy = False
         agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
@@ -59,10 +59,6 @@ def create_policy(path, teacher, env, args, obs_preprocessor):
     elif args.algo == 'ppo':
         args.on_policy = True
         agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
-    elif args.algo == 'hppo':
-        args.on_policy = True
-        agent = HierarchicalPPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
-                                     lr=args.lr, control_penalty=args.control_penalty)
     else:
         raise NotImplementedError(args.algo)
     if path is not None:
@@ -221,29 +217,29 @@ def run_experiment(args):
 
     log_policy = None
     if args.rl_teacher is not None:
-        rl_policy = create_policy(args.rl_policy, args.rl_teacher, env, args,
-                                  obs_preprocessor)
-        log_policy = rl_policy
+        rl_agent = create_agent(args.rl_policy, args.rl_teacher, env, args,
+                                 obs_preprocessor)
+        log_policy = rl_agent
     else:
-        rl_policy = None
+        rl_agent = None
     if args.distill_teacher is not None:
-        il_policy = create_policy(args.distill_policy, args.distill_teacher, env, args, obs_preprocessor)
-        log_policy = il_policy
+        distilling_agent = create_agent(args.distill_policy, args.distill_teacher, env, args, obs_preprocessor)
+        log_policy = distilling_agent
     else:
-        il_policy = None
+        distilling_agent = None
     if args.relabel_teacher is not None:
-        relabel_policy = create_policy(args.relabel_policy, args.relabel_teacher, env, args, obs_preprocessor)
+        relabel_policy = create_agent(args.relabel_policy, args.relabel_teacher, env, args, obs_preprocessor)
     else:
         relabel_policy = None
 
     if args.collect_with_rl_policy:
-        collect_policy = rl_policy
+        collect_policy = rl_agent
         args.collect_teacher = args.rl_teacher
     elif args.collect_with_distill_policy:
-        collect_policy = il_policy
+        collect_policy = distilling_agent
         args.collect_teacher = args.distill_teacher
     elif args.collect_teacher is not None:
-        collect_policy = create_policy(args.collect_policy, args.collect_teacher, env, args, obs_preprocessor)
+        collect_policy = create_agent(args.collect_policy, args.collect_teacher, env, args, obs_preprocessor)
         if log_policy is None:
             log_policy = collect_policy
     else:
@@ -279,8 +275,8 @@ def run_experiment(args):
     trainer = Trainer(
         args=args,
         collect_policy=collect_policy,
-        rl_policy=rl_policy,
-        il_policy=il_policy,
+        rl_policy=rl_agent,
+        distill_policy=distilling_agent,
         relabel_policy=relabel_policy,
         sampler=sampler,
         env=deepcopy(env),

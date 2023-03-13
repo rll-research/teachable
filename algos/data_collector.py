@@ -234,8 +234,8 @@ class DataCollector(ABC):
             exps.returnn = exps.value + exps.advantage
             exps.log_prob = self.log_probs.transpose(0, 1).reshape(-1)
             logger.logkv("Train/Value", to_np(exps.value.mean()))
-            logger.logkv("Train/Advantage", to_np(exps.advantage.mean()))
-            logger.logkv("Train/Returnn", to_np(exps.returnn.mean()))
+            # logger.logkv("Train/Advantage", to_np(exps.advantage.mean()))
+            # logger.logkv("Train/Returnn", to_np(exps.returnn.mean()))
 
         # Log some values
         log_cutoff = min(self.args.num_envs, self.log_keep)

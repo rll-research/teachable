@@ -20,17 +20,17 @@ class SACAgent(Agent, nn.Module):
                  init_temperature=0.1, alpha_lr=1e-4, alpha_betas=(0.9, 0.999),
                  actor_lr=1e-4, actor_betas=(0.9, 0.999), actor_update_frequency=1, critic_lr=1e-4,
                  critic_betas=(0.9, 0.999), critic_tau=0.005, critic_target_update_frequency=2,
-                 batch_size=1024, learnable_temperature=True, control_penalty=0):
+                 batch_size=1024, learnable_temperature=True, control_penalty=0,advice_dim=128):
         obs = env.reset()
         if args.discrete:
             action_dim = env.action_space.n
         else:
             action_dim = env.action_space.shape[0]
         advice_size = 0 if teacher is 'none' else len(obs[teacher])
-        advice_dim = 0 if advice_size == 0 else args.advice_dim
-        super().__init__(args, obs_preprocessor, teacher, env, device=device, discount=discount, batch_size=batch_size,
-                         control_penalty=control_penalty, actor_update_frequency=actor_update_frequency,
-                         advice_size=advice_size)
+        #advice_dim = 0 if advice_size == 0 else args.advice_dim
+        advice_dim = 0 if advice_size == 0 else advice_dim
+        super().__init__(args, obs_preprocessor, teacher, env, device=device, advice_size=advice_size, advice_dim=advice_dim,
+                         actor_update_frequency=actor_update_frequency)
         self.critic_tau = critic_tau
         self.critic_target_update_frequency = critic_target_update_frequency
         self.learnable_temperature = learnable_temperature

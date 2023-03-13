@@ -13,7 +13,7 @@ class Trainer(object):
         args=None,
         collect_policy=None,
         rl_policy=None,
-        il_policy=None,
+        distill_policy=None,
         relabel_policy=None,
         sampler=None,
         env=None,
@@ -24,7 +24,7 @@ class Trainer(object):
         self.args = args
         self.collect_policy = collect_policy
         self.rl_policy = rl_policy
-        self.il_policy = il_policy
+        self.distill_policy = distill_policy
         self.relabel_policy = relabel_policy
         self.sampler = sampler
         self.env = env
@@ -51,16 +51,16 @@ class Trainer(object):
 
     def save_model(self):
         params = self.get_itr_snapshot(self.itr)
-        if (self.rl_policy is not None) and (self.il_policy is not None):
-            assert not self.rl_policy.teacher == self.il_policy.teacher, "will overwrite if policies have same teacher"
+        if (self.rl_policy is not None) and (self.distill_policy is not None):
+            assert not self.rl_policy.teacher == self.distill_policy.teacher, "will overwrite if policies have same teacher"
         if self.rl_policy is not None:
             self.rl_policy.save(self.args.exp_dir)
-        if self.il_policy is not None:
-            self.il_policy.save(self.args.exp_dir)
+        if self.distill_policy is not None:
+            self.distill_policy.save(self.args.exp_dir)
         if self.rl_policy is not None and self.current_success >= self.best_success:
             self.rl_policy.save(self.args.exp_dir, save_name=f"best_{self.rl_policy.teacher}_model.pt")
-        if self.il_policy is not None and self.current_val_loss <= self.best_val_loss:
-            self.il_policy.save(self.args.exp_dir, save_name=f"best_{self.il_policy.teacher}_model.pt")
+        if self.distill_policy is not None and self.current_val_loss <= self.best_val_loss:
+            self.distill_policy.save(self.args.exp_dir, save_name=f"best_{self.distill_policy.teacher}_model.pt")
         logger.save_itr_params(self.itr, self.args.level, params)
 
     def log_rollouts(self):
@@ -100,24 +100,24 @@ class Trainer(object):
 
         time_total = time.time() - self.start_time
         self.itr_start_time = time.time()
-        logger.logkv('Time/Total', time_total)
-        logger.logkv('Time/Itr', time_itr)
+        # logger.logkv('Time/Total', time_total)
+        # logger.logkv('Time/Itr', time_itr)
 
         process = psutil.Process(os.getpid())
         memory_use = process.memory_info().rss / float(2 ** 20)
-        logger.logkv('Memory MiB', memory_use)
-
-        logger.logkv('Time/Training', time_training)
-        logger.logkv('Time/Collection', time_collection)
-        logger.logkv('Time/Distillation', distill_time)
-        logger.logkv('Time/Saving', saving_time)
-        logger.logkv('Time/Unaccounted', time_unaccounted)
-        logger.logkv('Time/All_Training', self.all_time_training / time_total)
-        logger.logkv('Time/All_Collection', self.all_time_collection / time_total)
-        logger.logkv('Time/All_RunwTeacher', self.all_run_policy_time / time_total)
-        logger.logkv('Time/All_Distillation', self.all_distill_time / time_total)
-        logger.logkv('Time/All_Saving', self.all_saving_time / time_total)
-        logger.logkv('Time/All_Unaccounted', self.all_unaccounted_time / time_total)
+        # logger.logkv('Memory MiB', memory_use)
+        #
+        # logger.logkv('Time/Training', time_training)
+        # logger.logkv('Time/Collection', time_collection)
+        # logger.logkv('Time/Distillation', distill_time)
+        # logger.logkv('Time/Saving', saving_time)
+        # logger.logkv('Time/Unaccounted', time_unaccounted)
+        # logger.logkv('Time/All_Training', self.all_time_training / time_total)
+        # logger.logkv('Time/All_Collection', self.all_time_collection / time_total)
+        # logger.logkv('Time/All_RunwTeacher', self.all_run_policy_time / time_total)
+        # logger.logkv('Time/All_Distillation', self.all_distill_time / time_total)
+        # logger.logkv('Time/All_Saving', self.all_saving_time / time_total)
+        # logger.logkv('Time/All_Unaccounted', self.all_unaccounted_time / time_total)
 
     def make_buffer(self):
         if not self.args.no_buffer:
@@ -246,8 +246,8 @@ class Trainer(object):
 
     def save_and_maybe_early_stop(self):
         early_stopping = self.itrs_since_best > self.args.early_stop
-        logger.logkv('Train/BestLoss', self.best_val_loss)
-        logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
+        #logger.logkv('Train/BestLoss', self.best_val_loss)
+        #logger.logkv('Train/ItrsSinceBest', self.itrs_since_best)
         if early_stopping or (self.itr % self.args.eval_interval == 0) or (self.itr == self.args.n_itr - 1):
             saving_time_start = time.time()
             logger.log("Saving snapshot...")
@@ -257,6 +257,7 @@ class Trainer(object):
         return early_stopping
 
     def _log(self, episode_logs, summary_logs, data, tag=""):
+        return
         logger.logkv('Level', self.args.level)
         counts_train = 0 if self.buffer is None else self.buffer.counts_train
         logger.logkv("BufferSize", counts_train)
@@ -308,7 +309,7 @@ class Trainer(object):
     def distill(self, samples, is_training=False, source=None):
         if source is None:
             source = self.args.source
-        log = self.il_policy.distill(samples, source=source, is_training=is_training)
+        log = self.distill_policy.distill(samples, source=source, is_training=is_training)
         return log
 
     def get_itr_snapshot(self, itr):

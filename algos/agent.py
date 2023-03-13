@@ -9,6 +9,7 @@ from algos.utils import ImageEmbedding, InstrEmbedding
 from logger import logger
 
 from algos import utils
+from utils import agent_saver
 from utils.dictlist import merge_dictlists
 
 
@@ -133,12 +134,18 @@ class Agent(nn.Module):
             actor_time = time.time() - t
             logger.logkv('Time/B_Format_Time', actor_time)
             t = time.time()
+            if step % 10 == 0:
+                print("XXXXXXXXXXXXXX")
+                pickle_utils.save_ppo_agent_iteration(self, obs, batch, advice=advice, no_advice_obs=no_advice_obs, next_obs=next_obs, itr=str(step))
             self.update_actor(obs, batch, advice=advice, no_advice_obs=no_advice_obs, next_obs=next_obs)
             actor_time = time.time() - t
             logger.logkv('Time/Actor_Time', actor_time)
         logger.logkv('Time/Critic_Time', critic_time)
 
-    def update_actor(self, obs, batch, advice=None, no_advice_obs=None):
+    def update_critic(self, obs, next_obs, batch, actor_loss=0):
+        raise NotImplementedError('update_actor should be defined in child class')
+
+    def update_actor(self, obs, batch, advice=None, no_advice_obs=None, critic_loss=0):
         raise NotImplementedError('update_actor should be defined in child class')
 
     def save(self, model_dir, save_name=None):
