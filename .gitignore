@@ -2,7 +2,6 @@
 *.pdf
 *.png
 data/
-logs/
 old_data/
 wandb/
 *.mp4
