@@ -4836,3 +4836,1083 @@ Distilling ...
 
  ---------------- Iteration 179 ----------------
 Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.45      |
+| Distill/Entropy_Val     | 0.431     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.461     |
+| Distill/Loss_Val        | 0.476     |
+| Distill/Mean_Dist_Train | 0.326     |
+| Distill/Mean_Dist_Val   | 0.329     |
+| Distill/Std_Train       | 0.401     |
+| Distill/Std_Val         | 0.395     |
+| Distill/TotalLoss_Train | 0.461     |
+| Distill/TotalLoss_Val   | 0.476     |
+| Itr                     | 178       |
+| Time/Buffer             | 0.00484   |
+| Time/Q_Act              | 0.0174    |
+| Time/Q_Log              | 0.000407  |
+| Time/Q_Preprocess       | 3.5e-05   |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3737185 |
+---------------------------------------
+
+ ---------------- Iteration 180 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.489    |
+| Distill/Entropy_Val     | 0.489    |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.45     |
+| Distill/Loss_Val        | 0.478    |
+| Distill/Mean_Dist_Train | 0.319    |
+| Distill/Mean_Dist_Val   | 0.318    |
+| Distill/Std_Train       | 0.418    |
+| Distill/Std_Val         | 0.418    |
+| Distill/TotalLoss_Train | 0.45     |
+| Distill/TotalLoss_Val   | 0.478    |
+| Itr                     | 179      |
+| Time/Buffer             | 0.00546  |
+| Time/Q_Act              | 0.0214   |
+| Time/Q_Log              | 0.000442 |
+| Time/Q_Preprocess       | 4.51e-05 |
+| Time/Q_Update           | 0        |
+| Train/Value             | 3.348475 |
+--------------------------------------
+
+ ---------------- Iteration 181 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.467     |
+| Distill/Entropy_Val     | 0.467     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.431     |
+| Distill/Loss_Val        | 0.478     |
+| Distill/Mean_Dist_Train | 0.315     |
+| Distill/Mean_Dist_Val   | 0.336     |
+| Distill/Std_Train       | 0.408     |
+| Distill/Std_Val         | 0.411     |
+| Distill/TotalLoss_Train | 0.431     |
+| Distill/TotalLoss_Val   | 0.478     |
+| Itr                     | 180       |
+| Time/Buffer             | 0.00474   |
+| Time/Q_Act              | 0.0181    |
+| Time/Q_Log              | 0.00043   |
+| Time/Q_Preprocess       | 4.08e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.1860406 |
+---------------------------------------
+
+ ---------------- Iteration 182 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.415    |
+| Distill/Entropy_Val     | 0.469    |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.503    |
+| Distill/Loss_Val        | 0.462    |
+| Distill/Mean_Dist_Train | 0.334    |
+| Distill/Mean_Dist_Val   | 0.324    |
+| Distill/Std_Train       | 0.391    |
+| Distill/Std_Val         | 0.414    |
+| Distill/TotalLoss_Train | 0.503    |
+| Distill/TotalLoss_Val   | 0.462    |
+| Itr                     | 181      |
+| Time/Buffer             | 0.00519  |
+| Time/Q_Act              | 0.0177   |
+| Time/Q_Log              | 0.000545 |
+| Time/Q_Preprocess       | 3.98e-05 |
+| Time/Q_Update           | 9.54e-07 |
+| Train/Value             | 3.324255 |
+--------------------------------------
+
+ ---------------- Iteration 183 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.413     |
+| Distill/Entropy_Val     | 0.44      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.479     |
+| Distill/Loss_Val        | 0.484     |
+| Distill/Mean_Dist_Train | 0.325     |
+| Distill/Mean_Dist_Val   | 0.325     |
+| Distill/Std_Train       | 0.386     |
+| Distill/Std_Val         | 0.396     |
+| Distill/TotalLoss_Train | 0.479     |
+| Distill/TotalLoss_Val   | 0.484     |
+| Itr                     | 182       |
+| Time/Buffer             | 0.0057    |
+| Time/Q_Act              | 0.0172    |
+| Time/Q_Log              | 0.000446  |
+| Time/Q_Preprocess       | 4.6e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.3147287 |
+---------------------------------------
+
+ ---------------- Iteration 184 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.447     |
+| Distill/Entropy_Val     | 0.429     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.447     |
+| Distill/Loss_Val        | 0.461     |
+| Distill/Mean_Dist_Train | 0.323     |
+| Distill/Mean_Dist_Val   | 0.325     |
+| Distill/Std_Train       | 0.402     |
+| Distill/Std_Val         | 0.396     |
+| Distill/TotalLoss_Train | 0.447     |
+| Distill/TotalLoss_Val   | 0.461     |
+| Itr                     | 183       |
+| Time/Buffer             | 0.00434   |
+| Time/Q_Act              | 0.0166    |
+| Time/Q_Log              | 0.000415  |
+| Time/Q_Preprocess       | 3.89e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3409564 |
+---------------------------------------
+
+ ---------------- Iteration 185 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.435     |
+| Distill/Entropy_Val     | 0.386     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.474     |
+| Distill/Loss_Val        | 0.388     |
+| Distill/Mean_Dist_Train | 0.328     |
+| Distill/Mean_Dist_Val   | 0.305     |
+| Distill/Std_Train       | 0.401     |
+| Distill/Std_Val         | 0.381     |
+| Distill/TotalLoss_Train | 0.474     |
+| Distill/TotalLoss_Val   | 0.388     |
+| Itr                     | 184       |
+| Time/Buffer             | 0.00442   |
+| Time/Q_Act              | 0.0164    |
+| Time/Q_Log              | 0.000428  |
+| Time/Q_Preprocess       | 4.1e-05   |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3451247 |
+---------------------------------------
+
+ ---------------- Iteration 186 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.412    |
+| Distill/Entropy_Val     | 0.42     |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.467    |
+| Distill/Loss_Val        | 0.495    |
+| Distill/Mean_Dist_Train | 0.326    |
+| Distill/Mean_Dist_Val   | 0.331    |
+| Distill/Std_Train       | 0.388    |
+| Distill/Std_Val         | 0.393    |
+| Distill/TotalLoss_Train | 0.467    |
+| Distill/TotalLoss_Val   | 0.495    |
+| Itr                     | 185      |
+| Time/Buffer             | 0.00446  |
+| Time/Q_Act              | 0.0161   |
+| Time/Q_Log              | 0.000442 |
+| Time/Q_Preprocess       | 4.51e-05 |
+| Time/Q_Update           | 9.54e-07 |
+| Train/Value             | 3.274037 |
+--------------------------------------
+
+ ---------------- Iteration 187 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.395     |
+| Distill/Entropy_Val     | 0.418     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.398     |
+| Distill/Loss_Val        | 0.433     |
+| Distill/Mean_Dist_Train | 0.306     |
+| Distill/Mean_Dist_Val   | 0.319     |
+| Distill/Std_Train       | 0.38      |
+| Distill/Std_Val         | 0.39      |
+| Distill/TotalLoss_Train | 0.398     |
+| Distill/TotalLoss_Val   | 0.433     |
+| Itr                     | 186       |
+| Time/Buffer             | 0.00498   |
+| Time/Q_Act              | 0.0173    |
+| Time/Q_Log              | 0.00045   |
+| Time/Q_Preprocess       | 3.81e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.2844663 |
+---------------------------------------
+
+ ---------------- Iteration 188 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.473     |
+| Distill/Entropy_Val     | 0.47      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.506     |
+| Distill/Loss_Val        | 0.43      |
+| Distill/Mean_Dist_Train | 0.337     |
+| Distill/Mean_Dist_Val   | 0.314     |
+| Distill/Std_Train       | 0.413     |
+| Distill/Std_Val         | 0.409     |
+| Distill/TotalLoss_Train | 0.506     |
+| Distill/TotalLoss_Val   | 0.43      |
+| Itr                     | 187       |
+| Time/Buffer             | 0.00564   |
+| Time/Q_Act              | 0.0187    |
+| Time/Q_Log              | 0.000515  |
+| Time/Q_Preprocess       | 4.48e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.3158467 |
+---------------------------------------
+
+ ---------------- Iteration 189 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.466     |
+| Distill/Entropy_Val     | 0.487     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.48      |
+| Distill/Loss_Val        | 0.475     |
+| Distill/Mean_Dist_Train | 0.32      |
+| Distill/Mean_Dist_Val   | 0.328     |
+| Distill/Std_Train       | 0.404     |
+| Distill/Std_Val         | 0.412     |
+| Distill/TotalLoss_Train | 0.48      |
+| Distill/TotalLoss_Val   | 0.475     |
+| Itr                     | 188       |
+| Time/Buffer             | 0.00528   |
+| Time/Q_Act              | 0.0162    |
+| Time/Q_Log              | 0.000416  |
+| Time/Q_Preprocess       | 6.39e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.2897336 |
+---------------------------------------
+
+ ---------------- Iteration 190 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.439    |
+| Distill/Entropy_Val     | 0.414    |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.435    |
+| Distill/Loss_Val        | 0.456    |
+| Distill/Mean_Dist_Train | 0.312    |
+| Distill/Mean_Dist_Val   | 0.316    |
+| Distill/Std_Train       | 0.394    |
+| Distill/Std_Val         | 0.383    |
+| Distill/TotalLoss_Train | 0.435    |
+| Distill/TotalLoss_Val   | 0.456    |
+| Itr                     | 189      |
+| Time/Buffer             | 0.00503  |
+| Time/Q_Act              | 0.0174   |
+| Time/Q_Log              | 0.000398 |
+| Time/Q_Preprocess       | 3.31e-05 |
+| Time/Q_Update           | 9.54e-07 |
+| Train/Value             | 3.3406   |
+--------------------------------------
+
+ ---------------- Iteration 191 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.435     |
+| Distill/Entropy_Val     | 0.424     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.416     |
+| Distill/Loss_Val        | 0.464     |
+| Distill/Mean_Dist_Train | 0.306     |
+| Distill/Mean_Dist_Val   | 0.321     |
+| Distill/Std_Train       | 0.397     |
+| Distill/Std_Val         | 0.394     |
+| Distill/TotalLoss_Train | 0.416     |
+| Distill/TotalLoss_Val   | 0.464     |
+| Itr                     | 190       |
+| Time/Buffer             | 0.00575   |
+| Time/Q_Act              | 0.015     |
+| Time/Q_Log              | 0.00059   |
+| Time/Q_Preprocess       | 3.58e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3929358 |
+---------------------------------------
+
+ ---------------- Iteration 192 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.458     |
+| Distill/Entropy_Val     | 0.448     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.443     |
+| Distill/Loss_Val        | 0.421     |
+| Distill/Mean_Dist_Train | 0.313     |
+| Distill/Mean_Dist_Val   | 0.303     |
+| Distill/Std_Train       | 0.406     |
+| Distill/Std_Val         | 0.401     |
+| Distill/TotalLoss_Train | 0.443     |
+| Distill/TotalLoss_Val   | 0.421     |
+| Itr                     | 191       |
+| Time/Buffer             | 0.0043    |
+| Time/Q_Act              | 0.0163    |
+| Time/Q_Log              | 0.000434  |
+| Time/Q_Preprocess       | 4.2e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.3741858 |
+---------------------------------------
+
+ ---------------- Iteration 193 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.479     |
+| Distill/Entropy_Val     | 0.454     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.408     |
+| Distill/Loss_Val        | 0.413     |
+| Distill/Mean_Dist_Train | 0.312     |
+| Distill/Mean_Dist_Val   | 0.309     |
+| Distill/Std_Train       | 0.414     |
+| Distill/Std_Val         | 0.402     |
+| Distill/TotalLoss_Train | 0.408     |
+| Distill/TotalLoss_Val   | 0.413     |
+| Itr                     | 192       |
+| Time/Buffer             | 0.00456   |
+| Time/Q_Act              | 0.0164    |
+| Time/Q_Log              | 0.000419  |
+| Time/Q_Preprocess       | 4.2e-05   |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.2224126 |
+---------------------------------------
+
+ ---------------- Iteration 194 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.458     |
+| Distill/Entropy_Val     | 0.46      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.426     |
+| Distill/Loss_Val        | 0.421     |
+| Distill/Mean_Dist_Train | 0.312     |
+| Distill/Mean_Dist_Val   | 0.31      |
+| Distill/Std_Train       | 0.405     |
+| Distill/Std_Val         | 0.405     |
+| Distill/TotalLoss_Train | 0.426     |
+| Distill/TotalLoss_Val   | 0.421     |
+| Itr                     | 193       |
+| Time/Buffer             | 0.00603   |
+| Time/Q_Act              | 0.0157    |
+| Time/Q_Log              | 0.000439  |
+| Time/Q_Preprocess       | 4.67e-05  |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2746935 |
+---------------------------------------
+
+ ---------------- Iteration 195 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.417     |
+| Distill/Entropy_Val     | 0.414     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.423     |
+| Distill/Loss_Val        | 0.465     |
+| Distill/Mean_Dist_Train | 0.311     |
+| Distill/Mean_Dist_Val   | 0.323     |
+| Distill/Std_Train       | 0.391     |
+| Distill/Std_Val         | 0.389     |
+| Distill/TotalLoss_Train | 0.423     |
+| Distill/TotalLoss_Val   | 0.465     |
+| Itr                     | 194       |
+| Time/Buffer             | 0.00522   |
+| Time/Q_Act              | 0.0158    |
+| Time/Q_Log              | 0.000426  |
+| Time/Q_Preprocess       | 3.1e-05   |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3334389 |
+---------------------------------------
+
+ ---------------- Iteration 196 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.425     |
+| Distill/Entropy_Val     | 0.423     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.478     |
+| Distill/Loss_Val        | 0.408     |
+| Distill/Mean_Dist_Train | 0.323     |
+| Distill/Mean_Dist_Val   | 0.301     |
+| Distill/Std_Train       | 0.39      |
+| Distill/Std_Val         | 0.39      |
+| Distill/TotalLoss_Train | 0.478     |
+| Distill/TotalLoss_Val   | 0.408     |
+| Itr                     | 195       |
+| Time/Buffer             | 0.00517   |
+| Time/Q_Act              | 0.0182    |
+| Time/Q_Log              | 0.000434  |
+| Time/Q_Preprocess       | 4.58e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3186438 |
+---------------------------------------
+
+ ---------------- Iteration 197 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.438     |
+| Distill/Entropy_Val     | 0.46      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.55      |
+| Distill/Loss_Val        | 0.393     |
+| Distill/Mean_Dist_Train | 0.348     |
+| Distill/Mean_Dist_Val   | 0.296     |
+| Distill/Std_Train       | 0.398     |
+| Distill/Std_Val         | 0.407     |
+| Distill/TotalLoss_Train | 0.55      |
+| Distill/TotalLoss_Val   | 0.393     |
+| Itr                     | 196       |
+| Time/Buffer             | 0.00445   |
+| Time/Q_Act              | 0.0153    |
+| Time/Q_Log              | 0.000399  |
+| Time/Q_Preprocess       | 3.29e-05  |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2060664 |
+---------------------------------------
+
+ ---------------- Iteration 198 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.43      |
+| Distill/Entropy_Val     | 0.419     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.46      |
+| Distill/Loss_Val        | 0.441     |
+| Distill/Mean_Dist_Train | 0.317     |
+| Distill/Mean_Dist_Val   | 0.316     |
+| Distill/Std_Train       | 0.394     |
+| Distill/Std_Val         | 0.388     |
+| Distill/TotalLoss_Train | 0.46      |
+| Distill/TotalLoss_Val   | 0.441     |
+| Itr                     | 197       |
+| Time/Buffer             | 0.00475   |
+| Time/Q_Act              | 0.0156    |
+| Time/Q_Log              | 0.000442  |
+| Time/Q_Preprocess       | 3.91e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.2990801 |
+---------------------------------------
+
+ ---------------- Iteration 199 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.428     |
+| Distill/Entropy_Val     | 0.455     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.43      |
+| Distill/Loss_Val        | 0.426     |
+| Distill/Mean_Dist_Train | 0.32      |
+| Distill/Mean_Dist_Val   | 0.317     |
+| Distill/Std_Train       | 0.393     |
+| Distill/Std_Val         | 0.406     |
+| Distill/TotalLoss_Train | 0.43      |
+| Distill/TotalLoss_Val   | 0.426     |
+| Itr                     | 198       |
+| Time/Buffer             | 0.00486   |
+| Time/Q_Act              | 0.0159    |
+| Time/Q_Log              | 0.000407  |
+| Time/Q_Preprocess       | 3.19e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.1124167 |
+---------------------------------------
+
+ ---------------- Iteration 200 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.414     |
+| Distill/Entropy_Val     | 0.433     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.433     |
+| Distill/Loss_Val        | 0.441     |
+| Distill/Mean_Dist_Train | 0.32      |
+| Distill/Mean_Dist_Val   | 0.32      |
+| Distill/Std_Train       | 0.385     |
+| Distill/Std_Val         | 0.396     |
+| Distill/TotalLoss_Train | 0.433     |
+| Distill/TotalLoss_Val   | 0.441     |
+| Itr                     | 199       |
+| Time/Buffer             | 45.1      |
+| Time/Q_Act              | 0.0144    |
+| Time/Q_Log              | 0.000447  |
+| Time/Q_Preprocess       | 6.29e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.3044293 |
+---------------------------------------
+
+ ---------------- Iteration 201 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.37     |
+| Distill/Entropy_Val     | 0.388    |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.388    |
+| Distill/Loss_Val        | 0.516    |
+| Distill/Mean_Dist_Train | 0.3      |
+| Distill/Mean_Dist_Val   | 0.334    |
+| Distill/Std_Train       | 0.368    |
+| Distill/Std_Val         | 0.376    |
+| Distill/TotalLoss_Train | 0.388    |
+| Distill/TotalLoss_Val   | 0.516    |
+| Itr                     | 200      |
+| Time/Buffer             | 0.0052   |
+| Time/Q_Act              | 0.0168   |
+| Time/Q_Log              | 0.000426 |
+| Time/Q_Preprocess       | 7.82e-05 |
+| Time/Q_Update           | 7.15e-07 |
+| Train/Value             | 3.34237  |
+--------------------------------------
+
+ ---------------- Iteration 202 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.511     |
+| Distill/Entropy_Val     | 0.493     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.472     |
+| Distill/Loss_Val        | 0.459     |
+| Distill/Mean_Dist_Train | 0.322     |
+| Distill/Mean_Dist_Val   | 0.316     |
+| Distill/Std_Train       | 0.428     |
+| Distill/Std_Val         | 0.42      |
+| Distill/TotalLoss_Train | 0.472     |
+| Distill/TotalLoss_Val   | 0.459     |
+| Itr                     | 201       |
+| Time/Buffer             | 0.00479   |
+| Time/Q_Act              | 0.0129    |
+| Time/Q_Log              | 0.000419  |
+| Time/Q_Preprocess       | 3.98e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.2830691 |
+---------------------------------------
+
+ ---------------- Iteration 203 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.452     |
+| Distill/Entropy_Val     | 0.51      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.449     |
+| Distill/Loss_Val        | 0.469     |
+| Distill/Mean_Dist_Train | 0.311     |
+| Distill/Mean_Dist_Val   | 0.317     |
+| Distill/Std_Train       | 0.403     |
+| Distill/Std_Val         | 0.427     |
+| Distill/TotalLoss_Train | 0.449     |
+| Distill/TotalLoss_Val   | 0.469     |
+| Itr                     | 202       |
+| Time/Buffer             | 0.00465   |
+| Time/Q_Act              | 0.0132    |
+| Time/Q_Log              | 0.000393  |
+| Time/Q_Preprocess       | 4.36e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.1896021 |
+---------------------------------------
+
+ ---------------- Iteration 204 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.456     |
+| Distill/Entropy_Val     | 0.48      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.429     |
+| Distill/Loss_Val        | 0.431     |
+| Distill/Mean_Dist_Train | 0.31      |
+| Distill/Mean_Dist_Val   | 0.317     |
+| Distill/Std_Train       | 0.403     |
+| Distill/Std_Val         | 0.415     |
+| Distill/TotalLoss_Train | 0.429     |
+| Distill/TotalLoss_Val   | 0.431     |
+| Itr                     | 203       |
+| Time/Buffer             | 0.00481   |
+| Time/Q_Act              | 0.0132    |
+| Time/Q_Log              | 0.000407  |
+| Time/Q_Preprocess       | 3.81e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.3830657 |
+---------------------------------------
+
+ ---------------- Iteration 205 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.448     |
+| Distill/Entropy_Val     | 0.446     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.459     |
+| Distill/Loss_Val        | 0.419     |
+| Distill/Mean_Dist_Train | 0.322     |
+| Distill/Mean_Dist_Val   | 0.31      |
+| Distill/Std_Train       | 0.399     |
+| Distill/Std_Val         | 0.398     |
+| Distill/TotalLoss_Train | 0.459     |
+| Distill/TotalLoss_Val   | 0.419     |
+| Itr                     | 204       |
+| Time/Buffer             | 0.0049    |
+| Time/Q_Act              | 0.0149    |
+| Time/Q_Log              | 0.000403  |
+| Time/Q_Preprocess       | 3.1e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2890046 |
+---------------------------------------
+
+ ---------------- Iteration 206 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.453     |
+| Distill/Entropy_Val     | 0.434     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.426     |
+| Distill/Loss_Val        | 0.43      |
+| Distill/Mean_Dist_Train | 0.306     |
+| Distill/Mean_Dist_Val   | 0.312     |
+| Distill/Std_Train       | 0.4       |
+| Distill/Std_Val         | 0.392     |
+| Distill/TotalLoss_Train | 0.426     |
+| Distill/TotalLoss_Val   | 0.43      |
+| Itr                     | 205       |
+| Time/Buffer             | 0.00405   |
+| Time/Q_Act              | 0.0151    |
+| Time/Q_Log              | 0.000468  |
+| Time/Q_Preprocess       | 9.61e-05  |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.4345253 |
+---------------------------------------
+
+ ---------------- Iteration 207 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.408     |
+| Distill/Entropy_Val     | 0.403     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.416     |
+| Distill/Loss_Val        | 0.448     |
+| Distill/Mean_Dist_Train | 0.313     |
+| Distill/Mean_Dist_Val   | 0.318     |
+| Distill/Std_Train       | 0.387     |
+| Distill/Std_Val         | 0.384     |
+| Distill/TotalLoss_Train | 0.416     |
+| Distill/TotalLoss_Val   | 0.448     |
+| Itr                     | 206       |
+| Time/Buffer             | 0.00477   |
+| Time/Q_Act              | 0.013     |
+| Time/Q_Log              | 0.000411  |
+| Time/Q_Preprocess       | 3.79e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.3528292 |
+---------------------------------------
+
+ ---------------- Iteration 208 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.445     |
+| Distill/Entropy_Val     | 0.438     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.43      |
+| Distill/Loss_Val        | 0.456     |
+| Distill/Mean_Dist_Train | 0.318     |
+| Distill/Mean_Dist_Val   | 0.326     |
+| Distill/Std_Train       | 0.398     |
+| Distill/Std_Val         | 0.394     |
+| Distill/TotalLoss_Train | 0.43      |
+| Distill/TotalLoss_Val   | 0.456     |
+| Itr                     | 207       |
+| Time/Buffer             | 0.00375   |
+| Time/Q_Act              | 0.0131    |
+| Time/Q_Log              | 0.000409  |
+| Time/Q_Preprocess       | 4.1e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.3942416 |
+---------------------------------------
+
+ ---------------- Iteration 209 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.458     |
+| Distill/Entropy_Val     | 0.477     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.433     |
+| Distill/Loss_Val        | 0.558     |
+| Distill/Mean_Dist_Train | 0.313     |
+| Distill/Mean_Dist_Val   | 0.355     |
+| Distill/Std_Train       | 0.402     |
+| Distill/Std_Val         | 0.412     |
+| Distill/TotalLoss_Train | 0.433     |
+| Distill/TotalLoss_Val   | 0.558     |
+| Itr                     | 208       |
+| Time/Buffer             | 0.00429   |
+| Time/Q_Act              | 0.013     |
+| Time/Q_Log              | 0.000493  |
+| Time/Q_Preprocess       | 3.58e-05  |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2707267 |
+---------------------------------------
+
+ ---------------- Iteration 210 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.451     |
+| Distill/Entropy_Val     | 0.435     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.404     |
+| Distill/Loss_Val        | 0.448     |
+| Distill/Mean_Dist_Train | 0.306     |
+| Distill/Mean_Dist_Val   | 0.314     |
+| Distill/Std_Train       | 0.405     |
+| Distill/Std_Val         | 0.399     |
+| Distill/TotalLoss_Train | 0.404     |
+| Distill/TotalLoss_Val   | 0.448     |
+| Itr                     | 209       |
+| Time/Buffer             | 0.00462   |
+| Time/Q_Act              | 0.0126    |
+| Time/Q_Log              | 0.000467  |
+| Time/Q_Preprocess       | 4.2e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2603748 |
+---------------------------------------
+
+ ---------------- Iteration 211 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.415    |
+| Distill/Entropy_Val     | 0.44     |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.452    |
+| Distill/Loss_Val        | 0.404    |
+| Distill/Mean_Dist_Train | 0.321    |
+| Distill/Mean_Dist_Val   | 0.306    |
+| Distill/Std_Train       | 0.389    |
+| Distill/Std_Val         | 0.4      |
+| Distill/TotalLoss_Train | 0.452    |
+| Distill/TotalLoss_Val   | 0.404    |
+| Itr                     | 210      |
+| Time/Buffer             | 0.00516  |
+| Time/Q_Act              | 0.0155   |
+| Time/Q_Log              | 0.000419 |
+| Time/Q_Preprocess       | 3.1e-05  |
+| Time/Q_Update           | 0        |
+| Train/Value             | 3.339328 |
+--------------------------------------
+
+ ---------------- Iteration 212 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+--------------------------------------
+| Distill/Accuracy_Train  | 0        |
+| Distill/Accuracy_Val    | 0        |
+| Distill/Entropy_Train   | 0.427    |
+| Distill/Entropy_Val     | 0.434    |
+| Distill/Label_Accura... | 0        |
+| Distill/Loss_Train      | 0.417    |
+| Distill/Loss_Val        | 0.418    |
+| Distill/Mean_Dist_Train | 0.303    |
+| Distill/Mean_Dist_Val   | 0.315    |
+| Distill/Std_Train       | 0.392    |
+| Distill/Std_Val         | 0.396    |
+| Distill/TotalLoss_Train | 0.417    |
+| Distill/TotalLoss_Val   | 0.418    |
+| Itr                     | 211      |
+| Time/Buffer             | 0.00485  |
+| Time/Q_Act              | 0.0133   |
+| Time/Q_Log              | 0.000401 |
+| Time/Q_Preprocess       | 5.39e-05 |
+| Time/Q_Update           | 0        |
+| Train/Value             | 3.395619 |
+--------------------------------------
+
+ ---------------- Iteration 213 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.437     |
+| Distill/Entropy_Val     | 0.451     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.439     |
+| Distill/Loss_Val        | 0.379     |
+| Distill/Mean_Dist_Train | 0.322     |
+| Distill/Mean_Dist_Val   | 0.3       |
+| Distill/Std_Train       | 0.396     |
+| Distill/Std_Val         | 0.407     |
+| Distill/TotalLoss_Train | 0.439     |
+| Distill/TotalLoss_Val   | 0.379     |
+| Itr                     | 212       |
+| Time/Buffer             | 0.00856   |
+| Time/Q_Act              | 0.0128    |
+| Time/Q_Log              | 0.000544  |
+| Time/Q_Preprocess       | 3.81e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.1573482 |
+---------------------------------------
+
+ ---------------- Iteration 214 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.47      |
+| Distill/Entropy_Val     | 0.443     |
+| Distill/Label_Accura... | 0.00195   |
+| Distill/Loss_Train      | 0.441     |
+| Distill/Loss_Val        | 0.392     |
+| Distill/Mean_Dist_Train | 0.327     |
+| Distill/Mean_Dist_Val   | 0.301     |
+| Distill/Std_Train       | 0.411     |
+| Distill/Std_Val         | 0.4       |
+| Distill/TotalLoss_Train | 0.441     |
+| Distill/TotalLoss_Val   | 0.392     |
+| Itr                     | 213       |
+| Time/Buffer             | 0.00442   |
+| Time/Q_Act              | 0.0202    |
+| Time/Q_Log              | 0.000837  |
+| Time/Q_Preprocess       | 5.2e-05   |
+| Time/Q_Update           | 9.54e-07  |
+| Train/Value             | 3.2221618 |
+---------------------------------------
+
+ ---------------- Iteration 215 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.465     |
+| Distill/Entropy_Val     | 0.475     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.464     |
+| Distill/Loss_Val        | 0.419     |
+| Distill/Mean_Dist_Train | 0.326     |
+| Distill/Mean_Dist_Val   | 0.309     |
+| Distill/Std_Train       | 0.408     |
+| Distill/Std_Val         | 0.414     |
+| Distill/TotalLoss_Train | 0.464     |
+| Distill/TotalLoss_Val   | 0.419     |
+| Itr                     | 214       |
+| Time/Buffer             | 0.00439   |
+| Time/Q_Act              | 0.0143    |
+| Time/Q_Log              | 0.000418  |
+| Time/Q_Preprocess       | 4.01e-05  |
+| Time/Q_Update           | 0         |
+| Train/Value             | 3.2921991 |
+---------------------------------------
+
+ ---------------- Iteration 216 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.456     |
+| Distill/Entropy_Val     | 0.47      |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.456     |
+| Distill/Loss_Val        | 0.437     |
+| Distill/Mean_Dist_Train | 0.316     |
+| Distill/Mean_Dist_Val   | 0.317     |
+| Distill/Std_Train       | 0.405     |
+| Distill/Std_Val         | 0.414     |
+| Distill/TotalLoss_Train | 0.456     |
+| Distill/TotalLoss_Val   | 0.437     |
+| Itr                     | 215       |
+| Time/Buffer             | 0.00785   |
+| Time/Q_Act              | 0.0206    |
+| Time/Q_Log              | 0.000583  |
+| Time/Q_Preprocess       | 0.000137  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.3553436 |
+---------------------------------------
+
+ ---------------- Iteration 217 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.451     |
+| Distill/Entropy_Val     | 0.42      |
+| Distill/Label_Accura... | 0.00195   |
+| Distill/Loss_Train      | 0.459     |
+| Distill/Loss_Val        | 0.444     |
+| Distill/Mean_Dist_Train | 0.321     |
+| Distill/Mean_Dist_Val   | 0.316     |
+| Distill/Std_Train       | 0.409     |
+| Distill/Std_Val         | 0.394     |
+| Distill/TotalLoss_Train | 0.459     |
+| Distill/TotalLoss_Val   | 0.444     |
+| Itr                     | 216       |
+| Time/Buffer             | 0.00435   |
+| Time/Q_Act              | 0.0165    |
+| Time/Q_Log              | 0.000537  |
+| Time/Q_Preprocess       | 4.2e-05   |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.3792143 |
+---------------------------------------
+
+ ---------------- Iteration 218 ----------------
+Obtaining samples...
+Distilling ...
+/Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/low_iter
+---------------------------------------
+| Distill/Accuracy_Train  | 0         |
+| Distill/Accuracy_Val    | 0         |
+| Distill/Entropy_Train   | 0.449     |
+| Distill/Entropy_Val     | 0.419     |
+| Distill/Label_Accura... | 0         |
+| Distill/Loss_Train      | 0.427     |
+| Distill/Loss_Val        | 0.455     |
+| Distill/Mean_Dist_Train | 0.311     |
+| Distill/Mean_Dist_Val   | 0.32      |
+| Distill/Std_Train       | 0.405     |
+| Distill/Std_Val         | 0.391     |
+| Distill/TotalLoss_Train | 0.427     |
+| Distill/TotalLoss_Val   | 0.455     |
+| Itr                     | 217       |
+| Time/Buffer             | 0.0121    |
+| Time/Q_Act              | 0.0154    |
+| Time/Q_Log              | 0.000452  |
+| Time/Q_Preprocess       | 3.89e-05  |
+| Time/Q_Update           | 1.19e-06  |
+| Train/Value             | 3.2579744 |
+---------------------------------------
+
+ ---------------- Iteration 219 ----------------
+Obtaining samples...
