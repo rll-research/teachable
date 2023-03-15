@@ -26,7 +26,7 @@ def filename_on_disk(filename: str, folder: str, prefix="") -> str:
 
 def save_ppo_agent(agent, itr: str, folder: str = None) -> None:
     save_object(agent.args, "args", itr, folder)
-    save_object(agent.args, "teacher", itr, folder)
+    save_object(agent.teacher, "teacher", itr, folder)
     save_object(agent.env, "env", itr, folder)
     save_object(agent.critic, "critic", itr, folder)
     save_object(agent.actor, "actor", itr, folder)

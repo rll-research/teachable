@@ -7,6 +7,7 @@ from envs.babyai.utils.obs_preprocessor import make_obs_preprocessor
 from scripts.test_generalization import make_log_fn
 from algos.data_collector import DataCollector
 from utils.rollout import rollout
+from utils.agent_loader import load_agent_iteration
 
 import shutil
 from logger import logger
@@ -64,6 +65,9 @@ def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
 
     if path is not None:
         agent.load(path)
+
+    if args.load_rl_agent is not None:
+        agent = load_agent_iteration(args.last_itr, args.load_rl_agent)
     return agent
 
 

@@ -13,6 +13,8 @@ class ArgumentParser(argparse.ArgumentParser):
         super().__init__()
 
         self.add_argument("--save_rl_agent")
+        self.add_argument("--load_rl_agent", default=None)
+        self.add_argument("--last_itr")
         self.add_argument("--use_input_converter", default=False, action='store_true')
 
         # Env arguments
