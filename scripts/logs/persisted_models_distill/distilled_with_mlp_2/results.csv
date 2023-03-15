@@ -1,0 +1,2 @@
+policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward
+Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.8,0.0,0,0,15.753282070159912,0.03007518796992481 
