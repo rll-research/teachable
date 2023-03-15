@@ -67,7 +67,10 @@ def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
         agent.load(path)
 
     if args.load_rl_agent is not None:
-        agent = load_agent_iteration(args.last_itr, args.load_rl_agent)
+        old_agent = load_agent_iteration(args.last_itr, args.load_rl_agent)
+        agent.actor = old_agent.actor
+        agent.critic = old_agent.critic
+        agent.advice_embedding = old_agent.advice_embedding
     return agent
 
 

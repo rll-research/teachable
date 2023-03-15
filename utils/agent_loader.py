@@ -5,12 +5,12 @@ from algos.ppo import *
 
 def load_agent_iteration(itr: str, folder="test"):
     args = load_object("args", folder, itr)
-    teacher = load_object("teacher", folder, itr)
+    #teacher = load_object("teacher", folder, itr)
     env = load_object("env", folder, itr)
 
     obs_preprocessor = make_obs_preprocessor(args.feedback_list)
 
-    agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
+    agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher='none', env=env)
 
     agent.critic = load_object("critic", folder, itr)
     agent.actor = load_object("actor", folder, itr)
