@@ -12,6 +12,8 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self):
         super().__init__()
 
+        self.add_argument("--use_input_converter", default=False)
+
         # Env arguments
         self.add_argument("--env", default='babyai',
                             help="name of the environment to train on")

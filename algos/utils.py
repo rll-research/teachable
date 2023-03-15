@@ -80,6 +80,13 @@ def to_np(t):
     else:
         return t.cpu().detach().numpy()
 
+
+def get_obs(position, velocity, target):
+    obs = np.zeros(255)
+    obs[:20] = np.tile(np.concatenate([position, velocity]), 5)
+    obs[245:] = np.tile(target, 5)
+    return obs
+
 # https://medium.com/@kengz/soft-actor-critic-for-continuous-and-discrete-actions-eeff6f651954
 class GumbelSoftmax(distributions.RelaxedOneHotCategorical):
     '''
@@ -331,3 +338,46 @@ class ImageEmbedding(nn.Module):
         obs.obs = self.image_conv(inputs)
         return obs
 
+
+class WaypointToDirectional:
+
+    def __init__(self, env=None, input_dim=383, output_dim=2, hidden_dim=128, hidden_depth=2):
+
+        self.env = env
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = torch.device(device)
+        self.trunk = mlp(input_dim, hidden_dim, output_dim, hidden_depth)
+        self.loss_function = nn.MSELoss()
+        self.optimizer = torch.optim.ASGD(self.trunk.parameters(), lr=0.001)
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, gamma=0.1,
+                                                              milestones=[100, 1000])
+        # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.9, patience=25)
+        self.advice_embedding = mlp(2, None, 128, 0, output_mod=nn.Sigmoid())
+        if os.path.isfile('advice embedder.pth'):
+            self.advice_embedding.load_state_dict(torch.load('advice embedder.pth'))
+
+    def forward(self, input):
+        #obs = get_obs(self.env.get_pos(), self.env.get_vel(), self.env.get_target())
+        #advice = np.array(self.advice_embedding(torch.tensor(self.env.waypoint_controller.waypoints[0])).detach())
+        #input = np.concatenate(obs, advice)
+
+        direction = self.trunk(input)
+
+        return direction
+
+    def train(self, training_batch, training_labels):
+        directions = self.trunk(torch.tensor(training_batch))
+        targets = torch.tensor(training_labels)
+
+        loss = self.loss_function(directions, targets)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        self.scheduler.step()
+        # print("learning rate: ", self.optimizer.param_groups[0]['lr'])
+
+        return loss
+
+    def update_env(self, new_env):
+        self.env = new_env

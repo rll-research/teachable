@@ -119,8 +119,17 @@ class D4RLEnv:
             state_obs = np.concatenate([state_obs, goal])
         obs_dict['obs'] = np.concatenate([state_obs] * self.repeat_input + [max_grid.flatten()])
         if self.teacher is not None and not 'None' in self.teacher.teachers:
+            #obs_dict_temp = obs_dict.copy()
             advice = self.teacher.give_feedback(self)
             obs_dict.update(advice)
+            '''
+            obs_dict_temp.update(advice)
+            if self.use_input_converter:
+                advice = self.converter.forward(obs_dict['obs'])
+                obs_dict.update(advice)
+            else:
+                obs_dict = obs_dict_temp
+                '''
         return obs_dict
 
     def get_success(self):

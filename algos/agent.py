@@ -4,6 +4,7 @@ import random
 import numpy as np
 import torch
 from torch import nn
+import os
 
 from algos.utils import ImageEmbedding, InstrEmbedding
 from logger import logger
@@ -11,6 +12,8 @@ from logger import logger
 from algos import utils
 from utils import agent_saver
 from utils.dictlist import merge_dictlists
+
+from algos.utils import WaypointToDirectional as wtd
 
 
 class Agent(nn.Module):
@@ -33,6 +36,13 @@ class Agent(nn.Module):
         self.device = torch.device(device)
         self.actor_update_frequency = actor_update_frequency
 
+        self.use_input_converter = self.args.use_input_converter
+
+        if self.use_input_converter:
+            self.converter = wtd()
+            if os.path.isfile('trained_input_converter.pth'):
+                self.converter.trunk.load_state_dict(torch.load('trained_input_converter.pth'))
+
         # Create encoders or dummy encoders for each piece of our input
         if args.image_obs:
             self.state_encoder = ImageEmbedding().to(self.device)
@@ -46,6 +56,8 @@ class Agent(nn.Module):
             self.advice_embedding = None
         else:
             self.advice_embedding = utils.mlp(advice_size, None, advice_dim, 0, output_mod=nn.Sigmoid()).to(self.device)
+            if self.use_input_converter:
+                self.advice_embedding.load_state_dict(torch.load('advice embedder.pth'))
 
         # TODO: these next 2 lines are in place since I want to run models collected before recon_coef was added.
         # If you're not doing this, feel free to remove.
@@ -111,7 +123,12 @@ class Agent(nn.Module):
             # TODO: understand why we need 2 -> 128 mlp
             # TODO: where is the mlp learning
             advice = self.advice_embedding(obs.advice)
-            obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            obs_temp = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            if self.use_input_converter:
+                advice = self.advice_embedding(self.converter.forward(obs_temp))
+                obs = torch.cat([obs.obs.flatten(1), advice], dim=1).to(self.device)
+            else:
+                obs = obs_temp
         else:
             obs = no_advice_obs
         return obs, (unprocessed_advice, no_advice_obs)
