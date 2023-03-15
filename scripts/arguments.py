@@ -12,7 +12,8 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self):
         super().__init__()
 
-        self.add_argument("--use_input_converter", default=False)
+        self.add_argument("--save_rl_agent")
+        self.add_argument("--use_input_converter", default=False, action='store_true')
 
         # Env arguments
         self.add_argument("--env", default='babyai',

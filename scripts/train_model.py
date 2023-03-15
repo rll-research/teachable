@@ -61,6 +61,7 @@ def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
         agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
     else:
         raise NotImplementedError(args.algo)
+
     if path is not None:
         agent.load(path)
     return agent

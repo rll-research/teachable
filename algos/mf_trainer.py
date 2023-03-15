@@ -5,7 +5,7 @@ from envs.babyai.utils.buffer import Buffer
 import time
 import psutil
 import os
-
+from utils.agent_saver import *
 
 class Trainer(object):
     def __init__(
@@ -252,6 +252,7 @@ class Trainer(object):
             saving_time_start = time.time()
             logger.log("Saving snapshot...")
             self.save_model()
+            save_ppo_agent(self.rl_policy, str(self.itr), self.args.save_rl_agent)
             logger.log("Saved")
             self.saving_time = time.time() - saving_time_start
         return early_stopping
