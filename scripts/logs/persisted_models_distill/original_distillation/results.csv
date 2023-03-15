@@ -1,3 +1,5 @@
 policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward
 Policypersisted_models_distill/original_distillation-2,persisted_models_distill/original_distillation,2,0.0,0.0,0,0,35.35263109207153,0.005333333333333333 
 Policypersisted_models_distill/original_distillation-2,persisted_models_distill/original_distillation,2,0.0,0.0,20,0,393.3735921382904,0.002 
+Policypersisted_models_distill/original_distillation-2,persisted_models_distill/original_distillation,2,0.0,0.0,40,0,759.5872139930725,0.002 
+Policypersisted_models_distill/original_distillation-2,persisted_models_distill/original_distillation,2,0.0,0.0,60,0,1110.9017159938812,0.004 

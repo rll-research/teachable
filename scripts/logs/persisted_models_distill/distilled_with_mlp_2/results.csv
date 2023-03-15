@@ -1,3 +1,6 @@
 policy_env,policy,env,success_rate,stoch_accuracy,itr,num_feedback,time,reward
 Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.8,0.0,0,0,15.753282070159912,0.03007518796992481 
 Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.6,0.0,20,0,299.69588899612427,0.022222222222222223 
+Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.6,0.0,40,0,576.4723880290985,0.028888888888888888 
+Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.8,0.0,60,0,860.1257860660553,0.044753086419753084 
+Policypersisted_models_distill/distilled_with_mlp_2-2,persisted_models_distill/distilled_with_mlp_2,2,0.6,0.0,80,0,1151.552719116211,0.020277481323372464 
