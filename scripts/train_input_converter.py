@@ -10,8 +10,8 @@ import time
 import matplotlib.pyplot as plt
 from algos.utils import WaypointToDirectional as wtd
 
-batch_size = 32
-num_batches = 1000
+batch_size = 2000
+num_batches = 5000
 advice_interval = 5
 
 
@@ -119,11 +119,15 @@ if __name__ == '__main__':
         batch_input, batch_labels = generate_advice_batch(advice_embedding)
         batch_loss = input_converter.train(batch_input, batch_labels)
         loss_trace[b] = batch_loss
+        if b % 100 == 0:
+            torch.save(input_converter.trunk.state_dict(), 'trained_input_converter.pth')
+            np.savetxt('mlp_loss.txt', loss_trace, fmt='%.10f', delimiter='\n')
         print("batch number ", b, ", loss: ", batch_loss.item())
 
     torch.save(input_converter.trunk.state_dict(), 'trained_input_converter.pth')
 
     print("time to train advice converter: ", time.time() - start_time)
-
-    plt.plot(range(num_batches), loss_trace)
-    plt.show()
+    np.savetxt('mlp_loss.txt', loss_trace, fmt='%.10f', delimiter='\n')
+    
+    #plt.plot(range(num_batches), loss_trace)
+    #plt.show()
