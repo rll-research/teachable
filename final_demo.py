@@ -144,7 +144,7 @@ class HumanFeedback:
         obs_preprocessor = make_obs_preprocessor([self.args.feedback_type])
         env = exp_data['env']
         args = exp_data['args']
-        policy = create_agent(path, self.args.feedback_type, env, args, obs_preprocessor)
+        policy = create_agent(path, self.args.feedback_type, env, args, obs_preprocessor, 'Human Policy')
         set_seed(self.args.seed)
         env.seed(self.args.seed)
         return policy, env, args

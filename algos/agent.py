@@ -57,7 +57,7 @@ class Agent(nn.Module):
         else:
             self.advice_embedding = utils.mlp(advice_size, None, advice_dim, 0, output_mod=nn.Sigmoid()).to(self.device)
             if self.use_input_converter:
-                self.advice_embedding.load_state_dict(torch.load("../advice_embedder.pth"))
+                self.advice_embedding.load_state_dict(torch.load("../advice embedder.pth"))
 
         # TODO: these next 2 lines are in place since I want to run models collected before recon_coef was added.
         # If you're not doing this, feel free to remove.

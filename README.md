@@ -96,3 +96,48 @@ logs/persisted_models_distill/claire
 * If you use babyAI, there are even smaller mazes than those used in the paper. These could be faster.
 * Use a GPU, if you have one available.
 * You might see small efficiency gains if you sweep over learning rate and frames_per_proc
+
+### Experiments we ran
+
+#### Distillation 
+```
+--prefix persisted_models_distill/original_distillation_cont
+--collect_policy logs/persisted_models_distill/claire
+--collect_teacher Direction
+--rl_policy logs/persisted_models_distill/claire
+--level 2
+--frames_per_proc 200
+--num_envs 20
+
+--distill_teacher OffsetWaypoint
+--env point_mass
+--save_option all
+--n_itr
+10000
+```
+
+This runs with: 
+rl_agent will be **None**
+distilling_agent is a *newly initialized* PPO Agent
+relabel_policy is **None** 
+
+Collect Teacher is Direction -> 
+collect_policy is the Grounded Agent **with weights**
+
+
+```
+--collect_with_rl_policy
+--rl_policy logs/persisted_models_distill/grounded
+--rl_teacher Direction
+--use_input_converter
+--env point_mass
+--level 2
+--frames_per_proc 200
+--num_envs 20
+--save_option
+all
+--n_itr
+10000
+```
+
+

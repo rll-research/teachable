@@ -51,7 +51,10 @@ def load_experiment(args):
     return args, log_dict
 
 
-def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
+def create_agent(path, teacher, env, args, obs_preprocessor, agent_label) -> Agent:
+    if path is not None:
+        agent_label = f"Grounded {agent_label}"
+
     if args.algo == 'sac':
         args.on_policy = False
         agent = SACAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, discount=args.discount,
@@ -59,7 +62,7 @@ def create_agent(path, teacher, env, args, obs_preprocessor) -> Agent:
                          control_penalty=args.control_penalty)
     elif args.algo == 'ppo':
         args.on_policy = True
-        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env)
+        agent = PPOAgent(args=args, obs_preprocessor=obs_preprocessor, teacher=teacher, env=env, agent_label=agent_label)
     else:
         raise NotImplementedError(args.algo)
 
@@ -226,17 +229,17 @@ def run_experiment(args):
     log_policy = None
     if args.rl_teacher is not None:
         rl_agent = create_agent(args.rl_policy, args.rl_teacher, env, args,
-                                 obs_preprocessor)
+                                 obs_preprocessor, 'RL Agent')
         log_policy = rl_agent
     else:
         rl_agent = None
     if args.distill_teacher is not None:
-        distilling_agent = create_agent(args.distill_policy, args.distill_teacher, env, args, obs_preprocessor)
+        distilling_agent = create_agent(args.distill_policy, args.distill_teacher, env, args, obs_preprocessor, 'Distilling Agent')
         log_policy = distilling_agent
     else:
         distilling_agent = None
     if args.relabel_teacher is not None:
-        relabel_policy = create_agent(args.relabel_policy, args.relabel_teacher, env, args, obs_preprocessor)
+        relabel_policy = create_agent(args.relabel_policy, args.relabel_teacher, env, args, obs_preprocessor, 'Relabel policy')
     else:
         relabel_policy = None
 
@@ -247,7 +250,7 @@ def run_experiment(args):
         collect_policy = distilling_agent
         args.collect_teacher = args.distill_teacher
     elif args.collect_teacher is not None:
-        collect_policy = create_agent(args.collect_policy, args.collect_teacher, env, args, obs_preprocessor)
+        collect_policy = create_agent(args.collect_policy, args.collect_teacher, env, args, obs_preprocessor, 'Collect Policy')
         if log_policy is None:
             log_policy = collect_policy
     else:

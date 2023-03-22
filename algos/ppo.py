@@ -13,7 +13,7 @@ from algos import utils
 class PPOAgent(Agent):
     """PPO algorithm."""
 
-    def __init__(self, args, obs_preprocessor, teacher, env, device=None, advice_dim=128):
+    def __init__(self, args, obs_preprocessor, teacher, env, device=None, advice_dim=128, agent_label = 'Default'):
         self.args = args
         self.env = env
         self.teacher = teacher
@@ -22,6 +22,7 @@ class PPOAgent(Agent):
         self.action_shape = 1 if args.discrete else self.action_dim
         self.advice_size = 0 if teacher is 'none' else len(obs[teacher])
         self.advice_dim = 0 if self.advice_size == 0 else advice_dim
+        self.agent_label = agent_label
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         super().__init__(args, obs_preprocessor, teacher, env, device=device, advice_size=self.advice_size,
@@ -162,3 +163,11 @@ class PPOAgent(Agent):
         logger.logkv('Train/Action_magnitude_L1', utils.to_np(action.float().norm(1, dim=-1).mean()))
         logger.logkv('Train/Action_max', utils.to_np(action.float().max(dim=-1)[0].mean()))
         pass
+
+    def __str__(self):
+        return f'''PPOAgent(
+  (agent_label): {self.agent_label}
+  (advice_embedding): ${self.advice_embedding}
+  (critic): {self.critic}
+  (actor): {self.actor}
+)'''
