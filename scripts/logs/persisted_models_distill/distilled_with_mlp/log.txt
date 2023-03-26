@@ -1,0 +1,1 @@
+Logging to /Users/1000ber-5078/PycharmProjects/teachable-rl/scripts/logs/persisted_models_distill/distilled_with_mlp
